@@ -167,7 +167,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
   }, []);
   // "bolas de pedra" da explosão do Gólem: matação com o MESMO material de
   // pedra da criatura (relevo nas fissuras + fissuras de magma acesas)
-  const SHARD_CAP = 4;
+  // 8 e não 4: o Gelo estilhaça a estaca em MAIS cacos de cristal (o brief
+  // pede o estilhaço), e o pool é compartilhado com madeira/magma/pedra
+  const SHARD_CAP = 8;
   const shardRock = useMemo(() => {
     const geo = new THREE.DodecahedronGeometry(0.5);
     const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
@@ -227,16 +229,20 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
   // ...e os cacos de CRISTAL de gelo do impacto da estaca do Gelo (mesmo
   // shader do corpo: cristal branco translúcido/reflexivo estilhaçando)
   const shardIce = useMemo(() => {
-    const geo = new THREE.DodecahedronGeometry(0.5);
+    // farpa de CRISTAL bicuda (octaedro escalonado comprido no eixo) — o
+    // dodecahedron subdividido rodando no ar virava BOLA DE NEVE (o print do
+    // zoom pegou duas esferas brancas quicando no chão)
+    const geo = new THREE.OctahedronGeometry(0.5, 0);
+    geo.scale(0.5, 1.7, 0.5);
     const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
       makeIceMaterial({
         iceA: '#f4faff',
         iceB: '#9cc2da',
         crack: '#d8f2ff',
-        amp: 0.05,
+        amp: 0.03,
         crackGlow: 1.4,
-        crackScale: 1.5,
-        crackWidth: 0.024,
+        crackScale: 2.4,
+        crackWidth: 0.07,
         alpha: 0.8,
         bump: 1.3, // cacos rodando: cada face pisca no reflexo da arena
         reflPow: 120,
@@ -431,6 +437,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     z: number,
     size = 1,
     kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' | 'iceShard' = 'flame',
+    life?: number,
   ) => {
     if (kind === 'flame') {
       for (let i = 0; i < BURST_CAP; i++) {
@@ -456,6 +463,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       if (d.life > 0) continue;
       const mesh = shards.current[i];
       if (!mesh) return;
+      d.max = life ?? 0.62; // cristal do Gelo vive mais p/ o estilhaço ser lido
       d.life = d.max;
       d.size = size;
       d.kind =
@@ -467,13 +475,17 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               ? 'ice'
               : 'rock';
       const a = Math.random() * Math.PI * 2;
-      const s = 1.6 + Math.random() * 1.8;
+      // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
+      // cambalhota que a pedra (que só desmorona)
+      const ice = kind === 'iceShard';
+      const s = (ice ? 2.2 : 1.6) + Math.random() * (ice ? 2.4 : 1.8);
       d.vx = Math.cos(a) * s;
-      d.vy = 1.6 + Math.random() * 1.8;
+      d.vy = (ice ? 2.1 : 1.6) + Math.random() * (ice ? 2.4 : 1.8);
       d.vz = Math.sin(a) * s;
-      d.rx = (Math.random() - 0.5) * 11;
-      d.ry = (Math.random() - 0.5) * 11;
-      d.rz = (Math.random() - 0.5) * 11;
+      const spin = ice ? 16 : 11;
+      d.rx = (Math.random() - 0.5) * spin;
+      d.ry = (Math.random() - 0.5) * spin;
+      d.rz = (Math.random() - 0.5) * spin;
       mesh.visible = true;
       mesh.position.set(x + Math.cos(a) * 0.2, y, z + Math.sin(a) * 0.2);
       mesh.rotation.set(Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28);
@@ -690,7 +702,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
             // cristal (branco translúcido quicando), pó de gelo cintilante,
             // farpas azuis e NÉVOA FRIA no chão (a assinatura do slow)
             const lv = Math.max(6, Math.min(10, ev.level ?? 6));
-            for (let i = 0; i < 2; i++) spawnBurst(x, y, z, 0.3 + 0.05 * (lv - 6), 'iceShard');
+            // 4 cacos de cristal (metade do pool): a estaca ESTILHAÇA, não
+            // apenas "some com faíscas"; vida longa p/ ver as farpas quicando
+            for (let i = 0; i < 4; i++)
+              spawnBurst(x, y, z, 0.36 + 0.06 * (lv - 6), 'iceShard', 0.95);
             spawnParticles(x, y, z, '#eaf6ff', 12, 2.8, 0.5, 1.6, 0.9); // estilhaços brancos
             spawnParticles(x, y, z, '#a8e6ff', 8, 2.2, 0.5, 1.2, 0.5); // farpas azuis
             spawnParticles(x, y, z, '#ffffff', 5, 1.3, 0.28, 0.4, 0.3); // glitter de pó de gelo

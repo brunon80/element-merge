@@ -291,8 +291,9 @@ export function ProjectileField() {
     // estaca de gelo do Gelo: icicle comprido com a MESMA aparência da
     // criatura (cristal branco translúcido/reflexivo com trincas internas
     // acesas) — a ponta encara o alvo e ela roda de leve no eixo do voo
-    const geo = new THREE.ConeGeometry(0.1, 0.72, 6);
-    geo.translate(0, -0.06, 0); // empurra o corpo pra trás da ponta
+    const geo = new THREE.ConeGeometry(0.15, 1.05, 8, 5); // densa como o corpo
+    // e GRANDE: na escala antiga ela sumia como um pontinho cruzando a arena
+    geo.translate(0, -0.1, 0); // empurra o corpo pra trás da ponta
     const seeds = seedsAttr();
     geo.setAttribute('aSeed', seeds);
     const mat = makeIceMaterial({
@@ -301,8 +302,8 @@ export function ProjectileField() {
       crack: '#d8f2ff',
       amp: 0.025,
       crackGlow: 1.5,
-      crackScale: 1.6,
-      crackWidth: 0.024,
+      crackScale: 2.6, // facetas pequenas do icicle: trincas curtas e densas
+      crackWidth: 0.06,
       alpha: 0.85,
       bump: 1.2, // girando em voo, o reflexo e o spec dançam nas facetas
       reflPow: 130,

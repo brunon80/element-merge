@@ -102,9 +102,9 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     iceA: '#f2f9ff',
     iceB: '#9fc4dd',
     crack: '#cfeeff',
-    crackGlow: 0.7,
-    crackScale: 1.9,
-    crackWidth: 0.022,
+    crackGlow: 0.5,
+    crackScale: 3.2,
+    crackWidth: 0.05,
     amp: 0.04,
     alpha: 0.86,
     bump: 1.0,
@@ -114,9 +114,9 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     iceA: '#cfe0ec',
     iceB: '#5f7f96',
     crack: '#a8d8ef',
-    crackGlow: 0.45,
-    crackScale: 1.5,
-    crackWidth: 0.024,
+    crackGlow: 0.4,
+    crackScale: 2.6,
+    crackWidth: 0.055,
     amp: 0.045,
     alpha: 0.92,
     bump: 1.1,
@@ -126,9 +126,9 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     iceA: '#ffffff',
     iceB: '#bfe4ff',
     crack: '#e8fbff',
-    crackGlow: 1.2,
-    crackScale: 1.5,
-    crackWidth: 0.02,
+    crackGlow: 1.0,
+    crackScale: 2.4,
+    crackWidth: 0.045,
     amp: 0.028,
     alpha: 0.8,
     bump: 0.8,
@@ -140,9 +140,9 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     iceA: '#e4f2ff',
     iceB: '#82aac6',
     crack: '#bfe8ff',
-    crackGlow: 0.9,
-    crackScale: 1.6,
-    crackWidth: 0.022,
+    crackGlow: 0.8,
+    crackScale: 2.8,
+    crackWidth: 0.05,
     amp: 0.03,
     alpha: 0.78,
     bump: 0.9,
@@ -152,14 +152,16 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     iceA: '#bfe0f6',
     iceB: '#7ba6c2',
     crack: '#d8f2ff',
-    crackGlow: 0.4,
-    crackScale: 1.1,
-    crackWidth: 0.02,
+    crackGlow: 0.2,
+    crackScale: 1.8,
+    crackWidth: 0.035,
     amp: 0.012,
-    alpha: 0.3,
+    // o print do macro cobrou "placa cinza": geada é véu rente ao chão, quase
+    // só o brilho das fagulhas — alfa baixo, sem reflete a arena inteiro
+    alpha: 0.16,
     bump: 0.5,
-    env: 0.25,
-    sparkle: 0.4,
+    env: 0.15,
+    sparkle: 1.1,
   },
 };
 
@@ -280,7 +282,10 @@ export function IceRig({
           sparkle: look.sparkle ?? 1,
           seed: seed + (i % 3) * 3.3,
           breath: p.tag === 'arm' || p.tag === 'spike' ? 0.35 : 1,
-          teamColor: team,
+          // o halo de geada NUNCA sai na cor da equipe (o print da câmera
+          // rasa mostrou o anel verde-jade: de raspão o fresnel puxa o tint
+          // todo pra ele) — geada é azul-branco, sempre
+          teamColor: p.m === 'trans' ? '#7fb0cf' : team,
         });
         cache.set(key, m);
       }
@@ -322,7 +327,14 @@ export function IceRig({
       const geo = getGeometry(p.g, p.a);
       const mat = partMats.list[i];
       if (mat instanceof THREE.ShaderMaterial && mat.vertexShader.includes('aSeed')) {
-        const g = geo.clone();
+        // NORMALS PLANAS (toNonIndexed + computeVertexNormals): pedra é rocha
+        // lisa com fissuras; GELO é gemeta — cada lasca plana pega a luz da
+        // arena num ângulo e pisca (o "cristal" do reflexo real pede facetas,
+        // normal interpolada em mesh densa = plástico redondo). Poliedros
+        // (octa/dodeca) já vêm não-indexados: clone neles, senão o three avisa
+        // no console a cada frame
+        const g = geo.index ? geo.toNonIndexed() : geo.clone();
+        g.computeVertexNormals();
         g.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array([seed + i * 1.9]), 1));
         geoClones.current.push(g);
         return g;

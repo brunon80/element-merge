@@ -27,18 +27,30 @@ describe('Gelo: golem de cristal branco no padrão do golem', () => {
     expect(partsForLevel(MODELS.gelo, 6).length).toBe(MODELS.gelo.parts.length);
   });
 
-  test('silhueta de golem de gelo: torso largo, braços de icicle e coroa de espinhos', () => {
+  test('silhueta de golem de gelo: terraços de cristal plantados, cabeça e coroa', () => {
     const parts = partsForLevel(MODELS.gelo, 6);
-    // torso de glaciar: o cristal principal é a peça mais larga do modelo
-    const big = parts.reduce((a, b) => (a.a[0] > b.a[0] ? a : b));
-    expect(big.g).toBe('octa');
-    expect(big.a[0]).toBeGreaterThanOrEqual(1.0);
-    // braços de icicle que o rig varre no arremesso + punhos de lasca
-    expect(parts.filter((p) => p.tag === 'arm').length).toBe(2);
-    expect(parts.filter((p) => p.tag === 'spike').length).toBeGreaterThanOrEqual(4);
-    // espinhos para o chão (pernas) e placa de geada no piso
+    // o gelo cresce em PRISMAS EMPILHADOS em terraços (padrão do Magma):
+    // 3 cilindros poligonais DENSOS com raios afunilando da base ao peito
+    const terraces = parts.filter((p) => p.g === 'cyl');
+    expect(terraces.length).toBe(3);
+    for (const t of terraces) {
+      expect(t.a[3]).toBeGreaterThanOrEqual(10); // malha densa (anti low-poly)
+      expect(t.a[4]).toBeGreaterThanOrEqual(4); // anéis verticais p/ entortar
+    }
+    const byY = [...terraces].sort((a, b) => a.p[1] - b.p[1]);
+    expect(byY[0].a[1]).toBeGreaterThan(byY[2].a[0]); // base > topo (plantado)
+    expect(byY[0].p[1] - byY[0].a[2] / 2).toBeGreaterThanOrEqual(0); // não afunda
+    // cabeça de quartzo SUBDIVIDIDA acima do peito + olhos na face
+    expect(parts.some((p) => p.g === 'octa' && (p.a[1] ?? 0) >= 1 && p.p[1] > 2.4)).toBe(true);
+    expect(parts.filter((p) => p.m === 'white').length).toBe(2);
+    // braços de icicle DENSOS que o rig varre no arremesso + punhos
+    const arms = parts.filter((p) => p.tag === 'arm');
+    expect(arms.length).toBe(2);
+    expect(arms.every((a) => a.a[2] >= 8 && a.a[3] >= 4)).toBe(true);
+    // coroa/chifres/corcunda (o rig eleva na carga)
+    expect(parts.filter((p) => p.tag === 'spike').length).toBeGreaterThanOrEqual(6);
+    // placa de geada no piso e fragmentos orbitando (o gelo ao redor respira)
     expect(parts.some((p) => p.g === 'ring' && p.p[1] < 0.1)).toBe(true);
-    // fragmentos orbitando (o gelo ao redor respira)
     expect(parts.some((p) => p.group !== undefined)).toBe(true);
     // coroa: a silhueta sobe até perto do formTop (aproveita os 3.9 do Nv.6)
     const e = partsEnvelope(parts);
@@ -62,8 +74,8 @@ describe('Gelo: golem de cristal branco no padrão do golem', () => {
       iceB: '#9fc4dd',
       crack: '#cfeeff',
       amp: 0.04,
-      crackScale: 1.9,
-      crackWidth: 0.022,
+      crackScale: 3.2,
+      crackWidth: 0.05,
     });
     // translúcido mas FÍSICO: alpha alto, escreve profundidade, sem aditivo
     expect(m.transparent).toBe(true);
@@ -75,10 +87,14 @@ describe('Gelo: golem de cristal branco no padrão do golem', () => {
     // mais BRANCO (o pedido): o gelo claro beira o branco puro
     const bright = m.uniforms.uIceA.value;
     expect(Math.min(bright.r, bright.g, bright.b)).toBeGreaterThan(0.85);
-    // a lição do print: peça grande pede veio mais denso (scale >1) e FINO
-    // (trinca de cristal, não onda larga derretida)
+    // a lição do print: peça grande pede veio mais denso (scale >1) e o cume
+    // é FINO em unidades de ruído (trinca segmentada de gelo, não onda de
+    // mármore larga)
     expect(m.uniforms.uCrackScale.value).toBeGreaterThan(1);
-    expect(m.uniforms.uCrackWidth.value).toBeLessThan(0.03);
+    expect(m.uniforms.uCrackWidth.value).toBeLessThan(0.08);
+    // a trinca é DOBRADA (ridged) e SEGMENTADA (traços) no frag
+    expect(m.fragmentShader).toContain('abs(');
+    expect(m.fragmentShader).toContain('seg');
     // reflexo fake de ambiente presente no frag (key spec + fresnel/teto)
     expect(m.fragmentShader).toContain('reflect');
     expect(m.vertexShader).toContain('USE_INSTANCING');

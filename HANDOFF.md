@@ -240,6 +240,72 @@
 > - Próximo passo natural: replicar o padrão para os demais Nv.6–10
 >   (vapor/areia primeiro), e o pool de arcos já serve
 >   para tempestade/astral etc.
+>
+> ### ❄️ ATUALIZAÇÃO 3 — ciclo de autoinspeção (Playwright) + acabamento do Gelo
+>
+> O usuário pediu: *"instala o Playwright e inspecione você mesmo as criaturas e
+> entre num ciclo de melhorias até um resultado equivalente à especificação"* e
+> depois *"os modelos ainda são bem low poly, isso pode melhorar"*. Então o
+> loop de aprovação por print do usuário ganhou um **laço de QA automático**:
+>
+> - **`playwright -D` + chromium instalado** (`npx playwright install
+>   chromium`). Roda com SwiftShader: `--enable-unsafe-swiftshader --use-gl=angle
+>   --use-angle=swiftshader` — WebGL de verdade, e o **console do navegador é o
+>   verificador de compilação de GLSL** (jsdom não compila shader; "SEM ERROS"
+>   no print do script = os shaders compilam).
+> - **`qa/inspect-species.mjs <espécie> [aliada]`**: liga o modo debug → nova
+>   partida → spawn debug da espécie (+ aliado tanque p/ a luta durar) → close
+>   no **viewer do bestiário** (câmera na FRENTE do modelo; clique sem arrasto
+>   no canvas dispara a demo de arremesso: windup/release) → arena com órbita
+>   180° + zoom → **rajada de 40 frames** da luta. Prints em
+>   `%LOCALAPPDATA%\Temp\opencode\shots`.
+> - **`qa/find-particles.ps1`**: varre os frames da rajada contando pixels
+>   "gelados" (claros + azulados) agrupados em células de 40px — células
+>   lotadas são o corpo do golem, células médias são projétil/cacos — e salva
+>   zoom 3× no centróide. Foi assim que se achou a estaca em voo e o estilhaço
+>   sem ler 40 prints. **`qa/diff-shots.ps1`** mede se duas capturas diferem.
+> - IDs de teste adicionados ao fonte p/ o script: `open-bestiary` (botão 📖 do
+>   HUD) e `settings-tab-debug` (aba Depuração). O card **selado** do bestiário
+>   mostra o **rig real quando o modo debug está ligado**
+>   (`MonsterViewer locked={!debugMode}`) — inspeção sem tocar na regra de
+>   descoberta (o teste "debug não é descoberta" continua amarrando).
+> - **Silhueta do Gelo em terraços de prisma** (o padrão consagrado do Magma,
+>   agora em quartzo): 3 cilindros poligonais **DENSOS** (12 radiais × 5-6
+>   anéis) rodados entre si (as facetas nunca alinham), cabeça octa sub 1
+>   (sub 2 + deslocamento = bola de neve), coroa de icicles grossos, corcunda
+>   deitada nas costas, braços de icicle PENDURADOS em ombreiras com garra de
+>   lasca no punho, farpas orbitais **sub 0 alongadas** (sub 2 = bolinha de
+>   beisebol) e halo de geada. Regra anti low-poly amarrada em teste: peça com
+>   deslocamento exige malha densa (`a[3] ≥ 10`, `a[4] ≥ 4`).
+> - **Trinca de gelo reescrita**: ruído **dobrado** (`abs(v*2-1)` = cume
+>   estreito) segmentado por um segundo ruído (`seg` fbm) → traços que param e
+>   recomeçam, não a onda de contorno do mármore. `uCrackWidth` agora é a
+>   **meia-largura do cume** em unidades de ruído (0,035–0,07).
+> - **Normais planas** no IceRig (`index ? toNonIndexed() : clone()` +
+>   `computeVertexNormals`): gemeta facetada pega a luz da arena em ângulo e
+>   pisca; normal interpolada em malha densa = plástico. Poliedros já vêm não
+>   indexados (o `toNonIndexed()` puro inundava o console de warning).
+> - **Cacos do estilhaço viraram farpas bicudas**: `OctahedronGeometry` escala-
+>   do (0,5/1,7/0,5) — o dodeca sub 1 rodando no ar virava **bola de neve** (o
+>   zoom pegou duas esferas brancas quicando). Pool de estilhaços **8** e o
+>   impacto do Gelo cospe **4 farpas** com vida 0,95s, mais velocidade, salto
+>   e cambalhota que a pedra.
+> - Halo de geada (`trans`): alfa 0,3→0,16 e `env` 0,25→0,15 (virava placa
+>   cinza no macro) e **nunca** usa o tint da equipe (o print da câmera rasa
+>   mostrou o anel verde-jade).
+> - Câmera: `minDistance` 10→**3** (`CameraController`) — o clamp antigo
+>   deixava estaca e cacos minúsculos na tela; agora dá para inspecionar o
+>   figurino (e o jogador também aproveita).
+> - Total segue **182 testes** verdes; tsc/build OK.
+>
+> ### 🗺️ PRÓXIMO PLANO (combinado com o usuário) — revisar o bestiário inteiro
+>
+> Rodar o ciclo `qa/inspect-species.mjs` em **cada** espécie restante, **um
+> commit + push por monstro**, sem pressa: vapor e areia (Nv.6) → tempestade,
+> obsidiana, pântano, plasma, névoa, cristal (Nv.7) → cósmico, geodo, abissal,
+> vulcânico (Nv.8) → astral, colosso (Nv.9) → **primordial (Nv.10)**.
+> Pedido especial para o último: **buraco negro com disco de acreção**, grande,
+> e o ataque é uma **rajada de energia** (rever projétil/FX do primordial).
 
 ---
 

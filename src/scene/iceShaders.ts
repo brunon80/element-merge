@@ -47,10 +47,12 @@ void main() {
   vec3 pos = position;
   vec3 nrm = normal;
   vLocal = position + uSeed + aSeed;
-  // relevos de cristal: facetas alongadas no Y (o icicle cresce no prumo)
-  // + lascas de fratura em fbm baixinho
-  float facets = fnoise(vLocal * vec3(7.0, 1.6, 7.0));
-  float chips = fbm(vLocal * 2.2);
+  // relevos de cristal: flautas alongadas no Y (o icicle cresce no prumo)
+  // + lascas de fratura em fbm baixinho. Frequência calibrada p/ a malha
+  // DENSE dos terraços (12×6): facetagem grande e lida de longe — freq
+  // alta demais em malha densa vira ruído de moagem (cristal lixado)
+  float facets = fnoise(vLocal * vec3(3.2, 0.9, 3.2));
+  float chips = fbm(vLocal * 1.7);
   float amp = uAmp * (1.0 + uHurt * 0.3);
   pos += nrm * ((facets - 0.5) * 0.7 + (chips - 0.5) * 1.5) * amp;
   // expansão térmica gelada (bem mais contida que a respiração da pedra)
@@ -81,7 +83,7 @@ uniform float uTime;
 uniform float uSeed;
 uniform float uCrackGlow;
 uniform float uCrackScale; // multiplicador da frequência das trincas (peças grandes pedem >1)
-uniform float uCrackWidth; // meia-espessura do veio ( largo demais vira onda de contorno)
+uniform float uCrackWidth; // meia-largura do CUME da trinca (unidades de ruído)
 uniform float uCharge;   // carregando o disparo: as trincas acendem por dentro
 uniform float uHurt;
 uniform float uSparkle;
@@ -114,19 +116,24 @@ void main() {
   vec3 tangX = cross(n0, tangY);
   vec3 n = normalize(n0 + (tangX * (bx - fx) + tangY * (bz - fz)) * (0.9 * uBump));
 
-  // corpo de glaciar: branco com manchas densas azuladas (o miolo do gelo)
+  // corpo de glaciar: branco com MANCHAS RARAS de densidade azulada (o miolo
+  // do gelo aparece pouco — o pedido é ser BRANCO, e o print cobrou o azul
+  // "marmorizado" ocupando metade da superfície)
   float dens = fbm(vLocal * 1.6);
-  vec3 col = mix(uIceA, uIceB, smoothstep(0.34, 0.78, dens));
+  vec3 col = mix(uIceA, uIceB, smoothstep(0.5, 0.9, dens));
 
-  // veios de fratura INTERNOS: trinca FINA e irregular que racha o cristal.
-  // A frequência é multiplicada por uCrackScale (peça grande = veios mais
-  // densos; na frequência fixa o padrão esticava nas peças grandes e virava
-  // onda de contorno larga) e a meia-espessura vem de uCrackWidth — gelo
-  // racha em planos limpos, então a faixa é fina, não a fissura larga da
-  // pedra; brilha por dentro, sem aditivo
-  float vein = fnoise(vLocal * 4.2 * uCrackScale + vec3(0.0, uTime * 0.04, 0.0));
+  // veios de fratura INTERNOS: trinca FINA e SEGMENTADA (o gelo racha em
+  // linhas que PARAM e RECOMEÇAM), não a onda de contorno do mármore/madeira
+  // que o print mostrou. A receita: o ruído é DOBRADO (abs(2v-1) transforma a
+  // linha de nível 0.5 em cume estreito — onde vale ~0 é a trinca) e um
+  // segundo ruído grosseiro (seg) corta o cume em traços. uCrackWidth é a
+  // MEIA-LARGURA do cume em unidades de ruído (afinada a 0.05); uCrackScale
+  // segue a frequência por porte da peça (peça grande = trincas mais densas)
+  float vw = fnoise(vLocal * 3.4 * uCrackScale + vec3(0.0, uTime * 0.03, 0.0));
+  float vein = abs(vw * 2.0 - 1.0);
   float w = uCrackWidth;
-  float crack = smoothstep(0.5 - w, 0.5 - w * 0.2, vein) * (1.0 - smoothstep(0.5 + w * 0.2, 0.5 + w, vein));
+  float seg = smoothstep(0.32, 0.66, fbm(vLocal * 6.5 * uCrackScale + 11.3));
+  float crack = pow(1.0 - smoothstep(0.0, w, vein), 1.6) * seg;
   float pulse = 0.55 + 0.2 * sin(uTime * 1.2 + uSeed) + uCharge * 1.6;
   col += uCrackCol * crack * uCrackGlow * pulse;
 
@@ -192,7 +199,7 @@ export interface IceMaterialOpts {
   crackGlow?: number;
   /** frequência relativa das trincas (peças grandes do corpo pedem >1) */
   crackScale?: number;
-  /** meia-espessura do veio de fratura (fina = trinca de cristal) */
+  /** meia-largura do cume da trinca em unidades de ruído (fina = gelo) */
   crackWidth?: number;
   sparkle?: number;
   alpha?: number;

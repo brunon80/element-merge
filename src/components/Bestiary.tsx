@@ -128,7 +128,7 @@ function SpeciesCard({ species, unlocked }: { species: SpeciesId; unlocked: bool
             <DebugSpawn species={species} level={def.levelMin as MonsterLevel} levels={[]} />
           )}
         </div>
-        <MonsterViewer species={species} locked />
+        <MonsterViewer species={species} locked={!debugMode} />
         <p className="beast-blurb">
           Espécie selada. Fuze duas criaturas do <b>Nível {def.levelMin - 1}</b>{' '}
           ligadas na árvore elemental para descobri-la.

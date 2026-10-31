@@ -22,7 +22,8 @@ export function CameraController({ menuMode }: { menuMode: boolean }) {
       enableRotate={!dragActive}
       autoRotate={menuMode}
       autoRotateSpeed={0.55}
-      minDistance={10}
+      minDistance={3} // zoom colado p/ inspecionar o figurino (o clamp antigo
+      // em 10 deixava a estaca e os cacos de gelo minúsculos na tela)
       maxDistance={34}
       minPolarAngle={0.35}
       maxPolarAngle={1.32}

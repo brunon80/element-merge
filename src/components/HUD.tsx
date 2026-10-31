@@ -62,7 +62,12 @@ export function HUD() {
         >
           Inimigo: {enemyCount > 0 ? `${enemyCount} criaturas` : 'aguardando combate'}
         </span>
-        <button className="btn ghost small" onClick={() => setBestiary(true)}>
+        <button
+          className="btn ghost small"
+          data-testid="open-bestiary"
+          title="Bestiário"
+          onClick={() => setBestiary(true)}
+        >
           📖
         </button>
         <button

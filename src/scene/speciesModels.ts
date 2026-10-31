@@ -761,38 +761,50 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     groups: { 0: 1.6 },
   },
 
-  // Água+Ar — golem de cristal de gelo (Nv.6): corpo grande e BRANCO, facetas
-  // de glaciar, braços/pernas de icicle e coroa de espinhos (o IceRig desenha
-  // com shader de cristal translúcido/reflexivo; flocos de neve caem ao redor)
+  // Água+Ar — golem de CRISTAL de gelo (Nv.6): o gelo cresce em PRISMAS
+  // hexagonais EMPILHADOS em terraços (o padrão consagrado do Magma: base
+  // larga plantada que afunila em pináculo, mas em facetado de quartzo).
+  // Round 1 virou "boneco de neve": o manto esférico engolia a cabeça e as
+  // pernas somiam sob o tronco — aqui cada peça lê no perfil.
   gelo: {
     bob: 0.05,
     parts: [
-      // cristal principal (o torso de glaciar — largo, plantado no chão)
-      { g: 'octa', a: [1.0, 0], p: [0, 1.16, 0], s: [1.18, 1.16, 1.05], m: 'body', amp: 0.04 },
-      // ombros de gelo (cristais secundários sobre os ombros)
-      ...mm({ g: 'octa', a: [0.34, 0], p: [0.72, 2.1, 0], s: [0.9, 1.2, 0.9], m: 'body', amp: 0.04 }),
-      // torsos menores encimados (a escultura de gelo cresce em pináculo)
-      { g: 'octa', a: [0.42, 0], p: [0, 2.32, 0], s: [0.9, 1.25, 0.9], m: 'body', amp: 0.04 },
-      { g: 'octa', a: [0.24, 0], p: [0, 2.98, 0], s: [0.85, 1.2, 0.85], m: 'glow', flick: 0.04 },
-      // braços de icicle (o rig arremessa a estaca) + punhos de lasca
-      ...mm({ g: 'cone', a: [0.17, 0.78, 6], p: [1.12, 1.35, 0.08], r: [0, 0, 2.9], m: 'body', amp: 0.03, tag: 'arm' }),
-      ...mm({ g: 'dodeca', a: [0.2, 0], p: [1.38, 1.02, 0.1], m: 'dark', amp: 0.04 }),
-      // icicles para o chão (as "pernas" do golem de gelo; a ponta encosta no
-      // piso sem afundar — folga p/ o deslocamento do shader, amarrado no teste)
-      ...mm({ g: 'cone', a: [0.13, 0.55, 5], p: [0.42, 0.4, 0.34], r: [0.55, 0, 0.28], m: 'dark', amp: 0.04 }),
-      { g: 'cone', a: [0.13, 0.55, 5], p: [-0.1, 0.4, -0.45], r: [-0.5, 0, -0.2], m: 'dark', amp: 0.04 },
-      // coroa de espinhos (o rig eleva na carga) + ombros espigados
-      ...mm({ g: 'cone', a: [0.08, 0.5, 5], p: [0.16, 3.28, 0], r: [0, 0, -0.22], m: 'glow', amp: 0.025, flick: 0.05, tag: 'spike' }),
-      ...mm({ g: 'cone', a: [0.06, 0.34, 5], p: [0.4, 3.1, 0], r: [0, 0, -0.5], m: 'glow', amp: 0.025, flick: 0.07, tag: 'spike' }),
-      ...mm({ g: 'cone', a: [0.07, 0.44, 5], p: [0.78, 2.42, 0], r: [0, 0, -0.42], m: 'body', amp: 0.03, tag: 'spike' }),
-      // olhos azuis profundos no cristal do rosto
-      ...mm(SEYE(0.17, 2.42, 0.34)),
-      ...mm(SPUPIL(0.17, 2.42, 0.34)),
-      // lasca de gelo flutuando ao redor (orbita — o gelo ao redor respira)
-      { g: 'octa', a: [0.11, 0], p: [0.95, 1.9, 0.5], s: [0.8, 1.5, 0.8], m: 'accent', group: 0, flick: 0.1 },
-      { g: 'octa', a: [0.09, 0], p: [-0.85, 1.55, -0.45], s: [0.8, 1.4, 0.8], m: 'accent', group: 0, flick: 0.12 },
-      // escama de geada no chão ao redor dos pés (halo congelado)
-      { g: 'ring', a: [0.42, 1.15, 32], p: [0, 0.03, 0], r: [-1.57, 0, 0], m: 'trans' },
+      // TERRAÇO 1 (a base plantada — empurra o piso): malha DENSE (regra do
+      // golem/Magma: deslocamento de vértice exige subdivisão; malha rala
+      // vira chunk low-poly de isopor)
+      { g: 'cyl', a: [1.05, 1.2, 0.92, 12, 6], p: [0, 0.47, 0], m: 'dark', amp: 0.04 },
+      // TERRAÇO 2 (o abdômen de gelo; rodado p/ as facetas NÃO alinharem —
+      // a pilha cresce torta, como gelo de verdade)
+      { g: 'cyl', a: [0.88, 1.02, 0.95, 12, 6], p: [0, 1.35, 0], r: [0, 0.26, 0], m: 'body', amp: 0.045 },
+      // TERRAÇO 3 (o peito)
+      { g: 'cyl', a: [0.62, 0.82, 0.85, 12, 5], p: [0, 2.17, 0], r: [0, 0.52, 0], m: 'body', amp: 0.04 },
+      // CABEÇA: octa de quartzo de FACETAS NÍTIDAS (sub 1 — sub 2 +
+      // deslocamento arredondou tudo e virou bola de neve; olhos na face)
+      { g: 'octa', a: [0.5, 1], p: [0, 3.0, 0.05], s: [1, 1.14, 1], m: 'body', amp: 0.018 },
+      ...mm(SEYE(0.18, 3.04, 0.3)),
+      ...mm(SPUPIL(0.18, 3.04, 0.3)),
+      // COROA de espinhos (o rig eleva na carga) — o print cobrou thimble:
+      // icicles MAIORES e mais grossos, legíveis de longe (8 radiais × 4
+      // anéis p/ entortar suave em vez de prisma de isopor)
+      ...mm({ g: 'cone', a: [0.12, 0.8, 8, 4], p: [0.13, 3.7, 0.05], r: [0, 0, -0.18], m: 'glow', amp: 0.025, tag: 'spike' }),
+      ...mm({ g: 'cone', a: [0.09, 0.55, 8, 4], p: [0.36, 3.46, 0.05], r: [0, 0, -0.5], m: 'glow', amp: 0.025, tag: 'spike' }),
+      ...mm({ g: 'cone', a: [0.1, 0.62, 8, 4], p: [0.7, 2.72, 0.02], r: [0, 0, -0.45], m: 'body', amp: 0.03, tag: 'spike' }),
+      // corcunda de cristal NAS COSTAS (encostada no corpo e deitada p/ trás
+      // — antes bojava como antena; a silhueta é lida de trás também)
+      ...mm({ g: 'cone', a: [0.13, 0.72, 8, 4], p: [0.36, 2.05, -0.62], r: [-1.25, 0, 0.25], m: 'body', amp: 0.03, tag: 'spike' }),
+      // BRACOS de icicle PENDURADOS nos ombros (o print cobrou funil
+      // flutuante: agora cada lasca nasce do corpo) + ombreiras e garras de
+      // punho — nada de "bola de beisebol" (octa/dodeca sub 2 + normal plana
+      // = esfera; lasca de cristal é sub 0/1 bem achatada no eixo)
+      ...mm({ g: 'dodeca', a: [0.3, 1], p: [0.66, 2.5, 0.04], s: [1.15, 0.85, 1.15], m: 'dark', amp: 0.03 }),
+      ...mm({ g: 'cone', a: [0.2, 1.15, 10, 6], p: [0.82, 2.2, 0.05], r: [0, 0, 3.18], m: 'body', amp: 0.035, tag: 'arm' }),
+      ...mm({ g: 'octa', a: [0.16, 0], p: [0.88, 1.56, 0.06], s: [0.8, 1.9, 0.8], m: 'dark', amp: 0.02 }),
+      // lasca de gelo flutuando ao redor (orbita — o gelo ao redor respira):
+      // sub 0 + alongada = FARPA de cristal (sub 2 virava bolinha)
+      { g: 'octa', a: [0.13, 0], p: [1.05, 2.7, 0.55], s: [0.65, 1.8, 0.65], m: 'accent', group: 0, flick: 0.1 },
+      { g: 'octa', a: [0.11, 0], p: [-1.0, 1.85, -0.5], s: [0.65, 1.7, 0.65], m: 'accent', group: 0, flick: 0.12 },
+      // placa de geada no chão ao redor da base (halo congelado)
+      { g: 'ring', a: [0.6, 1.7, 48], p: [0, 0.03, 0], r: [-1.57, 0, 0], m: 'trans' },
     ],
     groups: { 0: 0.6 },
   },
