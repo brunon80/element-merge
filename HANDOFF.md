@@ -84,6 +84,15 @@
 >   (`spawnScatter`) + anéis/faíscas. Motor passou a enviar `pos2` (origem do
 >   projétil) no evento `impact` e `species`/`level` no evento `chain`
 >   (`types.ts` já aceitava; campos aditivos não quebram consumidores).
+> - **Paleta e brilho (feedback do usuário por vídeo/print):** legibilidade vem
+>   da opacidade — aditivo só em arcos/plasma; mults de nervura/rim/faíscas
+>   cortadas ~3× e rajadas do núcleo mantidas CURTAS (exalação, não lança; na
+>   salva do ataque também). Paleta **azul+ouro** (referência do usuário): o
+>   azul elétrico é a corrente principal — `uCool`/`uCoolAmt` nos três shaders;
+>   anel orbital maior azul / menor dourado, nervuras azul-clara, plasma
+>   dourado com orla azul, arcos do `Effects` com cauda azul + miolo
+>   azul-branco + "osso" dourado só no ponto mais quente, projétil com
+>   `coolAmt` 0.78. Ajuste fino é só nos uniforms/cores dos factories.
 > - Testes novos: `lightningProgression.test.ts` (rig registrado, materiais
 >   constroem em jsdom com blending/instancing certos, invólucro do modelo,
 >   `pos2`/`species`/`level` nos eventos de FX). Total: **164 testes**.

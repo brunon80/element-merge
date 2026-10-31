@@ -68,27 +68,38 @@ describe('Raio: rig elétrico próprio da árvore', () => {
     const shell = makeLightningShellMaterial({
       body: '#ffd23f',
       dark: '#7a5c12',
-      vein: '#ffe14d',
+      vein: '#7cc9ff',
       core: '#ffcf4d',
+      cool: '#3f9dff',
       amp: 0.028,
-      coreCut: 0.63,
+      coreCut: 0.5,
     });
     // corpo OPACO com luz fake da arena (legível de longe no tabuleiro)
     expect(shell.transparent).toBe(false);
     expect(shell.depthWrite).toBe(true);
-    for (const u of ['uCharge', 'uHurt', 'uCoreCut', 'uTeamColor', 'uKeyDir']) {
+    for (const u of ['uCharge', 'uHurt', 'uCoreCut', 'uTeamColor', 'uKeyDir', 'uCool']) {
       expect(shell.uniforms[u]).toBeDefined();
     }
 
-    const arc = makeArcMaterial({ gold: '#ffb31f', white: '#fff3b0', jitter: 1, dash: 20, flow: 6 });
+    const arc = makeArcMaterial({
+      gold: '#ffc63a',
+      white: '#dff2ff',
+      cool: '#2fa4ff',
+      coolAmt: 0.78,
+      jitter: 1,
+      dash: 20,
+      flow: 6,
+    });
     expect(arc.blending).toBe(THREE.AdditiveBlending);
     expect(arc.depthWrite).toBe(false);
     expect(arc.uniforms.uDash.value).toBe(20);
     expect(arc.uniforms.uFlow.value).toBe(6);
+    expect(arc.uniforms.uCoolAmt.value).toBeCloseTo(0.78); // azul como corrente principal
 
-    const core = makeCoreMaterial({ gold: '#ffcf4d', white: '#fff8d6' });
+    const core = makeCoreMaterial({ gold: '#ffcf4d', white: '#fff8d6', cool: '#5fc8ff' });
     expect(core.blending).toBe(THREE.AdditiveBlending);
     expect(core.transparent).toBe(true);
+    expect(core.uniforms.uCool).toBeDefined(); // orla azul no plasma dourado
 
     // os materiais de arco/plasma aceitam aSeed (o projétil instanciado usa
     // os MESMOS materiais da criatura — igual bola de fogo e matacão)

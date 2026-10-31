@@ -152,8 +152,8 @@ export function LightningRig({
   const partMats = useMemo(() => {
     const eye = new THREE.MeshStandardMaterial({
       color: '#fff3c4',
-      emissive: '#ffd94a',
-      emissiveIntensity: 1.9,
+      emissive: '#7fc4ff',
+      emissiveIntensity: 1.5,
       roughness: 0.3,
       flatShading: true,
     });
@@ -164,13 +164,15 @@ export function LightningRig({
       if (p.m === 'black') return pupil;
       if (p.m === 'accent') {
         // fragmentos orbitais: traços de arco correndo (fluxo invertido dá
-        // leitura de corrente em duas direções)
+        // leitura de corrente em duas direções); correntes azuis alternadas
         const key = `arc|${i % 2}|${Math.round(p.p[1] * 100)}`;
         let m = cache.get(key);
         if (!m) {
           m = makeArcMaterial({
             gold: '#ffb31f',
-            white: '#fff3b0',
+            white: '#eaf7ff',
+            cool: '#4db2ff',
+            coolAmt: i % 2 === 0 ? 0.75 : 0.35,
             jitter: 1.4,
             dash: 8,
             flow: i % 2 === 0 ? 5.5 : -4.2,
@@ -182,14 +184,18 @@ export function LightningRig({
       }
       if (p.m === 'glow') {
         if (p.g === 'torus') {
-          // anel orbital: ARCO elétrico circulando o corpo (traço dourado
-          // tracejado correndo, zigue-zague nervoso na linha)
+          // anel orbital: ARCO elétrico circulando o corpo. O anel maior é a
+          // corrente azul elétrica (a marca da referência); o menor mantém o
+          // acento dourado — os dois se cruzam como na referência
           const key = `ring|${Math.round((p.r?.[1] ?? 0) * 100)}`;
           let m = cache.get(key);
           if (!m) {
+            const blue = p.group === 0;
             m = makeArcMaterial({
-              gold: '#ffc63a',
-              white: '#fffbe0',
+              gold: blue ? '#ffd98a' : '#ffc63a',
+              white: blue ? '#dff2ff' : '#fffbe0',
+              cool: blue ? '#38a8ff' : '#7fc4ff',
+              coolAmt: blue ? 0.85 : 0.3,
               jitter: 0.9,
               dash: 26,
               flow: p.group === 1 ? -7 : 7,
@@ -207,6 +213,8 @@ export function LightningRig({
             m = makeArcMaterial({
               gold: '#ffd23f',
               white: '#ffffff',
+              cool: '#66c8ff',
+              coolAmt: i % 2 === 0 ? 0.5 : 0.75,
               jitter: 1.6,
               dash: 3,
               flow: i % 2 === 0 ? 6 : -8,
@@ -216,13 +224,14 @@ export function LightningRig({
           }
           return m;
         }
-        // núcleo de plasma dourado (aparece pela cavidade do peito)
+        // núcleo de plasma dourado com orla azul (aparece pela cavidade do peito)
         const key = `core|${Math.round(p.p[1] * 100)}`;
         let m = cache.get(key);
         if (!m) {
           m = makeCoreMaterial({
             gold: '#ffcf4d',
             white: '#fff8d6',
+            cool: '#5fc8ff',
             amp: 0.06,
             seed: seed + 1.3,
           });
@@ -237,8 +246,9 @@ export function LightningRig({
         m = makeLightningShellMaterial({
           body: '#ffd23f',
           dark: '#7a5c12',
-          vein: '#ffe14d',
+          vein: '#7cc9ff',
           core: '#ffcf4d',
+          cool: '#3f9dff',
           amp: p.amp ?? 0.028,
           coreCut: p.g === 'dodeca' ? 0.5 : 0,
           seed: seed + (i % 3) * 3.1,
@@ -434,8 +444,8 @@ export function LightningRig({
         // rajada CURTA (a exalação do núcleo, não uma lança): sai do peito e
         // para de crescer rápido; a largura também é contida para não virar bola
         const grow = Math.min(1, k / 0.3);
-        const len = (d.volley ? 0.26 : 0.15) * (0.5 + 0.5 * grow) * d.max * 5;
-        const r0 = 0.34 + grow * (d.volley ? 0.26 : 0.18);
+        const len = (d.volley ? 0.22 : 0.15) * (0.5 + 0.5 * grow) * d.max * 5;
+        const r0 = 0.34 + grow * (d.volley ? 0.22 : 0.18);
         tmpDir.set(d.dir[0], d.dir[1], d.dir[2]);
         mesh.quaternion.setFromUnitVectors(upAxis, tmpDir);
         // centro do cilindro no meio do traço que sai do corpo
@@ -444,8 +454,10 @@ export function LightningRig({
         const flick = 0.65 + 0.35 * Math.sin((t + i * 1.7) * 61);
         const rad = d.rad * (0.5 + 0.3 * flick);
         mesh.scale.set(rad, len * 2, rad); // geo tem altura 0.5
-        mat.opacity = Math.max(0, Math.min(1, flick * (1 - k * k) * alpha)) * 0.8;
-        mat.color.set(d.volley ? '#fff3b0' : '#ffe98a');
+        mat.opacity = Math.max(0, Math.min(1, flick * (1 - k * k) * alpha)) * (d.volley ? 0.7 : 0.8);
+        // exalação do núcleo: faíscas alternam azul-elétrica e âmbar; as
+        // salvas do ataque disparam em azul-branco (a corrente da referência)
+        mat.color.set(d.volley ? '#cfeaff' : i % 2 === 0 ? '#ffe98a' : '#a5d8ff');
       } else if ((mat as THREE.MeshBasicMaterial).opacity !== 0) {
         mat.opacity = 0;
       }
@@ -558,7 +570,7 @@ export function LightningRig({
       <sprite ref={glowRef} position={[0, CORE_Y, 0]} scale={1.8}>
         <spriteMaterial
           map={circleTexture()}
-          color="#ffcf4d"
+          color="#6db9ff"
           transparent
           opacity={0.24}
           blending={THREE.AdditiveBlending}
@@ -569,7 +581,7 @@ export function LightningRig({
       <sprite ref={flashRef} position={[0, CORE_Y, -0.85]} scale={0.0}>
         <spriteMaterial
           map={circleTexture()}
-          color="#fff6c8"
+          color="#e8f6ff"
           transparent
           opacity={0}
           blending={THREE.AdditiveBlending}
@@ -610,7 +622,10 @@ void main() {
   float size = (3.4 + 2.6 * aRand.z) * (0.7 + 0.5 * flick) * uSizeMul * (1.0 + uCharge * 0.6);
   gl_PointSize = size * (28.0 / max(0.5, -mv.z));
   vA = flick * uAlpha * (0.55 + 0.2 * uCharge);
-  vC = mix(vec3(1.0, 0.82, 0.30), vec3(1.0, 1.0, 0.92), flick * 0.7) * 0.85;
+  // metade das faíscas é azul elétrica, metade dourada (o acento); a que
+  // ESTALA vai para o branco-quente, como um mini-estalo
+  vec3 tint = mix(vec3(1.0, 0.82, 0.30), vec3(0.42, 0.76, 1.0), step(0.5, fract(aRand.y * 7.13)));
+  vC = mix(tint, vec3(0.92, 0.98, 1.0), flick * 0.7) * 0.85;
   gl_Position = projectionMatrix * mv;
 }
 `;

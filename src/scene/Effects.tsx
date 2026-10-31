@@ -134,7 +134,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     [],
   );
   const arcCursor = useRef(0);
-  const arcScratch = useMemo(() => ({ a: new THREE.Color('#ffe14d'), b: new THREE.Color('#ffffff') }), []);
+  const arcScratch = useMemo(() => ({ a: new THREE.Color('#2f8fe6'), b: new THREE.Color('#cfe9ff') }), []);
   const arcTmp = useMemo(
     () => ({ d: new THREE.Vector3(), p: new THREE.Vector3(), perp2: new THREE.Vector3() }),
     [],
@@ -520,11 +520,11 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               }
             }
             spawnScatter(x, y, z, 4 + Math.round(lv * 0.6), 0.55 * k, 0.14, 0.16, 0.95);
-            spawnParticles(x, y, z, '#ffe14d', 8 + Math.round(lv * 0.7), 3.2, 0.4, -1.6, 1.2); // faíscas douradas subindo
+            spawnParticles(x, y, z, '#8fd0ff', 8 + Math.round(lv * 0.7), 3.2, 0.4, -1.6, 1.2); // faíscas azul-elétricas subindo
             spawnParticles(x, y, z, '#ffffff', 4 + Math.round(lv * 0.3), 2.2, 0.25, 0.4); // estalos brancos
-            spawnParticles(x, y - 0.2, z, '#9fd7ff', 3 + Math.round(lv * 0.4), 1.8, 0.4, 1.2, 0.4); // luz de ozônio
-            spawnRing(x, 0.1, z, '#ffe14d', 1.5 + 0.16 * lv);
-            spawnRing(x, y * 0.55, z, '#fff3b0', 0.8 + 0.1 * lv);
+            spawnParticles(x, y - 0.2, z, '#ffd76a', 3 + Math.round(lv * 0.4), 1.8, 0.4, 1.2, 0.4); // brasas douradas do núcleo (acento)
+            spawnRing(x, 0.1, z, '#3f9dff', 1.5 + 0.16 * lv);
+            spawnRing(x, y * 0.55, z, '#ffd98a', 0.8 + 0.1 * lv);
             spawnSmoke(x, y, z, 2 + Math.round(lv * 0.3), {
               size: 0.06,
               heat: 0.02,
@@ -725,15 +725,16 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         case 'chain': {
           if (ev.pos2) {
             if (ev.species === 'raio') {
-              // respingo da corrente: salto em ARCO JAGADO dourado (o fio
-              // duro de relâmpago), não o cilindro claro das outras trovoadas
+              // respingo da corrente: salto em ARCO JAGADO azul-elétrico com
+              // osso dourado (o fio duro de relâmpago), não o cilindro claro
+              // das outras trovoadas
               const ax = ev.pos2[0] - x;
               const ay = ev.pos2[1] + 0.7 - (y + 0.7);
               const az = ev.pos2[2] - z;
               const al = Math.hypot(ax, ay, az);
               spawnArc([x, y + 0.6, z], ax, ay, az, Math.max(0.5, Math.min(al, 6)), 0.2, 0.16, 0.95);
               spawnScatter(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 3, 0.4, 0.12, 0.13, 0.9);
-              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], '#ffe14d', 6, 1.6, 0.35, -1);
+              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], '#bfe4ff', 6, 1.6, 0.35, -1);
             } else {
               spawnBolt(ev.pos, ev.pos2, glowColor(ev.element) || '#aef2ff');
               spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], glowColor(ev.element), 6, 1.4, 0.4, 1);
@@ -821,7 +822,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     }
 
     // arcos jagados da trovoada (Raio): o zigue-zague é redesenhado TODO
-    // quadro (ferve) enquanto vivo; a cor escurece do branco-hot para o ouro
+    // quadro (ferve) enquanto vivo; a cauda é azul-elétrica, o miolo azul-branco
+    // e o osso mais quente do raio acende no acento dourado (paleta da referência)
     const hashOff = (seed: number, s: number, tt: number) =>
       0.55 * Math.sin(seed * 9 + s * 12.9898 + Math.floor(tt * 16) * 3.77) +
       0.45 * Math.sin(seed + s * 5.1 + tt * 34);
@@ -838,8 +840,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       const fade = 1 - t * t;
       const flick = 0.55 + 0.45 * Math.sin(clockT * 73 + d.seed * 13 + i * 2.1);
       const k = fade * (0.55 + 0.45 * flick);
-      arcScratch.a.setRGB(0.85 * d.gold, 0.6 * d.gold, 0.14 * d.gold);
-      arcScratch.b.setRGB(0.95, 0.92, 0.8);
+      arcScratch.a.setRGB(0.16, 0.44, 0.9); // cauda azul-elétrica
+      arcScratch.b.setRGB(0.8, 0.92, 1.0); // miolo azul-branco
       arcScratch.b.multiplyScalar(d.hot);
       arcTmp.d.set(d.dx, d.dy, d.dz);
       // base perpendicular estável no tempo de vida (o traço não "dança" a
@@ -862,9 +864,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           const wB = (i * ARC_SEG * 2 + s * 2) * 3;
           arcPos.setXYZ(wB / 3, px, py, pz);
           const heat = (0.25 + 0.75 * shape) * k;
-          const cr = arcScratch.a.r + (arcScratch.b.r - arcScratch.a.r) * heat;
-          const cg = arcScratch.a.g + (arcScratch.b.g - arcScratch.a.g) * heat;
-          const cb = arcScratch.a.b + (arcScratch.b.b - arcScratch.a.b) * heat;
+          // só o "osso" mais quente do raio puxa para o dourado; o resto do
+          // traço fica na corrente azul (dourado é acento, não a base)
+          const goldT = Math.max(0, heat - 0.6) * d.gold;
+          const cr = arcScratch.a.r + (arcScratch.b.r - arcScratch.a.r) * heat + goldT * 0.6;
+          const cg = arcScratch.a.g + (arcScratch.b.g - arcScratch.a.g) * heat + goldT * 0.38;
+          const cb = arcScratch.a.b + (arcScratch.b.b - arcScratch.a.b) * heat - goldT * 0.3;
           arcCol.setXYZ(wA / 3, cr, cg, cb);
           arcCol.setXYZ(wB / 3, cr, cg, cb);
         }

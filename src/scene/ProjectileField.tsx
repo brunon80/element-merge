@@ -188,8 +188,10 @@ export function ProjectileField() {
     const seeds = seedsAttr();
     geo.setAttribute('aSeed', seeds);
     const mat = makeArcMaterial({
-      gold: '#ffb31f',
-      white: '#fff3b0',
+      gold: '#ffc63a', // acento dourado da corrente
+      white: '#dff2ff',
+      cool: '#2fa4ff', // o traço principal é o azul elétrico da referência
+      coolAmt: 0.78,
       jitter: 1.2, // zigue-zague de ±~8cm no fio de 14cm de diâmetro
       dash: 26, // traços curtos correndo ao longo da corrente
       flow: 9,
@@ -203,8 +205,9 @@ export function ProjectileField() {
     const seeds = seedsAttr();
     geo.setAttribute('aSeed', seeds);
     const mat = makeCoreMaterial({
-      gold: '#ffcf4d',
+      gold: '#ffcf4d', // cabeça quente dourada
       white: '#fff8d6',
+      cool: '#5fc8ff', // orla azul elétrica na borda do plasma
       amp: 0.045,
       seed: 2.9,
     });

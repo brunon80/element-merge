@@ -74,6 +74,7 @@ uniform vec3 uBody;
 uniform vec3 uDark;
 uniform vec3 uVein;
 uniform vec3 uCore;
+uniform vec3 uCool;
 uniform vec3 uKeyDir;
 uniform vec3 uKeyColor;
 uniform vec3 uSkyColor;
@@ -125,10 +126,12 @@ void main() {
   vec3 hv = normalize(uKeyDir + vd);
   col += uKeyColor * pow(max(0.0, dot(n, hv)), 24.0) * 0.1;
 
-  // aro na cor da equipe + aro dourado elétrico por cima
+  // aro na cor da equipe + aro dourado elétrico por cima; o aro FRIO azul é a
+  // assinatura da corrente (o azul elétrico da referência, o ouro como acento)
   float rim = pow(1.0 - max(0.0, dot(n, vd)), 2.2);
   col += uTeamColor * rim * 0.26;
-  col += uCore * rim * (0.08 + uCharge * 0.25);
+  col += uCore * rim * (0.06 + uCharge * 0.2);
+  col += uCool * rim * (0.12 + uCharge * 0.4);
   col += uCore * holeGlow;
 
   col = mix(vec3(1.0), col, 1.0 - uHurt * 0.5);
@@ -141,6 +144,7 @@ export interface LightningShellOpts {
   dark: string;
   vein: string;
   core: string;
+  cool?: string;
   amp: number;
   coreCut?: number;
   seed?: number;
@@ -167,6 +171,7 @@ export function makeLightningShellMaterial(o: LightningShellOpts): THREE.ShaderM
       uDark: { value: new THREE.Color(o.dark) },
       uVein: { value: new THREE.Color(o.vein) },
       uCore: { value: new THREE.Color(o.core) },
+      uCool: { value: new THREE.Color(o.cool ?? '#5fc8ff') },
       uKeyDir: { value: new THREE.Vector3(L.keyDir[0], L.keyDir[1], L.keyDir[2]) },
       uKeyColor: { value: new THREE.Color(L.keyColor).multiplyScalar(L.keyIntensity) },
       uSkyColor: { value: new THREE.Color(L.skyColor).multiplyScalar(L.hemiIntensity) },
@@ -213,6 +218,8 @@ void main() {
 export const ARC_FRAG = /* glsl */ `
 uniform vec3 uGold;
 uniform vec3 uWhite;
+uniform vec3 uCool;
+uniform float uCoolAmt; // peso do azul elétrico sobre o traço (0=so ouro)
 uniform float uTime;
 uniform float uSeed;
 uniform float uDash;   // densidade dos traços ao longo do uv.y
@@ -231,6 +238,10 @@ void main() {
   dash *= flick;
   float core = smoothstep(0.22, 0.9, dash + 0.18 * vN1);
   vec3 col = mix(uGold, uWhite, core) * (0.55 + 0.3 * vN1);
+  // azul elétrico por cima do ouro (a corrente da referência é azul-clara
+  // com acentos dourados): o traço fica frio nas pontas e quente no miolo
+  float coolMix = uCoolAmt * (0.55 + 0.45 * core);
+  col = mix(col, mix(uCool, uWhite, core * 0.8), coolMix);
   float a = (0.12 + 0.55 * dash) * uAlpha * (1.0 + uCharge * 0.4);
   if (a <= 0.01) discard;
   gl_FragColor = vec4(col * (1.0 + uCharge * 0.25), min(1.0, a));
@@ -240,6 +251,8 @@ void main() {
 export interface ArcMaterialOpts {
   gold: string;
   white: string;
+  cool?: string;
+  coolAmt?: number;
   jitter: number;
   dash: number;
   flow?: number;
@@ -264,6 +277,8 @@ export function makeArcMaterial(o: ArcMaterialOpts): THREE.ShaderMaterial {
       uAlpha: { value: 1 },
       uGold: { value: new THREE.Color(o.gold) },
       uWhite: { value: new THREE.Color(o.white) },
+      uCool: { value: new THREE.Color(o.cool ?? '#5fc8ff') },
+      uCoolAmt: { value: o.coolAmt ?? 0 },
     },
   });
 }
@@ -298,6 +313,7 @@ void main() {
 export const CORE_FRAG = /* glsl */ `
 uniform vec3 uGold;
 uniform vec3 uWhite;
+uniform vec3 uCool;
 uniform float uTime;
 uniform float uSeed;
 uniform float uCharge;
@@ -312,7 +328,8 @@ void main() {
   vec3 vd = normalize(vView);
   float fres = pow(1.0 - abs(dot(normalize(vNrm), vd)), 1.5);
   vec3 col = mix(uGold, uWhite, clamp(boil * 1.15 - 0.15, 0.0, 1.0));
-  col = col * pulse + uWhite * fres * 0.25;
+  // plasma dourado com orla azul elétrica (a bola quente no centro, fria na borda)
+  col = col * pulse + mix(uWhite, uCool, 0.65) * fres * 0.5;
   col *= 1.0 + uCharge * 0.6;
   float a = uAlpha * (0.35 + 0.3 * boil);
   gl_FragColor = vec4(col, a);
@@ -322,6 +339,7 @@ void main() {
 export interface CoreMaterialOpts {
   gold: string;
   white: string;
+  cool?: string;
   amp?: number;
   seed?: number;
 }
@@ -342,6 +360,7 @@ export function makeCoreMaterial(o: CoreMaterialOpts): THREE.ShaderMaterial {
       uAlpha: { value: 1 },
       uGold: { value: new THREE.Color(o.gold) },
       uWhite: { value: new THREE.Color(o.white) },
+      uCool: { value: new THREE.Color(o.cool ?? '#5fc8ff') },
     },
   });
 }
