@@ -40,7 +40,8 @@ describe('Magma: vulcão de basalto no padrão do golem', () => {
     expect(Math.max(base.a[0], base.a[1])).toBeGreaterThan(Math.max(top.a[0], top.a[1]) * 1.5);
     // MALHA DENSA: corpo do porte de montanha com deslocamento de vértice
     // exige malha subdividida (regra do golem Nv.5) — senão a textura de
-    // fissuras rasga/estica nas encostas    for (const c of cones) {
+    // fissuras rasga/estica nas encostas
+    for (const c of cones) {
       expect(c.a[3]).toBeGreaterThanOrEqual(20); // segmentos radiais
       expect(c.a[4]).toBeGreaterThanOrEqual(4); // segmentos verticais
     }

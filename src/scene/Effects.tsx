@@ -9,6 +9,7 @@ import { circleTexture, drawPopupText, flameDropGeometry, flameIconTexture, getG
 import { makeFlameMaterial } from './flameShaders';
 import { makeStoneMaterial } from './stoneShaders';
 import { makeWoodMaterial } from './woodShaders';
+import { makeIceMaterial } from './iceShaders';
 import type { SmokePool } from './smokePool';
 
 const PARTICLE_CAP = 400;
@@ -222,13 +223,34 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     // mesma geometria do pool da pedra (só o material muda por kind)
     return { geo: shardRock.geo, mats };
   }, [shardRock]);
+  // ...e os cacos de CRISTAL de gelo do impacto da estaca do Gelo (mesmo
+  // shader do corpo: cristal branco translúcido/reflexivo estilhaçando)
+  const shardIce = useMemo(() => {
+    const geo = new THREE.DodecahedronGeometry(0.5);
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeIceMaterial({
+        iceA: '#f4faff',
+        iceB: '#9cc2da',
+        crack: '#d8f2ff',
+        amp: 0.05,
+        crackGlow: 1.4,
+        crackScale: 1.5,
+        crackWidth: 0.024,
+        alpha: 0.8,
+        sparkle: 1.2,
+        seed: 8.1 + i * 2.4,
+        breath: 0.4,
+      }),
+    );
+    return { geo, mats };
+  }, []);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
         life: 0,
         max: 0.62,
         size: 1,
-        kind: 'rock' as 'rock' | 'wood' | 'lava',
+        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -248,10 +270,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       shardWood.geo.dispose();
       // shardLava compartilha a geometria do shardRock (dispose é idempotente)
       for (const m of shardLava.mats) m.dispose();
+      for (const m of shardIce.mats) m.dispose();
+      shardIce.geo.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
-  }, [burstFlame, shardRock, shardWood, shardLava, arcGeo, arcMat]);
+  }, [burstFlame, shardRock, shardWood, shardLava, shardIce, arcGeo, arcMat]);
   const flameSprites = useRef<THREE.Sprite[]>([]);
   const slowSprites = useRef<THREE.Sprite[]>([]);
   const spriteData = useMemo(
@@ -401,7 +425,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     y: number,
     z: number,
     size = 1,
-    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' = 'flame',
+    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' | 'iceShard' = 'flame',
   ) => {
     if (kind === 'flame') {
       for (let i = 0; i < BURST_CAP; i++) {
@@ -429,7 +453,14 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       if (!mesh) return;
       d.life = d.max;
       d.size = size;
-      d.kind = kind === 'sprout' ? 'wood' : kind === 'lavaShard' ? 'lava' : 'rock';
+      d.kind =
+        kind === 'sprout'
+          ? 'wood'
+          : kind === 'lavaShard'
+            ? 'lava'
+            : kind === 'iceShard'
+              ? 'ice'
+              : 'rock';
       const a = Math.random() * Math.PI * 2;
       const s = 1.6 + Math.random() * 1.8;
       d.vx = Math.cos(a) * s;
@@ -648,6 +679,23 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               heat: 0.25, // cinza ainda quente
               life: 1.05,
               speed: 1.1,
+            });
+          } else if (ev.species === 'gelo') {
+            // estaca de cristal no alvo: o icicle ESTILHAÇA em cacos do mesmo
+            // cristal (branco translúcido quicando), pó de gelo cintilante,
+            // farpas azuis e NÉVOA FRIA no chão (a assinatura do slow)
+            const lv = Math.max(6, Math.min(10, ev.level ?? 6));
+            for (let i = 0; i < 2; i++) spawnBurst(x, y, z, 0.3 + 0.05 * (lv - 6), 'iceShard');
+            spawnParticles(x, y, z, '#eaf6ff', 12, 2.8, 0.5, 1.6, 0.9); // estilhaços brancos
+            spawnParticles(x, y, z, '#a8e6ff', 8, 2.2, 0.5, 1.2, 0.5); // farpas azuis
+            spawnParticles(x, y, z, '#ffffff', 5, 1.3, 0.28, 0.4, 0.3); // glitter de pó de gelo
+            spawnRing(x, 0.1, z, '#cfe9ff', 1.7 + 0.12 * (lv - 6)); // placa de geada
+            spawnRing(x, 0.16, z, '#8fd0ff', 0.95); // anel interno congelado
+            spawnSmoke(x, y, z, 4, {
+              size: 0.08,
+              heat: 0, // névoa fria (bruma congelante)
+              life: 1.1,
+              speed: 1.0,
             });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
@@ -989,15 +1037,16 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     for (let i = 0; i < SHARD_CAP; i++) {
       const mesh = shards.current[i];
       const d = shardData[i];
-      const wood = d.kind === 'wood';
-      const mat = (wood ? shardWood.mats : d.kind === 'lava' ? shardLava.mats : shardRock.mats)[i];
+      // a malha do pool é compartilhada: quem decide a "substância" do
+      // estilhaço é o kind gravado no spawn (pedra do golem, madeira da
+      // Madeira, basalto incandescente do Magma, cristal do Gelo) — o par
+      // geometry/material troca a cada uso
+      const set =
+        d.kind === 'wood' ? shardWood : d.kind === 'lava' ? shardLava : d.kind === 'ice' ? shardIce : shardRock;
+      const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {
-        // a malha do pool é compartilhada: quem decide a "substância" do
-        // estilhaço é o kind gravado no spawn (pedra do golem, madeira da
-        // Madeira, basalto incandescente do Magma) — geometry/material trocam
-        // de par a cada uso
-        mesh.geometry = wood ? shardWood.geo : d.kind === 'lava' ? shardLava.geo : shardRock.geo;
+        mesh.geometry = set.geo;
         mesh.material = mat;
         d.life -= dt;
         const t = 1 - Math.max(0, d.life) / d.max;

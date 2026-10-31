@@ -172,8 +172,48 @@
 >   pequena, invólucro (pé largo < TILE_SPACING_X, minY ≥ -0.06), uniforms de
 >   fissura, núcleo não-aditivo com orla quente, FX do motor. Total: **176
 >   testes**.
+>
+> ## ❄️ ATUALIZAÇÃO — Gelo virado GOLEM DE CRISTAL branco (sessão atual)
+>
+> Quarto elemento da árvore com figurino próprio (pedido: maior, mais BRANCO,
+> translúcido/reflexivo, expelindo flocos parado, estaca do mesmo material que
+> estilhaça no alvo). WaterRig foi descartado a pedido (água não serve p/
+> cristal); o figurino vem de shader novo, no padrão FÍSICO do golem:
+>
+> - **`scene/iceShaders.ts`** — cristal SEM aditivo nem refração real: corpo
+>   quase branco com miolo denso azulado, trincas internas finas (uCharge
+>   acende na carga), reflexo fake da arena (specular apertado da key +
+>   varredura do "teto" via fresnel — o brilho reflexivo sem cubemap),
+>   translucidez física (alpha ~0.86, depthWrite LIGADO: embacia por dentro e
+>   se autobreia), glitter gelado. Instanciado via aSeed (estaca e cacos usam
+>   o MESMO material).
+> - **Correção do 2º print (o "esticado" à esquerda):** mesmo mal do Magma —
+>   frequência FIXA de ruído em peças grandes vira onda de contorno larga.
+>   `uCrackScale` (frequência por porte: body 1.9, dark 1.5, glow/accent
+>   1.5–1.6) + `uCrackWidth` fina (0.02–0.024 = trinca, não borracho). A
+>   lição virou uniform dos dois shaders de material físico (pedra e gelo).
+> - **Modelo (`MODELS.gelo`)**: torso de glaciar octa r1.0 escalado (peça
+>   mais larga do modelo), 3 torres encimadas, ombros de cristal, braços de
+>   icicle (tag 'arm') com punhos de lasca, icicles-pernas, coroa de espinhos
+>   (4 tags 'spike' até y≈3.6 — usa bem o formTop 3.9), 2 fragmentos
+>   orbitais e placa de geada no piso (ring 'trans'). Cores VISUALS clareadas.
+> - **`IceRig.tsx`** (`SPECIES_RIGS.gelo`): flocos de neve SIX-BRAços points
+>   caindo em deriva lenta com giro próprio (o floco é desenhado no frag por
+>   3 eixos rotacionados — parado, ele expele neve); pose de arremesso da
+>   estaca (agacha/torce, braço recua com trincas acesas → varre, coroa
+>   eleva, rajada de névoa fria nos pés); grupos orbitais animados; clarão
+>   sóbrio no peito; crumble/estilhaço na morte via uAmp.
+> - **Projétil:** `ProjectileField.isSpike` — icicle cone 6-lados com a PONTA
+>   no voo e rolando no próprio eixo (o reflexo varre as facetas), MESMO
+>   shader da criatura, trincas "carregadas" em voo.
+> - **FX de impacto:** kind 'ice' no pool de estilhaços (cacos de cristal
+>   branco quicando) + branch `gelo`: estilhaços brancos/farpas azuis/glitter
+>   de pó de gelo, placa de geada (2 anéis) e névoa fria (smoke heat 0).
+> - Testes novos: `iceProgression.test.ts` (6) + conserto do comentário
+>   quebrado em `magmaProgression.test.ts` no commit anterior. Total: **182
+>   testes**.
 > - Próximo passo natural: replicar o padrão para os demais Nv.6–10
->   (gelo/vapor/areia primeiro), e o pool de arcos já serve
+>   (vapor/areia primeiro), e o pool de arcos já serve
 >   para tempestade/astral etc.
 
 ---

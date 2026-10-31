@@ -84,7 +84,7 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   raio: { body: '#ffe14d', dark: '#6b5310', glow: '#fff6b0', accent: '#9fd7ff', roughness: 0.35 },
   madeira: { body: '#7fae5f', dark: '#4d3a22', glow: '#d8f0a8', accent: '#a9d67e', roughness: 0.85 },
   magma: { body: '#5a4038', dark: '#281e1c', glow: '#ff5a1f', accent: '#ff8a2a', roughness: 0.9 },
-  gelo: { body: '#bfe6f7', dark: '#3f6f8a', glow: '#e8fbff', accent: '#8fd0ff', bodyOpacity: 0.92, roughness: 0.15, metalness: 0.1 },
+  gelo: { body: '#eaf6ff', dark: '#5f7f96', glow: '#ffffff', accent: '#bfe4ff', bodyOpacity: 0.88, roughness: 0.1, metalness: 0.15 },
   vapor: { body: '#a87f4f', dark: '#54422a', glow: '#ffb37a', accent: '#5fa8a0', roughness: 0.35, metalness: 0.65 },
   areia: { body: '#d9b87a', dark: '#9c7c42', glow: '#ffe9a8', accent: '#bfe9ff', roughness: 0.75 },
   // Nv.7 — compostos
@@ -761,24 +761,40 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     groups: { 0: 1.6 },
   },
 
-  // Água+Ar — serpente de gelo: cristaux afiados e névoa congelante ------
+  // Água+Ar — golem de cristal de gelo (Nv.6): corpo grande e BRANCO, facetas
+  // de glaciar, braços/pernas de icicle e coroa de espinhos (o IceRig desenha
+  // com shader de cristal translúcido/reflexivo; flocos de neve caem ao redor)
   gelo: {
-    bob: 0.06,
+    bob: 0.05,
     parts: [
-      { g: 'octa', a: [0.62, 0], p: [0, 0.85, 0], s: [0.85, 1.15, 0.95], m: 'body' },
-      { g: 'octa', a: [0.34, 0], p: [0, 1.6, 0.05], s: [0.8, 1.3, 0.8], m: 'body' },
-      { g: 'octa', a: [0.2, 0], p: [0, 2.2, 0], s: [0.8, 1.2, 0.8], m: 'glow', flick: 0.05 },
-      ...mm({ g: 'octa', a: [0.16, 0], p: [0.5, 0.7, 0.18], s: [0.7, 1.6, 0.7], r: [0, 0, -0.5], m: 'body' }),
-      ...mm({ g: 'octa', a: [0.12, 0], p: [-0.44, 1.15, -0.1], s: [0.7, 1.5, 0.7], r: [0, 0, 0.6], m: 'body' }),
-      ...mm({ g: 'cone', a: [0.1, 0.55, 4], p: [0.34, 1.75, 0.14], r: [0, 0, -0.6], m: 'glow', flick: 0.08 }),
-      ...mm(WEYE(0.13, 1.68, 0.3)),
-      ...mm(WPUPIL(0.13, 1.68, 0.3)),
-      { g: 'ring', a: [0.3, 0.85, 32], p: [0, 0.03, 0], r: [-1.57, 0, 0], m: 'trans' },
-      { g: 'sphere', a: [0.09, 8, 6], p: [0.55, 0.35, -0.3], m: 'accent', group: 0 },
-      { g: 'sphere', a: [0.075, 8, 6], p: [-0.5, 0.5, 0.35], m: 'accent', group: 0 },
-      { g: 'sphere', a: [0.06, 8, 6], p: [0.2, 2.45, -0.35], m: 'accent', rise: [0.35, 0.7] },
+      // cristal principal (o torso de glaciar — largo, plantado no chão)
+      { g: 'octa', a: [1.0, 0], p: [0, 1.16, 0], s: [1.18, 1.16, 1.05], m: 'body', amp: 0.04 },
+      // ombros de gelo (cristais secundários sobre os ombros)
+      ...mm({ g: 'octa', a: [0.34, 0], p: [0.72, 2.1, 0], s: [0.9, 1.2, 0.9], m: 'body', amp: 0.04 }),
+      // torsos menores encimados (a escultura de gelo cresce em pináculo)
+      { g: 'octa', a: [0.42, 0], p: [0, 2.32, 0], s: [0.9, 1.25, 0.9], m: 'body', amp: 0.04 },
+      { g: 'octa', a: [0.24, 0], p: [0, 2.98, 0], s: [0.85, 1.2, 0.85], m: 'glow', flick: 0.04 },
+      // braços de icicle (o rig arremessa a estaca) + punhos de lasca
+      ...mm({ g: 'cone', a: [0.17, 0.78, 6], p: [1.12, 1.35, 0.08], r: [0, 0, 2.9], m: 'body', amp: 0.03, tag: 'arm' }),
+      ...mm({ g: 'dodeca', a: [0.2, 0], p: [1.38, 1.02, 0.1], m: 'dark', amp: 0.04 }),
+      // icicles para o chão (as "pernas" do golem de gelo; a ponta encosta no
+      // piso sem afundar — folga p/ o deslocamento do shader, amarrado no teste)
+      ...mm({ g: 'cone', a: [0.13, 0.55, 5], p: [0.42, 0.4, 0.34], r: [0.55, 0, 0.28], m: 'dark', amp: 0.04 }),
+      { g: 'cone', a: [0.13, 0.55, 5], p: [-0.1, 0.4, -0.45], r: [-0.5, 0, -0.2], m: 'dark', amp: 0.04 },
+      // coroa de espinhos (o rig eleva na carga) + ombros espigados
+      ...mm({ g: 'cone', a: [0.08, 0.5, 5], p: [0.16, 3.28, 0], r: [0, 0, -0.22], m: 'glow', amp: 0.025, flick: 0.05, tag: 'spike' }),
+      ...mm({ g: 'cone', a: [0.06, 0.34, 5], p: [0.4, 3.1, 0], r: [0, 0, -0.5], m: 'glow', amp: 0.025, flick: 0.07, tag: 'spike' }),
+      ...mm({ g: 'cone', a: [0.07, 0.44, 5], p: [0.78, 2.42, 0], r: [0, 0, -0.42], m: 'body', amp: 0.03, tag: 'spike' }),
+      // olhos azuis profundos no cristal do rosto
+      ...mm(SEYE(0.17, 2.42, 0.34)),
+      ...mm(SPUPIL(0.17, 2.42, 0.34)),
+      // lasca de gelo flutuando ao redor (orbita — o gelo ao redor respira)
+      { g: 'octa', a: [0.11, 0], p: [0.95, 1.9, 0.5], s: [0.8, 1.5, 0.8], m: 'accent', group: 0, flick: 0.1 },
+      { g: 'octa', a: [0.09, 0], p: [-0.85, 1.55, -0.45], s: [0.8, 1.4, 0.8], m: 'accent', group: 0, flick: 0.12 },
+      // escama de geada no chão ao redor dos pés (halo congelado)
+      { g: 'ring', a: [0.42, 1.15, 32], p: [0, 0.03, 0], r: [-1.57, 0, 0], m: 'trans' },
     ],
-    groups: { 0: 0.9 },
+    groups: { 0: 0.6 },
   },
 
   // Raio+Gelo — muralha de raios: o muro de nuvem que vira frente de tempestade

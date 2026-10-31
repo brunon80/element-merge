@@ -10,6 +10,7 @@ import { makeWaterMaterial } from './waterShaders';
 import { makeWindMaterial } from './windShaders';
 import { makeArcMaterial, makeCoreMaterial } from './lightningShaders';
 import { makeWoodMaterial } from './woodShaders';
+import { makeIceMaterial } from './iceShaders';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -63,6 +64,7 @@ speciesColor.cache = new Map<string, THREE.Color>();
 
 const dummy = new THREE.Object3D();
 const tmpQuat = new THREE.Quaternion();
+const rollQuat = new THREE.Quaternion();
 const up = new THREE.Vector3(0, 1, 0);
 const zAxis = new THREE.Vector3(0, 0, 1);
 const dir = new THREE.Vector3();
@@ -85,6 +87,9 @@ const dir = new THREE.Vector3();
  *  - Magma (Nv.6, árvore): o BLOCO DE LAVA — basalto quase preto com rios
  *    largos de lava aceso e um coração de plasma derretido no miolo, também
  *    cambalhota (padrão golem, paleta ígnea).
+ *  - Gelo (Nv.6, árvore): a ESTACA — icicle comprido do MESMO cristal da
+ *    criatura (branco translúcido/reflexivo, trincas internas acesas), com a
+ *    ponta encarando o voo e girando no próprio eixo.
  * Híbridos e o resto usam as silhuetas básicas instanciadas por elemento,
  * com cor por espécie (instanceColor). Todo projétil ganha um halo billboard
  * que cresce com o nível.
@@ -100,6 +105,7 @@ export function ProjectileField() {
   const seedRef = useRef<THREE.InstancedMesh | null>(null);
   const boulderRef = useRef<THREE.InstancedMesh | null>(null);
   const heartRef = useRef<THREE.InstancedMesh | null>(null);
+  const spikeRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -280,14 +286,38 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const iceSpike = useMemo(() => {
+    // estaca de gelo do Gelo: icicle comprido com a MESMA aparência da
+    // criatura (cristal branco translúcido/reflexivo com trincas internas
+    // acesas) — a ponta encara o alvo e ela roda de leve no eixo do voo
+    const geo = new THREE.ConeGeometry(0.1, 0.72, 6);
+    geo.translate(0, -0.06, 0); // empurra o corpo pra trás da ponta
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeIceMaterial({
+      iceA: '#f6fbff',
+      iceB: '#a8cfe6',
+      crack: '#d8f2ff',
+      amp: 0.025,
+      crackGlow: 1.5,
+      crackScale: 1.6,
+      crackWidth: 0.024,
+      alpha: 0.85,
+      sparkle: 1.3,
+      seed: 7.2,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -302,6 +332,7 @@ export function ProjectileField() {
     let boltN = 0;
     let seedN = 0;
     let boulderN = 0;
+    let spikeN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -316,6 +347,9 @@ export function ProjectileField() {
     // o bloco voa com as fissuras ao máximo (a lava do projétil está fresca)
     lavaBoulder.mat.uniforms.uCharge.value = 0.8 + 0.2 * Math.sin(time * 3.1);
     lavaHeart.mat.uniforms.uTime.value = time;
+    iceSpike.mat.uniforms.uTime.value = time;
+    // a estaca voa "carregada": as trincas internas ficam acesas
+    iceSpike.mat.uniforms.uCharge.value = 0.55 + 0.25 * Math.sin(time * 4.2);
 
     if (world) {
       for (const p of world.projectiles) {
@@ -336,6 +370,7 @@ export function ProjectileField() {
         const isBolt = p.species === 'raio';
         const isSeed = p.species === 'madeira';
         const isBoulder = p.species === 'magma';
+        const isSpike = p.species === 'gelo';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -474,6 +509,29 @@ export function ProjectileField() {
             haloScale = scale * 1.7;
             signature = true;
           }
+        } else if (isSpike) {
+          // estaca do glaciar: a ponta encara o voo ( lança de gelo) e ela
+          // gira de leve no próprio eixo — o brilho reflexivo varre as facetas
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            // rola de leve no próprio eixo: o reflexo varre as facetas do gelo
+            rollQuat.setFromAxisAngle(up, time * 2.4 + p.id);
+            tmpQuat.multiply(rollQuat);
+            dummy.quaternion.copy(tmpQuat);
+          }
+          if (spikeN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.35 + p.age / 0.1); // cresce ao disparar
+            const scale = (0.9 + 0.1 * (lv - 6)) * launch;
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            spikeRef.current?.setMatrixAt(spikeN, dummy.matrix);
+            iceSpike.seeds.setX(spikeN, ((p.id * 71) % 83) / 6.9);
+            spikeN++;
+            haloScale = scale * 1.3;
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -533,6 +591,7 @@ export function ProjectileField() {
       [seedRef.current, seedN, seedPod.seeds],
       [boulderRef.current, boulderN, lavaBoulder.seeds],
       [heartRef.current, boulderN, lavaHeart.seeds],
+      [spikeRef.current, spikeN, iceSpike.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -642,6 +701,14 @@ export function ProjectileField() {
           heartRef.current = m;
         }}
         args={[lavaHeart.geo, lavaHeart.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Gelo: o MESMO cristal da criatura — estaca com a ponta no alvo */}
+      <instancedMesh
+        ref={(m) => {
+          spikeRef.current = m;
+        }}
+        args={[iceSpike.geo, iceSpike.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>
