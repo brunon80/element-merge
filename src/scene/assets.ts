@@ -48,10 +48,10 @@ export function getGeometry(kind: GeoKind, args: number[]): THREE.BufferGeometry
       geo = new THREE.TorusGeometry(args[0], args[1], args[2] ?? 8, args[3] ?? 24);
       break;
     case 'dodeca':
-      geo = new THREE.DodecahedronGeometry(args[0]);
+      geo = new THREE.DodecahedronGeometry(args[0], args[1] ?? 0);
       break;
     case 'octa':
-      geo = new THREE.OctahedronGeometry(args[0]);
+      geo = new THREE.OctahedronGeometry(args[0], args[1] ?? 0);
       break;
     case 'ico':
       geo = new THREE.IcosahedronGeometry(args[0]);

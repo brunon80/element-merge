@@ -67,6 +67,9 @@ uniform vec3 uTeamColor;
 uniform float uTime;
 uniform float uSeed;
 uniform float uCrackGlow;
+uniform float uCrackScale; // multiplicador da frequência dos veios (1 = golem)
+uniform float uCrackWidth; // meia-espessura da faixa de lava (em campos de ruído)
+uniform float uCrackBoost; // fator extra de brilho da lava
 uniform float uCharge;
 uniform float uHurt;
 uniform float uSpeck;
@@ -84,11 +87,16 @@ void main() {
   vec3 col = mix(uRockB, uRockA, smoothstep(0.32, 0.74, mottle));
   col += vec3(0.14, 0.14, 0.13) * smoothstep(0.72, 0.94, speck) * uSpeck;
 
-  // fissuras de magma: faixa estreita onde o ruído cruza o limiar
-  float vein = fnoise(vLocal * 3.1 + vec3(0.0, uTime * 0.06, 0.0));
-  float crack = smoothstep(0.45, 0.5, vein) * (1.0 - smoothstep(0.52, 0.58, vein));
+  // fissuras de magma: faixa onde o ruído cruza o limiar. uCrackScale aperta
+  // a malha de veios para CORPOS GRANDES (num corpo de montanha, a frequência
+  // base renderia rios largos demais), uCrackWidth dá espessura à faixa —
+  // estreita demais vira serrilhado/dither quando a malha é esparsa ou o
+  // monstro está longe
+  float vein = fnoise(vLocal * 3.1 * uCrackScale + vec3(0.0, uTime * 0.06, 0.0));
+  float w = uCrackWidth;
+  float crack = smoothstep(0.5 - w, 0.5 - w * 0.25, vein) * (1.0 - smoothstep(0.5 + w * 0.25, 0.5 + w, vein));
   float pulse = 0.7 + 0.3 * sin(uTime * 1.5 + uSeed) + uCharge * 1.5;
-  col += uCrack * crack * uCrackGlow * pulse * 1.7;
+  col += uCrack * crack * uCrackGlow * pulse * (1.7 * uCrackBoost);
 
   // hemisfério + key quente da arena (com "wrap" pra face não virar silhueta)
   float hemi = 0.5 + 0.5 * n.y;
@@ -128,6 +136,12 @@ export interface StoneMaterialOpts {
   crack: string;
   amp: number;
   crackGlow?: number;
+  /** frequência relativa dos veios de lava (corpos grandes pedem >1) */
+  crackScale?: number;
+  /** espessura da faixa de lava (estreita demais serra em malha esparsa) */
+  crackWidth?: number;
+  /** multiplicador extra do brilho da lava */
+  crackBoost?: number;
   speck?: number;
   seed?: number;
   breath?: number;
@@ -151,6 +165,9 @@ export function makeStoneMaterial(o: StoneMaterialOpts): THREE.ShaderMaterial {
       uHurt: { value: 0 },
       uCharge: { value: 0 },
       uCrackGlow: { value: o.crackGlow ?? 0.5 },
+      uCrackScale: { value: o.crackScale ?? 1 },
+      uCrackWidth: { value: o.crackWidth ?? 0.055 },
+      uCrackBoost: { value: o.crackBoost ?? 1 },
       uSpeck: { value: o.speck ?? 1 },
       uRockA: { value: new THREE.Color(o.rockA) },
       uRockB: { value: new THREE.Color(o.rockB) },

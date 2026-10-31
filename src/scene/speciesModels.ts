@@ -650,23 +650,37 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
   },
 
   // Fogo+Terra — colosso de lava com fissuras incandescentes (Nv.6) ------
+  // corpo de VULCÃO em três socalcos (base larga → cone → borda de cratera),
+  // cabeça pequena na beirada para vender o tamanho da montanha. MALHA DENSA
+  // em todas as peças grandes (regra do golem Nv.5: deslocamento de vértice
+  // num corpo do porte de montanha rasga/distorce a textura com malha rara):
+  // cyl com 5-6 segmentos verticais, tampo bem segmentado, blocos subdivide 1
   magma: {
     bob: 0.03,
     parts: [
-      { g: 'box', a: [0.34, 0.42, 0.4], p: [-0.3, 0.21, 0], m: 'dark' },
-      { g: 'box', a: [0.34, 0.42, 0.4], p: [0.3, 0.21, 0], m: 'dark' },
-      { g: 'box', a: [1.05, 0.9, 0.8], p: [0, 0.94, 0], m: 'body' },
-      { g: 'box', a: [0.08, 0.55, 0.03], p: [-0.26, 0.98, 0.41], m: 'glow', flick: 0.06 },
-      { g: 'box', a: [0.07, 0.4, 0.03], p: [0.16, 0.82, 0.41], r: [0, 0, 0.5], m: 'glow', flick: 0.08 },
-      { g: 'box', a: [0.05, 0.3, 0.03], p: [0.02, 1.12, 0.41], m: 'glow', flick: 0.1 },
-      { g: 'dodeca', a: [0.36], p: [0, 1.66, 0], m: 'dark' },
-      { g: 'sphere', a: [0.09, 10, 8], p: [0, 1.7, 0.3], m: 'glow', flick: 0.05 },
-      { g: 'cone', a: [0.2, 0.5, 6], p: [-0.68, 1.36, 0], r: [0, 0, 0.5], m: 'dark' },
-      { g: 'cone', a: [0.2, 0.5, 6], p: [0.68, 1.36, 0], r: [0, 0, -0.5], m: 'dark' },
-      { g: 'box', a: [0.26, 0.66, 0.28], p: [-0.7, 0.82, 0], m: 'dark' },
-      { g: 'box', a: [0.26, 0.66, 0.28], p: [0.7, 0.82, 0], m: 'dark' },
-      { g: 'cone', a: [0.3, 0.55, 7], p: [0, 1.32, -0.6], m: 'body' },
-      { g: 'cone', a: [0.13, 0.26, 6], p: [0, 1.66, -0.6], m: 'glow', flick: 0.25 },
+      // socalco de base (o pé largo da montanha; r 1.42 ≈ 45cm de folga pro tile)
+      { g: 'cyl', a: [1.0, 1.42, 0.55, 24, 5], p: [0, 0.275, 0], m: 'dark', amp: 0.07 },
+      // cone principal (largo embaixo, afunilando até a cratera)
+      { g: 'cyl', a: [0.62, 1.04, 1.7, 24, 6], p: [0, 1.4, 0], m: 'body', amp: 0.075 },
+      // socalco do topo ao redor da cratera
+      { g: 'cyl', a: [0.5, 0.68, 0.55, 20, 4], p: [0, 2.52, 0], m: 'dark', amp: 0.06 },
+      // borda da cratera — o núcleo de lava do rig fica dentro (CRATER_Y)
+      { g: 'torus', a: [0.52, 0.12, 12, 32], p: [0, 2.82, 0], r: [1.57, 0, 0], m: 'body', amp: 0.05 },
+      // pedras-pés (subdivide para o relevo de basalto não rasgar)
+      ...mm({ g: 'dodeca', a: [0.32, 1], p: [0.68, 0.3, 0.18], m: 'dark', amp: 0.07 }),
+      { g: 'dodeca', a: [0.26, 1], p: [0, 0.27, -0.55], m: 'dark', amp: 0.07 },
+      // braços de bloco rochoso (o rig arremessa o matacão de lava)
+      ...mm({ g: 'dodeca', a: [0.3, 1], p: [0.95, 1.35, 0], m: 'dark', amp: 0.07, tag: 'arm' }),
+      // ombros espigados (estufam na carga, como no golem)
+      ...mm({ g: 'cone', a: [0.17, 0.5, 9], p: [0.66, 2.05, 0], r: [0, 0, -0.62], m: 'body', amp: 0.05, tag: 'spike' }),
+      // cone de lava escorrida nas costas
+      { g: 'cone', a: [0.3, 0.6, 12], p: [0, 2.2, -0.62], r: [-0.7, 0, 0], m: 'body', amp: 0.05 },
+      // tampões de respiro acesos na encosta (lasca de obsidiana com lava)
+      { g: 'octa', a: [0.09, 1], p: [0.55, 1.0, 0.75], s: [1, 1.6, 1], m: 'glow', flick: 0.12 },
+      { g: 'octa', a: [0.08, 1], p: [-0.32, 1.9, 0.62], s: [1, 1.5, 1], m: 'glow', flick: 0.15 },
+      // cabeça pequena na beirada da cratera (o olho único encara o campo)
+      { g: 'dodeca', a: [0.28, 1], p: [0, 3.1, 0.2], m: 'dark', amp: 0.05 },
+      { g: 'sphere', a: [0.08, 12, 10], p: [0, 3.14, 0.44], m: 'glow', flick: 0.05 },
     ],
   },
 

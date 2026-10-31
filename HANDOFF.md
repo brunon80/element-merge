@@ -136,8 +136,44 @@
 >   modelo, invólucro (asas quase atravessam o tile mas cabem), material de
 >   casca opaco/instanciado, FX do impacto com espécie/nível/origem, regen do
 >   ancião o mantém de pé. Total: **170 testes**.
+>
+> ## 🌋 ATUALIZAÇÃO — Magma virado VULCÃO no padrão do golem (sessão atual)
+>
+> Terceiro elemento da árvore com figurino próprio (pedido do usuário: maior,
+> formato de vulcão, inspirado no golem/Madeira). O print de aprovação revelou
+> o problema clássico do shader de pedra em corpo grande: **textura esticada**
+> (relevo deslocando vértices em malha de 9-10 segmentos rasga/distorce) e
+> lava saturando tudo em laranja sólido. Corrigido assim:
+>
+> - **Modelo (`MODELS.magma`)**: corpo de montanha em 3 socalcos (cyl 24 seg
+>   radiais × 5-6 verticais), torus de cratera (12×32), blocos-pés/braços em
+>   `dodeca` subdivide 1, cabeça pequena na beirada (truque de escala). Os
+>   braços saíram de box (2 tris/face rasgava) para dodeca. `formTops` [3.9]
+>   preservado; `getGeometry` agora aceita subdivide em `dodeca`/`octa`.
+> - **`stoneShaders`**: novos uniforms `uCrackScale`/`uCrackWidth`/
+>   `uCrackBoost` (default idêntico ao visual antigo do golem — 0.45/0.58
+>   ≡ 0.5±0.055). Corpo de montanha usa `crackScale` 1.35–2.2 para os veios
+>   não virarem rios gigantes nas encostas e faixa larga o bastante para não
+>   serrar; glow do corpo baixado de 1.5→1.15 (o 2.4 saturava).
+> - **`MagmaRig.tsx`** (`SPECIES_RIGS.magma`): clone do padrão StoneRig —
+>   pose de arremesso (agacha/torce/destorce, braço com tag 'arm' varre,
+>   ombros 'spike' estufam), núcleo de lava na cratera com `makeCoreMaterial`
+>   repaletado (gold #ff5a1f, orla QUENTE #ffcf7a — sem azul), brasas que
+>   SOREM da cratera (oposto das lascas do golem), cinza ambiente + baforada
+>   nos pés via smoke pool, crumble na morte.
+> - **Projétil-assinatura:** `ProjectileField.isBoulder` — bloco de lava
+>   (basalto `crackGlow` 2.2, fissuras respirando em voo) + coração de plasma
+>   no miolo, cambalhota pesada igual ao matacão do golem.
+> - **FX de impacto:** kind 'lava' no pool de estilhaços (cacos de basalto
+>   incandescente quicando) + branch `magma`: bola de fogo + brasas subindo
+>   + debris escuro + anéis #ff6a1f/#ffd08a + cinza quente (heat 0.25).
+> - Testes novos: `magmaProgression.test.ts` (6): rig registrado, socalcos +
+>   malha densa amarrada (≥20 radiais, ≥4 verticais, dodeca subdiv), cabeça
+>   pequena, invólucro (pé largo < TILE_SPACING_X, minY ≥ -0.06), uniforms de
+>   fissura, núcleo não-aditivo com orla quente, FX do motor. Total: **176
+>   testes**.
 > - Próximo passo natural: replicar o padrão para os demais Nv.6–10
->   (madeira/magma/gelo/vapor/areia primeiro), e o pool de arcos já serve
+>   (gelo/vapor/areia primeiro), e o pool de arcos já serve
 >   para tempestade/astral etc.
 
 ---

@@ -201,13 +201,34 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e os cacos de BASALTO incandescente do impacto do Magma (mesmo shader
+  // do vulcão: rocha quase preta com rios de lava acesos no instante do choque)
+  const shardLava = useMemo(() => {
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeStoneMaterial({
+        rockA: '#42322e',
+        rockB: '#140f10',
+        crack: '#ff6a1f',
+        amp: 0.06,
+        crackGlow: 2.0,
+        crackScale: 1.3,
+        crackWidth: 0.04,
+        crackBoost: 1.1,
+        speck: 0.3,
+        seed: 2.9 + i * 1.7,
+        breath: 0.4,
+      }),
+    );
+    // mesma geometria do pool da pedra (só o material muda por kind)
+    return { geo: shardRock.geo, mats };
+  }, [shardRock]);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
         life: 0,
         max: 0.62,
         size: 1,
-        kind: 'rock' as 'rock' | 'wood',
+        kind: 'rock' as 'rock' | 'wood' | 'lava',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -225,10 +246,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       shardRock.geo.dispose();
       for (const m of shardWood.mats) m.dispose();
       shardWood.geo.dispose();
+      // shardLava compartilha a geometria do shardRock (dispose é idempotente)
+      for (const m of shardLava.mats) m.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
-  }, [burstFlame, shardRock, shardWood, arcGeo, arcMat]);
+  }, [burstFlame, shardRock, shardWood, shardLava, arcGeo, arcMat]);
   const flameSprites = useRef<THREE.Sprite[]>([]);
   const slowSprites = useRef<THREE.Sprite[]>([]);
   const spriteData = useMemo(
@@ -378,7 +401,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     y: number,
     z: number,
     size = 1,
-    kind: 'flame' | 'shard' | 'sprout' = 'flame',
+    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' = 'flame',
   ) => {
     if (kind === 'flame') {
       for (let i = 0; i < BURST_CAP; i++) {
@@ -406,7 +429,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       if (!mesh) return;
       d.life = d.max;
       d.size = size;
-      d.kind = kind === 'sprout' ? 'wood' : 'rock';
+      d.kind = kind === 'sprout' ? 'wood' : kind === 'lavaShard' ? 'lava' : 'rock';
       const a = Math.random() * Math.PI * 2;
       const s = 1.6 + Math.random() * 1.8;
       d.vx = Math.cos(a) * s;
@@ -605,6 +628,25 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               size: 0.08,
               heat: 0.04, // esporos frios
               life: 1.0,
+              speed: 1.1,
+            });
+          } else if (ev.species === 'magma') {
+            // bloco de lava do vulcão no alvo: a bola de fogo da família se
+            // abre em CACOS DE BASALTO incandescente quicando (o peso físico
+            // do golem com a temperatura da lava), brasas subindo da fissura
+            // do impacto (o vulcão expele, não desmorona) e cinza quente
+            const lv = Math.max(6, Math.min(10, ev.level ?? 6));
+            spawnBurst(x, y, z, 0.5 + 0.06 * (lv - 6));
+            for (let i = 0; i < 2; i++) spawnBurst(x, y, z, 0.32 + 0.05 * (lv - 6), 'lavaShard');
+            spawnParticles(x, y, z, '#ff6a1f', 8 + (lv - 6) * 2, 3.0, 0.6, -1.8, 1.4); // brasas subindo
+            spawnParticles(x, y, z, '#ffb347', 6, 2.4, 0.5, -1.0, 0.8); // faíscas quentes
+            spawnParticles(x, y, z, '#1d1416', 7, 2.2, 0.55, 2.2, 1.0); // debris de basalto caindo
+            spawnRing(x, 0.1, z, '#ff6a1f', 1.7 + 0.12 * (lv - 6));
+            spawnRing(x, 0.16, z, '#ffd08a', 0.95); // anel interno quente
+            spawnSmoke(x, y, z, 4, {
+              size: 0.085,
+              heat: 0.25, // cinza ainda quente
+              life: 1.05,
               speed: 1.1,
             });
           } else if (ev.species === 'zephyr') {
@@ -948,13 +990,14 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       const mesh = shards.current[i];
       const d = shardData[i];
       const wood = d.kind === 'wood';
-      const mat = (wood ? shardWood.mats : shardRock.mats)[i];
+      const mat = (wood ? shardWood.mats : d.kind === 'lava' ? shardLava.mats : shardRock.mats)[i];
       if (!mesh) continue;
       if (d.life > 0) {
         // a malha do pool é compartilhada: quem decide a "substância" do
         // estilhaço é o kind gravado no spawn (pedra do golem, madeira da
-        // Madeira) — geometry/material trocam de par a cada uso
-        mesh.geometry = wood ? shardWood.geo : shardRock.geo;
+        // Madeira, basalto incandescente do Magma) — geometry/material trocam
+        // de par a cada uso
+        mesh.geometry = wood ? shardWood.geo : d.kind === 'lava' ? shardLava.geo : shardRock.geo;
         mesh.material = mat;
         d.life -= dt;
         const t = 1 - Math.max(0, d.life) / d.max;

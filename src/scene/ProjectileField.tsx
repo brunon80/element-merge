@@ -82,6 +82,9 @@ const dir = new THREE.Vector3();
  *    corrente, virando mini-relâmpagos).
  *  - Madeira (Nv.6, árvore): a SEMENTE — matacão de casca com seiva esmeralda
  *    acesa, cambalhoteando no ar (o MESMO shader da criatura, padrão golem).
+ *  - Magma (Nv.6, árvore): o BLOCO DE LAVA — basalto quase preto com rios
+ *    largos de lava aceso e um coração de plasma derretido no miolo, também
+ *    cambalhota (padrão golem, paleta ígnea).
  * Híbridos e o resto usam as silhuetas básicas instanciadas por elemento,
  * com cor por espécie (instanceColor). Todo projétil ganha um halo billboard
  * que cresce com o nível.
@@ -95,6 +98,8 @@ export function ProjectileField() {
   const boltRef = useRef<THREE.InstancedMesh | null>(null);
   const boltCoreRef = useRef<THREE.InstancedMesh | null>(null);
   const seedRef = useRef<THREE.InstancedMesh | null>(null);
+  const boulderRef = useRef<THREE.InstancedMesh | null>(null);
+  const heartRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -238,14 +243,51 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const lavaBoulder = useMemo(() => {
+    // bloco de lava do vulcão: basalto quase preto com rios largos de lava
+    // aceso (o MESMO shader de pedra do corpo) e um coração derretido de
+    // plasma quente por dentro — o análogo ígneo do matacão do golem
+    const geo = new THREE.DodecahedronGeometry(0.2);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: '#42322e',
+      rockB: '#140f10',
+      crack: '#ff6a1f',
+      amp: 0.05,
+      crackGlow: 2.2,
+      crackScale: 1.25,
+      crackWidth: 0.04,
+      crackBoost: 1.15,
+      speck: 0.3,
+      seed: 4.4,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const lavaHeart = useMemo(() => {
+    const geo = new THREE.IcosahedronGeometry(0.11, 1);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: '#ff5a1f', // o fogo da lava (mesma paleta do núcleo da cratera)
+      white: '#ffd08a',
+      cool: '#ffcf7a', // orla quente (nada de azul no magma)
+      amp: 0.04,
+      seed: 3.3,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -259,6 +301,7 @@ export function ProjectileField() {
     let dropN = 0;
     let boltN = 0;
     let seedN = 0;
+    let boulderN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -269,6 +312,10 @@ export function ProjectileField() {
     boltCore.mat.uniforms.uTime.value = time;
     seedPod.mat.uniforms.uTime.value = time;
     seedPod.mat.uniforms.uSap.value = 0.6 + 0.2 * Math.sin(time * 2.4);
+    lavaBoulder.mat.uniforms.uTime.value = time;
+    // o bloco voa com as fissuras ao máximo (a lava do projétil está fresca)
+    lavaBoulder.mat.uniforms.uCharge.value = 0.8 + 0.2 * Math.sin(time * 3.1);
+    lavaHeart.mat.uniforms.uTime.value = time;
 
     if (world) {
       for (const p of world.projectiles) {
@@ -288,6 +335,7 @@ export function ProjectileField() {
         const isDrop = el === 'water' && p.species === 'nereia';
         const isBolt = p.species === 'raio';
         const isSeed = p.species === 'madeira';
+        const isBoulder = p.species === 'magma';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -405,6 +453,27 @@ export function ProjectileField() {
             haloScale = scale * 1.6;
             signature = true;
           }
+        } else if (isBoulder) {
+          // bloco de lava do vulcão: cambalhota pesada como o matacão do
+          // golem, mas o coração de plasma gira junto e as fissuras vão
+          // esfriando em falso no ar (uCharge já respira no material)
+          dummy.rotation.set(time * 2.9 + p.id, time * 2.1, time * 1.4 + p.id * 0.5);
+          if (boulderN < MAX_PER_ELEMENT) {
+            const scale = 0.9 + 0.12 * (lv - 6);
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            boulderRef.current?.setMatrixAt(boulderN, dummy.matrix);
+            lavaBoulder.seeds.setX(boulderN, ((p.id * 67) % 79) / 6.3);
+            // coração derretido no miolo do bloco
+            dummy.rotation.set(-time * 1.7, time * 2.3 + p.id, 0);
+            dummy.scale.setScalar(scale * (0.95 + 0.05 * Math.sin(time * 5 + p.id)));
+            dummy.updateMatrix();
+            heartRef.current?.setMatrixAt(boulderN, dummy.matrix);
+            lavaHeart.seeds.setX(boulderN, ((p.id * 23) % 67) / 5.7);
+            boulderN++;
+            haloScale = scale * 1.7;
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -462,6 +531,8 @@ export function ProjectileField() {
       [boltRef.current, boltN, bolt.seeds],
       [boltCoreRef.current, boltN, boltCore.seeds],
       [seedRef.current, seedN, seedPod.seeds],
+      [boulderRef.current, boulderN, lavaBoulder.seeds],
+      [heartRef.current, boulderN, lavaHeart.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -555,6 +626,22 @@ export function ProjectileField() {
           seedRef.current = m;
         }}
         args={[seedPod.geo, seedPod.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Magma: o MESMO basalto do vulcão — bloco de lava cambalhota */}
+      <instancedMesh
+        ref={(m) => {
+          boulderRef.current = m;
+        }}
+        args={[lavaBoulder.geo, lavaBoulder.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Magma: coração de plasma derretido no miolo do bloco */}
+      <instancedMesh
+        ref={(m) => {
+          heartRef.current = m;
+        }}
+        args={[lavaHeart.geo, lavaHeart.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>
