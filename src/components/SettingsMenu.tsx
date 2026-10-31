@@ -5,17 +5,18 @@ import { CoinIcon } from './icons';
 import { DIFFICULTY_LABEL } from './labels';
 
 const DIFF_DESC: Record<Difficulty, string> = {
-  easy: 'Inimigo com ~60% do valor do seu time: só Nv.1–2, sem híbridos, sem contra-escolha.',
-  normal: 'Inimigo com o mesmo valor do seu time: até Nv.3, híbridos ocasionais e contra-escolhas.',
-  hard: 'Inimigo com ~140% do valor do seu time: até Nv.4, híbridos frequentes e contra-escolhas cirúrgicas.',
+  easy: 'Inimigo com ~60% do valor do seu time: só criaturas puras Nv.1–2, sem árvore elemental, sem contra-escolha.',
+  normal: 'Inimigo com o mesmo valor do seu time: puras até Nv.3 e criaturas da árvore elemental até Nv.6–7.',
+  hard: 'Inimigo com ~140% do valor do seu time: puras até Nv.4, árvore elemental até o Nv.10 e contra-escolhas cirúrgicas.',
 };
 
-type TabId = 'match' | 'economy' | 'progress';
+type TabId = 'match' | 'economy' | 'progress' | 'debug';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'match', label: '⚔ Partida' },
   { id: 'economy', label: '🪙 Economia' },
   { id: 'progress', label: '📊 Progresso' },
+  { id: 'debug', label: '🐞 Depuração' },
 ];
 
 /**
@@ -29,6 +30,8 @@ export function SettingsMenu() {
   const setDifficulty = useGameStore((s) => s.setDifficulty);
   const startingCoinsCfg = useGameStore((s) => s.startingCoinsCfg);
   const setStartingCoins = useGameStore((s) => s.setStartingCoins);
+  const debugMode = useGameStore((s) => s.debugMode);
+  const setDebugMode = useGameStore((s) => s.setDebugMode);
   const resetProgress = useGameStore((s) => s.resetProgress);
   const stats = useGameStore((s) => s.stats);
   const coins = useGameStore((s) => s.coins);
@@ -124,6 +127,33 @@ export function SettingsMenu() {
                   </div>
                 </label>
                 <p className="hint">Aplicado ao reiniciar o progresso.</p>
+              </section>
+            )}
+
+            {tab === 'debug' && (
+              <section>
+                <h3>Depuração</h3>
+                <p className="hint">
+                  Modo desenvolvedor: mostra o botão <b>Criar no campo</b> em
+                  todo card do bestiário (inclusive nas espécies seladas) e
+                  coloca a criatura no primeiro slot livre da sua arena, sem
+                  custo. Puros podem ser criados em qualquer forma (Nv.1–5);
+                  espécies da árvore nascem no nível fixo delas. Só funciona
+                  durante a <b>preparação</b> e não conta como descoberta.
+                </p>
+                <button
+                  className={`btn debug-toggle ${debugMode ? 'active' : ''}`}
+                  data-testid="debug-toggle"
+                  aria-pressed={debugMode}
+                  onClick={() => setDebugMode(!debugMode)}
+                >
+                  {debugMode ? 'Modo debug: LIGADO' : 'Modo debug: desligado'}
+                </button>
+                <p className="hint">
+                  Ajuste também em Configurações → Depuração. A escolha fica
+                  salva. Criaturas criadas assim voltam com o time persistido
+                  se sobreviverem ao combate.
+                </p>
               </section>
             )}
 

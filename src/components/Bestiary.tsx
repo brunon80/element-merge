@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ELEMENTS } from '../data/elements';
 import { scaledStats } from '../data/balance';
 import { evolutionRecipeText } from '../game/fusion/fusionRules';
@@ -7,6 +8,7 @@ import {
   TREE_SPECIES_IDS,
   getSpecies,
 } from '../data/monsters';
+import { hasForms } from '../data/forms';
 import { useGameStore } from '../store/gameStore';
 import type { MonsterLevel, SpeciesId } from '../game/types';
 import { MonsterViewer } from '../scene/MonsterViewer';
@@ -51,8 +53,69 @@ function StatTable({ species }: { species: SpeciesId }) {
   );
 }
 
+/**
+ * Botão do modo debug: cria a espécie direto na arena (sem fusão, sem custo)
+ * para inspecionar o modelo. Para espécies puras, um seletor por nível permite
+ * ver cada forma (Nv.1–5); espécies da árvore têm nível único fixo.
+ */
+function DebugSpawn({
+  species,
+  level,
+  levels,
+  onLevel,
+}: {
+  species: SpeciesId;
+  level: MonsterLevel;
+  levels: MonsterLevel[];
+  onLevel?: (lv: MonsterLevel) => void;
+}) {
+  const spawn = useGameStore((s) => s.spawnDebugUnit);
+  const setBestiary = useGameStore((s) => s.setBestiary);
+  const name = getSpecies(species).name;
+  return (
+    <span
+      className="debug-spawn"
+      title={`Depuração: coloca ${name} Nv.${level} no primeiro slot livre da sua arena`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {levels.length > 1 && (
+        <span className="debug-spawn-levels">
+          {levels.map((l) => (
+            <button
+              key={l}
+              type="button"
+              className={`debug-spawn-level${l === level ? ' on' : ''}`}
+              data-testid={`debug-level-${species}-${l}`}
+              onClick={() => onLevel?.(l)}
+            >
+              {l}
+            </button>
+          ))}
+        </span>
+      )}
+      <button
+        type="button"
+        className="debug-spawn-btn"
+        data-testid={`debug-spawn-${species}`}
+        onClick={() => {
+          if (spawn(species, level)) setBestiary(false);
+        }}
+      >
+        Criar no campo
+      </button>
+    </span>
+  );
+}
+
 function SpeciesCard({ species, unlocked }: { species: SpeciesId; unlocked: boolean }) {
+  const debugMode = useGameStore((s) => s.debugMode);
   const def = getSpecies(species);
+  // nível escolhido para visualização/criação (só puros têm várias formas)
+  const [viewLevel, setViewLevel] = useState<MonsterLevel>(def.levelMin as MonsterLevel);
+  const multiForm = hasForms(def);
+  const spawnLevels: MonsterLevel[] = multiForm
+    ? PURE_LEVELS
+    : [def.levelMin as MonsterLevel];
   if (!unlocked) {
     // Regra de descoberta: espécie inédita é apenas uma silhueta + nível.
     // Nada de nome, elementos, atributos ou receita.
@@ -61,6 +124,9 @@ function SpeciesCard({ species, unlocked }: { species: SpeciesId; unlocked: bool
         <div className="beast-head">
           <b className="beast-name">???</b>
           <span className="beast-el beast-level-tag">Nv.{def.levelMin}</span>
+          {debugMode && (
+            <DebugSpawn species={species} level={def.levelMin as MonsterLevel} levels={[]} />
+          )}
         </div>
         <MonsterViewer species={species} locked />
         <p className="beast-blurb">
@@ -83,7 +149,21 @@ function SpeciesCard({ species, unlocked }: { species: SpeciesId; unlocked: bool
           ))}
         </span>
       </div>
-      <MonsterViewer species={species} />
+      <MonsterViewer
+        species={species}
+        debugLevel={debugMode && multiForm ? viewLevel : undefined}
+        onDebugLevel={debugMode && multiForm ? setViewLevel : undefined}
+      />
+      {debugMode && (
+        <div className="beast-debug-row" data-testid={`debug-row-${species}`}>
+          <DebugSpawn
+            species={species}
+            level={viewLevel}
+            levels={spawnLevels}
+            onLevel={setViewLevel}
+          />
+        </div>
+      )}
       <p className="beast-blurb">{def.blurb}</p>
       <div className="beast-abilities">
         {def.base.abilities.map((a, i) => (

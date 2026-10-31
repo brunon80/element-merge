@@ -13,9 +13,11 @@ import { DiscoveryOverlay } from '../components/DiscoveryOverlay';
 import { HUD } from '../components/HUD';
 import { InspectorPanel } from '../components/InspectorPanel';
 import { ResultScreen } from '../components/ResultScreen';
+import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
 import { ToastLayer } from '../components/ToastLayer';
 import { tileGroundPosition } from '../game/board';
+import { TREE_SPECIES_IDS, getSpecies } from '../data/monsters';
 import type { Side } from '../game/types';
 import { getEngine, useGameStore } from '../store/gameStore';
 
@@ -23,6 +25,7 @@ function freshGame() {
   const st = useGameStore.getState();
   st.returnToMenu();
   st.resetProgress();
+  st.setDebugMode(false); // o modo debug persiste no save: teste começa sem ele
   st.startNewMatch();
   useGameStore.setState({ toast: null }); // limpa o aviso "progresso reiniciado"
 }
@@ -36,6 +39,7 @@ function renderAll() {
       <ToastLayer />
       <ResultScreen />
       <Bestiary />
+      <SettingsMenu />
       <DiscoveryOverlay />
     </>,
   );
@@ -526,6 +530,122 @@ describe('Tempo persistido entre partidas', () => {
       act(() => useGameStore.getState().startNewMatch());
       expect(myUnits()).toHaveLength(0);
     }
+  });
+});
+
+describe('Modo debug (bestiário → criatura no campo)', () => {
+  /** abre Configurações → Depuração e acende o interruptor */
+  function enableDebugUi(): void {
+    act(() => useGameStore.getState().setSettings(true));
+    fireEvent.click(screen.getByTestId('settings-tab-debug'));
+    fireEvent.click(screen.getByTestId('debug-toggle'));
+    expect(useGameStore.getState().debugMode).toBe(true);
+    fireEvent.click(screen.getByTestId('close-settings'));
+  }
+
+  test('desligado: nada de botão; tentativa de criar é recusada sem efeitos', () => {
+    renderAll();
+    act(() => useGameStore.getState().setBestiary(true));
+    expect(document.querySelector('.debug-spawn-btn')).toBeNull();
+    act(() => {
+      expect(useGameStore.getState().spawnDebugUnit('magma', 6)).toBe(false);
+    });
+    expect(myUnits()).toHaveLength(0);
+  });
+
+  test('interruptor nas configurações; ligar persiste ao "recarregar" a página', () => {
+    renderAll();
+    enableDebugUi();
+    expect(useGameStore.getState().debugMode).toBe(true);
+    act(() => useGameStore.getState().initFromSave());
+    expect(useGameStore.getState().debugMode).toBe(true); // salvo no localStorage
+  });
+
+  test('cria TODAS as espécies da árvore (inclusive seladas) sem fusão e sem custo', () => {
+    renderAll();
+    enableDebugUi();
+    const eng = getEngine()!;
+    const coinsBefore = useGameStore.getState().coins;
+    const discoveredBefore = [...useGameStore.getState().discovered];
+
+    // 19 espécies da árvore para 12 slots: as 12 primeiras entram, o resto ouve
+    // "Arena cheia" — o debug não teletransporta nada nem esvazia o tabuleiro.
+    act(() => useGameStore.getState().setBestiary(true));
+    let spawnedOk = 0;
+    for (const id of TREE_SPECIES_IDS) {
+      // o card selado também tem o botão (é para isso que o debug existe)
+      fireEvent.click(screen.getByTestId(`debug-spawn-${id}`));
+      if (useGameStore.getState().showBestiary === false) {
+        spawnedOk += 1;
+        act(() => useGameStore.getState().setBestiary(true));
+      }
+    }
+    act(() => useGameStore.getState().setBestiary(false));
+
+    expect(spawnedOk).toBe(12);
+    expect(myUnits()).toHaveLength(12);
+    for (const u of myUnits()) {
+      // entra no nível fixo oficial da espécie, nunca um nível inventado
+      expect(u.level, u.species).toBe(getSpecies(u.species).levelMin);
+      expect(TREE_SPECIES_IDS).toContain(u.species);
+    }
+    expect(screen.getByTestId('toast').textContent).toContain('Arena cheia');
+    // debug não é fusão nem descoberta, e não mexe na economia
+    expect(useGameStore.getState().coins).toBe(coinsBefore);
+    expect(useGameStore.getState().discovered).toEqual(discoveredBefore);
+    expect(eng.world.fx.filter((f) => f.type === 'discovery')).toHaveLength(0);
+    expect(eng.world.fx.filter((f) => f.type === 'mergeDone')).toHaveLength(0);
+  });
+
+  test('puro entra na forma escolhida no bestiário; selado usa o nível fixo', () => {
+    renderAll();
+    enableDebugUi();
+    act(() => useGameStore.getState().setBestiary(true));
+    fireEvent.click(screen.getByTestId('debug-level-ignis-4'));
+    fireEvent.click(screen.getByTestId('debug-spawn-ignis'));
+    expect(useGameStore.getState().showBestiary).toBe(false);
+    expect(myLevels()).toEqual([4]);
+    expect(myUnits()[0].species).toBe('ignis');
+
+    act(() => useGameStore.getState().setBestiary(true));
+    fireEvent.click(screen.getByTestId('debug-spawn-primordial')); // card selado
+    act(() => useGameStore.getState().setBestiary(false));
+    const top = myUnits().find((u) => u.species === 'primordial');
+    expect(top?.level).toBe(10);
+  });
+
+  test('só durante a preparação: em combate o debug recusa e avisa', () => {
+    renderAll();
+    act(() => useGameStore.getState().setDebugMode(true));
+    act(() => {
+      getEngine()!.startBattle();
+      expect(useGameStore.getState().spawnDebugUnit('magma', 6)).toBe(false);
+      useGameStore.getState().syncUi();
+    });
+    expect(screen.getByTestId('toast').textContent).toContain('preparação');
+    expect(myUnits()).toHaveLength(0);
+  });
+
+  test('criatura do debug sobrevive e volta com o time persistido', () => {
+    renderAll();
+    useGameStore.getState().setDifficulty('easy'); // o Nv.10 não enfrenta espelho da árvore
+    act(() => useGameStore.getState().setDebugMode(true));
+    act(() => {
+      expect(useGameStore.getState().spawnDebugUnit('primordial', 10)).toBe(true);
+    });
+    act(() => {
+      const eng = getEngine()!;
+      eng.startBattle();
+      let guard = 0;
+      while (!eng.world.summary && guard++ < 30000) eng.update(1 / 60);
+      useGameStore.getState().syncUi();
+    });
+    const st = useGameStore.getState();
+    expect(st.lastSummary).not.toBeNull();
+    expect(st.retainedCount).toBeGreaterThanOrEqual(1);
+    act(() => useGameStore.getState().startNewMatch());
+    const top = myUnits().find((u) => u.species === 'primordial');
+    expect(top?.level).toBe(10);
   });
 });
 

@@ -843,6 +843,70 @@ button {
   color: var(--gold);
 }
 
+/* modo debug: criar qualquer criatura do bestiário direto na arena */
+.beast-debug-row {
+  margin: 4px 0 8px;
+}
+.debug-spawn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.debug-spawn-levels {
+  display: inline-flex;
+  gap: 3px;
+}
+.debug-spawn-level {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(151, 119, 255, 0.4);
+  background: rgba(9, 13, 25, 0.74);
+  color: var(--violet);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+.debug-spawn-level.on {
+  background: var(--violet);
+  border-color: var(--violet);
+  color: #150a26;
+  font-weight: 700;
+}
+.debug-spawn-btn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(151, 119, 255, 0.55);
+  background: rgba(151, 119, 255, 0.14);
+  color: var(--violet);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.debug-spawn-btn:hover {
+  background: rgba(151, 119, 255, 0.3);
+  color: #fff;
+}
+.beast-card.locked .debug-spawn-btn {
+  border-style: dashed;
+}
+.beast-level-chips.debug .beast-level-chip {
+  border-color: rgba(151, 119, 255, 0.5);
+}
+.btn.debug-toggle {
+  margin: 10px 0;
+  border: 1px solid rgba(151, 119, 255, 0.5);
+  background: rgba(151, 119, 255, 0.1);
+  color: var(--violet);
+}
+.btn.debug-toggle.active {
+  background: var(--violet);
+  color: #150a26;
+  font-weight: 700;
+}
+
 /* overlay de descoberta (primeira fusão que revela uma espécie inédita) */
 .discovery-overlay {
   z-index: 70;

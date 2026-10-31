@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { MAX_BATTLE_TIME, DEFAULT_STARTING_COINS } from '../data/balance';
-import { getSpecies } from '../data/monsters';
+import { getSpecies, speciesAllowsLevel } from '../data/monsters';
 import { GameEngine } from '../game/engine/engine';
 import { grantMatchReward } from '../game/economy/economy';
 import { checkFusion } from '../game/fusion/fusionRules';
@@ -78,6 +78,8 @@ interface GameStoreState {
   stats: SaveData['stats'];
   difficulty: Difficulty;
   startingCoinsCfg: number;
+  /** Depuração ativável nas configurações: criar qualquer espécie no campo. */
+  debugMode: boolean;
   lastSummary: MatchSummary | null;
   showBestiary: boolean;
   showSettings: boolean;
@@ -105,6 +107,9 @@ interface GameStoreActions {
   setSettings: (open: boolean) => void;
   setDifficulty: (d: Difficulty) => void;
   setStartingCoins: (n: number) => void;
+  setDebugMode: (on: boolean) => void;
+  /** Depuração: coloca a espécie no slot livre mais à esquerda (só na preparação). */
+  spawnDebugUnit: (species: SpeciesId, level: MonsterLevel) => boolean;
   resetProgress: () => void;
   syncUi: () => void;
 }
@@ -274,6 +279,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     stats: { ...save.stats },
     difficulty: save.settings.difficulty,
     startingCoinsCfg: save.settings.startingCoins,
+    debugMode: save.settings.debugMode,
     lastSummary: save.lastSummary,
     showBestiary: false,
     showSettings: false,
@@ -289,6 +295,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         stats: { ...save.stats },
         difficulty: save.settings.difficulty,
         startingCoinsCfg: save.settings.startingCoins,
+        debugMode: save.settings.debugMode,
         lastSummary: save.lastSummary,
       });
     },
@@ -518,6 +525,46 @@ export const useGameStore = create<GameStore>((set, get) => {
       save.settings.startingCoins = value;
       persistSoon();
       set({ startingCoinsCfg: value });
+    },
+
+    setDebugMode(on: boolean): void {
+      save.settings.debugMode = on;
+      persistSoon();
+      set({ debugMode: on });
+      get().pushToast(
+        'info',
+        on
+          ? 'Modo debug ligado: no bestiário, use "Criar no campo" para ver qualquer criatura na arena.'
+          : 'Modo debug desligado.',
+      );
+    },
+
+    spawnDebugUnit(species: SpeciesId, level: MonsterLevel): boolean {
+      if (!get().debugMode) return false;
+      const eng = engine;
+      if (!eng) {
+        get().pushToast('error', 'Abra uma partida para usar o modo debug.');
+        return false;
+      }
+      if (eng.world.summary || eng.world.phase !== 'preparation') {
+        get().pushToast('error', 'Só é possível criar criaturas durante a preparação.');
+        return false;
+      }
+      if (!speciesAllowsLevel(species, level)) return false;
+      const res = eng.addRetainedUnit(species, level); // grátis, sem descoberta
+      if (!res.ok) {
+        get().pushToast(
+          'error',
+          res.reason === 'BOARD_FULL' ? FUSION_MSG.BOARD_FULL : 'Não foi possível criar a criatura.',
+        );
+        return false;
+      }
+      get().pushToast(
+        'success',
+        `Debug: ${getSpecies(species).name} Nv.${level} criado na arena — feche o bestiário para ver.`,
+      );
+      get().syncUi();
+      return true;
     },
 
     resetProgress(): void {

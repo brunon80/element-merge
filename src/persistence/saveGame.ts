@@ -27,6 +27,8 @@ export interface SettingsData {
   difficulty: Difficulty;
   /** Parâmetro configurável do saldo inicial. */
   startingCoins: number;
+  /** Depuração: permite criar qualquer criatura do bestiário direto na arena. */
+  debugMode: boolean;
 }
 
 export interface StatsData {
@@ -57,7 +59,11 @@ export function defaultSave(): SaveData {
     coins: DEFAULT_STARTING_COINS,
     discovered: [...PURE_START],
     retainedRoster: [],
-    settings: { difficulty: 'normal', startingCoins: DEFAULT_STARTING_COINS },
+    settings: {
+      difficulty: 'normal',
+      startingCoins: DEFAULT_STARTING_COINS,
+      debugMode: false,
+    },
     stats: { wins: 0, losses: 0, draws: 0, matchesPlayed: 0 },
     processedMatchIds: [],
     lastSummary: null,
@@ -171,7 +177,7 @@ export function loadSave(): SaveData {
       coins,
       discovered,
       retainedRoster,
-      settings: { difficulty, startingCoins },
+      settings: { difficulty, startingCoins, debugMode: !!parsed.settings?.debugMode },
       stats,
       processedMatchIds,
       lastSummary: parsed.lastSummary ?? null,

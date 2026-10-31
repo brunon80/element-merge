@@ -5,13 +5,56 @@
 > desenvolvimento deve conseguir continuar este trabalho lendo só este arquivo.
 >
 > **Estado da árvore no momento deste relatório (verificado):**
-> `npx tsc --noEmit` OK · `npx vitest run` **129 testes / 13 arquivos, todos verdes** ·
+> `npx tsc --noEmit` OK · `npx vitest run` **157 testes / 14 arquivos, todos verdes** ·
 > `npm run build` OK (aviso de chunk-size do three, inofensivo).
 > ✅ Agora **versionado em git**: repo público `brunon80/element-merge` (SSH),
 > branch `main`. **CI/CD**: todo push na `main` roda o workflow
 > `.github/workflows/deploy.yml` (Actions → build → GitHub Pages em
 > https://brunon80.github.io/element-merge/). O `vite.config.ts` novo fixa
 > `base: '/element-merge/'` para os assets do subcaminho.
+
+> ## ⚡ ATUALIZAÇÃO — árvore elemental Nv.1–10 + modo debug (sessão atual)
+>
+> Os §§2–9 abaixo descrevem o estado **antigo** (5 níveis, 6 híbridos Nv.1). O
+> estado vigente é este (commit `fdea59a` + o seguinte do modo debug):
+>
+> - **Fusões (regra nova, única fonte `fusionRules.ts`):** verticais 2×Ln→1×L(n+1)
+>   para as 4 puras **até Nv.5** (L5+L5 de puro é bloqueada); fusões cross-species
+>   **só a partir do Nv.5**, exigindo os ingredientes exatamente no nível que a
+>   receita pede. **19 receitas fixas** (Nv.6–10) em `data/fusionRecipes.ts`,
+>   ordem irrelevante, sempre 2→1, gratuitas; **nada acima do Nv.10** (`MAX_LEVEL`).
+>   Rejeições: `DIFFERENT_LEVEL / MIN_LEVEL / INCOMPATIBLE_SPECIES / MAX_LEVEL`.
+> - **19 espécies novas de nível fixo único:** magma, gelo, madeira, raio, vapor,
+>   areia (Nv.6) · tempestade, obsidiana, pantano, âmbar, névoa (Nv.7) · plasma,
+>   cristal, abissal, vulcão (Nv.8) · astral, geodo, maré, lâmina (Nv.9) ·
+>   **primordial** (Nv.10, coroa). Os 6 híbridos antigos foram **removidos**; o
+>   save **v3** migra (vulcane→magma, tempest→gelo, verdan→madeira, solaris→raio,
+>   vaporis→vapor, duna→areia) com reembolso das unidades retidas antigas.
+> - **Descoberta:** espécie inédita aparece no bestiário como **silhueta escura +
+>   "???" + nível** (sem nome/stats/receita); a primeira fusão abre o
+>   `DiscoveryOverlay` (especial para o Nv.10) e grava no save permanentemente;
+>   durante o arraste o resultado oculto aparece como "??? Nv.X" no slot.
+>   Progresso `X/19` no topo do bestiário.
+> - **Habilidades novas** (`combat/status.ts` + engine): `poison` (DoT com elemento
+>   próprio — `StatusTickDamage`), `regen` (madeira), `drain` (abissal cura ao
+>   causar dano), `chain` em projéteis (`chainLeft`, tempestade/raio). FX épicos
+>   do primordial Nv.10.
+> - **IA honesta:** `fusionPlan.ts` prova composabilidade (toda criatura da árvore
+>   custa `2^(nv-1)` sementes de 100 moedas); `TEAM_RULES` ganhou
+>   `treeMaxLevel` (easy 0 / normal 7 / hard 10) e `hybridChance` (0/0.3/0.6).
+>   `sellValue = 100·2^(nv-1)` vale para **todas** as espécies até Nv.10.
+> - **Modo debug** (novo): Configurações → **Depuração → "Modo debug"** liga um
+>   botão **"Criar no campo"** em todo card do bestiário (inclusive selados), que
+>   usa `engine.addRetainedUnit` para colocar a espécie no primeiro slot livre do
+>   jogador — grátis, sem fusão, sem descoberta, **só na preparação**; o bestiário
+>   fecha sozinho para ver a criatura na arena. Puros têm seletor de forma
+>   Nv.1–5 (na linha de botões do card e nos chips do MonsterViewer, roxo quando
+>   controlado). A flag persiste em `save.settings.debugMode`. Criaturas criadas
+>   assim voltam com o `retainedRoster` se sobreviverem ao combate.
+> - Testes novos: `plan.test.ts`, cadeia completa Nv.1→Nv.10 em `fusion.test.ts`
+>   (512 sementes, recursão determinística `growTo`), migração de save v2→v3 em
+>   `economy.test.ts`, habilidades em `combat.test.ts`, 6 testes de modo debug em
+>   `ui.test.tsx`. Total: **157 testes**.
 
 ---
 
@@ -271,7 +314,7 @@
 
 ```
 npx tsc --noEmit          # tipos
-npx vitest run            # 129 testes, 13 arquivos
+npx vitest run            # 157 testes, 14 arquivos
 npm run build             # tsc + build de produção
 npm run dev               # http://localhost:5173 (HMR; hard refresh ao mexer shaders)
 ```

@@ -228,10 +228,15 @@ function SpeciesRig({
 export function MonsterViewer({
   species,
   locked = false,
+  debugLevel,
+  onDebugLevel,
 }: {
   species: SpeciesId;
   /** card selado da enciclopédia: silhueta + nível, sem revelar identidade */
   locked?: boolean;
+  /** depuração: nível escolhido para visualizar formas de espécie pura */
+  debugLevel?: MonsterLevel;
+  onDebugLevel?: (lv: MonsterLevel) => void;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const inView = useInView(boxRef);
@@ -243,13 +248,23 @@ export function MonsterViewer({
   const [level, setLevel] = useState<MonsterLevel>(sdef0.levelMin as MonsterLevel);
   const downPt = useRef<{ x: number; y: number } | null>(null);
 
+  // modo debug: o card controla o nível visualizado (para criar a forma certa
+  // no campo); em jogo normal o viewer guarda o nível para si mesmo
+  const controlled = debugLevel !== undefined && onDebugLevel !== undefined;
+  const shownLevel = controlled ? (debugLevel ?? sdef0.levelMin) : level;
+  if (controlled && debugLevel !== undefined && debugLevel !== level) setLevel(debugLevel);
+  const chooseLevel = (lv: MonsterLevel): void => {
+    setLevel(lv);
+    onDebugLevel?.(lv);
+  };
+
   const sdef = getSpecies(species);
   const variants = hasForms(sdef); // espécies que evoluem de forma com a fusão
-  const form = formName(sdef, level);
+  const form = formName(sdef, shownLevel);
   // enquadramento: a cada nível o modelo é maior, mas cabe no card (cresce de
   // forma contida). Espécies de nível fixo (árvore) usam o enquadramento alto.
   const fixedLevel = sdef.levelMin === sdef.levelMax;
-  const top = formTop(sdef, level);
+  const top = formTop(sdef, shownLevel);
   const fit = variants || fixedLevel ? 1.51 / Math.pow(top, 0.72) : 0.95;
   const frameY = variants || fixedLevel ? -top * fit * 0.4 : -0.72;
   const targetY = variants || fixedLevel ? top * fit * 0.12 : 0.15;
@@ -285,7 +300,7 @@ export function MonsterViewer({
             <SpeciesRig
               species={species}
               attackSeq={seq}
-              level={level}
+              level={shownLevel}
               smoke={smoke ?? undefined}
               locked={locked}
             />
@@ -308,7 +323,7 @@ export function MonsterViewer({
       {mounted && variants && !locked && (
         <>
           <div
-            className="beast-level-chips"
+            className={`beast-level-chips${controlled ? ' debug' : ''}`}
             // chips não disparam a demonstração de ataque do card
             onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => e.stopPropagation()}
@@ -317,9 +332,9 @@ export function MonsterViewer({
               <button
                 key={l}
                 type="button"
-                className={`beast-level-chip${l === level ? ' on' : ''}`}
+                className={`beast-level-chip${l === shownLevel ? ' on' : ''}`}
                 aria-label={`forma nível ${l}`}
-                onClick={() => setLevel(l)}
+                onClick={() => chooseLevel(l)}
               >
                 {l}
               </button>
