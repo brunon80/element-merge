@@ -324,14 +324,14 @@ varying vec3 vView;
 ${NOISE_GLSL}
 void main() {
   float boil = fbm(vLocal * 5.0 + vec3(uTime * 2.2));
-  float pulse = 0.62 + 0.22 * sin(uTime * 9.0 + uSeed);
+  float pulse = 0.82 + 0.12 * sin(uTime * 9.0 + uSeed);
   vec3 vd = normalize(vView);
   float fres = pow(1.0 - abs(dot(normalize(vNrm), vd)), 1.5);
-  vec3 col = mix(uGold, uWhite, clamp(boil * 1.15 - 0.15, 0.0, 1.0));
-  // plasma dourado com orla azul elétrica (a bola quente no centro, fria na borda)
-  col = col * pulse + mix(uWhite, uCool, 0.65) * fres * 0.5;
-  col *= 1.0 + uCharge * 0.6;
-  float a = uAlpha * (0.35 + 0.3 * boil);
+  vec3 col = mix(uGold, uWhite, clamp(boil * 0.62 - 0.28, 0.0, 0.38));
+  // núcleo quente e legível, com apenas um contorno azul elétrico discreto
+  col = col * pulse + uCool * fres * 0.16;
+  col *= 1.0 + uCharge * 0.22;
+  float a = uAlpha * (0.78 + 0.12 * boil);
   gl_FragColor = vec4(col, a);
 }
 `;
@@ -349,7 +349,6 @@ export function makeCoreMaterial(o: CoreMaterialOpts): THREE.ShaderMaterial {
     vertexShader: CORE_VERT,
     fragmentShader: CORE_FRAG,
     transparent: true,
-    blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: THREE.DoubleSide,
     uniforms: {

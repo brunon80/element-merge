@@ -97,7 +97,7 @@ describe('Raio: rig elétrico próprio da árvore', () => {
     expect(arc.uniforms.uCoolAmt.value).toBeCloseTo(0.78); // azul como corrente principal
 
     const core = makeCoreMaterial({ gold: '#ffcf4d', white: '#fff8d6', cool: '#5fc8ff' });
-    expect(core.blending).toBe(THREE.AdditiveBlending);
+    expect(core.blending).toBe(THREE.NormalBlending);
     expect(core.transparent).toBe(true);
     expect(core.uniforms.uCool).toBeDefined(); // orla azul no plasma dourado
 

@@ -85,6 +85,51 @@ function makeSparkGeo(n: number): THREE.BufferGeometry {
   return g;
 }
 
+function makeStarburstGeo(seed: number, count: number, color: string): THREE.BufferGeometry {
+  const positions = new Float32Array(count * 9);
+  const colors = new Float32Array(count * 9);
+  const baseColor = new THREE.Color(color);
+  const coreColor = baseColor.clone().lerp(new THREE.Color('#fff0bd'), 0.24);
+  let state = Math.floor(seed * 1000) >>> 0;
+  const rand = () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + (rand() - 0.5) * 0.2;
+    const length = 0.48 + rand() * 0.7;
+    const start = 0.1 + rand() * 0.2;
+    const width = 0.018 + rand() * 0.065;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const px = -dy * width;
+    const py = dx * width;
+    const offset = i * 9;
+
+    positions.set(
+      [
+        dx * start + px, dy * start + py, 0,
+        dx * start - px, dy * start - py, 0,
+        dx * length, dy * length, 0,
+      ],
+      offset,
+    );
+    const tipMix = 0.45 + rand() * 0.35;
+    for (let vertex = 0; vertex < 3; vertex++) {
+      const tint = vertex === 2 ? baseColor : coreColor;
+      const mix = vertex === 2 ? tipMix : 0.18;
+      const c = coreColor.clone().lerp(tint, mix);
+      colors.set([c.r, c.g, c.b], offset + vertex * 3);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  return geometry;
+}
+
 export interface LightningRigProps {
   seed: number;
   unitId?: number;
@@ -131,13 +176,24 @@ export function LightningRig({
   const groupRefs = useRef<Record<number, THREE.Group | null>>({});
   const glowRef = useRef<THREE.Sprite>(null!);
   const flashRef = useRef<THREE.Sprite>(null!);
+  const coreGlowRef = useRef<THREE.Sprite>(null!);
+  const burstAuraRef = useRef<THREE.Group>(null!);
   const burstRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const starburstRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const ringRefs = useRef<(THREE.Mesh | null)[]>([]);
   const clock = useRef(0);
   const demoT = useRef(-1);
   const burstAcc = useRef(0);
   const strikesDone = useRef(new Set<number>());
 
   const visParts = useMemo(() => partsForLevel(modelDef, level), [modelDef, level]);
+  const starburstGeos = useMemo(
+    () => [
+      makeStarburstGeo(seed + 2.1, 26, '#28baff'),
+      makeStarburstGeo(seed + 7.4, 18, '#ffd34f'),
+    ],
+    [seed],
+  );
 
   useEffect(() => {
     if (demoAttackSeq !== undefined && demoAttackSeq > 0) demoT.current = 0;
@@ -510,16 +566,43 @@ export function LightningRig({
     // engolir o corpo — clarão grande demais é o que vira "bola de fogo")
     const glow = glowRef.current;
     glow.position.y = CORE_Y;
-    glow.scale.setScalar(Math.max(0.9, 1.15 + pulse * 0.1 + pose.charge * 0.5 + hurt * 0.2));
+    glow.scale.setScalar(Math.max(0.75, 0.92 + pulse * 0.08 + pose.charge * 0.28 + hurt * 0.12));
     (glow.material as THREE.SpriteMaterial).opacity = Math.max(
       0,
-      (0.1 + 0.05 * pulse + pose.charge * 0.14) * alpha,
+      (0.055 + 0.025 * pulse + pose.charge * 0.08) * alpha,
     );
     const flash = flashRef.current;
     flash.position.set(0, CORE_Y, -frontZ * 0.85); // a frente do corpo aponta para -Z local (jogador)
-    const flashS = pose.flash > 0 ? 0.7 + 1.1 * (1 - pose.flash) : 0.0;
+    const flashS = pose.flash > 0 ? 0.45 + 0.7 * (1 - pose.flash) : 0.0;
     flash.scale.setScalar(flashS);
-    (flash.material as THREE.SpriteMaterial).opacity = pose.flash * 0.55 * alpha;
+    (flash.material as THREE.SpriteMaterial).opacity = pose.flash * 0.24 * alpha;
+
+    const aura = burstAuraRef.current;
+    aura.position.z = -frontZ * 0.5;
+    aura.rotation.z = Math.sin(t * 0.9 + seed) * 0.08;
+    aura.scale.setScalar(1 + Math.sin(t * 3.2 + seed) * 0.035 + pose.charge * 0.12);
+    const auraPulse = 0.78 + 0.22 * Math.sin(t * 8 + seed);
+    const blueShard = starburstRefs.current[0];
+    const goldShard = starburstRefs.current[1];
+    if (blueShard) {
+      (blueShard.material as THREE.MeshBasicMaterial).opacity = (0.12 + pose.charge * 0.06) * auraPulse * alpha;
+    }
+    if (goldShard) {
+      (goldShard.material as THREE.MeshBasicMaterial).opacity = (0.08 + pose.flash * 0.1) * auraPulse * alpha;
+    }
+    const coreGlow = coreGlowRef.current;
+    coreGlow.position.z = -frontZ * 0.58;
+    coreGlow.scale.setScalar(0.42 + pose.charge * 0.12 + pose.flash * 0.15);
+    (coreGlow.material as THREE.SpriteMaterial).opacity = (0.12 + pose.charge * 0.08 + pose.flash * 0.1) * alpha;
+
+    for (let i = 0; i < ringRefs.current.length; i++) {
+      const ring = ringRefs.current[i];
+      if (!ring) continue;
+      ring.rotation.y = t * (i === 0 ? 0.18 : -0.12);
+      ring.scale.setScalar(1 + Math.sin(t * 2.5 + i * 1.6 + seed) * 0.035 + pose.charge * 0.08);
+      (ring.material as THREE.MeshBasicMaterial).opacity =
+        (i === 0 ? 0.58 : 0.35) * (0.82 + 0.18 * Math.sin(t * 5 + i)) * alpha;
+    }
   });
 
   const orbitalGroups = modelDef.groups ?? {};
@@ -566,7 +649,65 @@ export function LightningRig({
           frustumCulled={false}
         />
       ))}
+      <group ref={burstAuraRef} position={[0, CORE_Y, 0]}>
+        {starburstGeos.map((geometry, i) => (
+          <mesh
+            key={`starburst${i}`}
+            ref={(mesh) => {
+              starburstRefs.current[i] = mesh;
+            }}
+            geometry={geometry}
+            renderOrder={2}
+            frustumCulled={false}
+          >
+            <meshBasicMaterial
+              vertexColors
+              transparent
+              opacity={i === 0 ? 0.25 : 0.18}
+              blending={THREE.AdditiveBlending}
+              depthTest={false}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+              toneMapped={false}
+            />
+          </mesh>
+        ))}
+      </group>
+      {([0, 1] as const).map((i) => (
+        <mesh
+          key={`ground-ring${i}`}
+          ref={(mesh) => {
+            ringRefs.current[i] = mesh;
+          }}
+          position={[0, 0.055 + i * 0.025, 0]}
+          rotation={[-Math.PI / 2, 0, i * 0.12]}
+          renderOrder={1}
+          frustumCulled={false}
+        >
+          <torusGeometry args={[i === 0 ? 0.82 : 1.02, i === 0 ? 0.022 : 0.014, 8, 96]} />
+          <meshBasicMaterial
+            color={i === 0 ? '#35caff' : '#ffd34f'}
+            transparent
+            opacity={i === 0 ? 0.58 : 0.35}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
       <points geometry={sparks.geo} material={sparks.mat} frustumCulled={false} />
+      <sprite ref={coreGlowRef} position={[0, CORE_Y, 0.58]} scale={0.42} renderOrder={3}>
+        <spriteMaterial
+          map={circleTexture()}
+          color="#ffc83d"
+          transparent
+          opacity={0.12}
+          blending={THREE.AdditiveBlending}
+          depthTest={false}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </sprite>
       <sprite ref={glowRef} position={[0, CORE_Y, 0]} scale={1.8}>
         <spriteMaterial
           map={circleTexture()}
@@ -581,7 +722,7 @@ export function LightningRig({
       <sprite ref={flashRef} position={[0, CORE_Y, -0.85]} scale={0.0}>
         <spriteMaterial
           map={circleTexture()}
-          color="#e8f6ff"
+          color="#fff0bd"
           transparent
           opacity={0}
           blending={THREE.AdditiveBlending}
