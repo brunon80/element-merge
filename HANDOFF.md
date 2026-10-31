@@ -7,8 +7,11 @@
 > **Estado da árvore no momento deste relatório (verificado):**
 > `npx tsc --noEmit` OK · `npx vitest run` **129 testes / 13 arquivos, todos verdes** ·
 > `npm run build` OK (aviso de chunk-size do three, inofensivo).
-> ⚠️ O diretório **não é um repositório git** (`git status` → fatal). Todas as
-> mudanças estão apenas no disco. Recomendado: `git init` + commit inicial.
+> ✅ Agora **versionado em git**: repo público `brunon80/element-merge` (SSH),
+> branch `main`. **CI/CD**: todo push na `main` roda o workflow
+> `.github/workflows/deploy.yml` (Actions → build → GitHub Pages em
+> https://brunon80.github.io/element-merge/). O `vite.config.ts` novo fixa
+> `base: '/element-merge/'` para os assets do subcaminho.
 
 ---
 
@@ -126,7 +129,6 @@
 6. **Rig de água é opaco e autoiluminado** (ver §5): se alguém voltar a mexer no
    alpha, o jogo entra em loop de "fantasma branco" — não reabrir translucidez
    para o corpo da criatura sem um motivo muito forte.
-7. Sem versionamento (git ausente) → nada é recuperável por histórico.
 
 ## 5. Decisões técnicas e de design (com rationale)
 
@@ -258,8 +260,8 @@
 3. **Rigs e formas dos 6 híbridos** (última grande lacuna visual; o usuário
    trabalha elemento a elemento com aprovação por screenshot — perguntar qual
    híbrido primeiro; usar o figurino opaco modelo).
-4. **Init git + commit inicial** (proteção contra perda — não é pedido do
-   usuário explicitamente, mas o repo não existe).
+4. ~~Init git + commit inicial~~ — **feito**: repo público `brunon80/element-merge`,
+   CI de Pages no push da `main` (workflows em `.github/workflows/deploy.yml`).
 5. Opções de calibragem fina pendentes (só se o usuário pedir): tom azul da água
    (agora `#123a66`→`#4db4ff` com ondas brancas `#eaf6ff`), velocidade das ondas,
    tuning de balanceamento pós-arena-maior (projéteis cruzam corredor de 5,0).
