@@ -56,7 +56,7 @@ void main() {
   pos += nrm * ((n1 - 0.5) * 1.1 + (k - 0.5) * 0.8) * amp;
   // aletas de descarga: pontas eriçadas pelo campo, crescem com a carga
   float spikes = stepped(vLocal * 3.4 + vec3(0.0, uTime * 0.7, 0.0), 4.2);
-  pos += nrm * spikes * (0.012 + uCharge * 0.035);
+  pos += nrm * spikes * (0.005 + uCharge * 0.018);
   #ifdef USE_INSTANCING
     vNrm = normalMatrix * (mat3(instanceMatrix) * nrm);
     vec4 mv = modelViewMatrix * instanceMatrix * vec4(pos, 1.0);
@@ -98,8 +98,7 @@ void main() {
   // peito; o plasma dourado (renderizado aditivo, por dentro) aparece aqui
   float cav = fbm(vLocal * 2.4 + vec3(0.0, uTime * 0.35, 0.0));
   if (cav > uCoreCut) discard;
-  float holeGlow = smoothstep(uCoreCut - 0.10, uCoreCut - 0.01, cav) * 2.2;
-
+  float holeGlow = smoothstep(uCoreCut - 0.10, uCoreCut - 0.01, cav) * 1.0;
   // casca: duas tonalidades + faíscas minerais
   float mottle = fbm(vLocal * 2.2);
   float speck = fnoise(vLocal * 13.0);
@@ -110,12 +109,12 @@ void main() {
   float vein = fnoise(vLocal * 5.2 + vec3(uTime * 0.9, uTime * 0.5, 0.0));
   float veinMask = smoothstep(0.50, 0.545, vein) * (1.0 - smoothstep(0.56, 0.61, vein));
   float dash = 0.55 + 0.45 * sin(uTime * 26.0 + vLocal.y * 60.0 + uSeed);
-  col += uVein * veinMask * dash * (0.9 + uCharge * 1.7) * 1.5;
+  col += uVein * veinMask * dash * (0.45 + uCharge * 0.75);
 
   // estalos instantâneos: ilhas duras que acendem e apagam
   float snap = sstep2(fnoise(vLocal * 3.6 + vec3(uTime * 5.5)));
   float snapOn = step(0.78, fnoise(vLocal * 1.7 - vec3(uTime * 4.2)));
-  col += uVein * snap * snapOn * (0.25 + uCharge * 0.9) * 0.5;
+  col += uVein * snap * snapOn * (0.12 + uCharge * 0.4) * 0.5;
 
   // hemisfério + key quente da arena (o mesmo figurino do golem: opaco com
   // luz fake é o que mantém o monstro legível de longe no tabuleiro)
@@ -129,8 +128,8 @@ void main() {
   // aro na cor da equipe + aro dourado elétrico por cima
   float rim = pow(1.0 - max(0.0, dot(n, vd)), 2.2);
   col += uTeamColor * rim * 0.26;
-  col += uCore * rim * (0.16 + uCharge * 0.5);
-  col += uCore * holeGlow * (0.9 + uCharge * 0.8);
+  col += uCore * rim * (0.08 + uCharge * 0.25);
+  col += uCore * holeGlow;
 
   col = mix(vec3(1.0), col, 1.0 - uHurt * 0.5);
   gl_FragColor = vec4(col, 1.0);
@@ -227,14 +226,14 @@ void main() {
   // traços correndo ao longo do fio (a corrente flui pelo anel/projétil) com
   // flicker nervoso de alta frequência
   float f = fract(vUv.y * uDash - uTime * uFlow + uSeed);
-  float dash = smoothstep(0.04, 0.16, f) * (1.0 - smoothstep(0.50, 0.68, f));
+  float dash = smoothstep(0.04, 0.16, f) * (1.0 - smoothstep(0.38, 0.52, f));
   float flick = 0.72 + 0.28 * sin(uTime * 47.0 + vUv.y * 80.0 + uSeed * 3.1);
   dash *= flick;
   float core = smoothstep(0.22, 0.9, dash + 0.18 * vN1);
-  vec3 col = mix(uGold, uWhite, core) * (0.85 + 0.5 * vN1);
-  float a = (0.22 + 0.78 * dash) * uAlpha * (1.0 + uCharge * 0.6);
+  vec3 col = mix(uGold, uWhite, core) * (0.55 + 0.3 * vN1);
+  float a = (0.12 + 0.55 * dash) * uAlpha * (1.0 + uCharge * 0.4);
   if (a <= 0.01) discard;
-  gl_FragColor = vec4(col * (1.0 + uCharge * 0.35), min(1.0, a));
+  gl_FragColor = vec4(col * (1.0 + uCharge * 0.25), min(1.0, a));
 }
 `;
 
@@ -309,14 +308,14 @@ varying vec3 vView;
 ${NOISE_GLSL}
 void main() {
   float boil = fbm(vLocal * 5.0 + vec3(uTime * 2.2));
-  float pulse = 0.72 + 0.28 * sin(uTime * 9.0 + uSeed);
+  float pulse = 0.62 + 0.22 * sin(uTime * 9.0 + uSeed);
   vec3 vd = normalize(vView);
   float fres = pow(1.0 - abs(dot(normalize(vNrm), vd)), 1.5);
   vec3 col = mix(uGold, uWhite, clamp(boil * 1.15 - 0.15, 0.0, 1.0));
-  col = col * pulse + uWhite * fres * 0.5;
-  col *= 1.0 + uCharge * 1.2;
-  float a = uAlpha * (0.55 + 0.45 * boil);
-  gl_FragColor = vec4(col * 1.25, a);
+  col = col * pulse + uWhite * fres * 0.25;
+  col *= 1.0 + uCharge * 0.6;
+  float a = uAlpha * (0.35 + 0.3 * boil);
+  gl_FragColor = vec4(col, a);
 }
 `;
 

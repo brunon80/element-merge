@@ -240,7 +240,7 @@ export function LightningRig({
           vein: '#ffe14d',
           core: '#ffcf4d',
           amp: p.amp ?? 0.028,
-          coreCut: p.g === 'dodeca' ? 0.63 : 0,
+          coreCut: p.g === 'dodeca' ? 0.5 : 0,
           seed: seed + (i % 3) * 3.1,
           teamColor: team,
         });
@@ -431,18 +431,20 @@ export function LightningRig({
       if (d.life > 0) {
         d.life -= dt;
         const k = Math.max(0, 1 - d.life / d.max); // 0→1 da vida
-        const len = (d.volley ? 0.34 + 0.55 * k : 0.18 + 0.5 * k) * d.max * 5;
-        const grow = 1 - (1 - Math.min(1, k / 0.25)) ** 2;
-        const r0 = 0.34 + grow * (d.volley ? 0.4 : 0.26);
+        // rajada CURTA (a exalação do núcleo, não uma lança): sai do peito e
+        // para de crescer rápido; a largura também é contida para não virar bola
+        const grow = Math.min(1, k / 0.3);
+        const len = (d.volley ? 0.26 : 0.15) * (0.5 + 0.5 * grow) * d.max * 5;
+        const r0 = 0.34 + grow * (d.volley ? 0.26 : 0.18);
         tmpDir.set(d.dir[0], d.dir[1], d.dir[2]);
         mesh.quaternion.setFromUnitVectors(upAxis, tmpDir);
         // centro do cilindro no meio do traço que sai do corpo
         const mid = r0 + len * 0.5;
         mesh.position.set(tmpDir.x * mid, CORE_Y + tmpDir.y * mid, tmpDir.z * mid);
         const flick = 0.65 + 0.35 * Math.sin((t + i * 1.7) * 61);
-        const rad = d.rad * (0.8 + 0.5 * flick);
+        const rad = d.rad * (0.5 + 0.3 * flick);
         mesh.scale.set(rad, len * 2, rad); // geo tem altura 0.5
-        mat.opacity = Math.max(0, Math.min(1, flick * (1 - k * k) * alpha));
+        mat.opacity = Math.max(0, Math.min(1, flick * (1 - k * k) * alpha)) * 0.8;
         mat.color.set(d.volley ? '#fff3b0' : '#ffe98a');
       } else if ((mat as THREE.MeshBasicMaterial).opacity !== 0) {
         mat.opacity = 0;
@@ -492,18 +494,20 @@ export function LightningRig({
     }
 
     // ---- clarão dourado do núcleo + clarão branco do disparo ----
+    // (o halo fica SÓ ao redor da silhueta: escala pequena o bastante para não
+    // engolir o corpo — clarão grande demais é o que vira "bola de fogo")
     const glow = glowRef.current;
     glow.position.y = CORE_Y;
-    glow.scale.setScalar(Math.max(1, 1.7 + pulse * 0.18 + pose.charge * 0.9 + hurt * 0.3));
+    glow.scale.setScalar(Math.max(0.9, 1.15 + pulse * 0.1 + pose.charge * 0.5 + hurt * 0.2));
     (glow.material as THREE.SpriteMaterial).opacity = Math.max(
       0,
-      (0.22 + 0.08 * pulse + pose.charge * 0.22) * alpha,
+      (0.1 + 0.05 * pulse + pose.charge * 0.14) * alpha,
     );
     const flash = flashRef.current;
     flash.position.set(0, CORE_Y, -frontZ * 0.85); // a frente do corpo aponta para -Z local (jogador)
-    const flashS = pose.flash > 0 ? 0.9 + 1.7 * (1 - pose.flash) : 0.0;
+    const flashS = pose.flash > 0 ? 0.7 + 1.1 * (1 - pose.flash) : 0.0;
     flash.scale.setScalar(flashS);
-    (flash.material as THREE.SpriteMaterial).opacity = pose.flash * 0.9 * alpha;
+    (flash.material as THREE.SpriteMaterial).opacity = pose.flash * 0.55 * alpha;
   });
 
   const orbitalGroups = modelDef.groups ?? {};
@@ -605,8 +609,8 @@ void main() {
   float flick = step(0.62, fract(sin(floor(uTime * (16.0 + 14.0 * aRand.z) + aRand.y * 43.0)) * 43758.5453));
   float size = (3.4 + 2.6 * aRand.z) * (0.7 + 0.5 * flick) * uSizeMul * (1.0 + uCharge * 0.6);
   gl_PointSize = size * (28.0 / max(0.5, -mv.z));
-  vA = flick * uAlpha * (0.75 + 0.25 * uCharge);
-  vC = mix(vec3(1.0, 0.82, 0.30), vec3(1.0, 1.0, 0.92), flick * 0.7) * 1.15;
+  vA = flick * uAlpha * (0.55 + 0.2 * uCharge);
+  vC = mix(vec3(1.0, 0.82, 0.30), vec3(1.0, 1.0, 0.92), flick * 0.7) * 0.85;
   gl_Position = projectionMatrix * mv;
 }
 `;

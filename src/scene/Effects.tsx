@@ -516,13 +516,13 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               const iz = ev.pos2[2] - z;
               const il = Math.hypot(ix, iy, iz);
               if (il > 0.4) {
-                spawnArc([ev.pos2[0], ev.pos2[1], ev.pos2[2]], -ix, -iy, -iz, Math.min(il, 1.6), 0.16, 0.13, 1.1);
+                spawnArc([ev.pos2[0], ev.pos2[1], ev.pos2[2]], -ix, -iy, -iz, Math.min(il, 1.6), 0.16, 0.13, 0.9);
               }
             }
-            spawnScatter(x, y, z, 4 + Math.round(lv * 0.6), 0.55 * k, 0.14, 0.16, 1.15);
-            spawnParticles(x, y, z, '#ffe14d', 10 + lv, 3.2, 0.4, -1.6, 1.2); // faíscas douradas subindo
-            spawnParticles(x, y, z, '#ffffff', 5 + Math.round(lv * 0.4), 2.2, 0.25, 0.4); // estalos brancos
-            spawnParticles(x, y - 0.2, z, '#9fd7ff', 4 + lv, 1.8, 0.4, 1.2, 0.4); // luz de ozônio
+            spawnScatter(x, y, z, 4 + Math.round(lv * 0.6), 0.55 * k, 0.14, 0.16, 0.95);
+            spawnParticles(x, y, z, '#ffe14d', 8 + Math.round(lv * 0.7), 3.2, 0.4, -1.6, 1.2); // faíscas douradas subindo
+            spawnParticles(x, y, z, '#ffffff', 4 + Math.round(lv * 0.3), 2.2, 0.25, 0.4); // estalos brancos
+            spawnParticles(x, y - 0.2, z, '#9fd7ff', 3 + Math.round(lv * 0.4), 1.8, 0.4, 1.2, 0.4); // luz de ozônio
             spawnRing(x, 0.1, z, '#ffe14d', 1.5 + 0.16 * lv);
             spawnRing(x, y * 0.55, z, '#fff3b0', 0.8 + 0.1 * lv);
             spawnSmoke(x, y, z, 2 + Math.round(lv * 0.3), {
@@ -731,8 +731,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               const ay = ev.pos2[1] + 0.7 - (y + 0.7);
               const az = ev.pos2[2] - z;
               const al = Math.hypot(ax, ay, az);
-              spawnArc([x, y + 0.6, z], ax, ay, az, Math.max(0.5, Math.min(al, 6)), 0.2, 0.16, 1.15);
-              spawnScatter(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 3, 0.4, 0.12, 0.13, 1.0);
+              spawnArc([x, y + 0.6, z], ax, ay, az, Math.max(0.5, Math.min(al, 6)), 0.2, 0.16, 0.95);
+              spawnScatter(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 3, 0.4, 0.12, 0.13, 0.9);
               spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], '#ffe14d', 6, 1.6, 0.35, -1);
             } else {
               spawnBolt(ev.pos, ev.pos2, glowColor(ev.element) || '#aef2ff');
@@ -838,8 +838,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       const fade = 1 - t * t;
       const flick = 0.55 + 0.45 * Math.sin(clockT * 73 + d.seed * 13 + i * 2.1);
       const k = fade * (0.55 + 0.45 * flick);
-      arcScratch.a.setRGB(1.0 * d.gold, 0.72 * d.gold, 0.18 * d.gold);
-      arcScratch.b.setRGB(1.0, 0.97, 0.85);
+      arcScratch.a.setRGB(0.85 * d.gold, 0.6 * d.gold, 0.14 * d.gold);
+      arcScratch.b.setRGB(0.95, 0.92, 0.8);
       arcScratch.b.multiplyScalar(d.hot);
       arcTmp.d.set(d.dx, d.dy, d.dz);
       // base perpendicular estável no tempo de vida (o traço não "dança" a

@@ -357,7 +357,7 @@ export function ProjectileField() {
             boltCoreRef.current?.setMatrixAt(boltN, dummy.matrix);
             boltCore.seeds.setX(boltN, ((p.id * 17) % 71) / 5.9);
             boltN++;
-            haloScale = scale * 1.9;
+            haloScale = scale * 1.4;
             signature = true;
           }
         }
