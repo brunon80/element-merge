@@ -720,6 +720,9 @@ export class GameEngine {
     world.fx.push({
       type: 'impact',
       pos: [target.pos[0], target.pos[1] + p.aimY, target.pos[2]],
+      // última posição do projétil: a camada visual desenha o rastro da
+      // corrente chegando no alvo (arcos do Raio)
+      pos2: [p.pos[0], p.pos[1], p.pos[2]],
       element: p.damageElement,
       species: p.species,
       level: p.ownerLevel,
@@ -783,6 +786,10 @@ export class GameEngine {
           pos: [...p.pos],
           pos2: [...best.pos],
           element: p.damageElement,
+          // espécie/nível do relâmpago original: o Raio desenha o salto como
+          // arco jagado dourado (as demais trovoadas mantêm o traço claro)
+          species: p.species,
+          level: p.ownerLevel,
         });
       }
     }

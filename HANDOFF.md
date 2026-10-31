@@ -5,7 +5,7 @@
 > desenvolvimento deve conseguir continuar este trabalho lendo só este arquivo.
 >
 > **Estado da árvore no momento deste relatório (verificado):**
-> `npx tsc --noEmit` OK · `npx vitest run` **157 testes / 14 arquivos, todos verdes** ·
+> `npx tsc --noEmit` OK · `npx vitest run` **164 testes / 15 arquivos, todos verdes** ·
 > `npm run build` OK (aviso de chunk-size do three, inofensivo).
 > ✅ Agora **versionado em git**: repo público `brunon80/element-merge` (SSH),
 > branch `main`. **CI/CD**: todo push na `main` roda o workflow
@@ -55,6 +55,41 @@
 >   (512 sementes, recursão determinística `growTo`), migração de save v2→v3 em
 >   `economy.test.ts`, habilidades em `combat.test.ts`, 6 testes de modo debug em
 >   `ui.test.tsx`. Total: **157 testes**.
+
+> ## ⚡ ATUALIZAÇÃO — Raio com rig de shader próprio (gráficos da árvore elemental)
+>
+> Primeiro elemento da árvore a receber o figurino dos puros (rig próprio +
+> shaders + projétil-assinatura + FX de impacto). Padrão para as próximas
+> espécies da árvore:
+>
+> - **`scene/lightningShaders.ts`** — trio de materiais: `makeLightningShellMaterial`
+>   (corpo **opaco** com luz fake da arena como o do golem, nervuras elétricas,
+>   aletas que eriçam na carga e **cavidade de plasma via `discard`** que expõe
+>   o núcleo no peito), `makeArcMaterial` (traço aditivo tracejado correndo ao
+>   longo do uv.y + zigue-zague radial em patamar; aceita instancing via aSeed)
+>   e `makeCoreMaterial` (plasma dourado pulsante).
+> - **`scene/LightningRig.tsx`** (`SPECIES_RIGS.raio`): anéis orbitais viram
+>   arcos elétricos nos materiais de arco (fluxos opostos), faíscas pontuais
+>   que ESTALAM (points), pool de 6 rajadas curtas exalando do núcleo, ataque
+>   com carga → clarão branco na frente do corpo + salva de rajadas. Peças que
+>   usam material com `aSeed` recebem **clone da geometria com aSeed** (rigs
+>   antigos do stone/wind não tinham isso — a falta só zera a fase).
+> - **Projétil-assinatura:** `ProjectileField` tem o caso `isBolt` — fio de
+>   arco (cilindro casca aberto do MESMO material da criatura) alinhado à
+>   velocidade + núcleo de plasma instanciado na cabeça; clones de corrente
+>   viram mini-relâmpagos automaticamente.
+> - **FX de impacto (`Effects.tsx`):** novo pool de **arcos jagados**
+>   (LineSegments aditivos, zigue-zague recalculado por frame). Branch `raio`
+>   antes das famílias genéricas: arco de chegada + dispersão em mini-arcos
+>   (`spawnScatter`) + anéis/faíscas. Motor passou a enviar `pos2` (origem do
+>   projétil) no evento `impact` e `species`/`level` no evento `chain`
+>   (`types.ts` já aceitava; campos aditivos não quebram consumidores).
+> - Testes novos: `lightningProgression.test.ts` (rig registrado, materiais
+>   constroem em jsdom com blending/instancing certos, invólucro do modelo,
+>   `pos2`/`species`/`level` nos eventos de FX). Total: **164 testes**.
+> - Próximo passo natural: replicar o padrão para os demais Nv.6–10
+>   (madeira/magma/gelo/vapor/areia primeiro), e o pool de arcos já serve
+>   para tempestade/astral etc.
 
 ---
 

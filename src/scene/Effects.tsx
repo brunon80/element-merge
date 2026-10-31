@@ -14,6 +14,9 @@ const PARTICLE_CAP = 400;
 const POPUP_CAP = 12;
 const RING_CAP = 8;
 const BOLT_CAP = 4;
+// arcos jagados (Raio): escopo do impacto/dispersão/corrente
+const ARC_CAP = 14;
+const ARC_SEG = 7;
 
 function glowColor(el: ElementId | undefined): string {
   return el ? ELEMENTS[el].glow : '#ffd23f';
@@ -84,6 +87,58 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     () => Array.from({ length: BOLT_CAP }, () => ({ life: 0 })),
     [],
   );
+  // ---- arcos jagados (trovoada do Raio) ------------------------------------
+  // polilinhas de segmentos tortos desenhadas como LineSegments aditivos:
+  // é o traço duro de relâmpago que a geometrica lisa não consegue imitar
+  const arcGeo = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const pos = new Float32Array(ARC_CAP * ARC_SEG * 2 * 3);
+    const col = new Float32Array(ARC_CAP * ARC_SEG * 2 * 3);
+    for (let i = 0; i < pos.length; i += 3) {
+      pos[i] = 0;
+      pos[i + 1] = -70;
+      pos[i + 2] = 0;
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3).setUsage(THREE.DynamicDrawUsage));
+    return g;
+  }, []);
+  const arcMat = useMemo(
+    () =>
+      new THREE.LineBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    [],
+  );
+  const arcData = useMemo(
+    () =>
+      Array.from({ length: ARC_CAP }, () => ({
+        ox: 0,
+        oy: 0,
+        oz: 0,
+        dx: 0,
+        dy: 1,
+        dz: 0,
+        len: 1,
+        amp: 0.15,
+        life: 0,
+        max: 0.16,
+        seed: 0,
+        hot: 1,
+        gold: 1,
+      })),
+    [],
+  );
+  const arcCursor = useRef(0);
+  const arcScratch = useMemo(() => ({ a: new THREE.Color('#ffe14d'), b: new THREE.Color('#ffffff') }), []);
+  const arcTmp = useMemo(
+    () => ({ d: new THREE.Vector3(), p: new THREE.Vector3(), perp2: new THREE.Vector3() }),
+    [],
+  );
   // explosões de projétil (bola de fogo do Ignis): gotas de chama que
   // incham e apagam usando o MESMO material de chama da criatura
   const BURST_CAP = 5;
@@ -147,8 +202,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       burstFlame.geo.dispose();
       for (const m of shardRock.mats) m.dispose();
       shardRock.geo.dispose();
+      arcGeo.dispose();
+      arcMat.dispose();
     };
-  }, [burstFlame, shardRock]);
+  }, [burstFlame, shardRock, arcGeo, arcMat]);
   const flameSprites = useRef<THREE.Sprite[]>([]);
   const slowSprites = useRef<THREE.Sprite[]>([]);
   const spriteData = useMemo(
@@ -230,6 +287,66 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       (mesh.material as THREE.MeshBasicMaterial).color.set(color);
       (mesh.material as THREE.MeshBasicMaterial).opacity = 0.95;
       return;
+    }
+  };
+
+  /** arco jagado de relâmpago: origem + direção + comprimento (zigue-zague
+   *  recalculado a cada quadro — o traço FERVE como um estalo elétrico real) */
+  const spawnArc = (
+    o: [number, number, number],
+    dx: number,
+    dy: number,
+    dz: number,
+    len: number,
+    amp: number,
+    life: number,
+    hot = 1,
+    gold = 1,
+  ) => {
+    const idx = arcCursor.current;
+    arcCursor.current = (arcCursor.current + 1) % ARC_CAP;
+    const d = arcData[idx];
+    const dl = Math.hypot(dx, dy, dz) || 1;
+    d.ox = o[0];
+    d.oy = o[1];
+    d.oz = o[2];
+    d.dx = dx / dl;
+    d.dy = dy / dl;
+    d.dz = dz / dl;
+    d.len = len;
+    d.amp = amp;
+    d.life = life;
+    d.max = life;
+    d.seed = Math.random() * 100;
+    d.hot = hot;
+    d.gold = gold;
+  };
+
+  /** dispersão: N mini-arcos saltando em todas as direções de um ponto
+   *  (a corrente do Raio se partindo no alvo — a "bola de pedra" elétrica) */
+  const spawnScatter = (
+    x: number,
+    y: number,
+    z: number,
+    n: number,
+    len: number,
+    amp: number,
+    life: number,
+    hot = 1,
+  ) => {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const vy = Math.random() * 1.4 - 0.35;
+      spawnArc(
+        [x + Math.cos(a) * 0.12, y + (Math.random() - 0.5) * 0.2, z + Math.sin(a) * 0.12],
+        Math.cos(a),
+        vy,
+        Math.sin(a),
+        len * (0.55 + Math.random() * 0.7),
+        amp,
+        life,
+        hot,
+      );
     }
   };
 
@@ -387,6 +504,35 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           break;
         }
         case 'impact': {
+          if (ev.species === 'raio') {
+            // corrente do Raio no alvo: a descarga CHEGA como um arco jagado
+            // (rastro do disparo) e se DISPERSA em mini-relâmpagos para todos
+            // os lados — a assinatura elétrica espelhada no "peso" do golem
+            const lv = Math.max(6, Math.min(10, ev.level ?? 6));
+            const k = 1 + (lv - 6) * 0.1;
+            if (ev.pos2) {
+              const ix = ev.pos2[0] - x;
+              const iy = ev.pos2[1] - y;
+              const iz = ev.pos2[2] - z;
+              const il = Math.hypot(ix, iy, iz);
+              if (il > 0.4) {
+                spawnArc([ev.pos2[0], ev.pos2[1], ev.pos2[2]], -ix, -iy, -iz, Math.min(il, 1.6), 0.16, 0.13, 1.1);
+              }
+            }
+            spawnScatter(x, y, z, 4 + Math.round(lv * 0.6), 0.55 * k, 0.14, 0.16, 1.15);
+            spawnParticles(x, y, z, '#ffe14d', 10 + lv, 3.2, 0.4, -1.6, 1.2); // faíscas douradas subindo
+            spawnParticles(x, y, z, '#ffffff', 5 + Math.round(lv * 0.4), 2.2, 0.25, 0.4); // estalos brancos
+            spawnParticles(x, y - 0.2, z, '#9fd7ff', 4 + lv, 1.8, 0.4, 1.2, 0.4); // luz de ozônio
+            spawnRing(x, 0.1, z, '#ffe14d', 1.5 + 0.16 * lv);
+            spawnRing(x, y * 0.55, z, '#fff3b0', 0.8 + 0.1 * lv);
+            spawnSmoke(x, y, z, 2 + Math.round(lv * 0.3), {
+              size: 0.06,
+              heat: 0.02,
+              life: 0.6,
+              speed: 1.6,
+            });
+            break;
+          }
           // estouro do projétil no alvo: faíscas + anel; bola de fogo do
           // Ignis ganha a explosão de chama (mesmo material da criatura)
           spawnParticles(x, y, z, glowColor(ev.element), 8, 2.4, 0.45, 1.2, 0.8);
@@ -578,8 +724,20 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         }
         case 'chain': {
           if (ev.pos2) {
-            spawnBolt(ev.pos, ev.pos2, glowColor(ev.element) || '#aef2ff');
-            spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], glowColor(ev.element), 6, 1.4, 0.4, 1);
+            if (ev.species === 'raio') {
+              // respingo da corrente: salto em ARCO JAGADO dourado (o fio
+              // duro de relâmpago), não o cilindro claro das outras trovoadas
+              const ax = ev.pos2[0] - x;
+              const ay = ev.pos2[1] + 0.7 - (y + 0.7);
+              const az = ev.pos2[2] - z;
+              const al = Math.hypot(ax, ay, az);
+              spawnArc([x, y + 0.6, z], ax, ay, az, Math.max(0.5, Math.min(al, 6)), 0.2, 0.16, 1.15);
+              spawnScatter(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 3, 0.4, 0.12, 0.13, 1.0);
+              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], '#ffe14d', 6, 1.6, 0.35, -1);
+            } else {
+              spawnBolt(ev.pos, ev.pos2, glowColor(ev.element) || '#aef2ff');
+              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], glowColor(ev.element), 6, 1.4, 0.4, 1);
+            }
           }
           break;
         }
@@ -660,6 +818,61 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       } else {
         (mesh.material as THREE.MeshBasicMaterial).opacity = 0;
       }
+    }
+
+    // arcos jagados da trovoada (Raio): o zigue-zague é redesenhado TODO
+    // quadro (ferve) enquanto vivo; a cor escurece do branco-hot para o ouro
+    const hashOff = (seed: number, s: number, tt: number) =>
+      0.55 * Math.sin(seed * 9 + s * 12.9898 + Math.floor(tt * 16) * 3.77) +
+      0.45 * Math.sin(seed + s * 5.1 + tt * 34);
+    let arcDirty = false;
+    const arcPos = arcGeo.getAttribute('position') as THREE.BufferAttribute;
+    const arcCol = arcGeo.getAttribute('color') as THREE.BufferAttribute;
+    for (let i = 0; i < ARC_CAP; i++) {
+      const d = arcData[i];
+      if (d.life <= 0) continue;
+      d.life -= dt;
+      if (d.life <= 0) continue; // o último quadro apaga e a linha some
+      arcDirty = true;
+      const t = 1 - d.life / d.max;
+      const fade = 1 - t * t;
+      const flick = 0.55 + 0.45 * Math.sin(clockT * 73 + d.seed * 13 + i * 2.1);
+      const k = fade * (0.55 + 0.45 * flick);
+      arcScratch.a.setRGB(1.0 * d.gold, 0.72 * d.gold, 0.18 * d.gold);
+      arcScratch.b.setRGB(1.0, 0.97, 0.85);
+      arcScratch.b.multiplyScalar(d.hot);
+      arcTmp.d.set(d.dx, d.dy, d.dz);
+      // base perpendicular estável no tempo de vida (o traço não "dança" a
+      // direção inteira, só ferve em cima dela)
+      arcTmp.p.set(0, 1, 0).cross(arcTmp.d);
+      if (arcTmp.p.lengthSq() < 1e-4) arcTmp.p.set(1, 0, 0).cross(arcTmp.d);
+      arcTmp.p.normalize();
+      arcTmp.perp2.crossVectors(arcTmp.d, arcTmp.p);
+      const ampNow = d.amp * (0.8 + 0.35 * flick);
+      for (let s = 0; s <= ARC_SEG; s++) {
+        const t0 = s / ARC_SEG;
+        const shape = Math.sin(t0 * Math.PI); // pontas fixas, meio torto
+        const off = hashOff(d.seed, s, clockT) * ampNow * shape;
+        const px = d.ox + arcTmp.d.x * t0 * d.len + arcTmp.p.x * off + arcTmp.perp2.x * off * 0.6;
+        const py = d.oy + arcTmp.d.y * t0 * d.len + arcTmp.p.y * off + arcTmp.perp2.y * off * 0.6;
+        const pz = d.oz + arcTmp.d.z * t0 * d.len + arcTmp.p.z * off + arcTmp.perp2.z * off * 0.6;
+        if (s > 0) {
+          const wA = (i * ARC_SEG * 2 + (s - 1) * 2 + 1) * 3; // vertex do fim do traço anterior (mesma posição)
+          arcPos.setXYZ(wA / 3, px, py, pz);
+          const wB = (i * ARC_SEG * 2 + s * 2) * 3;
+          arcPos.setXYZ(wB / 3, px, py, pz);
+          const heat = (0.25 + 0.75 * shape) * k;
+          const cr = arcScratch.a.r + (arcScratch.b.r - arcScratch.a.r) * heat;
+          const cg = arcScratch.a.g + (arcScratch.b.g - arcScratch.a.g) * heat;
+          const cb = arcScratch.a.b + (arcScratch.b.b - arcScratch.a.b) * heat;
+          arcCol.setXYZ(wA / 3, cr, cg, cb);
+          arcCol.setXYZ(wB / 3, cr, cg, cb);
+        }
+      }
+    }
+    if (arcDirty) {
+      arcPos.needsUpdate = true;
+      arcCol.needsUpdate = true;
     }
 
     // explosões de bola de fogo (chama que incha e some)
@@ -821,6 +1034,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           />
         </mesh>
       ))}
+
+      {/* arcos jagados da trovoada (Raio): LineSegments aditivos com zigue-
+          zague recalculado por quadro; invisíveis até o primeiro estalo */}
+      <lineSegments geometry={arcGeo} material={arcMat} frustumCulled={false} />
 
       {Array.from({ length: BURST_CAP }, (_, i) => (
         <mesh

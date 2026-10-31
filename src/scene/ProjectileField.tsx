@@ -8,6 +8,7 @@ import { makeFlameMaterial } from './flameShaders';
 import { makeStoneMaterial } from './stoneShaders';
 import { makeWaterMaterial } from './waterShaders';
 import { makeWindMaterial } from './windShaders';
+import { makeArcMaterial, makeCoreMaterial } from './lightningShaders';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -74,6 +75,10 @@ const dir = new THREE.Vector3();
  *    cambalhota no ar;
  *  - Zéfiro: anel de vento do material do vendaval, alinhado à velocidade;
  *  - Nereia: lança em gota d'água (ponta para frente).
+ *  - Raio (Nv.6, árvore): a CORRENTE elétrica — fio aditivo zigue-zague do
+ *    material de arco da criatura alinhado à velocidade, com o núcleo de
+ *    plasma dourado na cabeça (os dois clonam sozinhos nos respingos de
+ *    corrente, virando mini-relâmpagos).
  * Híbridos e o resto usam as silhuetas básicas instanciadas por elemento,
  * com cor por espécie (instanceColor). Todo projétil ganha um halo billboard
  * que cresce com o nível.
@@ -84,6 +89,8 @@ export function ProjectileField() {
   const rockRef = useRef<THREE.InstancedMesh | null>(null);
   const bladeRef = useRef<THREE.InstancedMesh | null>(null);
   const dropRef = useRef<THREE.InstancedMesh | null>(null);
+  const boltRef = useRef<THREE.InstancedMesh | null>(null);
+  const boltCoreRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -174,14 +181,44 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const bolt = useMemo(() => {
+    // geometrias DA CACHE compartilhada não servem: precisam do aSeed por
+    // instância (fase do traço), então clonamos as formas base
+    const geo = new THREE.CylinderGeometry(0.07, 0.05, 0.8, 6, 1, true);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeArcMaterial({
+      gold: '#ffb31f',
+      white: '#fff3b0',
+      jitter: 1.2, // zigue-zague de ±~8cm no fio de 14cm de diâmetro
+      dash: 26, // traços curtos correndo ao longo da corrente
+      flow: 9,
+      seed: 6.2,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const boltCore = useMemo(() => {
+    const geo = new THREE.IcosahedronGeometry(0.13, 1);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: '#ffcf4d',
+      white: '#fff8d6',
+      amp: 0.045,
+      seed: 2.9,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop]);
+  }, [flame, rock, blade, drop, bolt, boltCore]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -193,12 +230,15 @@ export function ProjectileField() {
     let rockN = 0;
     let bladeN = 0;
     let dropN = 0;
+    let boltN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
     rock.mat.uniforms.uTime.value = time;
     blade.mat.uniforms.uTime.value = time;
     drop.mat.uniforms.uTime.value = time;
+    bolt.mat.uniforms.uTime.value = time;
+    boltCore.mat.uniforms.uTime.value = time;
 
     if (world) {
       for (const p of world.projectiles) {
@@ -216,6 +256,7 @@ export function ProjectileField() {
         const isRock = el === 'earth' && p.species === 'golem';
         const isBlade = el === 'air' && p.species === 'zephyr';
         const isDrop = el === 'water' && p.species === 'nereia';
+        const isBolt = p.species === 'raio';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -292,6 +333,33 @@ export function ProjectileField() {
             haloScale = scale * 1.8;
             signature = true;
           }
+        } else if (isBolt) {
+          // CORRENTE elétrica do Raio: o fio de arco (cilindro casca aberto)
+          // esticado ao longo da velocidade — é um segimento de relâmpago
+          // zigue-zague com traços correndo, não uma bolinha
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            dummy.quaternion.copy(tmpQuat);
+          }
+          if (boltN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.3 + p.age / 0.1); // estica ao disparar
+            const scale = (0.8 + 0.14 * (lv - 6)) * launch;
+            dummy.scale.set(scale, scale * (1.1 + Math.min(1, p.age * 3) * 0.5), scale);
+            dummy.updateMatrix();
+            boltRef.current?.setMatrixAt(boltN, dummy.matrix);
+            bolt.seeds.setX(boltN, ((p.id * 61) % 83) / 7.1);
+            // núcleo de plasma dourado na cabeça da corrente
+            dummy.quaternion.identity();
+            dummy.scale.setScalar(scale * (0.9 + 0.12 * (lv - 6)));
+            dummy.updateMatrix();
+            boltCoreRef.current?.setMatrixAt(boltN, dummy.matrix);
+            boltCore.seeds.setX(boltN, ((p.id * 17) % 71) / 5.9);
+            boltN++;
+            haloScale = scale * 1.9;
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -346,6 +414,8 @@ export function ProjectileField() {
       [rockRef.current, rockN, rock.seeds],
       [bladeRef.current, bladeN, blade.seeds],
       [dropRef.current, dropN, drop.seeds],
+      [boltRef.current, boltN, bolt.seeds],
+      [boltCoreRef.current, boltN, boltCore.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -415,6 +485,22 @@ export function ProjectileField() {
           dropRef.current = m;
         }}
         args={[drop.geo, drop.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Raio: o MESMO arco elétrico da criatura — a corrente em voo */}
+      <instancedMesh
+        ref={(m) => {
+          boltRef.current = m;
+        }}
+        args={[bolt.geo, bolt.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Raio: núcleo de plasma dourado na cabeça da corrente */}
+      <instancedMesh
+        ref={(m) => {
+          boltCoreRef.current = m;
+        }}
+        args={[boltCore.geo, boltCore.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>
