@@ -690,22 +690,40 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
   },
 
   // Água+Terra — ancião das raízes: titã de tronco vivo que se regenera --
+  // referência: gávea de tronco com ASAS DE CRISTAL esmeralda, uma esmeralda
+  // grande na barriga, esmeraldas nos ombros/testa e cacho de olhinhos
   madeira: {
     bob: 0.04,
     parts: [
       { g: 'sphere', a: [0.72, 12, 10], p: [0, 0.72, 0], s: [1.1, 0.92, 1.05], m: 'body' },
+      // esmeralda-mãe embutida na barriga (o peito da referência)
+      { g: 'octa', a: [0.3], p: [0, 0.95, 0.58], s: [0.6, 1.5, 0.62], m: 'glow', flick: 0.05 },
       { g: 'cyl', a: [0.3, 0.42, 1.5, 9], p: [0, 1.55, 0], m: 'body' },
       { g: 'sphere', a: [0.36, 10, 8], p: [0, 2.4, 0], m: 'dark' },
-      ...mm({ g: 'cone', a: [0.16, 0.5, 5], p: [0.42, 0.24, 0.28], r: [0.7, 0, 0.55], m: 'dark' }),
-      { g: 'cone', a: [0.16, 0.5, 5], p: [0, 0.24, -0.5], r: [-2.5, 0, 0], m: 'dark' },
+      // raízes-pés (a ponta mergulha no piso: raised de 0.24 para o casco
+      // rotacionado não atravessar o chão — invólucro amarrado nos testes)
+      ...mm({ g: 'cone', a: [0.16, 0.5, 5], p: [0.42, 0.29, 0.28], r: [0.7, 0, 0.55], m: 'dark' }),
+      { g: 'cone', a: [0.16, 0.5, 5], p: [0, 0.29, -0.5], r: [-2.5, 0, 0], m: 'dark' },
+      // braços de galho (o rig anima no arremesso da semente)
       ...mm({ g: 'cone', a: [0.13, 0.62, 5], p: [0.52, 1.5, -0.05], r: [0, 0, -1.35], m: 'body', tag: 'arm' }),
       ...mm({ g: 'sphere', a: [0.14, 8, 6], p: [0.66, 1.1, 0.05], m: 'dark' }),
+      // esmeraldas nos ombros (as joias redondas da referência)
+      ...mm({ g: 'octa', a: [0.11], p: [0.6, 1.2, 0.08], s: [1, 1.3, 1], m: 'glow', flick: 0.06 }),
       ...mm(SEYE(0.14, 2.44, 0.3)),
       ...mm(SPUPIL(0.14, 2.44, 0.3)),
+      // chifres de galho na copa
       ...mm({ g: 'cone', a: [0.07, 0.4, 5], p: [0.12, 2.78, 0], r: [0, 0, -0.35], m: 'accent' }),
       { g: 'cone', a: [0.06, 0.32, 5], p: [-0.14, 2.72, 0.05], r: [0, 0, 0.5], m: 'accent' },
+      // joia da testa (a gema roxa da referência, na nossa leitura) + o
+      // cacho de olhinhos de esmeralda ao redor
+      { g: 'octa', a: [0.09], p: [0, 2.62, 0.26], r: [0.35, 0, 0], m: 'glow', flick: 0.08 },
       { g: 'sphere', a: [0.1, 8, 6], p: [-0.3, 2.5, 0.25], m: 'glow' },
       { g: 'sphere', a: [0.09, 8, 6], p: [0.34, 2.44, -0.22], m: 'glow' },
+      // ASAS leque de cristal esmeralda nas costas (as da referência): dois
+      // frouxos por lado, dobrados para cima/back
+      ...mm({ g: 'octa', a: [0.5], p: [0.5, 1.98, -0.34], r: [0.12, 0.35, 1.02], s: [0.1, 1.5, 0.82], m: 'glow', tag: 'wing' }),
+      ...mm({ g: 'octa', a: [0.34], p: [0.78, 1.62, -0.3], r: [0.12, 0.6, 1.25], s: [0.08, 1.35, 0.66], m: 'glow', tag: 'wing' }),
+      // colar de raiz no pescoço
       { g: 'torus', a: [0.55, 0.06, 6, 22], p: [0, 0.5, 0], r: [1.57, 0, 0], m: 'accent' },
     ],
   },

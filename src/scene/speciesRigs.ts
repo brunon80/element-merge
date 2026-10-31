@@ -5,6 +5,7 @@ import { WindRig } from './WindRig';
 import { StoneRig } from './StoneRig';
 import { WaterRig } from './WaterRig';
 import { LightningRig } from './LightningRig';
+import { WoodRig } from './WoodRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -23,9 +24,10 @@ export interface SpeciesRigProps {
 /**
  * Rigs especiais por elemento/espécie — substituem o rig genérico de peças
  * procedurais quando existirem. Os quatro elementos puros têm rig e progressão
- * própria (fogo, ar, terra e água); da árvore elemental, o Raio já tem rig de
- * shader próprio (trovoada); as demais espécies da árvore ainda usam o rig
- * padrão: a busca é por espécie e o fallback é o rig padrão.
+ * própria (fogo, ar, terra e água); da árvore elemental, Raio (rig elétrico)
+ * e Madeira (rig de tronco/esmeralda no padrão do golem) já têm figurino
+ * próprio; as demais espécies da árvore ainda usam o rig padrão: a busca é
+ * por espécie e o fallback é o rig padrão.
  */
 export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigProps>>> = {
   ignis: FlameRig,
@@ -33,4 +35,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   golem: StoneRig,
   nereia: WaterRig,
   raio: LightningRig,
+  madeira: WoodRig,
 };

@@ -96,6 +96,46 @@
 > - Testes novos: `lightningProgression.test.ts` (rig registrado, materiais
 >   constroem em jsdom com blending/instancing certos, invólucro do modelo,
 >   `pos2`/`species`/`level` nos eventos de FX). Total: **164 testes**.
+> - Ajuste fino posterior (feito direto no editor pelo autor): aura starburst
+>   sólida e sóbria ao redor do núcleo, clarões bem menores e núcleo de plasma
+>   NÃO-aditivo (transparent normal com orla azul discreta) — a legibilidade
+>   mandando em tudo.
+>
+> ## ⚡ ATUALIZAÇÃO — Madeira com rig de tronco no PADRÃO DO GOLÉM (sessão atual)
+>
+> Segundo elemento da árvore com figurino próprio (referência do usuário:
+> tronco com asas-leque de cristal esmeralda, joias no peito/ombros/testa).
+> Pedido explícito: seguir o padrão do golem (corpo opaco, peso físico,
+> estilhaços), NÃO o padrão elétrico do Raio:
+>
+> - **`scene/woodShaders.ts`** — análogo lenhoso do stoneShaders: casca OPACA
+>   (ARENA_LIGHT fake + aro da equipe), sulcos VERTICAIS de casca (ruído
+>   esticado em Y), musgo nas encimadas, resina âmbar e **veios de seiva
+>   esmeralda** que pulsam com a regeneração (`uSap`) e acendem na carga
+>   (`uCharge`) — as "fissuras de magma" da madeira. Instanciado via aSeed.
+> - **`scene/WoodRig.tsx`** (`SPECIES_RIGS.madeira`): materiais de gema
+>   esmeralda (opacos, flat shading; asas-leque levemente translúcidas) que
+>   pulsam com o succo da árvore; esporos/folhas caindo em flutter (points,
+>   elipse de folha — não o losango de pedra); pose de ataque "catapulta de
+>   seiva" igual ao soco do golem (agacha/torce/destorce, galhos com tag
+>   'arm' varrem, nuvem de esporos nos pés via smoke pool); clarão sóbrio na
+>   esmeralda da barriga; joias com flick de respiração; asas levantam na carga.
+> - **Modelo (`MODELS.madeira`)**: +9 peças — esmeralda-mãe na barriga, joia
+>   da testa, esmeraldas nos ombros, 4 cristais de asa com tag 'wing'; raízes
+>   -pés levantadas 5cm (o casco rotacionado afundava sob o piso — agora o
+>   invólucro da espécie é amarrado por teste como o dos puros).
+> - **Projétil-assinatura:** `ProjectileField.isSeed` — semente dodecaédrica
+>   de casca com seiva acesa, cambalhota pesada no ar (o MESMO shader da
+>   criatura, igual ao matacão do golem).
+> - **FX de impacto (`Effects.tsx`):** pool de estilhaços dividido por *kind*
+>   (`rock`/`wood`): os 4 meshes do pool trocam de geometria/material conforme
+>   quem disparou — a Madeira cospe **brotos de casca com seiva** ('sprout');
+>   branch `madeira`: partículas de folha/casca/pó de esmeralda, anel de musgo
+>   + anel esmeralda interno e esporos (fumaça fria).
+> - Testes novos: `woodProgression.test.ts` (6): rig registrado, joias/asas no
+>   modelo, invólucro (asas quase atravessam o tile mas cabem), material de
+>   casca opaco/instanciado, FX do impacto com espécie/nível/origem, regen do
+>   ancião o mantém de pé. Total: **170 testes**.
 > - Próximo passo natural: replicar o padrão para os demais Nv.6–10
 >   (madeira/magma/gelo/vapor/areia primeiro), e o pool de arcos já serve
 >   para tempestade/astral etc.

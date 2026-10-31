@@ -9,6 +9,7 @@ import { makeStoneMaterial } from './stoneShaders';
 import { makeWaterMaterial } from './waterShaders';
 import { makeWindMaterial } from './windShaders';
 import { makeArcMaterial, makeCoreMaterial } from './lightningShaders';
+import { makeWoodMaterial } from './woodShaders';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -79,6 +80,8 @@ const dir = new THREE.Vector3();
  *    material de arco da criatura alinhado à velocidade, com o núcleo de
  *    plasma dourado na cabeça (os dois clonam sozinhos nos respingos de
  *    corrente, virando mini-relâmpagos).
+ *  - Madeira (Nv.6, árvore): a SEMENTE — matacão de casca com seiva esmeralda
+ *    acesa, cambalhoteando no ar (o MESMO shader da criatura, padrão golem).
  * Híbridos e o resto usam as silhuetas básicas instanciadas por elemento,
  * com cor por espécie (instanceColor). Todo projétil ganha um halo billboard
  * que cresce com o nível.
@@ -91,6 +94,7 @@ export function ProjectileField() {
   const dropRef = useRef<THREE.InstancedMesh | null>(null);
   const boltRef = useRef<THREE.InstancedMesh | null>(null);
   const boltCoreRef = useRef<THREE.InstancedMesh | null>(null);
+  const seedRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -214,14 +218,34 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const seedPod = useMemo(() => {
+    // semente do ancião: matacão de casca com seiva esmeralda acesa (o MESMO
+    // shader da criatura — igual ao matacão de pedra do golem)
+    const geo = new THREE.DodecahedronGeometry(0.18);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeWoodMaterial({
+      barkA: '#8a6a3f',
+      barkB: '#3c2c1a',
+      moss: '#5f8f4f',
+      sap: '#3ee27f',
+      amp: 0.05,
+      sapGlow: 1.6,
+      speck: 0.8,
+      seed: 9.1,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -234,6 +258,7 @@ export function ProjectileField() {
     let bladeN = 0;
     let dropN = 0;
     let boltN = 0;
+    let seedN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -242,6 +267,8 @@ export function ProjectileField() {
     drop.mat.uniforms.uTime.value = time;
     bolt.mat.uniforms.uTime.value = time;
     boltCore.mat.uniforms.uTime.value = time;
+    seedPod.mat.uniforms.uTime.value = time;
+    seedPod.mat.uniforms.uSap.value = 0.6 + 0.2 * Math.sin(time * 2.4);
 
     if (world) {
       for (const p of world.projectiles) {
@@ -260,6 +287,7 @@ export function ProjectileField() {
         const isBlade = el === 'air' && p.species === 'zephyr';
         const isDrop = el === 'water' && p.species === 'nereia';
         const isBolt = p.species === 'raio';
+        const isSeed = p.species === 'madeira';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -363,6 +391,20 @@ export function ProjectileField() {
             haloScale = scale * 1.4;
             signature = true;
           }
+        } else if (isSeed) {
+          // semente do ancião: cambalhota pesada no ar (o mesmo porte do
+          // matacão do golem), casca rachada de seiva esmeralda acesa
+          dummy.rotation.set(time * 2.6 + p.id, time * 1.9, time * 1.1 + p.id * 0.7);
+          if (seedN < MAX_PER_ELEMENT) {
+            const scale = 0.9 + 0.1 * (lv - 6);
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            seedRef.current?.setMatrixAt(seedN, dummy.matrix);
+            seedPod.seeds.setX(seedN, ((p.id * 59) % 83) / 6.7);
+            seedN++;
+            haloScale = scale * 1.6;
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -419,6 +461,7 @@ export function ProjectileField() {
       [dropRef.current, dropN, drop.seeds],
       [boltRef.current, boltN, bolt.seeds],
       [boltCoreRef.current, boltN, boltCore.seeds],
+      [seedRef.current, seedN, seedPod.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -504,6 +547,14 @@ export function ProjectileField() {
           boltCoreRef.current = m;
         }}
         args={[boltCore.geo, boltCore.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Madeira: a MESMA casca com seiva da criatura — semente cambalhota */}
+      <instancedMesh
+        ref={(m) => {
+          seedRef.current = m;
+        }}
+        args={[seedPod.geo, seedPod.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>
