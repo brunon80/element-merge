@@ -212,6 +212,31 @@
 > - Testes novos: `iceProgression.test.ts` (6) + conserto do comentário
 >   quebrado em `magmaProgression.test.ts` no commit anterior. Total: **182
 >   testes**.
+>
+> ### ❄️ ATUALIZAÇÃO 2 — reflexo DE VERDADE no Gelo (receitas externas adaptadas)
+>
+> Dois trechos que o usuário trouxe foram ADAPTADOS (não copiados) ao nosso
+> shader:
+>
+> - Tutorial GLSL de gelo: o `normalMap` virou **micro-relevo procedural** —
+>   gradiente de ruído perturba a normal (passo pequeno no espaço do ruído +
+>   fator discreto 0.9×uBump = vidro liso, NÃO gelo jateado), o `reflectDir.y`
+>   virou mini-arena fake (céu/piso/holofotes da equipe/streak de janelas) e o
+>   spec exp128 virou `uReflPow` (110 corpo, 130 estaca, 120 cacos). O difuso
+>   hemisférico+key da arena foi MANTIDO (sem ele o cristal chapava).
+> - Receita three `envMap: scene.background` + `MixOperation` + reflectivity
+>   .5 (SO 59530709): como nosso background é cor sólida, o envMap captura a
+>   ARENA — **`scene/envProbe.ts`**: CubeCamera 128px, **um tiro one-shot por
+>   contexto WebGL** (recapturar = feedback inválido de sampler no RT em
+>   render; arena é estática), quem dispara se esconde no tiro, placeholder
+>   2px até plugar. No frag: `textureCube(uEnv, refl)` mixado a `uEnvMix`
+>   (corpo 0.5 / estaca e cacos 0.6 — o "reflectivity" da receita) SOBRE o
+>   fake (beirada nunca escura = legibilidade). `plugArenaEnv` espalha a
+>   textura p/ estaca (ProjectileField) e cacos (Effects).
+> - Calibração: `env` (peso do reflexo real) e `bump` em `ICE_ROLE_LOOK`;
+>   `envMix` nos materiais de estaca/cacos; peso do fresnel `fres * 0.62` no
+>   mix de ambiente.
+> - Sem testes novos (regra da fase: primeiro a aparência); total segue 182.
 > - Próximo passo natural: replicar o padrão para os demais Nv.6–10
 >   (vapor/areia primeiro), e o pool de arcos já serve
 >   para tempestade/astral etc.

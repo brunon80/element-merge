@@ -10,6 +10,7 @@ import { makeWaterMaterial } from './waterShaders';
 import { makeWindMaterial } from './windShaders';
 import { makeArcMaterial, makeCoreMaterial } from './lightningShaders';
 import { makeWoodMaterial } from './woodShaders';
+import { plugArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
 
 const MAX_PER_ELEMENT = 56;
@@ -303,6 +304,9 @@ export function ProjectileField() {
       crackScale: 1.6,
       crackWidth: 0.024,
       alpha: 0.85,
+      bump: 1.2, // girando em voo, o reflexo e o spec dançam nas facetas
+      reflPow: 130,
+      envMix: 0.6, // espelho que quebra a luz da arena em pleno voo
       sparkle: 1.3,
       seed: 7.2,
       breath: 0.4,
@@ -348,6 +352,9 @@ export function ProjectileField() {
     lavaBoulder.mat.uniforms.uCharge.value = 0.8 + 0.2 * Math.sin(time * 3.1);
     lavaHeart.mat.uniforms.uTime.value = time;
     iceSpike.mat.uniforms.uTime.value = time;
+    // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
+    // IceRig; idempotente e barato — teste de identidade ignora o resto)
+    plugArenaEnv(state.gl, [iceSpike.mat]);
     // a estaca voa "carregada": as trincas internas ficam acesas
     iceSpike.mat.uniforms.uCharge.value = 0.55 + 0.25 * Math.sin(time * 4.2);
 

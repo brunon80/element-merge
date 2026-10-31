@@ -1,8 +1,9 @@
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { getEngine } from '../store/gameStore';
+import { arenaEnvTexture, captureArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
 import { TEAM_TINT } from './stoneShaders';
 import { circleTexture, getGeometry } from './assets';
@@ -18,8 +19,9 @@ import { getSpecies } from '../data/monsters';
  *
  *  1. CRISTAL DE GLACIAR: corpo quase branco com veios de fratura internos
  *     que pulsam devagar e ACENDEM quando ele carrega a estaca — o análogo
- *     gelado das fissuras de magma do golem; reflexo fake da arena varrendo
- *     as facetas (o "brilho de cristal" sem cubemap nem aditivo);
+ *     gelado das fissuras de magma do golem; reflexo REAL da arena (o rig
+ *     captura a cena num cubemap 128px uma vez — envProbe — e o cristal
+ *     espelha o tabuleiro/arquibancada nas facetas);
  *  2. NEVE — parado, ele expele flocos: points de floco de seis braços
  *     caindo em deriva lenta ao redor do corpo (o shader gira cada floco);
  *  3. ATAQUE (arremesso da estaca) — agacha e TORCE, o braço de icicle
@@ -82,6 +84,10 @@ interface IceLook {
   crackWidth: number;
   amp: number;
   alpha: number;
+  bump: number;
+  refl?: number;
+  /** peso do reflexo REAL da arena (receita three: reflectivity ~.5) */
+  env: number;
   sparkle?: number;
 }
 
@@ -101,6 +107,8 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     crackWidth: 0.022,
     amp: 0.04,
     alpha: 0.86,
+    bump: 1.0,
+    env: 0.5,
   },
   dark: {
     iceA: '#cfe0ec',
@@ -111,6 +119,8 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     crackWidth: 0.024,
     amp: 0.045,
     alpha: 0.92,
+    bump: 1.1,
+    env: 0.4,
   },
   glow: {
     iceA: '#ffffff',
@@ -121,6 +131,9 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     crackWidth: 0.02,
     amp: 0.028,
     alpha: 0.8,
+    bump: 0.8,
+    refl: 130,
+    env: 0.35, // peça já quase branca: reflexo real só quebra o chapado
     sparkle: 1.4,
   },
   accent: {
@@ -132,6 +145,8 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     crackWidth: 0.022,
     amp: 0.03,
     alpha: 0.78,
+    bump: 0.9,
+    env: 0.5,
   },
   trans: {
     iceA: '#bfe0f6',
@@ -142,6 +157,8 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
     crackWidth: 0.02,
     amp: 0.012,
     alpha: 0.3,
+    bump: 0.5,
+    env: 0.25,
     sparkle: 0.4,
   },
 };
@@ -174,6 +191,7 @@ export interface IceRigProps {
 }
 
 const tmpWorld = new THREE.Vector3();
+const envAt = new THREE.Vector3();
 
 export function IceRig({
   seed,
@@ -200,6 +218,9 @@ export function IceRig({
   const clock = useRef(0);
   const demoT = useRef(-1);
   const strikeDone = useRef(true);
+  const envShot = useRef(false);
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
 
   const visParts = useMemo(() => partsForLevel(modelDef, level), [modelDef, level]);
 
@@ -253,6 +274,9 @@ export function IceRig({
           crackScale: look.crackScale,
           crackWidth: look.crackWidth,
           alpha: look.alpha,
+          bump: look.bump,
+          reflPow: look.refl,
+          envMix: look.env,
           sparkle: look.sparkle ?? 1,
           seed: seed + (i % 3) * 3.3,
           breath: p.tag === 'arm' || p.tag === 'spike' ? 0.35 : 1,
@@ -390,6 +414,27 @@ export function IceRig({
     flakes.mat.uniforms.uTime.value = t;
     flakes.mat.uniforms.uAlpha.value = alpha;
     flakes.mat.uniforms.uCharge.value = pose.charge;
+
+    // reflexo REAL (a receita do SO adaptada: envMap + MixOperation +
+    // reflectivity .5 — como o nosso background é cor sólida, o envMap é a
+    // ARENA capturada): o primeiro Gelo a aparecer tira um cubemap 128px da
+    // cena uma única vez (6 draws, um probe por contexto WebGL — estaca e
+    // cacos plugam a mesma textura). No tiro a própria unidade fica
+    // escondida: unidade capturada do próprio centro sai embaçada "refletindo
+    // a si mesma" no cubemap
+    if (!envShot.current) {
+      envShot.current = true;
+      let envTex = arenaEnvTexture(gl);
+      if (!envTex) {
+        const root = rootRef.current;
+        root.visible = false; // tiro limpo: nada de blob próprio no cubemap
+        root.updateWorldMatrix(true, false);
+        envAt.set(0, 1.55, 0).applyMatrix4(root.matrixWorld);
+        envTex = captureArenaEnv(gl, scene, envAt);
+        root.visible = true;
+      }
+      for (const w of partMats.ices) w.uniforms.uEnv.value = envTex;
+    }
 
     // clarão sóbrio no peito de gelo (nunca aditivo forte — legibilidade)
     const core = coreGlowRef.current;

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { NOISE_GLSL } from './flameShaders';
+import { blackCubeTexture } from './envProbe';
 import { ARENA_LIGHT, TEAM_TINT } from './stoneShaders';
 
 /**
@@ -12,9 +13,15 @@ import { ARENA_LIGHT, TEAM_TINT } from './stoneShaders';
  *    azuladas de densidade no miolo (glaciar) e veios de fratura INTERNOS —
  *    trinca fina de gelo que brilha por dentro (uCharge acende na carga do
  *    disparo, igual às fissuras da pedra/madeira);
- *  - reflexo fake do ambiente: specular apertado da key + reflexo do "teto"
- *    da arena varrendo com o fresnel (quanto mais de lado, mais espelhado) —
- *    é isso que dá o brilho reflexivo de cristal sem cubemap;
+ *  - reflexo do ambiente (adaptado de um tutorial de gelo em GLSL + da
+ *    receita three `envMap`/MixOperation/reflectivity .5): a amostragem de
+ *    "cubemap" é REAL — um cubemap 128px da arena capturado uma vez pelo
+ *    envProbe e mixado a uEnvMix (o "reflectivity" da receita) — e atrás
+ *    dele fica uma mini-arena procedural (céu/piso/holofotes da equipe) p/
+ *    a beirada nunca ficar escura; a normal map virou micro-relevo
+ *    procedural (passo pequeno no ruído = vidro liso, não gelo jateado) que
+ *    perturba a normal e faz o brilho DANÇAR na superfície; specular
+ *    apertado estilo exp128; fresnel^3);
  *  - translucidez física: face frontal, alpha alto (~0.85), depthWrite LIGADO
  *    — o cristal se autobreia e embacia o que passa por dentro (depthTest
  *    contra si mesmo), sem o blowout do aditivo;
@@ -79,13 +86,33 @@ uniform float uCharge;   // carregando o disparo: as trincas acendem por dentro
 uniform float uHurt;
 uniform float uSparkle;
 uniform float uAlpha;
+uniform float uBump;     // micro-relevo procedural (equivale ao normal map do
+                         // tutorial: perturba a normal e faz o reflexo dançar)
+uniform float uReflPow;  // aperto do specular (cristal = brilho bem pontual)
+uniform samplerCube uEnv; // cubemap real da arena (tiro único via envProbe)
+uniform float uEnvMix;   // peso do reflexo real (o reflectivity ~.5 da receita)
 varying vec3 vNrm;
 varying vec3 vView;
 varying vec3 vLocal;
 ${NOISE_GLSL}
 void main() {
-  vec3 n = normalize(vNrm);
+  vec3 n0 = normalize(vNrm);
   vec3 vd = normalize(vView);
+
+  // 1. Normal perturbada (a ideia do normal map do tutorial, sem textura):
+  // gradiente aproximado de ruído inclina a normal em POUCOS graus — a
+  // diferença foi tomada com passo pequeno no espaço do RUÍDO (0.12 da
+  // célula) e o fator é discreto (0.9): relevo demais viria gelo jateado /
+  // fosco (reflexo borrado), e o pedido é cristal liso de vidro. A normal
+  // perturbada afeta TODAS as camadas abaixo (key, spec, reflexo, fresnel),
+  // então o brilho corre pela superfície quando o cristal gira
+  float fx = fnoise(vLocal * 9.0 + 3.1);
+  float bx = fnoise(vLocal * 9.0 + vec3(0.12, 0.0, 0.0) + 3.1);
+  float fz = fnoise(vLocal * 9.0 + 8.9);
+  float bz = fnoise(vLocal * 9.0 + vec3(0.0, 0.0, 0.12) + 8.9);
+  vec3 tangY = normalize(cross(n0, vec3(0.0, 1.0, 0.0) + n0 * 0.1));
+  vec3 tangX = cross(n0, tangY);
+  vec3 n = normalize(n0 + (tangX * (bx - fx) + tangY * (bz - fz)) * (0.9 * uBump));
 
   // corpo de glaciar: branco com manchas densas azuladas (o miolo do gelo)
   float dens = fbm(vLocal * 1.6);
@@ -103,32 +130,51 @@ void main() {
   float pulse = 0.55 + 0.2 * sin(uTime * 1.2 + uSeed) + uCharge * 1.6;
   col += uCrackCol * crack * uCrackGlow * pulse;
 
-  // glitter gelado: pontinhos que piscam quando o ângulo bate a key
-  float grit = fnoise(vLocal * 24.0);
-  col += vec3(0.5, 0.62, 0.7) * smoothstep(0.88, 0.99, grit) * uSparkle;
-
-  // hemisfério + key quente da arena (o figurino físico da árvore)
+  // 2+3. Ambiente e fresnel: difuso hemisférico + key quente da arena (o
+  // figurino físico da árvore — sem isso o cristal ficaria chapado)
   float hemi = 0.5 + 0.5 * n.y;
   vec3 amb = mix(uGroundColor, uSkyColor, hemi) + uAmbColor;
   float ndl = max(0.0, dot(n, uKeyDir));
   col *= (amb + uKeyColor * (0.30 + 0.70 * ndl));
 
-  // reflexo fake de ambiente: specular apertado da key (cristal reflete
-  // "janelas" pontuais) + uma faixa do "teto" da arena varrendo com o
-  // fresnel — girar o cristal acende e apaga o brilho, o truque do reflexo
-  vec3 hv = normalize(uKeyDir + vd);
-  col += uKeyColor * pow(max(0.0, dot(n, hv)), 60.0) * 0.42;
+  // 4. Reflexo do ambiente — a "amostragem de cubemap" do tutorial, sem
+  // cubemap: o vetor refletido varre uma mini-arena fake (céu #8fb2ff em
+  // cima, piso escuro embaixo, holofotes laterais na cor da equipe e uma
+  // varredura horizontal de janelas/specs). É o que faz o gelo parecer
+  // espelhado de qualquer ângulo, não só do topo
   vec3 refl = reflect(-vd, n);
-  float ceiling = smoothstep(0.15, 0.85, refl.y);
+  vec3 iceEnv = mix(uGroundColor * 0.7, uSkyColor, smoothstep(-0.25, 0.55, refl.y));
+  float sides = smoothstep(0.30, 0.85, abs(refl.x)) * smoothstep(0.45, 0.0, abs(refl.y));
+  iceEnv += uTeamColor * sides * 0.35;
   float streak = 0.5 + 0.5 * sin(refl.x * 9.0 + refl.z * 7.0 + uSeed);
-  col += uSkyColor * ceiling * (0.25 + 0.75 * streak * streak) * 0.30;
+  iceEnv += uSkyColor * smoothstep(0.1, 0.8, refl.y) * 0.7 * pow(streak, 4.0);
+  // o envMap da receita, agora de verdade: cubemap 128px da ARENA capturado
+  // one-shot pelo envProbe (aqui o background é cor sólida, então captura-se
+  // a arena inteira). O mix usa uEnvMix (o reflectivity ~.5 / MixOperation da
+  // receita): reflexo real do tabuleiro/arquibancada/aliados varrendo as
+  // facetas, e o fake continua na mistura p/ a beirada nunca ficar escura
+  // demais (cristal legível no tabuleiro, a regra da legibilidade)
+  // (.rgb: o shim do three reescreve textureCube→texture, que no GLSL ES
+  // 3.0 devolve vec4 — sem o .rgb o driver barra "vec4 → vec3")
+  vec3 envReal = textureCube(uEnv, refl).rgb;
+  vec3 env = mix(iceEnv, envReal, uEnvMix);
+  float fres = pow(1.0 - max(0.0, dot(n, vd)), 3.0); // rasante espelha quase tudo
+  col = mix(col, env, fres * 0.62);
+  // aro reflexivo na frente (o fresnel do tutorial com a nossa leitura)
+  col += uTeamColor * fres * 0.20;
 
-  // aro reflexivo (fresnel forte: a beirada do cristal espelha a arena)
-  float fres = pow(1.0 - max(0.0, dot(n, vd)), 2.4);
-  col += vec3(0.75, 0.87, 1.0) * fres * 0.55;
-  col += uTeamColor * fres * 0.22;
+  // 5. Especular apertado (o "brilho do gelo" do tutorial, exp 128): key +
+  // um segundo brilho frio dos pontuais da arena, ambos na normal perturbada
+  vec3 hv = normalize(uKeyDir + vd);
+  col += uKeyColor * pow(max(0.0, dot(n, hv)), uReflPow) * 0.5;
+  vec3 hv2 = normalize(normalize(vec3(-0.55, 0.6, 0.58)) + vd);
+  col += uSkyColor * pow(max(0.0, dot(n, hv2)), uReflPow) * 0.22;
+  // glitter gelado: pontinhos piscam mais forte no ângulo rasante (floco de
+  // gelo na borda do cristal pega luz)
+  float grit = fnoise(vLocal * 24.0);
+  col += vec3(0.5, 0.62, 0.7) * smoothstep(0.88, 0.99, grit) * uSparkle * (0.45 + 0.9 * fres);
 
-  // alfa: mais denso de frente, espelhado/beirada opaca (cristal visto de
+  // 6. Alfa: mais denso de frente, espelhado/beirada opaca (cristal visto de
   // lado reflete quase tudo) — embacia o fundo sem virar "fantasma"
   float a = clamp(uAlpha + fres * (1.0 - uAlpha) * 0.9 + crack * 0.25, 0.0, 1.0);
 
@@ -150,6 +196,12 @@ export interface IceMaterialOpts {
   crackWidth?: number;
   sparkle?: number;
   alpha?: number;
+  /** micro-relevo da normal (0 = liso; ~1 = cristais de gelosura dançando no reflexo) */
+  bump?: number;
+  /** expoente do specular (cristal pede brilho bem pontual) */
+  reflPow?: number;
+  /** peso do reflexo REAL capturado da arena (receita: reflectivity ~.5) */
+  envMix?: number;
   seed?: number;
   breath?: number;
   teamColor?: string;
@@ -177,6 +229,12 @@ export function makeIceMaterial(o: IceMaterialOpts): THREE.ShaderMaterial {
       uCrackWidth: { value: o.crackWidth ?? 0.04 },
       uSparkle: { value: o.sparkle ?? 1 },
       uAlpha: { value: o.alpha ?? 0.85 },
+      uBump: { value: o.bump ?? 1 },
+      uReflPow: { value: o.reflPow ?? 110 },
+      // cubemap real da arena (envProbe); placeholder escuro até o tiro da
+      // captura — e o fake procedural continua atrás, dando legibilidade
+      uEnv: { value: blackCubeTexture() },
+      uEnvMix: { value: o.envMix ?? 0.5 },
       uIceA: { value: new THREE.Color(o.iceA) },
       uIceB: { value: new THREE.Color(o.iceB) },
       uCrackCol: { value: new THREE.Color(o.crack) },

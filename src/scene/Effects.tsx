@@ -9,6 +9,7 @@ import { circleTexture, drawPopupText, flameDropGeometry, flameIconTexture, getG
 import { makeFlameMaterial } from './flameShaders';
 import { makeStoneMaterial } from './stoneShaders';
 import { makeWoodMaterial } from './woodShaders';
+import { plugArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
 import type { SmokePool } from './smokePool';
 
@@ -237,6 +238,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         crackScale: 1.5,
         crackWidth: 0.024,
         alpha: 0.8,
+        bump: 1.3, // cacos rodando: cada face pisca no reflexo da arena
+        reflPow: 120,
+        envMix: 0.6, // rodando pelo ar, cada caco espelha a arena (a receita:
+                     // MixOperation com reflectivity ~.5 — aqui 0.6 p/ estilhaço)
         sparkle: 1.2,
         seed: 8.1 + i * 2.4,
         breath: 0.4,
@@ -1030,6 +1035,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       }
     }
 
+    // os cacos de gelo leem o MESMO cubemap da arena (captura one-shot do
+    // IceRig) — plug idempotente e barato
+    plugArenaEnv(state.gl, shardIce.mats);
     // estilhaços de pedra do impacto do Gólem: saem disparados para os lados,
     // a gravidade os puxa para o chão (quicam), cambalhotam e apagam
     // encolhendo — as fissuras de magma acendem no instante do impacto e
