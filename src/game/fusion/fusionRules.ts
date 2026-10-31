@@ -1,27 +1,34 @@
-import { hybridRecipeFor } from '../../data/fusionRecipes';
-import { getSpecies } from '../../data/monsters';
-import type {
-  FusionCheck,
-  FusionOutcome,
-  MonsterLevel,
-  SpeciesId,
+import { evolutionRecipeFor, recipeIngredientLevel, recipeOf } from '../../data/fusionRecipes';
+import { getSpecies, speciesAllowsLevel } from '../../data/monsters';
+import {
+  CROSS_FUSION_MIN_LEVEL,
+  MAX_LEVEL,
+  type FusionCheck,
+  type FusionOutcome,
+  type MonsterLevel,
+  type SpeciesId,
 } from '../types';
 
 /**
- * Regras de fusão — ÚNICA fonte de verdade (motor e IA usam exatamente esta função).
+ * Regras de fusão — ÚNICA fonte de verdade (motor, interface e IA usam
+ * exatamente esta função; nenhum caminho paralelo de regra).
  *
- * Tabela obrigatória (mesma espécie, mesmo nível):
- *   L1 + L1 → exatamente 1 unidade L2
- *   L2 + L2 → exatamente 1 unidade L3
- *   L3 + L3 → exatamente 1 unidade L4
- *   L4 + L4 → exatamente 1 unidade L5
- *   L5 + L5 → bloqueado (MAX_LEVEL)
+ * 1) Fusão VERTICAL (mesma espécie, sempre 2→1 — só espécies puras):
+ *      L1+L1 → 1×L2 · L2+L2 → 1×L3 · L3+L3 → 1×L4 · L4+L4 → 1×L5
+ *      L5+L5 → bloqueada (as puras param no Nv.5; acima disso, só a árvore).
  *
- * Descoberta híbrida (determinística):
- *   puro L1 + puro L1 de elementos diferentes → 1 híbrido L1 (receita fixa)
+ * 2) Fusão da ÁRVORE (espécies diferentes, sempre 2→1):
+ *      - exige os dois monstros no MESMO nível, a partir do Nv.5;
+ *      - a combinação precisa existir na árvore de receitas
+ *        (data/fusionRecipes.ts) e os ingredientes devem estar exatamente no
+ *        nível que a receita pede;
+ *      - a ordem dos elementos não altera o resultado;
+ *      - produz exatamente 1 criatura do próximo nível;
+ *      - não existe fusão acima do Nv.10 (MAX_LEVEL).
  *
- * Nunca permite: fusão tripla implícita (a checagem é sempre par-a-par),
- * níveis diferentes, espécies incompatíveis ou acima do nível 5.
+ * Nunca: fusão tripla implícita (a checagem é sempre par-a-par), fusões de
+ * híbridos iguais entre si, níveis diferentes, pares sem receita ou espécies
+ * num nível onde não existem.
  */
 export function checkFusion(
   speciesA: SpeciesId,
@@ -29,47 +36,77 @@ export function checkFusion(
   speciesB: SpeciesId,
   levelB: MonsterLevel,
 ): FusionCheck {
+  if (levelA !== levelB) return { ok: false, reason: 'DIFFERENT_LEVEL' };
+  const level = levelA;
+
+  // Regra não confia no chamador: espécie que não existe neste nível jamais funde.
+  if (!speciesAllowsLevel(speciesA, level) || !speciesAllowsLevel(speciesB, level)) {
+    return { ok: false, reason: 'INCOMPATIBLE_SPECIES' };
+  }
+
+  const defA = getSpecies(speciesA);
+
   if (speciesA === speciesB) {
-    if (levelA !== levelB) return { ok: false, reason: 'DIFFERENT_LEVEL' };
-    if (levelA >= 5) return { ok: false, reason: 'MAX_LEVEL' };
+    // Vertical: apenas espécies que crescem por nível (puras, levelMin<levelMax).
+    if (defA.levelMin === defA.levelMax) {
+      return { ok: false, reason: 'INCOMPATIBLE_SPECIES' };
+    }
+    if (level >= defA.levelMax) return { ok: false, reason: 'MAX_LEVEL' };
     const outcome: FusionOutcome = {
       kind: 'vertical',
       species: speciesA,
-      level: (levelA + 1) as MonsterLevel,
+      level: (level + 1) as MonsterLevel,
       outputCount: 1,
     };
     return { ok: true, outcome };
   }
 
-  // Espécies diferentes: única combinação válida são dois puros nível 1
-  // de elementos diferentes (receita determinística de híbrido).
-  if (levelA !== levelB) return { ok: false, reason: 'DIFFERENT_LEVEL' };
-  if (levelA !== 1) return { ok: false, reason: 'INCOMPATIBLE_SPECIES' };
+  // Espécies diferentes: fusão da árvore elemental.
+  if (level < CROSS_FUSION_MIN_LEVEL) return { ok: false, reason: 'MIN_LEVEL' };
+  if (level >= MAX_LEVEL) return { ok: false, reason: 'MAX_LEVEL' };
 
-  const defA = getSpecies(speciesA);
-  const defB = getSpecies(speciesB);
-  if (defA.elements.length !== 1 || defB.elements.length !== 1) {
+  const recipe = evolutionRecipeFor(speciesA, speciesB);
+  if (!recipe) return { ok: false, reason: 'INCOMPATIBLE_SPECIES' };
+  if (recipeIngredientLevel(recipe) !== level) {
     return { ok: false, reason: 'INCOMPATIBLE_SPECIES' };
   }
-  const result = hybridRecipeFor(defA.elements[0], defB.elements[0]);
-  if (!result) return { ok: false, reason: 'INCOMPATIBLE_SPECIES' };
 
   const outcome: FusionOutcome = {
     kind: 'hybrid',
-    species: result,
-    level: 1,
+    species: recipe.result,
+    level: (level + 1) as MonsterLevel,
     outputCount: 1,
   };
   return { ok: true, outcome };
 }
 
-/** Texto da regra de evolução de uma espécie (enciclopédia). */
+/**
+ * Texto da receita/evolução de uma espécie (enciclopédia).
+ * A camada de UI só mostra isto para espécies já DESCOBERTAS.
+ */
 export function evolutionRecipeText(species: SpeciesId): string {
-  const name = getSpecies(species).name;
-  const lines: string[] = [];
-  for (let lvl = 1; lvl <= 4; lvl++) {
-    lines.push(`${name} Nv.${lvl} + ${name} Nv.${lvl} → 1 unidade Nv.${lvl + 1}`);
+  const def = getSpecies(species);
+  if (def.levelMin === def.levelMax) {
+    const recipe = recipeOf(species);
+    if (!recipe) {
+      return species === 'primordial'
+        ? 'Não existe fusão acima do Nível 10 — o Primordial é o ápice da árvore.'
+        : 'Sem receita conhecida.';
+    }
+    const a = getSpecies(recipe.a);
+    const b = getSpecies(recipe.b);
+    const inLevel = def.levelMin - 1;
+    const line = `${a.name} Nv.${inLevel} + ${b.name} Nv.${inLevel} → 1 unidade de ${def.name} Nv.${def.levelMin}`;
+    if (def.levelMin >= MAX_LEVEL) {
+      return `${line} · não existe fusão acima do Nível 10`;
+    }
+    return `${line} · esta espécie não funde com a própria espécie (siga as receitas da árvore)`;
   }
-  lines.push(`${name} Nv.5 + ${name} Nv.5 → fusão bloqueada`);
+
+  const lines: string[] = [];
+  for (let lvl = def.levelMin; lvl < def.levelMax; lvl++) {
+    lines.push(`${def.name} Nv.${lvl} + ${def.name} Nv.${lvl} → 1 unidade Nv.${lvl + 1}`);
+  }
+  lines.push(`${def.name} Nv.${def.levelMax} + ${def.name} Nv.${def.levelMax} → bloqueada`);
   return lines.join(' · ');
 }

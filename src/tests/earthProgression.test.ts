@@ -119,11 +119,11 @@ describe('Evolução visual da terra por fusão', () => {
     expect(SPECIES_RIGS.golem).toBeTruthy();
     // os matacões orbitam em grupos que o rig faz girar
     expect(MODELS.golem.groups).toBeTruthy();
-    // híbridos continuam sem formas por nível (rig padrão de peças)
+    // puras continuam evoluindo; criaturas da árvore têm forma única
     expect(hasLevelVariants(MODELS.nereia)).toBe(true);
     expect(hasForms(getSpecies('nereia'))).toBe(true);
-    expect(hasLevelVariants(MODELS.vulcane)).toBe(false);
-    expect(hasForms(getSpecies('vulcane'))).toBe(false);
+    expect(hasLevelVariants(MODELS.magma)).toBe(false);
+    expect(hasForms(getSpecies('magma'))).toBe(false);
   });
 });
 

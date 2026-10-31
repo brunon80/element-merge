@@ -1,17 +1,27 @@
 import { ELEMENTS } from '../data/elements';
-import { HYBRID_RECIPES } from '../data/fusionRecipes';
 import { scaledStats } from '../data/balance';
-import { ALL_SPECIES_IDS, PURE_SPECIES_IDS, getSpecies } from '../data/monsters';
+import { evolutionRecipeText } from '../game/fusion/fusionRules';
+import {
+  ALL_SPECIES_IDS,
+  PURE_SPECIES_IDS,
+  TREE_SPECIES_IDS,
+  getSpecies,
+} from '../data/monsters';
 import { useGameStore } from '../store/gameStore';
 import type { MonsterLevel, SpeciesId } from '../game/types';
 import { MonsterViewer } from '../scene/MonsterViewer';
 import { ElementIcon } from './icons';
 import { TARGETING_LABEL, abilityText } from './labels';
 
-const LEVELS: MonsterLevel[] = [1, 2, 3, 4, 5];
+const PURE_LEVELS: MonsterLevel[] = [1, 2, 3, 4, 5];
 
 function StatTable({ species }: { species: SpeciesId }) {
   const def = getSpecies(species);
+  // criaturas da árvore existem num único nível; puros mostram a tabela 1..5
+  const levels: MonsterLevel[] =
+    def.levelMin === def.levelMax
+      ? [def.levelMin as MonsterLevel]
+      : PURE_LEVELS;
   return (
     <table className="beast-table">
       <thead>
@@ -24,7 +34,7 @@ function StatTable({ species }: { species: SpeciesId }) {
         </tr>
       </thead>
       <tbody>
-        {LEVELS.map((lv) => {
+        {levels.map((lv) => {
           const s = scaledStats(def.base, lv);
           return (
             <tr key={lv}>
@@ -44,22 +54,18 @@ function StatTable({ species }: { species: SpeciesId }) {
 function SpeciesCard({ species, unlocked }: { species: SpeciesId; unlocked: boolean }) {
   const def = getSpecies(species);
   if (!unlocked) {
-    const recipe = HYBRID_RECIPES.find((r) => r.species === species);
+    // Regra de descoberta: espécie inédita é apenas uma silhueta + nível.
+    // Nada de nome, elementos, atributos ou receita.
     return (
       <div className="beast-card locked">
         <div className="beast-head">
           <b className="beast-name">???</b>
-          <span className="beast-el">
-            {recipe &&
-              [recipe.a, recipe.b].map((el) => (
-                <span key={el} style={{ color: ELEMENTS[el].glow }}>
-                  <ElementIcon el={el} size={16} />
-                </span>
-              ))}
-          </span>
+          <span className="beast-el beast-level-tag">Nv.{def.levelMin}</span>
         </div>
+        <MonsterViewer species={species} locked />
         <p className="beast-blurb">
-          Espécie selada. Fusione <b>Nível 1</b> de dois elementos puros diferentes para descobri-la.
+          Espécie selada. Fuze duas criaturas do <b>Nível {def.levelMin - 1}</b>{' '}
+          ligadas na árvore elemental para descobri-la.
         </p>
       </div>
     );
@@ -68,6 +74,7 @@ function SpeciesCard({ species, unlocked }: { species: SpeciesId; unlocked: bool
     <div className="beast-card">
       <div className="beast-head">
         <b className="beast-name">{def.name}</b>
+        <span className="beast-el beast-level-tag">Nv.{def.levelMin}</span>
         <span className="beast-el">
           {def.elements.map((el) => (
             <span key={el} style={{ color: ELEMENTS[el].glow }} title={ELEMENTS[el].name}>
@@ -84,10 +91,22 @@ function SpeciesCard({ species, unlocked }: { species: SpeciesId; unlocked: bool
         ))}
       </div>
       <div className="beast-target">{TARGETING_LABEL[scaledStats(def.base, 1).targeting]}</div>
+      <div className="beast-recipe" data-testid={`recipe-${species}`}>
+        {evolutionRecipeText(species)}
+      </div>
       <StatTable species={species} />
     </div>
   );
 }
+
+/** seções da árvore por nível da espécie resultante */
+const SECTIONS: { title: string; levels: number[] }[] = [
+  { title: 'Nv.6 — Elementos híbridos (dois puros Nv.5)', levels: [6] },
+  { title: 'Nv.7 — Elementos compostos', levels: [7] },
+  { title: 'Nv.8 — Elementos avançados', levels: [8] },
+  { title: 'Nv.9 — Elementos lendários', levels: [9] },
+  { title: 'Nv.10 — Criatura primordial', levels: [10] },
+];
 
 export function Bestiary() {
   const open = useGameStore((s) => s.showBestiary);
@@ -95,52 +114,53 @@ export function Bestiary() {
   const discovered = useGameStore((s) => s.discovered);
   if (!open) return null;
 
-  const isUnlocked = (id: SpeciesId) => PURE_SPECIES_IDS.includes(id) || discovered.includes(id);
-  const foundHybrids = ALL_SPECIES_IDS.filter((id) => !PURE_SPECIES_IDS.includes(id) && discovered.includes(id)).length;
-  const totalHybrids = ALL_SPECIES_IDS.length - PURE_SPECIES_IDS.length;
+  const isUnlocked = (id: SpeciesId) =>
+    PURE_SPECIES_IDS.includes(id) || discovered.includes(id);
+  const foundTree = TREE_SPECIES_IDS.filter((id) => discovered.includes(id)).length;
 
   return (
     <div className="overlay bestiary-overlay" data-testid="bestiary">
       <div className="bestiary panel">
         <div className="beast-top">
           <h2>Enciclopédia Elemental</h2>
-          <span className="beast-progress">
-            Híbridos: {foundHybrids}/{totalHybrids}
+          <span className="beast-progress" data-testid="bestiary-progress">
+            Árvore elemental: {foundTree}/{TREE_SPECIES_IDS.length}
           </span>
           <button className="btn ghost small" data-testid="close-bestiary" onClick={() => setOpen(false)}>
             ✕
           </button>
         </div>
 
-        <h3 className="beast-section">Elementos puros</h3>
+        <h3 className="beast-section">Elementos puros (Nv.1–5)</h3>
         <div className="beast-grid">
           {PURE_SPECIES_IDS.map((id) => (
             <SpeciesCard key={id} species={id} unlocked />
           ))}
         </div>
 
-        <h3 className="beast-section">Híbridos descobertos por fusão</h3>
+        {SECTIONS.map((sec) => {
+          const ids = ALL_SPECIES_IDS.filter(
+            (id) => !PURE_SPECIES_IDS.includes(id) && sec.levels.includes(getSpecies(id).levelMin),
+          );
+          if (ids.length === 0) return null;
+          return (
+            <section key={sec.title}>
+              <h3 className="beast-section">{sec.title}</h3>
+              <div className="beast-grid">
+                {ids.map((id) => (
+                  <SpeciesCard key={id} species={id} unlocked={isUnlocked(id)} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+
         <p className="beast-recipes">
-          {HYBRID_RECIPES.map((r) => (
-            <span key={r.species} className="recipe-chip">
-              <span style={{ color: ELEMENTS[r.a].glow }}>
-                <ElementIcon el={r.a} size={14} />
-              </span>
-              +
-              <span style={{ color: ELEMENTS[r.b].glow }}>
-                <ElementIcon el={r.b} size={14} />
-              </span>
-              {discovered.includes(r.species) ? `= ${getSpecies(r.species).name}` : '= ???'}
-            </span>
-          ))}
+          Regra da árvore: toda fusão consome <b>duas criaturas do mesmo nível</b> e produz{' '}
+          <b>exatamente uma</b> do nível seguinte — de graça; o custo real são as invocações
+          (100 moedas cada). Fusões entre espécies diferentes só acontecem a partir do{' '}
+          <b>Nível 5</b>. Receitas aparecem aqui depois que a espécie é descoberta.
         </p>
-        <div className="beast-grid">
-          {ALL_SPECIES_IDS
-            .filter((id) => !PURE_SPECIES_IDS.includes(id))
-            .map((id) => (
-              <SpeciesCard key={id} species={id} unlocked={isUnlocked(id)} />
-            ))}
-        </div>
       </div>
     </div>
   );

@@ -65,16 +65,20 @@ export function scaledStats(base: BaseStats, level: MonsterLevel): BaseStats {
 /**
  * Regras de composição do exército inimigo (gerado no início do combate).
  * O orçamento do inimigo = coeff × valor do time do jogador, onde o valor de
- * cada unidade é o custo de reposição pelas regras de fusão 2→1 (Nv.1=100,
- * Nv.2=200, Nv.3=400, Nv.4=800, Nv.5=1600; híbridos custam o dobro do nível).
+ * cada unidade é o custo de reposição pelas regras 2→1 em toda a árvore
+ * (Nv.1=100, Nv.2=200, ..., Nv.10=51200) — a IA não ganha moedas nem
+ * unidades de graça; ela só sabe PLANEJAR melhor: quais criaturas da árvore
+ * elemental vale a pena montar, com contra-escolha e sinergia.
  */
 export interface TeamDifficultyParams {
   /** Multiplicador do valor do time do jogador. */
   coeff: number;
-  /** Nível máximo das criaturas inimigas já nascendo "evoluídas". */
+  /** Nível máximo das criaturas PURAS inimigas já nascendo "evoluídas". */
   maxLevel: MonsterLevel;
-  /** Chance relativa de unidades híbridas na composição. */
+  /** Chance por slot de tentar uma criatura da árvore elemental (Nv.6+). */
   hybridChance: number;
+  /** Nível máximo de criatura da árvore que a dificuldade considera (0 = nunca). */
+  treeMaxLevel: number;
   /** Contra-escolhe espécies conforme as fraquezas do time do jogador. */
   counterPick: boolean;
   /** Tanques na linha de frente, frágeis no fundo. */
@@ -86,20 +90,23 @@ export const TEAM_RULES: Record<Difficulty, TeamDifficultyParams> = {
     coeff: 0.6,
     maxLevel: 2,
     hybridChance: 0.0,
+    treeMaxLevel: 0,
     counterPick: false,
     smartPlacement: false,
   },
   normal: {
     coeff: 1.0,
     maxLevel: 3,
-    hybridChance: 0.35,
+    hybridChance: 0.3,
+    treeMaxLevel: 7,
     counterPick: true,
     smartPlacement: true,
   },
   hard: {
     coeff: 1.4,
     maxLevel: 4,
-    hybridChance: 0.65,
+    hybridChance: 0.6,
+    treeMaxLevel: 10,
     counterPick: true,
     smartPlacement: true,
   },

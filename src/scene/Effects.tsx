@@ -2,7 +2,8 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ELEMENTS } from '../data/elements';
-import type { ElementId, FxEvent } from '../game/types';
+import { SPECIES } from '../data/monsters';
+import type { ElementId, FxEvent, SpeciesId } from '../game/types';
 import { getEngine } from '../store/gameStore';
 import { circleTexture, drawPopupText, flameDropGeometry, flameIconTexture, getGeometry, slowIconTexture } from './assets';
 import { makeFlameMaterial } from './flameShaders';
@@ -307,7 +308,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     }
   };
 
-  const spawnStatusSprite = (pos: [number, number, number], status?: 'burn' | 'slow') => {
+  const spawnStatusSprite = (
+    pos: [number, number, number],
+    status?: 'burn' | 'slow' | 'poison',
+  ) => {
     const isFlame = status === 'burn';
     const arr = isFlame ? flameSprites.current : slowSprites.current;
     const data = isFlame ? (spriteData.flame as { life: number }[]) : (spriteData.slow as { life: number }[]);
@@ -338,6 +342,39 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     p.x = x + (Math.random() - 0.5) * 0.3;
     p.y = y;
     p.z = z;
+  };
+
+  const VISUAL_FAMILY: Record<string, 'flame' | 'rock' | 'gale' | 'wave' | 'storm' | 'crystal'> = {
+    ignis: 'flame',
+    magma: 'flame',
+    vapor: 'flame',
+    plasma: 'flame',
+    vulcanico: 'flame',
+    golem: 'rock',
+    madeira: 'rock',
+    areia: 'rock',
+    obsidiana: 'rock',
+    pantano: 'rock',
+    geodo: 'rock',
+    colosso: 'rock',
+    zephyr: 'gale',
+    nevoa: 'gale',
+    nereia: 'wave',
+    gelo: 'wave',
+    abissal: 'wave',
+    raio: 'storm',
+    tempestade: 'storm',
+    cosmico: 'storm',
+    astral: 'storm',
+    primordial: 'storm',
+    cristal: 'crystal',
+  };
+  const impactColor = (species: SpeciesId | undefined, el: ElementId | undefined): string => {
+    if (species) {
+      const def = SPECIES[species];
+      if (def?.base.projectileColor) return def.base.projectileColor;
+    }
+    return glowColor(el);
   };
 
   const handleFx = (events: FxEvent[]) => {
@@ -414,13 +451,82 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 0.8 + 0.08 * lv,
               speed: 1.2,
             });
+          } else if (
+            ev.species &&
+            (VISUAL_FAMILY[ev.species] === 'flame' ||
+              VISUAL_FAMILY[ev.species] === 'rock' ||
+              VISUAL_FAMILY[ev.species] === 'wave' ||
+              VISUAL_FAMILY[ev.species] === 'gale' ||
+              VISUAL_FAMILY[ev.species] === 'storm' ||
+              VISUAL_FAMILY[ev.species] === 'crystal')
+          ) {
+            // criaturas da árvore elemental (Nv.6–10): cada linhagem mantém a
+            // assinatura da família (lava explode, pedra racha, mar respinga,
+            // bruma sobe, trovoada estala, cristal ricocheteia)
+            const fam = VISUAL_FAMILY[ev.species];
+            const color = impactColor(ev.species, ev.element);
+            if (fam === 'flame') {
+              spawnBurst(x, y, z, 0.55 + 0.04 * Math.min(10, ev.level ?? 1));
+              spawnParticles(x, y, z, color, 10, 3.0, 0.6, -1.8, 1.4);
+              spawnSmoke(x, y, z, 4, { size: 0.1, heat: 0.5, life: 1.1, speed: 1.2 });
+            } else if (fam === 'rock') {
+              spawnBurst(x, y, z, 0.4 + 0.03 * Math.min(10, ev.level ?? 1), 'shard');
+              spawnParticles(x, y, z, color, 10, 2.6, 0.5, 2.2, 0.9);
+              spawnRing(x, 0.1, z, color, 1.8);
+              spawnSmoke(x, y, z, 4, { size: 0.1, heat: 0.12, life: 1.1, speed: 1.3 });
+            } else if (fam === 'wave') {
+              spawnParticles(x, y, z, color, 10, 2.6, 0.55, 1.5, 1.7);
+              spawnRing(x, 0.1, z, color, 1.6);
+              spawnSmoke(x, y, z, 3, { size: 0.07, heat: 0.02, life: 0.8, speed: 1.2 });
+            } else if (fam === 'gale') {
+              spawnParticles(x, y, z, color, 10, 3.4, 0.45, -1.6, 0.5);
+              spawnRing(x, y + 0.05, z, color, 1.5);
+              spawnSmoke(x, y, z, 3, { size: 0.06, heat: 0.02, life: 0.7, speed: 1.8 });
+            } else if (fam === 'storm') {
+              spawnParticles(x, y, z, color, 12, 3.6, 0.5, -1.2, 0.8);
+              spawnParticles(x, y, z, '#ffffff', 5, 2.2, 0.3, 0.6);
+              spawnRing(x, 0.1, z, color, 1.9);
+            } else {
+              // cristal: estilhaços facetados que brilham e caem devagar
+              spawnParticles(x, y, z, color, 12, 2.8, 0.55, 0.6, 0.8);
+              spawnParticles(x, y, z, '#ffffff', 4, 1.8, 0.35, 0.4);
+              spawnRing(x, 0.1, z, color, 1.5);
+            }
           }
+          break;
+        }
+        case 'discovery': {
+          // descoberta inédita: coluna de luz dourada + anéis + faíscas subindo
+          spawnParticles(x, y + 0.4, z, '#ffd76a', 30, 2.2, 1.4, -3.2, 2.2);
+          spawnParticles(x, y + 0.4, z, glowColor(ev.element), 16, 2.8, 1.0, -2.4, 1.0);
+          spawnParticles(x, y + 0.4, z, '#ffffff', 8, 1.6, 0.6, -1.6, 0.6);
+          spawnRing(x, 0.12, z, '#ffd76a', 2.8);
+          spawnRing(x, 0.16, z, glowColor(ev.element), 1.6);
+          spawnSmoke(x, y + 0.6, z, 5, { size: 0.12, heat: 0.35, life: 1.6, speed: 1.1 });
+          break;
+        }
+        case 'primordial': {
+          // Nv.10: o nascimento da entidade primordial — clarão total da arena
+          spawnParticles(x, y + 0.5, z, '#ffffff', 42, 4.2, 1.6, -3.4, 2.8);
+          spawnParticles(x, y + 0.5, z, '#ffd76a', 26, 3.2, 1.4, -2.8, 1.6);
+          for (const elE of ['fire', 'water', 'earth', 'air'] as const) {
+            spawnParticles(x, y + 0.5, z, ELEMENTS[elE].glow, 8, 2.6, 1.1, -2.0, 0.8);
+          }
+          spawnRing(x, 0.12, z, '#ffffff', 4.2);
+          spawnRing(x, 0.16, z, '#ffd76a', 3.0);
+          spawnRing(x, 0.2, z, '#9ad0ff', 2.0);
+          spawnSmoke(x, y + 0.8, z, 8, { size: 0.14, heat: 0.5, life: 2.0, speed: 1.4 });
+          usePopup(x, y + 1.6, z, 'PRIMORDIAL', '#ffd76a');
           break;
         }
         case 'status':
           spawnParticles(x, y + 0.6, z, glowColor(ev.element), 4, 0.8, 0.5, -0.5, 0.6);
           if (ev.status === 'burn' || ev.status === 'slow') {
             spawnStatusSprite(ev.pos, ev.status);
+          } else if (ev.status === 'poison') {
+            // veneno: bolhas verdes subindo devagar
+            spawnParticles(x, y + 0.5, z, '#8fd85f', 8, 0.9, 0.9, -0.9, 0.5);
+            spawnParticles(x, y + 0.8, z, '#55802e', 4, 0.6, 0.7, -0.6, 0.3);
           }
           break;
         case 'kill': {

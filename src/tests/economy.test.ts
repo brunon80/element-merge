@@ -180,13 +180,13 @@ describe('Persistência', () => {
   test('recarregar a aplicação preserva o saldo', () => {
     const fresh = loadSave();
     fresh.coins = 777;
-    fresh.discovered.push('vulcane');
+    fresh.discovered.push('magma');
     fresh.stats.wins = 3;
     persistSave(fresh);
     // simula F5: outro "runtime" lê o mesmo localStorage
     const reloaded = loadSave();
     expect(reloaded.coins).toBe(777);
-    expect(reloaded.discovered).toContain('vulcane');
+    expect(reloaded.discovered).toContain('magma');
     expect(reloaded.stats.wins).toBe(3);
     globalThis.localStorage.removeItem(SAVE_KEY);
   });
@@ -196,6 +196,67 @@ describe('Persistência', () => {
     expect(base.coins).toBe(base.settings.startingCoins);
     expect(base.settings.startingCoins).toBeGreaterThanOrEqual(400);
     expect(base.coins % SUMMON_COST).toBe(0);
+  });
+});
+
+describe('Migração de save v2 → v3 (árvore elemental)', () => {
+  test('híbridos antigos viram espécies equivalentes da árvore, com reembolso', () => {
+    // save de antes da árvore: híbridos Nv.1 por par de elementos não existem mais
+    const legacy = {
+      version: 2,
+      coins: 1000,
+      discovered: ['ignis', 'vulcane', 'tempest', 'espécie_inexistente'],
+      retainedRoster: [
+        { species: 'vulcane', level: 3 }, // fogo+terra → magma (saem do time, com reembolso)
+        { species: 'solaris', level: 1 }, // fogo+ar → raio (idem)
+        { species: 'ignis', level: 2 }, // puro: fica
+        { species: 'tempest', level: 4 }, // água+ar → gelo (idem)
+      ],
+      settings: { difficulty: 'normal', startingCoins: 500 },
+      stats: { wins: 1, losses: 0, draws: 0, matchesPlayed: 1 },
+      processedMatchIds: [],
+      lastSummary: null,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(legacy));
+
+    const migrated = loadSave();
+    expect(migrated.version).toBe(3);
+    // descobertas migram para a espécie da árvore do mesmo par; lixo é descartado
+    expect(migrated.discovered).toContain('ignis');
+    expect(migrated.discovered).toContain('magma');
+    expect(migrated.discovered).toContain('gelo');
+    expect(migrated.discovered).not.toContain('vulcane');
+    expect(migrated.discovered).not.toContain('espécie_inexistente');
+
+    // unidades antigas saem do tabuleiro e o saldo recebe o valor antigo de volta
+    // (híbrido Nv.k valia 100·2^(k-1)·2): 800 + 200 + 1600 = 2600
+    expect(migrated.retainedRoster).toEqual([{ species: 'ignis', level: 2 }]);
+    expect(migrated.coins).toBe(1000 + 800 + 200 + 1600);
+    localStorage.removeItem(SAVE_KEY);
+  });
+
+  test('save v3 corrige níveis fora da janela das espécies (puro Nv.6 → Nv.5)', () => {
+    const odd = {
+      version: 3,
+      coins: 500,
+      discovered: ['magma'],
+      retainedRoster: [
+        { species: 'ignis', level: 6 }, // puro não passa do Nv.5
+        { species: 'magma', level: 2 }, // árvore: volta para o nível fixo 6
+      ],
+      settings: { difficulty: 'hard', startingCoins: 500 },
+      stats: { wins: 0, losses: 0, draws: 0, matchesPlayed: 0 },
+      processedMatchIds: [],
+      lastSummary: null,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(odd));
+    const fixed = loadSave();
+    expect(fixed.retainedRoster).toEqual([
+      { species: 'ignis', level: 5 },
+      { species: 'magma', level: 6 },
+    ]);
+    expect(fixed.coins).toBe(500); // correção de nível não gera reembolso
+    localStorage.removeItem(SAVE_KEY);
   });
 });
 

@@ -23,7 +23,7 @@ import type {
   StatusType,
   TileIndex,
 } from '../game/types';
-import { SUMMON_COST, TILES_PER_SIDE } from '../game/types';
+import { MAX_LEVEL, SUMMON_COST, TILES_PER_SIDE } from '../game/types';
 
 /** Unidade espelhada para a UI (dado discreto; posições vivem no motor). */
 export interface UiUnit {
@@ -43,6 +43,8 @@ export interface DragHover {
   tile: TileIndex;
   kind: 'move' | 'merge' | 'invalid';
   targetId?: number;
+  /** Resultado da fusão mostrada no slot (nome oculto se a espécie ainda não foi descoberta). */
+  fusion?: { label: string; level: MonsterLevel; known: boolean };
 }
 
 export interface Toast {
@@ -71,6 +73,8 @@ interface GameStoreState {
   sellHover: boolean;
   toast: Toast | null;
   discovered: SpeciesId[];
+  /** Espécie revelada pela primeira vez nesta sessão (overlay de descoberta). */
+  discoveryReveal: { species: SpeciesId; level: MonsterLevel; level10: boolean } | null;
   stats: SaveData['stats'];
   difficulty: Difficulty;
   startingCoinsCfg: number;
@@ -96,6 +100,7 @@ interface GameStoreActions {
   setSellHover: (on: boolean) => void;
   pushToast: (kind: Toast['kind'], msg: string) => void;
   dismissToast: (id: number) => void;
+  dismissDiscovery: () => void;
   setBestiary: (open: boolean) => void;
   setSettings: (open: boolean) => void;
   setDifficulty: (d: Difficulty) => void;
@@ -129,9 +134,10 @@ const FUSION_MSG: Record<string, string> = {
   SAME_UNIT: 'Escolha duas criaturas diferentes.',
   DIFFERENT_SIDE: 'Só é possível fundir criaturas aliadas.',
   UNIT_GONE: 'A criatura já saiu da arena.',
-  MAX_LEVEL: 'Nível 5 é o máximo — fusão bloqueada.',
+  MAX_LEVEL: 'Nível 10 é o máximo — não existe fusão acima do Primordial.',
   DIFFERENT_LEVEL: 'Só monstros do mesmo nível podem ser fundidos.',
-  INCOMPATIBLE_SPECIES: 'Espécies incompatíveis — veja a enciclopédia.',
+  MIN_LEVEL: 'Fusões de espécies diferentes só a partir do Nível 5.',
+  INCOMPATIBLE_SPECIES: 'Essa combinação não está na árvore elemental — veja a enciclopédia.',
   BOARD_FULL: 'Arena cheia.',
   NO_COINS: `Invocação custa ${SUMMON_COST} moedas.`,
 };
@@ -153,11 +159,39 @@ export const useGameStore = create<GameStore>((set, get) => {
         if (!save.discovered.includes(species)) {
           save.discovered.push(species);
           persistSoon();
-          get().pushToast(
-            'success',
-            `Nova espécie descoberta: ${getSpecies(species).name}!`,
-          );
-          set({ discovered: [...save.discovered] });
+          set({
+            discovered: [...save.discovered],
+            // Overlay de descoberta só para fusões do jogador (a IA funde
+            // nos bastidores e não revela nada ao jogador).
+            ...(e.side === 'player'
+              ? {
+                  discoveryReveal: {
+                    species,
+                    level: e.outcome.level,
+                    level10: e.outcome.level >= MAX_LEVEL,
+                  },
+                }
+              : {}),
+          });
+          if (e.side === 'player') {
+            get().pushToast(
+              'success',
+              `Nova espécie descoberta: ${getSpecies(species).name}!`,
+            );
+            // Apresentação especial no local da fusão (camada visual: Effects).
+            if (engine) {
+              const created = engine.getUnit(e.createdIds[0]);
+              if (created) {
+                engine.world.fx.push({
+                  type: 'discovery',
+                  pos: [...created.pos] as [number, number, number],
+                  element: getSpecies(species).base.damageElement,
+                  species,
+                  level: e.outcome.level,
+                });
+              }
+            }
+          }
         }
         get().syncUi();
         break;
@@ -236,6 +270,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     sellHover: false,
     toast: null,
     discovered: [...save.discovered],
+    discoveryReveal: null,
     stats: { ...save.stats },
     difficulty: save.settings.difficulty,
     startingCoinsCfg: save.settings.startingCoins,
@@ -383,13 +418,23 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({ dragHover: null, dragPointer: ptr });
         return;
       }
-      const ok = checkFusion(dragUnit.species, dragUnit.level, occupant.species, occupant.level);
+      const check = checkFusion(dragUnit.species, dragUnit.level, occupant.species, occupant.level);
+      let fusion: DragHover['fusion'];
+      if (check.ok) {
+        const known = save.discovered.includes(check.outcome.species);
+        fusion = {
+          label: known ? getSpecies(check.outcome.species).name : '???',
+          level: check.outcome.level,
+          known,
+        };
+      }
       set({
         dragHover: {
           side: spot.side,
           tile: spot.tile,
-          kind: ok.ok ? 'merge' : 'invalid',
+          kind: check.ok ? 'merge' : 'invalid',
           targetId: occupant.id,
+          fusion,
         },
         dragPointer: ptr,
       });
@@ -445,6 +490,10 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     dismissToast(id: number): void {
       if (get().toast?.id === id) set({ toast: null });
+    },
+
+    dismissDiscovery(): void {
+      if (get().discoveryReveal) set({ discoveryReveal: null });
     },
 
     setBestiary(open: boolean): void {

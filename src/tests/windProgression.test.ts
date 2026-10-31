@@ -102,10 +102,10 @@ describe('Evolução visual do vento por fusão', () => {
     expect(SPECIES_RIGS.zephyr).toBeTruthy();
     // as cascas 'counter' giram no sentido contrário (dois funis entrelaçados)
     expect(partsForLevel(MODELS.zephyr, 5).some((p) => p.tag === 'counter')).toBe(true);
-    // híbridos ainda não têm formas por nível (rig padrão de peças)
-    expect(hasLevelVariants(MODELS.vulcane)).toBe(false);
-    expect(hasForms(getSpecies('vulcane'))).toBe(false);
-    expect(partsForLevel(MODELS.vulcane, 3).length).toBe(MODELS.vulcane.parts.length);
+    // as criaturas da árvore têm uma única forma (rig de peças fixo)
+    expect(hasLevelVariants(MODELS.magma)).toBe(false);
+    expect(hasForms(getSpecies('magma'))).toBe(false);
+    expect(partsForLevel(MODELS.magma, 6).length).toBe(MODELS.magma.parts.length);
   });
 });
 

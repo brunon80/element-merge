@@ -1,7 +1,12 @@
 import { TEAM_RULES, type TeamDifficultyParams } from '../../data/balance';
-import { getSpecies, HYBRID_SPECIES_IDS, PURE_SPECIES_IDS } from '../../data/monsters';
+import {
+  PURE_SPECIES_IDS,
+  TREE_SPECIES_IDS,
+  getSpecies,
+} from '../../data/monsters';
 import { damageMultiplier } from '../combat/damage';
 import { sellValue } from '../economy/economy';
+import { isComposable } from '../fusion/fusionPlan';
 import { BOARD_COLS, SUMMON_COST, TILES_PER_SIDE } from '../types';
 import type { Difficulty, MonsterLevel, SpeciesId, TileIndex } from '../types';
 
@@ -9,11 +14,12 @@ import type { Difficulty, MonsterLevel, SpeciesId, TileIndex } from '../types';
  * Composição do exército inimigo — módulo puro e determinístico (rng semeado).
  * O exército é calculado no momento do "Iniciar Combate": o orçamento do
  * inimigo é `coeff × valor do time do jogador`, e o valor de cada unidade é
- * exatamente o custo de reposição pelas regras de fusão (2→1 em todo nível):
- *   Nv.1=100, Nv.2=200, Nv.3=400, Nv.4=800, Nv.5=1600.
- * Híbridos valem dois puros do mesmo nível (Nv.1 híbrido = 200).
- * A dificuldade define tamanho, nível máximo (inimigos já nascem evoluídos),
- * híbridos e contra-escolha.
+ * exatamente o custo de reposição pelas regras 2→1 em toda a árvore:
+ *   Nv.1=100, Nv.2=200, ..., Nv.10=51200.
+ * A IA NÃO ganha moedas nem unidades de graça: uma criatura da árvore custa,
+ * no orçamento, as sementes que ela consome para existir (plan honesto).
+ * A dificuldade define tamanho, nível máximo das puras, acesso à árvore
+ * elemental (treeMaxLevel) e contra-escolha — qualidade de decisão, não recursos.
  */
 
 export interface UnitSpec {
@@ -41,15 +47,18 @@ export interface TeamPlanInput {
   rand: () => number;
 }
 
+/** Espécies duras de roer: vão para a linha de frente. */
 export const TANKY_SPECIES = new Set<SpeciesId>([
   'golem',
-  'verdan',
-  'vulcane',
-  'duna',
-  'vaporis',
+  'madeira',
+  'magma',
+  'obsidiana',
+  'pantano',
+  'geodo',
+  'colosso',
 ]);
 
-/** Custo de reposição de uma unidade pelas regras de fusão 2→1 (moedas).
+/** Custo de reposição de uma unidade pelas regras 2→1 (moedas).
  *  É o mesmo número que a lixeira devolve ao vender (economia.sellValue). */
 export function unitCoinCost(species: SpeciesId, level: MonsterLevel): number {
   return sellValue(species, level);
@@ -62,7 +71,7 @@ export function teamValue(units: readonly UnitSpec[]): number {
   return sum;
 }
 
-/** Distribuição de níveis preferida por dificuldade (pesos). */
+/** Distribuição de níveis preferida por dificuldade (pesos) — apenas puras. */
 const LEVEL_WEIGHTS: Record<Difficulty, ReadonlyArray<readonly [number, number]>> = {
   easy: [
     [1, 0.7],
@@ -89,15 +98,16 @@ function offenseScore(species: SpeciesId, players: readonly UnitSpec[]): number 
   return sum / players.length;
 }
 
-function pickSpecies(
-  hybrid: boolean,
+/** Escolhe a melhor espécie dentro do pool (contra-escolha opcional). */
+function pickFromPool(
+  pool: readonly SpeciesId[],
   players: readonly UnitSpec[],
   rules: TeamDifficultyParams,
   difficulty: Difficulty,
   rand: () => number,
   countsSeen: Map<SpeciesId, number>,
 ): SpeciesId {
-  const pool: readonly SpeciesId[] = hybrid ? HYBRID_SPECIES_IDS : PURE_SPECIES_IDS;
+  if (pool.length === 0) return PURE_SPECIES_IDS[0];
   if (!rules.counterPick) {
     return pool[Math.floor(rand() * pool.length)] ?? pool[0];
   }
@@ -106,7 +116,8 @@ function pickSpecies(
   for (const s of pool) {
     let score = 1.5 * offenseScore(s, players);
     const seen = countsSeen.get(s) ?? 0;
-    score += seen % 2 === 1 ? 0.4 : 0; // quantidades ímpares permitem fusões verticais
+    // Puras ímpares na mesa permitem fusões verticais depois; árvore não empilha.
+    if (getSpecies(s).levelMin !== getSpecies(s).levelMax && seen % 2 === 1) score += 0.4;
     score += (rand() - 0.5) * (difficulty === 'hard' ? 0.08 : 0.35);
     if (score > bestScore) {
       bestScore = score;
@@ -114,6 +125,22 @@ function pickSpecies(
     }
   }
   return best;
+}
+
+/** Criaturas da árvore elegíveis para o orçamento restante nesta dificuldade. */
+function treeCandidates(rules: TeamDifficultyParams, remaining: number): SpeciesId[] {
+  if (rules.treeMaxLevel <= 0 || rules.hybridChance <= 0) return [];
+  const out: SpeciesId[] = [];
+  for (const id of TREE_SPECIES_IDS) {
+    const def = getSpecies(id);
+    if (def.levelMin > rules.treeMaxLevel) continue;
+    // A IA só entra na árvore por caminhos que a própria árvore permite
+    // (prova de composabilidade 2→1 desde sementes).
+    if (!isComposable(id)) continue;
+    if (unitCoinCost(id, def.levelMin as MonsterLevel) > remaining) continue;
+    out.push(id);
+  }
+  return out;
 }
 
 /** Tanques nas fileiras da frente; frágeis no fundo; fácil escolhe aleatório. */
@@ -160,26 +187,42 @@ export function composeEnemyTeam(input: TeamPlanInput): TeamPlan {
 
   while (units.length < maxUnits) {
     interface Candidate {
+      species: SpeciesId;
       level: MonsterLevel;
-      hybrid: boolean;
       weight: number;
     }
     const candidates: Candidate[] = [];
+
+    // 1) Árvore elemental: chance por slot de montar uma criatura Nv.6+
+    //    (o orçamento paga as sementes; nunca acima de treeMaxLevel).
+    const tree = treeCandidates(rules, remaining);
+    if (tree.length > 0) {
+      for (const id of tree) {
+        const level = getSpecies(id).levelMin as MonsterLevel;
+        candidates.push({
+          species: id,
+          level,
+          weight: rules.hybridChance * 0.35 * (1 + offenseScore(id, input.playerUnits)),
+        });
+      }
+    }
+
+    // 2) Puras com a distribuição de níveis da dificuldade.
     for (const [lv, w] of LEVEL_WEIGHTS[input.difficulty]) {
       if (lv > rules.maxLevel) continue;
       const level = lv as MonsterLevel;
-      const pureCost = unitCoinCost(PURE_SPECIES_IDS[0], level);
-      if (pureCost <= remaining) candidates.push({ level, hybrid: false, weight: w });
-      const hybridCost = pureCost * 2;
-      if (rules.hybridChance > 0 && hybridCost <= remaining) {
-        candidates.push({ level, hybrid: true, weight: w * rules.hybridChance });
-      }
+      const cost = unitCoinCost(PURE_SPECIES_IDS[0], level);
+      if (cost > remaining) continue;
+      const pool = PURE_SPECIES_IDS;
+      const rep = pool[Math.floor(rand() * pool.length)] ?? pool[0];
+      candidates.push({ species: rep, level, weight: w * (1 - rules.hybridChance) });
     }
+
     if (candidates.length === 0) {
       // Piso: se ainda nenhum inimigo foi montado e há saldo, ao menos
       // uma criatura Nv.1 (garante combate real mesmo com times pequenos).
       if (units.length === 0 && remaining >= SUMMON_COST) {
-        candidates.push({ level: 1, hybrid: false, weight: 1 });
+        candidates.push({ species: PURE_SPECIES_IDS[0], level: 1, weight: 1 });
       } else {
         break;
       }
@@ -196,14 +239,42 @@ export function composeEnemyTeam(input: TeamPlanInput): TeamPlan {
       }
     }
 
-    const species = pickSpecies(chosen.hybrid, input.playerUnits, rules, input.difficulty, rand, countsSeen);
+    // Contra-escolha: troca pela melhor espécie do mesmo tipo (pura ↔ pura,
+    // árvore ↔ árvore) quando a dificuldade sabe ler o time do jogador.
+    let species = chosen.species;
+    let level = chosen.level;
+    const chosenIsTree =
+      getSpecies(species).levelMin === getSpecies(species).levelMax;
+    if (rules.counterPick) {
+      const pool = chosenIsTree
+        ? treeCandidates(rules, remaining)
+        : [...PURE_SPECIES_IDS];
+      const swap = pickFromPool(pool, input.playerUnits, rules, input.difficulty, rand, countsSeen);
+      const swapDef = getSpecies(swap);
+      const swapLevel = (
+        swapDef.levelMin === swapDef.levelMax
+          ? swapDef.levelMin
+          : Math.min(level, swapDef.levelMax)
+      ) as MonsterLevel;
+      if (
+        (swapDef.levelMin === swapDef.levelMax) === chosenIsTree &&
+        unitCoinCost(swap, swapLevel) <= remaining
+      ) {
+        species = swap;
+        level = swapLevel;
+      }
+    }
+
     const tile = pickTile(species, tiles, rules.smartPlacement, rand);
     if (tile === null) break;
 
-    units.push({ species, level: chosen.level, tile });
+    const cost = unitCoinCost(species, level);
+    if (cost > remaining) break;
+
+    units.push({ species, level, tile });
     countsSeen.set(species, (countsSeen.get(species) ?? 0) + 1);
     tiles.splice(tiles.indexOf(tile), 1);
-    remaining -= unitCoinCost(species, chosen.level);
+    remaining -= cost;
   }
 
   return { units, budget, spent: budget - remaining };

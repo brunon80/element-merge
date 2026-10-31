@@ -10,7 +10,7 @@ import {
 } from '../game/board';
 import { MUZZLE_HEIGHT, scaledStats } from '../data/balance';
 import { formAimY, formMuzzleY, formTop, hasForms } from '../data/forms';
-import { ALL_SPECIES_IDS, getSpecies } from '../data/monsters';
+import { ALL_SPECIES_IDS, TREE_SPECIES_IDS, getSpecies } from '../data/monsters';
 import { MODELS, partsForLevel } from '../scene/speciesModels';
 import { partsEnvelope } from './helpers';
 
@@ -107,13 +107,22 @@ describe('Tabuleiro dimensionado para as formas que crescem', () => {
       expect(formMuzzleY(IGNIS, l)).toBeGreaterThan(formMuzzleY(IGNIS, l - 1));
       expect(formAimY(IGNIS, l)).toBeGreaterThan(formAimY(IGNIS, l - 1));
     }
-    // espécies sem formas por nível ficam exatamente nos valores históricos
+    // espécies da árvore têm UMA forma só: o canhão/mira não mudam com o nível
     expect(hasForms(IGNIS)).toBe(true);
-    const vulcane = getSpecies('vulcane');
-    expect(formMuzzleY(vulcane, 3)).toBeCloseTo(MUZZLE_HEIGHT, 6);
-    expect(formAimY(vulcane, 3)).toBeCloseTo(HIT_RADIUS_FALLBACK, 6);
+    const magma = getSpecies('magma');
+    expect(hasForms(magma)).toBe(false);
+    expect(formTop(magma, 6)).toBeCloseTo(3.9, 6);
+    // qualquer consulta de nível cai na única forma declarada (índice limitado)
+    for (const id of TREE_SPECIES_IDS) {
+      const def = getSpecies(id);
+      expect(formMuzzleY(def, def.levelMin)).toBe(formMuzzleY(def, 1));
+      expect(formAimY(def, def.levelMin)).toBe(formAimY(def, 10));
+    }
+    // e o canhão acompanha o topo declarado (nem flutuando, nem enterrado)
+    expect(formMuzzleY(magma, 6)).toBeCloseTo(
+      MUZZLE_HEIGHT + (formTop(magma, 6) - 1.93) * 0.45,
+      6,
+    );
+    expect(formAimY(magma, 6)).toBeCloseTo(0.6 + (formTop(magma, 6) - 1.93) * 0.4, 6);
   });
 });
-
-/** centro do corpo das espécies sem formas (valor histórico do motor) */
-const HIT_RADIUS_FALLBACK = 0.6;

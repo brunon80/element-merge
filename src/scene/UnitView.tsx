@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { getEngine, useGameStore } from '../store/gameStore';
 import type { SpeciesId, Side } from '../game/types';
-import { flameIconTexture, getGeometry, slowIconTexture } from './assets';
+import { flameIconTexture, getGeometry, poisonIconTexture, slowIconTexture } from './assets';
 import { MODELS, VISUALS, partsForLevel, type MatRole } from './speciesModels';
 import { SPECIES_RIGS } from './speciesRigs';
 import type { SmokePool } from './smokePool';
@@ -52,6 +52,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
   const barGroupRef = useRef<THREE.Group>(null!);
   const burnIconRef = useRef<THREE.Sprite>(null!);
   const slowIconRef = useRef<THREE.Sprite>(null!);
+  const poisonIconRef = useRef<THREE.Sprite>(null!);
   const selRingRef = useRef<THREE.Mesh>(null!);
   const pipRefs = useRef<(THREE.Mesh | null)[]>([]);
 
@@ -239,12 +240,15 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
     const flash = u.alive && sinceHurt < 0.3 ? 1 - sinceHurt / 0.3 : 0;
     const burning = u.statuses.some((s) => s.type === 'burn');
     const slowed = u.statuses.some((s) => s.type === 'slow');
+    const poisoned = u.statuses.some((s) => s.type === 'poison');
     const bodyM = mats.body;
     const bodyBase = baseColors.get('body')!;
     if (flash > 0) {
       bodyM.emissive.setRGB(flash, flash, flash);
     } else if (burning) {
       bodyM.emissive.setRGB(0.5 + 0.25 * Math.sin(time * 10), 0.12, 0.02);
+    } else if (poisoned) {
+      bodyM.emissive.setRGB(0.02, 0.32 + 0.15 * Math.sin(time * 7), 0.06);
     } else {
       bodyM.emissive.setRGB(0, 0, 0);
     }
@@ -267,7 +271,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
     fill.position.x = -BAR_W / 2 + (BAR_W * frac) / 2;
     (fill.material as THREE.MeshBasicMaterial).color.set(u.alive ? hpColor(frac) : '#5a6478');
     barGroupRef.current.visible = u.alive;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       const pip = pipRefs.current[i];
       if (!pip) continue;
       pip.visible = u.alive && i < u.level;
@@ -277,6 +281,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
     }
     burnIconRef.current.visible = burning && u.alive;
     slowIconRef.current.visible = slowed && u.alive;
+    poisonIconRef.current.visible = poisoned && u.alive;
     if (burnIconRef.current.visible) {
       const s = 0.42 * (1 + 0.15 * Math.sin(time * 12));
       burnIconRef.current.scale.setScalar(s);
@@ -284,6 +289,10 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
     if (slowIconRef.current.visible) {
       const s = 0.4 * (1 + 0.1 * Math.sin(time * 4));
       slowIconRef.current.scale.setScalar(s);
+    }
+    if (poisonIconRef.current.visible) {
+      const s = 0.4 * (1 + 0.12 * Math.sin(time * 6));
+      poisonIconRef.current.scale.setScalar(s);
     }
 
     // ---- anel de seleção ----
@@ -369,14 +378,14 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
           <meshBasicMaterial color="#3ce9a4" />
         </mesh>
         <group position={[0, 0.2, 0]}>
-          {[0, 1, 2, 3, 4].map((i) => (
+          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
             <mesh
               key={i}
               ref={(m) => {
                 pipRefs.current[i] = m;
               }}
               geometry={getGeometry('box', [0.12, 0.12, 0.02])}
-              position={[(i - 2) * 0.18, 0, 0]}
+              position={[(i - 4.5) * 0.13, 0, 0]}
             >
               <meshBasicMaterial color="#ffd23f" />
             </mesh>
@@ -385,7 +394,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       </group>
       <sprite
         ref={burnIconRef}
-        position={[0.55 + 0.14 * (level - 1), topY - 0.1, 0]}
+        position={[0.55 + 0.14 * (Math.min(5, level) - 1), topY - 0.1, 0]}
         scale={0.42}
         visible={false}
       >
@@ -393,11 +402,19 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       </sprite>
       <sprite
         ref={slowIconRef}
-        position={[-0.55 - 0.14 * (level - 1), topY - 0.1, 0]}
+        position={[-0.55 - 0.14 * (Math.min(5, level) - 1), topY - 0.1, 0]}
         scale={0.4}
         visible={false}
       >
         <spriteMaterial map={slowIconTexture()} transparent depthWrite={false} />
+      </sprite>
+      <sprite
+        ref={poisonIconRef}
+        position={[0, topY + 0.32, 0]}
+        scale={0.4}
+        visible={false}
+      >
+        <spriteMaterial map={poisonIconTexture()} transparent depthWrite={false} />
       </sprite>
 
       <mesh

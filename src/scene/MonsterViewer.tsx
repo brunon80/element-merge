@@ -2,6 +2,7 @@ import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { MAX_LEVEL } from '../game/types';
 import type { MonsterLevel, SpeciesId } from '../game/types';
 import { formName, formTop, hasForms } from '../data/forms';
 import { getSpecies } from '../data/monsters';
@@ -56,11 +57,14 @@ function SpeciesRig({
   attackSeq,
   level = 1,
   smoke,
+  locked = false,
 }: {
   species: SpeciesId;
   attackSeq?: number;
   level?: number;
   smoke?: SmokePool;
+  /** silhueta selada: todos os materiais viram uma massa escura uniforme */
+  locked?: boolean;
 }) {
   const visuals = VISUALS[species];
   const modelDef = MODELS[species];
@@ -74,7 +78,7 @@ function SpeciesRig({
   // têm formas (fogo) já trazem o tamanho de cada forma no próprio modelo
   const growth = hasForms(getSpecies(species))
     ? 1
-    : 1 + 0.07 * (Math.max(1, Math.min(5, level)) - 1);
+    : 1 + 0.07 * (Math.max(1, Math.min(MAX_LEVEL, level)) - 1);
 
   useEffect(() => {
     if (attackSeq !== undefined && attackSeq > 0) punchT.current = 0;
@@ -106,8 +110,22 @@ function SpeciesRig({
       }),
       steam: std('#dfe9f5', { transparent: true, opacity: 0.3, depthWrite: false }),
     };
+    if (locked) {
+      // espécie selada: silhueta opaca uniforme (sem cor, brilho ou transparência)
+      const shadow = new THREE.MeshStandardMaterial({
+        color: '#0d1220',
+        flatShading: true,
+        roughness: 0.9,
+        metalness: 0.05,
+      });
+      const roles = Object.keys(map) as MatRole[];
+      const sealed = {} as Record<MatRole, THREE.Material>;
+      for (const k of roles) sealed[k] = shadow;
+      Object.values(map).forEach((m) => m.dispose()); // descarta os materiais coloridos
+      return sealed;
+    }
     return map as Record<MatRole, THREE.Material>;
-  }, [visuals]);
+  }, [visuals, locked]);
 
   useEffect(() => {
     return () => Object.values(mats).forEach((m) => m.dispose());
@@ -115,7 +133,7 @@ function SpeciesRig({
 
   useFrame((state, dt) => {
     const time = state.clock.elapsedTime;
-    if (!Rig) {
+    if (!Rig || locked) {
       const bob = modelDef.bob ?? 0.05;
       bodyRef.current.position.y = (modelDef.floatY ?? 0) + Math.sin(time * 1.8) * bob;
       // demonstração de ataque para rigs genéricos: avanço + inclinação
@@ -165,7 +183,7 @@ function SpeciesRig({
 
   return (
     <group ref={bodyRef}>
-      {Rig ? (
+      {Rig && !locked ? (
         <Rig
           seed={7.31}
           level={level}
@@ -207,24 +225,34 @@ function SpeciesRig({
   );
 }
 
-export function MonsterViewer({ species }: { species: SpeciesId }) {
+export function MonsterViewer({
+  species,
+  locked = false,
+}: {
+  species: SpeciesId;
+  /** card selado da enciclopédia: silhueta + nível, sem revelar identidade */
+  locked?: boolean;
+}) {
   const boxRef = useRef<HTMLDivElement>(null);
   const inView = useInView(boxRef);
   const can3d = webglAvailable();
   const mounted = inView && can3d;
   const [seq, setSeq] = useState(0);
-  const [level, setLevel] = useState<MonsterLevel>(1);
+  const sdef0 = getSpecies(species);
+  // criaturas da árvore existem num único nível fixo: o viewer já nasce nele
+  const [level, setLevel] = useState<MonsterLevel>(sdef0.levelMin as MonsterLevel);
   const downPt = useRef<{ x: number; y: number } | null>(null);
 
   const sdef = getSpecies(species);
   const variants = hasForms(sdef); // espécies que evoluem de forma com a fusão
   const form = formName(sdef, level);
   // enquadramento: a cada nível o modelo é maior, mas cabe no card (cresce de
-  // forma contida). Espécies ainda sem formas ficam exatamente como antes.
+  // forma contida). Espécies de nível fixo (árvore) usam o enquadramento alto.
+  const fixedLevel = sdef.levelMin === sdef.levelMax;
   const top = formTop(sdef, level);
-  const fit = variants ? 1.51 / Math.pow(top, 0.72) : 0.95;
-  const frameY = variants ? -top * fit * 0.4 : -0.72;
-  const targetY = variants ? top * fit * 0.12 : 0.15;
+  const fit = variants || fixedLevel ? 1.51 / Math.pow(top, 0.72) : 0.95;
+  const frameY = variants || fixedLevel ? -top * fit * 0.4 : -0.72;
+  const targetY = variants || fixedLevel ? top * fit * 0.12 : 0.15;
   const smoke = useMemo(() => (mounted ? new SmokePool(220) : null), [mounted]);
 
   return (
@@ -248,9 +276,19 @@ export function MonsterViewer({ species }: { species: SpeciesId }) {
           <ambientLight intensity={0.65} />
           <hemisphereLight args={['#9db8ff', '#141a2c', 0.5]} />
           <directionalLight position={[3, 6, 4]} intensity={1.4} />
-          <pointLight position={[-2.5, 2.5, -2]} intensity={12} color={VISUALS[species].glow} />
+          <pointLight
+            position={[-2.5, 2.5, -2]}
+            intensity={locked ? 0.35 : 12}
+            color={locked ? '#8a93b5' : VISUALS[species].glow}
+          />
           <group position={[0, frameY, 0]} scale={fit}>
-            <SpeciesRig species={species} attackSeq={seq} level={level} smoke={smoke ?? undefined} />
+            <SpeciesRig
+              species={species}
+              attackSeq={seq}
+              level={level}
+              smoke={smoke ?? undefined}
+              locked={locked}
+            />
           </group>
           {smoke && <SmokeLayer pool={smoke} />}
           <OrbitControls
@@ -267,7 +305,7 @@ export function MonsterViewer({ species }: { species: SpeciesId }) {
           />
         </Canvas>
       )}
-      {mounted && variants && (
+      {mounted && variants && !locked && (
         <>
           <div
             className="beast-level-chips"

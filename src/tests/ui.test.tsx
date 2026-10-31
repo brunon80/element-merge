@@ -9,6 +9,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { Bestiary } from '../components/Bestiary';
+import { DiscoveryOverlay } from '../components/DiscoveryOverlay';
 import { HUD } from '../components/HUD';
 import { InspectorPanel } from '../components/InspectorPanel';
 import { ResultScreen } from '../components/ResultScreen';
@@ -35,6 +36,7 @@ function renderAll() {
       <ToastLayer />
       <ResultScreen />
       <Bestiary />
+      <DiscoveryOverlay />
     </>,
   );
 }
@@ -147,7 +149,8 @@ describe('Fusão arrastando na arena 3D (único caminho de fusão)', () => {
     const golemLv2 = us.find((u) => u.species === 'golem')!;
     dragOnto(ignisLv2.id, golemLv2); // Nv.2 de fogo em cima de Nv.2 de terra
 
-    expect(screen.getByTestId('toast').textContent).toContain('Espécies incompatíveis');
+    // regra da árvore: espécies DIFERENTES só fundem a partir do Nv.5
+    expect(screen.getByTestId('toast').textContent).toContain('a partir do Nível 5');
     expect(myUnits()).toHaveLength(2); // nada foi mutado
     expect(myLevels()).toEqual([2, 2]);
   });
@@ -208,20 +211,22 @@ describe('Destaque do destino enquanto o monstro está segurado', () => {
   });
 
   test('mescla possível marca "merge" e o que não funde marca "invalid" (vermelho)', () => {
-    // Regra do jogo: dois puros Nv1 de elementos DIFERENTES fundem em híbrido,
-    // então o caso inválido precisa ser um par que a regra realmente recusa —
-    // Nv1 do mesmo elemento sobre um Nv2 (fusão exige níveis iguais).
+    // Regra da árvore: puras Nv.1 de elementos DIFERENTES NÃO fundem mais
+    // (espécies diferentes só a partir do Nv.5); o par válido no Nv.1 é o
+    // mesmo elemento. A etiqueta de resultado aparece só em fusão válida.
     const st = useGameStore.getState();
     st.summon('ignis'); // este será segurado
-    st.summon('ignis'); // estes dois viram um Nv2
+    st.summon('ignis'); // par de fusão válida (mesma espécie, Nv.1)
+    st.summon('nereia'); // alvo inválido: pura diferente no Nv.1 (MIN_LEVEL)
     st.summon('ignis');
-    st.summon('nereia'); // puro Nv1 de outro elemento
+    st.summon('ignis'); // estes dois viram um Nv2 (caso de níveis diferentes)
     const eng = getEngine()!;
     const mine = eng.world.units.filter((u) => u.side === 'player' && u.alive);
     const dragged = mine[0];
-    const water = mine[3];
+    const partner = mine[1];
+    const water = mine[2];
 
-    st.tryMergeIds(mine[1].id, mine[2].id); // 2×Nv1 → 1×Nv2 (grátis)
+    st.tryMergeIds(mine[3].id, mine[4].id); // 2×Nv1 → 1×Nv2 (grátis)
     const grown = eng.world.units.find(
       (u) => u.side === 'player' && u.alive && u.level === 2,
     )!;
@@ -230,11 +235,18 @@ describe('Destaque do destino enquanto o monstro está segurado', () => {
 
     expect(startDrag(dragged.id)).toBe(true);
 
-    // híbrido possível: Nv1 de fogo sobre Nv1 de água
-    useGameStore.getState().hoverWorld(...tileXZ('player', water.tile));
+    // fusão válida de pura: etiqueta com o resultado (espécie já descoberta)
+    useGameStore.getState().hoverWorld(...tileXZ('player', partner.tile));
     let hv = useGameStore.getState().dragHover;
     expect(hv?.kind).toBe('merge');
-    expect(hv?.targetId).toBe(water.id);
+    expect(hv?.targetId).toBe(partner.id);
+    expect(hv?.fusion).toEqual({ label: 'Ignis', level: 2, known: true });
+
+    // Nv.1 de fogo sobre Nv.1 de água: nada de híbrido no Nv.1 — invalid
+    useGameStore.getState().hoverWorld(...tileXZ('player', water.tile));
+    hv = useGameStore.getState().dragHover;
+    expect(hv?.kind).toBe('invalid');
+    expect(hv?.fusion).toBeUndefined();
 
     // Nv1 sobre Nv2 da mesma espécie: os níveis precisam ser iguais
     useGameStore.getState().hoverWorld(...tileXZ('player', grown.tile));
@@ -518,36 +530,118 @@ describe('Tempo persistido entre partidas', () => {
 });
 
 describe('Enciclopédia (bestiário)', () => {
-  test('cards de espécie exibem o visualizador 3D acima das informações; selados não', () => {
+  test('toda espécie tem visualizador 3D; seladas mostram silhueta + nível só', () => {
     renderAll();
     act(() => useGameStore.getState().setBestiary(true));
-    // 4 puros destravados; híbridos todos selados → exatamente 4 visualizadores
+    // 4 puros + 19 da árvore — as seladas aparecem como silhueta escura
     const models = screen.getAllByTestId('beast-model');
-    expect(models).toHaveLength(4);
+    expect(models).toHaveLength(23);
     const card = models[0].closest('.beast-card') as HTMLElement;
     expect(card.querySelector('.beast-head')).toBeInTheDocument();
     // o modelo vem antes da descrição e da tabela de estatísticas
     const all = Array.from(card.querySelectorAll('.beast-head, .beast-model, .beast-blurb, .beast-table'));
     expect(all.indexOf(models[0])).toBe(1);
     expect(card.textContent).toContain('Nv');
+
+    // card selado: apenas "???" + nível — sem nome, stats, elementos ou receita
+    const locked = document.querySelector('.beast-card.locked') as HTMLElement;
+    expect(locked).toBeTruthy();
+    expect(locked.textContent).toContain('???');
+    expect(locked.textContent).toContain('Nv.6');
+    expect(locked.querySelector('table')).toBeNull();
+    expect(locked.querySelector('[data-testid^="recipe-"]')).toBeNull();
   });
 
-  test('híbrido selado aparece como ???; descobrir em jogo o revela', () => {
+  test('progresso da árvore e receitas reveladas apenas após descobrir', () => {
     renderAll();
     act(() => useGameStore.getState().setBestiary(true));
     const bestiary = screen.getByTestId('bestiary');
+    expect(screen.getByTestId('bestiary-progress').textContent).toContain('0/19');
     expect(bestiary.textContent).toContain('Ignis');
     expect(bestiary.textContent).toContain('???');
-    expect(bestiary.textContent).not.toContain('Vulcane');
+    expect(bestiary.textContent).not.toContain('Magma');
+    act(() => useGameStore.getState().setBestiary(false));
 
-    // descobre Vulcane: arrastar Ignis(Nv.1) sobre Gólem(Nv.1)
-    clickSummon('shop-ignis');
-    clickSummon('shop-golem');
-    const [fire, earth] = myUnits();
-    dragOnto(fire.id, earth);
+    // descobre Magma: arrastar Gólem Nv.5 sobre Ignis Nv.5 (unidades do time
+    // persistido — a loja não invoca espécie da árvore em nenhum nível)
+    const eng = getEngine()!;
+    const earth = eng.addRetainedUnit('golem', 5);
+    const fire = eng.addRetainedUnit('ignis', 5);
+    expect(earth.ok && fire.ok).toBe(true);
+    const fireUnit = eng.getUnit(fire.unitId!)!;
 
-    expect(useGameStore.getState().discovered).toContain('vulcane');
-    expect(bestiary.textContent).toContain('Vulcane');
-    expect(bestiary.textContent).toContain('= Vulcane');
+    // durante o arraste, o resultado inédito aparece como "??? Nv.6"
+    act(() => {
+      const st = useGameStore.getState();
+      st.beginDragCandidate(earth.unitId!, 20, 20);
+      st.tryPromoteDrag(140, 130);
+      useGameStore.getState().hoverWorld(...tileXZ('player', fireUnit.tile));
+    });
+    expect(useGameStore.getState().dragHover?.fusion).toEqual({
+      label: '???',
+      level: 6,
+      known: false,
+    });
+    act(() => useGameStore.getState().endDrag());
+    act(() => useGameStore.getState().dismissDiscovery());
+
+    expect(useGameStore.getState().discovered).toContain('magma');
+    act(() => useGameStore.getState().setBestiary(true));
+    const revealed = screen.getByTestId('bestiary');
+    expect(revealed.textContent).toContain('Magma');
+    expect(screen.getByTestId('bestiary-progress').textContent).toContain('1/19');
+    // receita revelada só depois da descoberta
+    expect(screen.getByTestId('recipe-magma').textContent).toContain(
+      'Gólem Nv.5 + Ignis Nv.5 → 1 unidade de Magma Nv.6',
+    );
+  });
+
+  test('primeira fusão inédita abre o overlay de descoberta; fechar é permanente', () => {
+    renderAll();
+    const eng = getEngine()!;
+    const a = eng.addRetainedUnit('nereia', 5);
+    const b = eng.addRetainedUnit('zephyr', 5);
+    expect(a.ok && b.ok).toBe(true);
+    dragOnto(a.unitId!, eng.getUnit(b.unitId!)!);
+
+    // descoberta registrada na hora (independente de fechar o overlay)
+    expect(useGameStore.getState().discovered).toContain('gelo');
+    expect(useGameStore.getState().discoveryReveal?.species).toBe('gelo');
+    expect(screen.getByTestId('discovery-overlay')).toBeInTheDocument();
+    expect(screen.getByTestId('discovery-name').textContent).toContain('Gelo');
+    expect(screen.getByTestId('discovery-card').textContent).toContain('Nv.6');
+    expect(useGameStore.getState().toast).toBeTruthy(); // toast avisou também
+
+    fireEvent.click(screen.getByTestId('discovery-close'));
+    expect(screen.queryByTestId('discovery-overlay')).toBeNull();
+    expect(useGameStore.getState().discoveryReveal).toBeNull();
+    expect(useGameStore.getState().discovered).toContain('gelo'); // permanente
+
+    // fusão repetida de espécie já descoberta NÃO reabre o overlay
+    const c = eng.addRetainedUnit('nereia', 5);
+    const d = eng.addRetainedUnit('zephyr', 5);
+    expect(c.ok && d.ok).toBe(true);
+    dragOnto(c.unitId!, eng.getUnit(d.unitId!)!);
+    expect(useGameStore.getState().discoveryReveal).toBeNull();
+    expect(screen.queryByTestId('discovery-overlay')).toBeNull();
+  });
+
+  test('nascimento do Primordial ganha overlay especial (Nv.10)', () => {
+    renderAll();
+    const eng = getEngine()!;
+    const a = eng.addRetainedUnit('astral', 9);
+    const b = eng.addRetainedUnit('colosso', 9);
+    expect(a.ok && b.ok).toBe(true);
+    dragOnto(a.unitId!, eng.getUnit(b.unitId!)!);
+
+    expect(useGameStore.getState().discoveryReveal).toEqual({
+      species: 'primordial',
+      level: 10,
+      level10: true,
+    });
+    const card = screen.getByTestId('discovery-card');
+    expect(card.className).toContain('primordial');
+    expect(card.textContent).toContain('NASCIMENTO DO PRIMORDIAL');
+    expect(screen.getByTestId('discovery-name').textContent).toContain('Primordial');
   });
 });

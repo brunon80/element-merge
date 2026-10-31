@@ -140,7 +140,7 @@ describe('Evolução visual do fogo por fusão', () => {
     expect(spanByLevel[4]).toBeGreaterThan(spanByLevel[3]);
   });
 
-  test('as quatro puras evoluem por nível; híbridos ainda não', () => {
+  test('as quatro puras evoluem por nível; espécies da árvore têm forma única', () => {
     expect(hasLevelVariants(MODELS.ignis)).toBe(true);
     expect(hasLevelVariants(MODELS.zephyr)).toBe(true);
     expect(hasLevelVariants(MODELS.golem)).toBe(true);
@@ -150,10 +150,10 @@ describe('Evolução visual do fogo por fusão', () => {
     expect(hasForms(getSpecies('zephyr'))).toBe(true);
     expect(hasForms(getSpecies('golem'))).toBe(true);
     expect(hasForms(getSpecies('nereia'))).toBe(true);
-    // híbridos seguem no rig padrão: todas as partes aparecem em qualquer nível
-    expect(hasLevelVariants(MODELS.vulcane)).toBe(false);
-    expect(hasForms(getSpecies('vulcane'))).toBe(false);
-    expect(partsForLevel(MODELS.vulcane, 3).length).toBe(MODELS.vulcane.parts.length);
+    // criaturas da árvore: uma única forma — todas as partes em qualquer nível
+    expect(hasLevelVariants(MODELS.magma)).toBe(false);
+    expect(hasForms(getSpecies('magma'))).toBe(false);
+    expect(partsForLevel(MODELS.magma, 6).length).toBe(MODELS.magma.parts.length);
   });
 });
 

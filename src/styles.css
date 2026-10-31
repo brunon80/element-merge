@@ -687,10 +687,11 @@ button {
   letter-spacing: 1px;
 }
 .beast-recipes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 14px 0 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
 }
 .recipe-chip {
   display: inline-flex;
@@ -803,6 +804,16 @@ button {
   display: inline-flex;
   gap: 4px;
 }
+.beast-level-tag {
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 12px;
+}
+.beast-recipe {
+  color: var(--violet);
+  margin: 6px 0;
+  font-size: 11px;
+}
 .beast-blurb {
   color: var(--muted);
   margin: 4px 0 8px;
@@ -830,6 +841,59 @@ button {
 .beast-table td:first-child {
   text-align: left;
   color: var(--gold);
+}
+
+/* overlay de descoberta (primeira fusão que revela uma espécie inédita) */
+.discovery-overlay {
+  z-index: 70;
+}
+.discovery-card {
+  width: min(430px, 94vw);
+  padding: 20px 22px;
+  border: 1px solid rgba(245, 196, 81, 0.45);
+  border-radius: 16px;
+  background: var(--panel-solid);
+  box-shadow: 0 0 60px rgba(245, 196, 81, 0.18);
+  text-align: center;
+  animation: toast-in 0.25s ease-out;
+}
+.discovery-card.primordial {
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 90px rgba(200, 225, 255, 0.35);
+}
+.discovery-kicker {
+  color: var(--gold);
+  letter-spacing: 0.18em;
+  font-size: 11px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.discovery-card.primordial .discovery-kicker {
+  color: #fff3c4;
+  letter-spacing: 0.22em;
+}
+.discovery-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.discovery-name {
+  font-size: 22px;
+}
+.discovery-level {
+  color: var(--gold);
+  font-weight: 700;
+}
+.discovery-els {
+  display: inline-flex;
+  gap: 4px;
+}
+.discovery-blurb {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 4px 0 14px;
 }
 
 /* toast */

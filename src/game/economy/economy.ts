@@ -1,12 +1,12 @@
 import {
   DEFEAT_REWARD,
   DRAW_REWARD,
+  MAX_LEVEL,
   SUMMON_COST,
   VICTORY_REWARD,
   type MatchResult,
   type SpeciesId,
 } from '../types';
-import { getSpecies } from '../../data/monsters';
 
 /**
  * Sistema econômico — regras fixas do documento de design:
@@ -22,14 +22,17 @@ export function canAfford(coins: number): boolean {
 }
 
 /**
- * Valor de VENDA (lixeira) de uma criatura: exatamente a soma do que ela
- * custou para existir, seguindo as fusões 2→1 — Nv.1 = 100, Nv.2 = 200,
- * Nv.3 = 400, Nv.4 = 800, Nv.5 = 1600; híbridos valem o dobro do nível.
+ * Valor de VENDA (lixeira) — e a "moeda de valor" do jogo (orçamento da IA):
+ * exatamente a soma do que a criatura custou para existir, seguindo a regra
+ * 2→1 em TODOS os níveis da árvore (Nv.1=100, Nv.2=200, ..., Nv.10=51200).
+ * Cada criatura da árvore vale duas do nível anterior — o prêmio do híbrido
+ * antigo (Nv.1) sumiu porque os híbridos novos nascem no nível da árvore.
  * Vender devolve o investimento, nunca gera lucro.
  */
 export function sellValue(species: SpeciesId, level: number): number {
-  const base = SUMMON_COST * 2 ** (Math.min(5, Math.max(1, level)) - 1);
-  return getSpecies(species).elements.length > 1 ? base * 2 : base;
+  const safe = Math.min(MAX_LEVEL, Math.max(1, Math.round(level)));
+  void species;
+  return SUMMON_COST * 2 ** (safe - 1);
 }
 
 export function rewardFor(result: MatchResult): number {

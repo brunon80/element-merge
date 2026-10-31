@@ -31,17 +31,28 @@ export function abilityText(a: AbilityDef): string {
       return `Queimadura — ${Math.round((a.chance ?? 0) * 100)}% de chance de incendiar por ${a.duration ?? 3}s`;
     case 'slow':
       return `Lentidão — ${Math.round((a.chance ?? 0) * 100)}% de chance de desacelerar ataques por ${a.duration ?? 3}s`;
+    case 'poison':
+      return `Veneno — ${Math.round((a.chance ?? 0) * 100)}% de chance de envenenar por ${a.duration ?? 4}s`;
     case 'splash':
       return `Explosão em área — raio ${a.radius ?? 1.5}, dano secundário ${Math.round((a.factor ?? 0.5) * 100)}%`;
     case 'pierce':
       return `Perfuração — o projétil atravessa até ${a.factor ?? 2} inimigos`;
     case 'chain':
-      return `Relâmpago em cadeia — respinga para outro inimigo com ${Math.round((a.factor ?? 0.5) * 100)}% do dano`;
+      return `Relâmpago em cadeia — respinga para ${a.jumps ?? 1} ${a.jumps ?? 1 > 1 ? 'outros inimigos' : 'outro inimigo'} com ${Math.round((a.factor ?? 0.5) * 100)}% do dano`;
     case 'doubleShot':
       return `Tiro duplo — segunda rajada com ${Math.round((a.factor ?? 0.6) * 100)}% do dano`;
     case 'swift':
       return 'Cadência veloz — ataque rápido e projéteis velozes';
     case 'heavy':
       return 'Golpe pesado — dano alto, cadência baixa';
+    case 'regen':
+      return `Regeneração — recupera ${Math.round((a.factor ?? 0.03) * 100)}% do HP máximo por segundo`;
+    case 'drain':
+      return `Drenar vida — recupera ${Math.round((a.factor ?? 0.3) * 100)}% do dano causado`;
   }
+}
+
+/** Texto curto da regra de fusão para a enciclopédia/inspetor. */
+export function levelLabel(level: number): string {
+  return `Nv.${level}`;
 }

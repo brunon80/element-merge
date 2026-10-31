@@ -30,6 +30,12 @@ interface TrailCfg {
   back: (lv: number) => number;
 }
 
+/** trilha genérica calibrada por nível (criaturas da árvore têm nível fixo) */
+const tr =
+  (k: number): ((lv: number) => number) =>
+  (lv) =>
+    0.04 + 0.014 * Math.min(7, lv) * k;
+
 const TRAILS: Partial<Record<SpeciesId, TrailCfg>> = {
   ignis: {
     emitPerSec: 16,
@@ -64,6 +70,29 @@ const TRAILS: Partial<Record<SpeciesId, TrailCfg>> = {
     life: (lv) => 0.24 + 0.03 * lv,
     back: (lv) => 0.26 + 0.05 * (lv - 1),
   },
+  // ---------------------------------------------------------------------
+  // Espécies da árvore elemental (Nv.6–10): cada linhagem tem sua marca.
+  // As funções de tamanho/vida são genéricas (nível fixo por espécie).
+  // ---------------------------------------------------------------------
+  raio: { emitPerSec: 24, heat: 0.35, rise: 0.3, drag: 5.2, jitter: 0.07, inherit: 0.08, size: tr(0.8), life: (lv) => 0.2 + 0.02 * Math.min(7, lv), back: tr(0.6) },
+  madeira: { emitPerSec: 10, heat: 0.0, rise: 0.15, drag: 4.6, jitter: 0.12, inherit: 0.1, size: tr(1.0), life: (lv) => 0.4 + 0.04 * Math.min(7, lv), back: tr(0.7) },
+  magma: { emitPerSec: 15, heat: 0.8, rise: 0.45, drag: 3.6, jitter: 0.1, inherit: 0.1, size: tr(1.2), life: (lv) => 0.5 + 0.05 * Math.min(7, lv), back: tr(0.9) },
+  gelo: { emitPerSec: 14, heat: 0.0, rise: 0.2, drag: 5.0, jitter: 0.08, inherit: 0.09, size: tr(0.9), life: (lv) => 0.35 + 0.04 * Math.min(7, lv), back: tr(0.7) },
+  vapor: { emitPerSec: 18, heat: 0.15, rise: 0.7, drag: 3.0, jitter: 0.11, inherit: 0.08, size: tr(1.1), life: (lv) => 0.45 + 0.05 * Math.min(7, lv), back: tr(0.8) },
+  areia: { emitPerSec: 16, heat: 0.05, rise: 0.05, drag: 4.8, jitter: 0.14, inherit: 0.12, size: tr(0.9), life: (lv) => 0.3 + 0.03 * Math.min(7, lv), back: tr(0.7) },
+  tempestade: { emitPerSec: 26, heat: 0.4, rise: 0.35, drag: 4.6, jitter: 0.09, inherit: 0.09, size: tr(0.9), life: (lv) => 0.28 + 0.03 * Math.min(7, lv), back: tr(0.7) },
+  obsidiana: { emitPerSec: 12, heat: 0.1, rise: 0.1, drag: 4.4, jitter: 0.1, inherit: 0.11, size: tr(1.1), life: (lv) => 0.4 + 0.04 * Math.min(7, lv), back: tr(0.8) },
+  pantano: { emitPerSec: 12, heat: 0.0, rise: 0.25, drag: 4.0, jitter: 0.13, inherit: 0.1, size: tr(1.1), life: (lv) => 0.45 + 0.05 * Math.min(7, lv), back: tr(0.7) },
+  plasma: { emitPerSec: 20, heat: 0.6, rise: 0.4, drag: 3.8, jitter: 0.07, inherit: 0.09, size: tr(1.0), life: (lv) => 0.35 + 0.04 * Math.min(7, lv), back: tr(0.8) },
+  nevoa: { emitPerSec: 20, heat: 0.0, rise: 0.55, drag: 2.8, jitter: 0.1, inherit: 0.07, size: tr(1.2), life: (lv) => 0.5 + 0.05 * Math.min(7, lv), back: tr(0.6) },
+  cristal: { emitPerSec: 15, heat: 0.2, rise: 0.25, drag: 4.8, jitter: 0.08, inherit: 0.1, size: tr(0.8), life: (lv) => 0.3 + 0.03 * Math.min(7, lv), back: tr(0.7) },
+  cosmico: { emitPerSec: 22, heat: 0.45, rise: 0.35, drag: 4.0, jitter: 0.08, inherit: 0.09, size: tr(1.0), life: (lv) => 0.35 + 0.04 * Math.min(7, lv), back: tr(0.8) },
+  geodo: { emitPerSec: 12, heat: 0.15, rise: 0.1, drag: 4.4, jitter: 0.1, inherit: 0.11, size: tr(1.2), life: (lv) => 0.42 + 0.04 * Math.min(7, lv), back: tr(0.9) },
+  abissal: { emitPerSec: 16, heat: 0.05, rise: 0.3, drag: 3.6, jitter: 0.1, inherit: 0.1, size: tr(1.1), life: (lv) => 0.45 + 0.05 * Math.min(7, lv), back: tr(0.8) },
+  vulcanico: { emitPerSec: 18, heat: 0.9, rise: 0.5, drag: 3.4, jitter: 0.11, inherit: 0.1, size: tr(1.3), life: (lv) => 0.5 + 0.05 * Math.min(7, lv), back: tr(0.9) },
+  astral: { emitPerSec: 24, heat: 0.4, rise: 0.35, drag: 4.2, jitter: 0.07, inherit: 0.09, size: tr(1.0), life: (lv) => 0.35 + 0.04 * Math.min(7, lv), back: tr(0.8) },
+  colosso: { emitPerSec: 13, heat: 0.25, rise: 0.12, drag: 4.4, jitter: 0.12, inherit: 0.12, size: tr(1.4), life: (lv) => 0.45 + 0.05 * Math.min(7, lv), back: tr(1.0) },
+  primordial: { emitPerSec: 26, heat: 0.6, rise: 0.45, drag: 3.6, jitter: 0.08, inherit: 0.1, size: tr(1.5), life: (lv) => 0.5 + 0.06 * Math.min(7, lv), back: tr(1.1) },
 };
 
 export function FlameTrail({ pool }: { pool: SmokePool }) {
@@ -83,7 +112,7 @@ export function FlameTrail({ pool }: { pool: SmokePool }) {
         seen.add(p.id);
         let acc = emitters.current.get(p.id) ?? 0;
         // o projétil de um monstro maior (nível mais alto) solta mais rastro
-        const lv = Math.max(1, Math.min(5, p.ownerLevel ?? 1));
+        const lv = Math.max(1, Math.min(10, p.ownerLevel ?? 1));
         acc += dt * cfg.emitPerSec * (1 + 0.14 * (lv - 1));
         while (acc >= 1 && emitted < PUFF_PER_FRAME) {
           acc -= 1;

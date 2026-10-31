@@ -35,7 +35,7 @@ import type {
   SpeciesId,
   TileIndex,
 } from '../types';
-import { BOARD_COLS, TILES_PER_SIDE } from '../types';
+import { BOARD_COLS, MAX_LEVEL, TILES_PER_SIDE } from '../types';
 
 interface PendingShot {
   ownerId: number;
@@ -185,8 +185,8 @@ export class GameEngine {
     if (this.world.summary) return { ok: false, reason: 'MATCH_OVER' };
     const def = getSpecies(species);
     // Somente espécies puras podem ser convocadas diretamente;
-    // híbridos só nascem de fusões (progressão real).
-    if (def.elements.length !== 1) {
+    // criaturas da árvore (Nv.6+) só nascem de fusões (progressão real).
+    if (def.elements.length !== 1 || def.levelMin !== 1) {
       return { ok: false, reason: 'NOT_SUMMONABLE' };
     }
     const wallet = side === 'player' ? this.world.playerCoins : this.world.aiCoins;
@@ -257,13 +257,19 @@ export class GameEngine {
     tile: TileIndex,
   ): CombatUnit {
     const def = getSpecies(species);
-    const stats = scaledStats(def.base, level);
+    // Regra de nível: puros existem em 1..5; criaturas da árvore, no nível fixo
+    // da receita. O motor nunca deixa existir unidade fora dessa janela.
+    const safeLevel = Math.min(
+      def.levelMax,
+      Math.max(def.levelMin, level),
+    ) as MonsterLevel;
+    const stats = scaledStats(def.base, safeLevel);
     const pos = tileGroundPosition(side, tile);
     const unit: CombatUnit = {
       id: this.nextUnitId++,
       side,
       species,
-      level,
+      level: safeLevel,
       tile,
       pos: [pos[0], pos[1], pos[2] + 0],
       hp: stats.hp,
@@ -331,20 +337,15 @@ export class GameEngine {
     const posA: [number, number, number] = [...a.pos];
     const posB: [number, number, number] = [...b.pos];
     const tileA = a.tile;
-    const tileB = b.tile;
 
     // ---- Remoção atômica das duas entradas ----
     this.removeUnit(a);
     this.removeUnit(b);
 
-    // ---- Criação atômica das saídas (quantidade exata da tabela) ----
+    // ---- Criação atômica da saída (sempre exatamente 1 unidade — regra 2→1) ----
     const createdIds: number[] = [];
     const createdA = this.createUnit(side, outcome.species, outcome.level, tileA);
     createdIds.push(createdA.id);
-    if (outcome.outputCount === 2) {
-      const createdB = this.createUnit(side, outcome.species, outcome.level, tileB);
-      createdIds.push(createdB.id);
-    }
 
     this.emit({ type: 'mergeStart', side, aId, bId, outcome });
     this.emit({ type: 'mergeDone', side, createdIds, outcome });
@@ -364,6 +365,16 @@ export class GameEngine {
         level: outcome.level,
       },
     ];
+    // Nível 10 é sempre um evento épico (conhecimento ou não): apresentação do primordial.
+    if (outcome.level >= MAX_LEVEL) {
+      glow.push({
+        type: 'primordial',
+        pos: tileGroundPosition(side, tileA),
+        element: getSpecies(outcome.species).base.damageElement,
+        species: outcome.species,
+        level: outcome.level,
+      });
+    }
     this.world.fx.push(...glow);
     return { ok: true, outcome, createdIds };
   }
@@ -379,8 +390,8 @@ export class GameEngine {
 
   /**
    * Venda na lixeira: remove a criatura do tabuleiro e devolve à carteira
-   * exatamente a soma do que ela custou para existir (regra 2→1): Nv.1=100,
-   * Nv.2=200, Nv.3=400, Nv.4=800, Nv.5=1600; híbridos = dobro do nível.
+   * exatamente a soma do que ela custou para existir (regra 2→1 em todos os
+   * níveis): Nv.1=100, Nv.2=200, ..., Nv.10=51200.
    * Vale para criaturas combinadas — o reembolso acompanha o nível final.
    */
   sellUnit(unitId: number): SellResult {
@@ -541,11 +552,17 @@ export class GameEngine {
 
     for (const unit of world.units) {
       if (!unit.alive) continue;
-      const burnDamage = tickStatuses(unit, dt);
-      if (burnDamage > 0) {
-        this.applyDamage(unit, burnDamage, 'fire');
+      const dotDamage = tickStatuses(unit, dt);
+      for (const d of dotDamage) {
+        if (d.amount > 0) this.applyDamage(unit, d.amount, d.element);
       }
       if (!unit.alive) continue;
+
+      // Passiva regen: regenera fração do HP máximo por segundo (Madeira, Pântano, Colosso, Primordial).
+      const regenAb = unit.abilities.find((a) => a.kind === 'regen');
+      if (regenAb && unit.hp < unit.maxHp) {
+        unit.hp = Math.min(unit.maxHp, unit.hp + (regenAb.factor ?? 0.03) * unit.maxHp * dt);
+      }
 
       unit.cooldown -= dt;
       if (unit.cooldown <= 0) {
@@ -625,7 +642,10 @@ export class GameEngine {
       abilities: unit.abilities,
       pierceLeft: this.abilityFactor(unit, 'pierce') ?? 0,
       hitIds: [],
-      chainLeft: unit.abilities.some((a) => a.kind === 'chain') ? 1 : 0,
+      chainLeft: (() => {
+        const chainAb = unit.abilities.find((a) => a.kind === 'chain');
+        return chainAb ? Math.max(0, Math.round(chainAb.jumps ?? 1)) : 0;
+      })(),
       alive: true,
       rehitTimer: 0,
       age: 0,
@@ -686,6 +706,15 @@ export class GameEngine {
     this.applyDamage(target, dmg, p.damageElement);
     p.hitIds.push(target.id);
 
+    // Drenar vida: o atacante recupera fração do dano causado (Abissal, Primordial).
+    const drainAb = p.abilities.find((a) => a.kind === 'drain');
+    if (drainAb) {
+      const owner = this.byId.get(p.ownerId);
+      if (owner && owner.alive && owner.hp < owner.maxHp) {
+        owner.hp = Math.min(owner.maxHp, owner.hp + dmg * (drainAb.factor ?? 0.3));
+      }
+    }
+
     // Impacto característico por espécie (bola de fogo do Ignis explode) —
     // camada visual decide o efeito; a física já foi aplicada acima.
     world.fx.push({
@@ -696,11 +725,12 @@ export class GameEngine {
       level: p.ownerLevel,
     });
 
-    // Status (queimadura / lentidão) com base no dano-base do atacante.
+    // Status (queimadura / lentidão / veneno) com base no dano-base do atacante.
     for (const ab of p.abilities) {
       if (ab.kind === 'burn' && this.rng() < (ab.chance ?? 0)) {
         applyStatus(target, 'burn', ab.duration ?? 3, {
           dps: p.damage * (ab.dpsFraction ?? 0.2),
+          element: p.damageElement,
         });
         world.fx.push({ type: 'status', pos: [...target.pos], status: 'burn', element: 'fire' });
       } else if (ab.kind === 'slow' && this.rng() < (ab.chance ?? 0)) {
@@ -708,6 +738,12 @@ export class GameEngine {
           slowFactor: ab.slowFactor ?? 0.5,
         });
         world.fx.push({ type: 'status', pos: [...target.pos], status: 'slow', element: 'water' });
+      } else if (ab.kind === 'poison' && this.rng() < (ab.chance ?? 0)) {
+        applyStatus(target, 'poison', ab.duration ?? 4, {
+          dps: p.damage * (ab.dpsFraction ?? 0.25),
+          element: p.damageElement,
+        });
+        world.fx.push({ type: 'status', pos: [...target.pos], status: 'poison', element: p.damageElement });
       }
     }
 

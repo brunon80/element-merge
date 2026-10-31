@@ -21,19 +21,36 @@ function speciesColor(species: SpeciesId): THREE.Color {
   const cache = speciesColor.cache;
   let c = cache.get(species);
   if (!c) {
-    // cores distintas por espécie (híbridos com cor própria)
+    // cores distintas por espécie (espécies da árvore com cor própria)
     const map: Record<string, string> = {
       ignis: '#ff5a1f',
       nereia: '#4db4ff',
       golem: '#e0b96a',
       zephyr: '#bfe9ff',
-      vulcane: '#ff8a2a',
-      tempest: '#aef2ff',
-      verdan: '#9fbb6a',
-      solaris: '#ffd23f',
-      vaporis: '#ffc37a',
-      duna: '#e8d49a',
-      tempestae: '#d0b6ff',
+      // Nv.6 — híbridos
+      raio: '#ffe14d',
+      madeira: '#7fb069',
+      magma: '#ff6a1f',
+      gelo: '#a8e6ff',
+      vapor: '#ffc9a0',
+      areia: '#e8d49a',
+      // Nv.7 — compostos
+      tempestade: '#d0b6ff',
+      obsidiana: '#6a4a93',
+      pantano: '#6a8f3d',
+      plasma: '#ff9ef5',
+      nevoa: '#cfe6ee',
+      cristal: '#b7a6ff',
+      // Nv.8 — avançados
+      cosmico: '#9ad0ff',
+      geodo: '#c77dff',
+      abissal: '#3f6f8f',
+      vulcanico: '#ff4d12',
+      // Nv.9 — lendários
+      astral: '#8fd6ff',
+      colosso: '#d98c4a',
+      // Nv.10 — primordial
+      primordial: '#e8f6ff',
     };
     c = new THREE.Color(map[species] ?? '#ffffff');
     cache.set(species, c);
@@ -191,7 +208,9 @@ export function ProjectileField() {
         if (!slot?.mesh) continue;
         if (counts[el] >= MAX_PER_ELEMENT) continue;
         const haloIdx = counts[el]++; // halo existe para TODO projétil
-        const lv = Math.max(1, Math.min(5, p.ownerLevel ?? 1));
+        const lv = Math.max(1, Math.min(10, p.ownerLevel ?? 1));
+        // assinatura dos puros só existe até Nv.5; trava o crescimento de escala
+        const lvSign = Math.min(5, lv);
 
         const isFlame = el === 'fire' && p.species === 'ignis';
         const isRock = el === 'earth' && p.species === 'golem';
@@ -213,7 +232,7 @@ export function ProjectileField() {
           if (flameN < MAX_PER_ELEMENT) {
             const launch = Math.min(1, 0.25 + p.age / 0.12); // nasce pequena e "dispara"
             // dragões Nv5 lançam bolas de fogo bem maiores que a faísca Nv1
-            const scale = (0.5 + 0.11 * (lv - 1)) * launch;
+            const scale = (0.5 + 0.11 * (lvSign - 1)) * launch;
             dummy.scale.setScalar(scale);
             dummy.updateMatrix();
             flameRef.current?.setMatrixAt(flameN, dummy.matrix);
@@ -226,7 +245,7 @@ export function ProjectileField() {
           // matacão: cambalhota lenta; pedra Nv5 é quase três vezes a de Nv1
           dummy.rotation.set(time * 3.1 + p.id, time * 2.2, time * 1.5);
           if (rockN < MAX_PER_ELEMENT) {
-            const scale = 0.85 + 0.3 * (lv - 1);
+            const scale = 0.85 + 0.3 * (lvSign - 1);
             dummy.scale.setScalar(scale);
             dummy.updateMatrix();
             rockRef.current?.setMatrixAt(rockN, dummy.matrix);
@@ -244,7 +263,7 @@ export function ProjectileField() {
             dummy.quaternion.copy(tmpQuat);
           }
           if (bladeN < MAX_PER_ELEMENT) {
-            const scale = 0.9 + 0.3 * (lv - 1);
+            const scale = 0.9 + 0.3 * (lvSign - 1);
             dummy.scale.setScalar(scale);
             dummy.updateMatrix();
             bladeRef.current?.setMatrixAt(bladeN, dummy.matrix);
@@ -264,7 +283,7 @@ export function ProjectileField() {
             dummy.quaternion.copy(tmpQuat);
           }
           if (dropN < MAX_PER_ELEMENT) {
-            const scale = 0.8 + 0.26 * (lv - 1);
+            const scale = 0.8 + 0.26 * (lvSign - 1);
             dummy.scale.setScalar(scale);
             dummy.updateMatrix();
             dropRef.current?.setMatrixAt(dropN, dummy.matrix);

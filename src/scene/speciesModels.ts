@@ -1,3 +1,4 @@
+import { MAX_LEVEL } from '../game/types';
 import type { SpeciesId } from '../game/types';
 import type { GeoKind } from './assets';
 
@@ -54,7 +55,9 @@ export interface SpeciesModel {
 
 /** partes visíveis em um nível (todas quando não há variações por nível) */
 export function partsForLevel(def: SpeciesModel, level: number): Part[] {
-  return def.parts.filter((p) => (p.minLvl ?? 1) <= level && (p.maxLvl ?? 5) >= level);
+  return def.parts.filter(
+    (p) => (p.minLvl ?? 1) <= level && (p.maxLvl ?? MAX_LEVEL) >= level,
+  );
 }
 
 /** True quando o modelo muda de silhueta com o nível (tem partes com faixa) */
@@ -77,12 +80,30 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   nereia: { body: '#4db4ff', dark: '#173e6e', glow: '#7ad4ff', accent: '#e6f7ff', bodyOpacity: 0.9, roughness: 0.15 },
   golem: { body: '#b5956a', dark: '#5c4630', glow: '#ffd27a', accent: '#7ba05b', roughness: 0.85 },
   zephyr: { body: '#cfeaff', dark: '#5d87a8', glow: '#7fd4ff', accent: '#ffffff', roughness: 0.4 },
-  vulcane: { body: '#5a4038', dark: '#281e1c', glow: '#ff5a1f', accent: '#ff8a2a', roughness: 0.9 },
-  tempest: { body: '#8195b3', dark: '#43506e', glow: '#ffe066', accent: '#bfe9ff', roughness: 0.7 },
-  verdan: { body: '#7a8a55', dark: '#4c5233', glow: '#ffd27a', accent: '#a8c96a', roughness: 0.85 },
-  solaris: { body: '#e6b64c', dark: '#8f6a20', glow: '#ffde7a', accent: '#ff9d3d', roughness: 0.4, metalness: 0.3 },
-  vaporis: { body: '#a87f4f', dark: '#54422a', glow: '#ffb37a', accent: '#5fa8a0', roughness: 0.35, metalness: 0.65 },
-  duna: { body: '#d9b87a', dark: '#9c7c42', glow: '#ffe9a8', accent: '#bfe9ff', roughness: 0.75 },
+  // Nv.6 — híbridos da árvore elemental
+  raio: { body: '#ffe14d', dark: '#6b5310', glow: '#fff6b0', accent: '#9fd7ff', roughness: 0.35 },
+  madeira: { body: '#7fae5f', dark: '#4d3a22', glow: '#d8f0a8', accent: '#a9d67e', roughness: 0.85 },
+  magma: { body: '#5a4038', dark: '#281e1c', glow: '#ff5a1f', accent: '#ff8a2a', roughness: 0.9 },
+  gelo: { body: '#bfe6f7', dark: '#3f6f8a', glow: '#e8fbff', accent: '#8fd0ff', bodyOpacity: 0.92, roughness: 0.15, metalness: 0.1 },
+  vapor: { body: '#a87f4f', dark: '#54422a', glow: '#ffb37a', accent: '#5fa8a0', roughness: 0.35, metalness: 0.65 },
+  areia: { body: '#d9b87a', dark: '#9c7c42', glow: '#ffe9a8', accent: '#bfe9ff', roughness: 0.75 },
+  // Nv.7 — compostos
+  tempestade: { body: '#7186a8', dark: '#333f58', glow: '#ffe066', accent: '#cfe9ff', roughness: 0.65 },
+  obsidiana: { body: '#241d33', dark: '#120e1b', glow: '#8f5cff', accent: '#b9a6d9', roughness: 0.2, metalness: 0.55 },
+  pantano: { body: '#66784a', dark: '#39422a', glow: '#b7e05a', accent: '#8fae5d', roughness: 0.9 },
+  plasma: { body: '#ff8ae0', dark: '#7c2d63', glow: '#ffd0f2', accent: '#ffe14d', roughness: 0.3 },
+  nevoa: { body: '#cfe2ea', dark: '#5f7683', glow: '#eef7fb', accent: '#a8e6ff', bodyOpacity: 0.75, roughness: 0.4 },
+  cristal: { body: '#b7a6ff', dark: '#5d4a9c', glow: '#e6dcff', accent: '#8fd0ff', bodyOpacity: 0.9, roughness: 0.15, metalness: 0.3 },
+  // Nv.8 — avançados
+  cosmico: { body: '#2b3560', dark: '#141a33', glow: '#9ad0ff', accent: '#ffe9a8', roughness: 0.4 },
+  geodo: { body: '#8a7fae', dark: '#453c63', glow: '#e0b3ff', accent: '#c77dff', roughness: 0.5, metalness: 0.2 },
+  abissal: { body: '#2e5f78', dark: '#142b38', glow: '#5fe0c8', accent: '#bfe9ff', roughness: 0.35 },
+  vulcanico: { body: '#4a3f3a', dark: '#221b18', glow: '#ff3d10', accent: '#ff9d3d', roughness: 0.85 },
+  // Nv.9 — lendários
+  astral: { body: '#39406e', dark: '#1a1f3a', glow: '#8fd6ff', accent: '#ffe9a8', roughness: 0.35 },
+  colosso: { body: '#6e5c50', dark: '#372c26', glow: '#ff7a3d', accent: '#c77dff', roughness: 0.8 },
+  // Nv.10 — primordial
+  primordial: { body: '#d8e4f2', dark: '#5c6c85', glow: '#fff3c4', accent: '#9ad0ff', roughness: 0.3, metalness: 0.25 },
 };
 
 const EYE = (x: number, y: number, z: number, group?: number): Part => ({
@@ -628,8 +649,8 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     ],
   },
 
-  // Fogo+Terra — golem vulcânico com fissuras de lava --------------------
-  vulcane: {
+  // Fogo+Terra — colosso de lava com fissuras incandescentes (Nv.6) ------
+  magma: {
     bob: 0.03,
     parts: [
       { g: 'box', a: [0.34, 0.42, 0.4], p: [-0.3, 0.21, 0], m: 'dark' },
@@ -649,73 +670,113 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     ],
   },
 
-  // Água+Ar — nimbo elétrico com raios e chuva ---------------------------
-  tempest: {
+  // Fogo+Ar — espírito da trovoada: núcleo elétrico com arcos orbitais ----
+  raio: {
+    floatY: 0.35,
+    bob: 0.12,
+    parts: [
+      { g: 'dodeca', a: [0.42], p: [0, 1.15, 0], m: 'body' },
+      { g: 'ico', a: [0.24], p: [0, 1.15, 0], m: 'glow', flick: 0.15 },
+      { g: 'torus', a: [0.62, 0.04, 6, 26], p: [0, 1.15, 0], r: [1.2, 0.3, 0], m: 'glow', group: 0 },
+      { g: 'torus', a: [0.55, 0.035, 6, 24], p: [0, 1.15, 0], r: [1.57, 0, 0.9], m: 'accent', group: 1 },
+      ...mm(EYE(0.17, 1.2, 0.36)),
+      ...mm(PUPIL(0.17, 1.2, 0.36)),
+      ...mm({ g: 'cone', a: [0.09, 0.42, 4], p: [0.3, 1.62, 0], r: [0, 0, -0.7], m: 'glow', flick: 0.4 }),
+      { g: 'cone', a: [0.11, 0.5, 4], p: [-0.08, 0.55, 0.1], r: [0, 0, 2.7], m: 'glow', flick: 0.35 },
+      { g: 'box', a: [0.05, 0.3, 0.05], p: [0.5, 0.85, 0.25], r: [0, 0, 0.6], m: 'accent', flick: 0.3, group: 1 },
+      { g: 'box', a: [0.045, 0.26, 0.045], p: [-0.45, 1.5, -0.2], r: [0, 0, -0.9], m: 'accent', flick: 0.3, group: 0 },
+    ],
+    groups: { 0: 2.2, 1: -1.7 },
+  },
+
+  // Água+Terra — ancião das raízes: titã de tronco vivo que se regenera --
+  madeira: {
+    bob: 0.04,
+    parts: [
+      { g: 'sphere', a: [0.72, 12, 10], p: [0, 0.72, 0], s: [1.1, 0.92, 1.05], m: 'body' },
+      { g: 'cyl', a: [0.3, 0.42, 1.5, 9], p: [0, 1.55, 0], m: 'body' },
+      { g: 'sphere', a: [0.36, 10, 8], p: [0, 2.4, 0], m: 'dark' },
+      ...mm({ g: 'cone', a: [0.16, 0.5, 5], p: [0.42, 0.24, 0.28], r: [0.7, 0, 0.55], m: 'dark' }),
+      { g: 'cone', a: [0.16, 0.5, 5], p: [0, 0.24, -0.5], r: [-2.5, 0, 0], m: 'dark' },
+      ...mm({ g: 'cone', a: [0.13, 0.62, 5], p: [0.52, 1.5, -0.05], r: [0, 0, -1.35], m: 'body', tag: 'arm' }),
+      ...mm({ g: 'sphere', a: [0.14, 8, 6], p: [0.66, 1.1, 0.05], m: 'dark' }),
+      ...mm(SEYE(0.14, 2.44, 0.3)),
+      ...mm(SPUPIL(0.14, 2.44, 0.3)),
+      ...mm({ g: 'cone', a: [0.07, 0.4, 5], p: [0.12, 2.78, 0], r: [0, 0, -0.35], m: 'accent' }),
+      { g: 'cone', a: [0.06, 0.32, 5], p: [-0.14, 2.72, 0.05], r: [0, 0, 0.5], m: 'accent' },
+      { g: 'sphere', a: [0.1, 8, 6], p: [-0.3, 2.5, 0.25], m: 'glow' },
+      { g: 'sphere', a: [0.09, 8, 6], p: [0.34, 2.44, -0.22], m: 'glow' },
+      { g: 'torus', a: [0.55, 0.06, 6, 22], p: [0, 0.5, 0], r: [1.57, 0, 0], m: 'accent' },
+    ],
+  },
+
+  // Fogo+Ar+Terra — estrela de bolso: plasma contido em anéis -------------
+  plasma: {
+    floatY: 0.5,
+    bob: 0.14,
+    parts: [
+      { g: 'ico', a: [0.38], p: [0, 1.15, 0], m: 'glow', flick: 0.1 },
+      { g: 'dodeca', a: [0.5], p: [0, 1.15, 0], m: 'body' },
+      { g: 'torus', a: [0.7, 0.05, 8, 28], p: [0, 1.15, 0], r: [1.25, 0.3, 0], m: 'body', spin: [0.4, 0, 0.5] },
+      { g: 'torus', a: [0.58, 0.04, 8, 26], p: [0, 1.15, 0], r: [1.57, 0, 1.1], m: 'accent', spin: [-0.6, 0, 0.3] },
+      { g: 'sphere', a: [0.11, 8, 6], p: [0.74, 1.3, 0.1], m: 'glow', group: 0, flick: 0.25 },
+      { g: 'sphere', a: [0.085, 8, 6], p: [-0.55, 0.95, 0.5], m: 'glow', group: 0, flick: 0.25 },
+      { g: 'sphere', a: [0.07, 8, 6], p: [-0.3, 1.5, -0.7], m: 'accent', group: 0, flick: 0.3 },
+      ...mm(WEYE(0.15, 1.24, 0.34)),
+      ...mm(WPUPIL(0.15, 1.24, 0.34)),
+      { g: 'cone', a: [0.05, 0.3, 5], p: [0, 1.75, 0], m: 'accent', flick: 0.2 },
+    ],
+    groups: { 0: 1.6 },
+  },
+
+  // Água+Ar — serpente de gelo: cristaux afiados e névoa congelante ------
+  gelo: {
+    bob: 0.06,
+    parts: [
+      { g: 'octa', a: [0.62, 0], p: [0, 0.85, 0], s: [0.85, 1.15, 0.95], m: 'body' },
+      { g: 'octa', a: [0.34, 0], p: [0, 1.6, 0.05], s: [0.8, 1.3, 0.8], m: 'body' },
+      { g: 'octa', a: [0.2, 0], p: [0, 2.2, 0], s: [0.8, 1.2, 0.8], m: 'glow', flick: 0.05 },
+      ...mm({ g: 'octa', a: [0.16, 0], p: [0.5, 0.7, 0.18], s: [0.7, 1.6, 0.7], r: [0, 0, -0.5], m: 'body' }),
+      ...mm({ g: 'octa', a: [0.12, 0], p: [-0.44, 1.15, -0.1], s: [0.7, 1.5, 0.7], r: [0, 0, 0.6], m: 'body' }),
+      ...mm({ g: 'cone', a: [0.1, 0.55, 4], p: [0.34, 1.75, 0.14], r: [0, 0, -0.6], m: 'glow', flick: 0.08 }),
+      ...mm(WEYE(0.13, 1.68, 0.3)),
+      ...mm(WPUPIL(0.13, 1.68, 0.3)),
+      { g: 'ring', a: [0.3, 0.85, 32], p: [0, 0.03, 0], r: [-1.57, 0, 0], m: 'trans' },
+      { g: 'sphere', a: [0.09, 8, 6], p: [0.55, 0.35, -0.3], m: 'accent', group: 0 },
+      { g: 'sphere', a: [0.075, 8, 6], p: [-0.5, 0.5, 0.35], m: 'accent', group: 0 },
+      { g: 'sphere', a: [0.06, 8, 6], p: [0.2, 2.45, -0.35], m: 'accent', rise: [0.35, 0.7] },
+    ],
+    groups: { 0: 0.9 },
+  },
+
+  // Raio+Gelo — muralha de raios: o muro de nuvem que vira frente de tempestade
+  tempestade: {
     floatY: 0.25,
     bob: 0.1,
     parts: [
-      { g: 'sphere', a: [0.42, 10, 8], p: [0, 1.06, 0], m: 'body' },
-      { g: 'sphere', a: [0.32, 10, 8], p: [0.5, 0.92, 0.14], m: 'body' },
-      { g: 'sphere', a: [0.3, 10, 8], p: [-0.46, 0.96, -0.1], m: 'body' },
-      { g: 'sphere', a: [0.26, 10, 8], p: [0.14, 1.22, -0.3], m: 'body' },
-      { g: 'sphere', a: [0.5, 10, 8], p: [0, 0.8, 0], s: [1.35, 0.5, 1.15], m: 'dark' },
-      EYE(-0.17, 1.08, 0.38),
-      EYE(0.17, 1.08, 0.38),
-      PUPIL(-0.17, 1.08, 0.38),
-      PUPIL(0.17, 1.08, 0.38),
-      { g: 'cone', a: [0.15, 0.55, 4], p: [-0.05, 0.36, 0.12], m: 'glow', flick: 0.3 },
-      { g: 'cone', a: [0.1, 0.3, 4], p: [0.12, 0.05, 0.18], r: [0, 0, 2.4], m: 'glow', flick: 0.4 },
-      { g: 'torus', a: [0.72, 0.03, 6, 28], p: [0, 1.0, 0], r: [1.57, 0, 0], m: 'accent', group: 0 },
-      { g: 'capsule', a: [0.03, 0.14], p: [0.32, 0.6, 0.2], m: 'trans', rise: [1.5, 0.55] },
-      { g: 'capsule', a: [0.03, 0.14], p: [-0.34, 0.55, 0.05], m: 'trans', rise: [1.2, 0.55] },
-      { g: 'capsule', a: [0.03, 0.14], p: [-0.02, 0.62, 0.36], m: 'trans', rise: [1.7, 0.55] },
+      { g: 'sphere', a: [0.5, 10, 8], p: [0, 1.5, 0], m: 'body' },
+      { g: 'sphere', a: [0.4, 10, 8], p: [0.62, 1.32, 0.16], m: 'body' },
+      { g: 'sphere', a: [0.38, 10, 8], p: [-0.58, 1.38, -0.12], m: 'body' },
+      { g: 'sphere', a: [0.32, 10, 8], p: [0.18, 1.7, -0.34], m: 'body' },
+      { g: 'sphere', a: [0.26, 10, 8], p: [-0.16, 1.82, 0.28], m: 'body' },
+      { g: 'sphere', a: [0.62, 10, 8], p: [0, 1.16, 0], s: [1.5, 0.5, 1.2], m: 'dark' },
+      ...mm(EYE(0.2, 1.52, 0.44)),
+      ...mm(PUPIL(0.2, 1.52, 0.44)),
+      { g: 'cone', a: [0.18, 0.7, 4], p: [-0.08, 0.5, 0.14], m: 'glow', flick: 0.35 },
+      { g: 'cone', a: [0.12, 0.42, 4], p: [0.18, 0.16, 0.2], r: [0, 0, 2.4], m: 'glow', flick: 0.45 },
+      { g: 'cone', a: [0.09, 0.34, 4], p: [-0.42, 0.4, -0.1], r: [0, 0, -0.5], m: 'glow', flick: 0.4 },
+      { g: 'torus', a: [0.92, 0.035, 6, 30], p: [0, 1.42, 0], r: [1.57, 0, 0], m: 'accent', group: 0 },
+      { g: 'torus', a: [0.78, 0.03, 6, 28], p: [0, 1.05, 0], r: [1.4, 0.3, 0], m: 'glow', group: 1 },
+      ...mm({ g: 'octa', a: [0.1, 0], p: [0.66, 0.85, 0.3], s: [0.7, 1.5, 0.7], r: [0, 0, -0.4], m: 'accent' }),
+      { g: 'capsule', a: [0.03, 0.16], p: [0.36, 0.8, 0.24], m: 'trans', rise: [1.6, 0.6] },
+      { g: 'capsule', a: [0.03, 0.16], p: [-0.38, 0.75, 0.06], m: 'trans', rise: [1.3, 0.6] },
+      { g: 'capsule', a: [0.03, 0.16], p: [-0.02, 0.86, 0.4], m: 'trans', rise: [1.8, 0.6] },
     ],
-    groups: { 0: 1.2 },
+    groups: { 0: 1.3, 1: -1.9 },
   },
 
-  // Água+Terra — ancião do pântano com broto e raízes ---------------------
-  verdan: {
-    bob: 0.05,
-    parts: [
-      { g: 'sphere', a: [0.68, 12, 10], p: [0, 0.64, 0], s: [1.15, 0.95, 1.05], m: 'body' },
-      { g: 'sphere', a: [0.2, 8, 6], p: [0.42, 0.36, 0.3], m: 'dark' },
-      { g: 'sphere', a: [0.18, 8, 6], p: [-0.46, 0.5, 0.22], m: 'dark' },
-      { g: 'sphere', a: [0.16, 8, 6], p: [0.1, 0.3, -0.5], m: 'dark' },
-      { g: 'cyl', a: [0.05, 0.07, 0.34, 6], p: [0, 1.3, 0], m: 'accent' },
-      { g: 'cone', a: [0.11, 0.28, 5], p: [-0.13, 1.52, 0], r: [0, 0, 0.8], m: 'glow', flick: 0.05 },
-      { g: 'cone', a: [0.11, 0.28, 5], p: [0.13, 1.52, 0], r: [0, 0, -0.8], m: 'glow', flick: 0.05 },
-      { g: 'cone', a: [0.09, 0.24, 5], p: [0, 1.62, 0], m: 'glow', flick: 0.05 },
-      { g: 'sphere', a: [0.085, 8, 6], p: [-0.2, 0.74, 0.56], m: 'glow' },
-      { g: 'sphere', a: [0.085, 8, 6], p: [0.2, 0.74, 0.56], m: 'glow' },
-      { g: 'cone', a: [0.15, 0.34, 5], p: [-0.4, 0.14, 0.34], r: [0.6, 0, 0.6], m: 'dark' },
-      { g: 'cone', a: [0.15, 0.34, 5], p: [0.42, 0.14, 0.3], r: [-0.5, 0, -0.6], m: 'dark' },
-      { g: 'cone', a: [0.15, 0.34, 5], p: [0, 0.14, -0.48], r: [-2.6, 0, 0], m: 'dark' },
-      { g: 'torus', a: [0.56, 0.05, 6, 22], p: [0, 0.46, 0], r: [1.57, 0, 0], m: 'accent' },
-    ],
-  },
-
-  // Fogo+Ar — serafim solar com coroa e filamentos -----------------------
-  solaris: {
-    floatY: 0.55,
-    bob: 0.14,
-    parts: [
-      { g: 'dodeca', a: [0.38], p: [0, 1.05, 0], m: 'glow' },
-      { g: 'cone', a: [0.06, 0.34, 5], p: [0, 1.62, 0], m: 'accent', flick: 0.06 },
-      { g: 'cone', a: [0.055, 0.3, 5], p: [0.45, 1.42, 0], r: [0, 0, -1.05], m: 'accent', flick: 0.08 },
-      { g: 'cone', a: [0.055, 0.3, 5], p: [0.45, 0.72, 0], r: [0, 0, -2.1], m: 'accent', flick: 0.08 },
-      { g: 'cone', a: [0.06, 0.34, 5], p: [0, 0.48, 0], r: [0, 0, 3.14], m: 'accent', flick: 0.06 },
-      { g: 'cone', a: [0.055, 0.3, 5], p: [-0.45, 0.72, 0], r: [0, 0, 2.1], m: 'accent', flick: 0.08 },
-      { g: 'cone', a: [0.055, 0.3, 5], p: [-0.45, 1.42, 0], r: [0, 0, 1.05], m: 'accent', flick: 0.08 },
-      { g: 'torus', a: [0.66, 0.035, 6, 32], p: [0, 1.05, 0], r: [1.3, 0.25, 0], m: 'glow', spin: [0.7, 0, 0.4] },
-      { g: 'sphere', a: [0.09, 8, 6], p: [0.82, 1.05, 0], m: 'glow', group: 0, flick: 0.2 },
-      { g: 'sphere', a: [0.075, 8, 6], p: [-0.5, 1.12, 0.64], m: 'glow', group: 0, flick: 0.25 },
-      { g: 'sphere', a: [0.065, 8, 6], p: [-0.32, 1.2, -0.75], m: 'glow', group: 0, flick: 0.25 },
-    ],
-    groups: { 0: 1.35 },
-  },
-
-  // Fogo+Água — caldeiro vivo que expele vapor ---------------------------
-  vaporis: {
+  // Fogo+Água — caldeiro vivo (Nv.6): jatos de vapor escaldante ----------
+  vapor: {
     bob: 0.05,
     parts: [
       { g: 'capsule', a: [0.44, 0.5], p: [0, 0.72, 0], m: 'body' },
@@ -733,8 +794,30 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     ],
   },
 
-  // Terra+Ar — gênio do deserto com véu e grão de areia -------------------
-  duna: {
+  // Pântano+Névoa — senhor das marés mortas: drena a vida alheia (Nv.8) --
+  abissal: {
+    floatY: 0.2,
+    bob: 0.08,
+    parts: [
+      { g: 'sphere', a: [0.68, 12, 10], p: [0, 1.05, 0], s: [1.1, 1.0, 1.05], m: 'body' },
+      { g: 'sphere', a: [0.5, 10, 8], p: [0, 0.75, 0], s: [1.3, 0.55, 1.2], m: 'dark' },
+      { g: 'sphere', a: [0.28, 10, 8], p: [0, 1.72, 0], m: 'body' },
+      ...mm(WEYE(0.14, 1.76, 0.22)),
+      ...mm(WPUPIL(0.14, 1.76, 0.22)),
+      ...mm({ g: 'capsule', a: [0.07, 0.55], p: [0.55, 0.85, 0.15], r: [0, 0, -0.7], m: 'body', group: 0, tag: 'arm' }),
+      ...mm({ g: 'capsule', a: [0.06, 0.45], p: [-0.5, 0.7, -0.25], r: [0, 0, 0.8], m: 'body', group: 1, tag: 'arm' }),
+      ...mm({ g: 'capsule', a: [0.05, 0.35], p: [0.3, 0.55, -0.5], r: [0, 0, -1.1], m: 'body', group: 0 }),
+      ...mm({ g: 'cone', a: [0.05, 0.16, 4], p: [0.12, 1.5, 0.28], r: [Math.PI, 0, 0], m: 'accent' }),
+      { g: 'cone', a: [0.05, 0.16, 4], p: [-0.12, 1.5, 0.28], r: [Math.PI, 0, 0], m: 'accent' },
+      { g: 'sphere', a: [0.09, 8, 6], p: [0.4, 2.1, -0.1], m: 'glow', rise: [0.5, 0.8] },
+      { g: 'sphere', a: [0.075, 8, 6], p: [-0.35, 2.0, 0.2], m: 'glow', rise: [0.65, 0.8] },
+      { g: 'sphere', a: [0.06, 8, 6], p: [0.05, 2.25, 0.35], m: 'glow', rise: [0.8, 0.8] },
+    ],
+    groups: { 0: 0.9, 1: -1.2 },
+  },
+
+  // Terra+Ar — gênio do deserto (Nv.6): rajadas de grãos em disparo duplo
+  areia: {
     bob: 0.07,
     parts: [
       { g: 'cone', a: [0.58, 1.25, 9], p: [0, 0.62, 0], m: 'body' },
@@ -743,17 +826,222 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
       { g: 'torus', a: [0.31, 0.07, 8, 20], p: [0, 1.86, 0], r: [1.57, 0, 0.12], m: 'accent' },
       { g: 'cone', a: [0.05, 0.22, 5], p: [0.1, 2.08, 0], r: [0, 0, -0.4], m: 'glow' },
       { g: 'box', a: [0.3, 0.14, 0.12], p: [0, 1.63, 0.24], m: 'dark' },
-      EYE(-0.1, 1.8, 0.26),
-      EYE(0.1, 1.8, 0.26),
-      PUPIL(-0.1, 1.8, 0.26),
-      PUPIL(0.1, 1.8, 0.26),
+      ...mm(EYE(0.1, 1.8, 0.26)),
+      ...mm(PUPIL(0.1, 1.8, 0.26)),
       { g: 'torus', a: [0.42, 0.05, 6, 22], p: [0, 1.12, 0], r: [1.4, 0.25, 0], m: 'accent' },
       { g: 'torus', a: [0.5, 0.045, 6, 24], p: [0, 0.12, 0], r: [1.57, 0, 0], m: 'accent', group: 0 },
-      { g: 'box', a: [0.06, 0.06, 0.06], p: [0.72, 0.5, 0.1], m: 'glow', group: 1 },
+      ...mm({ g: 'box', a: [0.06, 0.06, 0.06], p: [0.72, 0.5, 0.1], m: 'glow', group: 1 }),
       { g: 'box', a: [0.05, 0.05, 0.05], p: [-0.66, 0.9, -0.3], m: 'glow', group: 1 },
       { g: 'box', a: [0.045, 0.045, 0.045], p: [0.4, 1.4, 0.6], m: 'glow', group: 1 },
-      { g: 'box', a: [0.055, 0.055, 0.055], p: [-0.45, 0.62, 0.62], m: 'glow', group: 1 },
     ],
     groups: { 0: 2.0, 1: -2.6 },
+  },
+
+  // Magma+Areia — fortaleza de vidro negro, quase impenetrável -----------
+  obsidiana: {
+    bob: 0.02,
+    parts: [
+      { g: 'octa', a: [0.75, 0], p: [0, 0.95, 0], s: [1.05, 1.15, 1.0], m: 'body' },
+      { g: 'octa', a: [0.4, 0], p: [0, 1.9, 0], s: [1.0, 1.2, 0.9], m: 'body' },
+      ...mm({ g: 'box', a: [0.36, 0.5, 0.42], p: [-0.66, 0.45, 0], m: 'dark' }),
+      ...mm({ g: 'octa', a: [0.2, 0], p: [0.55, 1.5, 0.2], s: [0.8, 1.4, 0.8], r: [0, 0, -0.5], m: 'body' }),
+      ...mm({ g: 'box', a: [0.05, 0.5, 0.02], p: [0.12, 1.0, 0.68], r: [0, 0, -0.25], m: 'glow', flick: 0.08 }),
+      ...mm({ g: 'box', a: [0.04, 0.35, 0.02], p: [-0.3, 0.72, 0.66], m: 'glow', flick: 0.1 }),
+      ...mm(SEYE(0.16, 1.92, 0.34)),
+      ...mm(SPUPIL(0.16, 1.92, 0.34)),
+      { g: 'cone', a: [0.3, 0.6, 4], p: [0, 2.5, 0], m: 'dark' },
+      { g: 'cone', a: [0.09, 0.3, 4], p: [0, 2.72, 0], m: 'glow', flick: 0.12 },
+      { g: 'ring', a: [0.4, 0.95, 6], p: [0, 0.04, 0], r: [-1.57, 0, 0], m: 'trans' },
+    ],
+  },
+
+  // Madeira+Vapor — hidra do lodo: veneno contínuo e carne que volta -----
+  pantano: {
+    bob: 0.05,
+    parts: [
+      { g: 'sphere', a: [0.75, 12, 10], p: [0, 0.7, 0], s: [1.2, 0.9, 1.1], m: 'body' },
+      ...mm({ g: 'capsule', a: [0.13, 0.5], p: [0.4, 1.35, 0.05], r: [0, 0, -0.35], m: 'body' }),
+      { g: 'capsule', a: [0.12, 0.45], p: [-0.25, 1.3, -0.25], r: [0.4, 0, 0.3], m: 'body' },
+      ...mm({ g: 'sphere', a: [0.19, 10, 8], p: [0.5, 1.78, 0.08], m: 'body' }),
+      { g: 'sphere', a: [0.17, 10, 8], p: [-0.33, 1.72, -0.38], m: 'body' },
+      ...mm(EYE(0.54, 1.82, 0.24)),
+      ...mm(PUPIL(0.54, 1.82, 0.24)),
+      EYE(-0.36, 1.76, -0.22),
+      PUPIL(-0.36, 1.76, -0.22),
+      ...mm({ g: 'sphere', a: [0.1, 8, 6], p: [0.62, 2.02, 0.05], m: 'glow', flick: 0.1, rise: [0.5, 0.5] }),
+      { g: 'sphere', a: [0.085, 8, 6], p: [-0.4, 2.0, -0.4], m: 'glow', flick: 0.12, rise: [0.55, 0.5] },
+      { g: 'sphere', a: [0.08, 8, 6], p: [0.05, 1.95, 0.3], m: 'glow', flick: 0.1, rise: [0.6, 0.5] },
+      ...mm({ g: 'cone', a: [0.18, 0.4, 5], p: [0.5, 0.2, 0.4], r: [0.6, 0, 0.6], m: 'dark' }),
+      { g: 'cone', a: [0.18, 0.4, 5], p: [-0.1, 0.2, -0.55], r: [-2.6, 0, 0.2], m: 'dark' },
+      { g: 'torus', a: [0.62, 0.06, 6, 22], p: [0, 0.42, 0], r: [1.57, 0, 0], m: 'accent' },
+    ],
+  },
+
+  // Gelo+Vapor — espectro da bruma: ninguém acerta o que não enxerga -----
+  nevoa: {
+    floatY: 0.3,
+    bob: 0.12,
+    parts: [
+      { g: 'vortex', a: [0.7, 0.16, 2.6, 20, 24, 1.5, 0.08], p: [0, 0.15, 0], m: 'body' },
+      { g: 'sphere', a: [0.3, 10, 8], p: [0, 2.55, 0], m: 'body' },
+      ...mm(WEYE(0.12, 2.6, 0.24)),
+      ...mm(WPUPIL(0.12, 2.6, 0.24)),
+      ...mm({ g: 'sphere', a: [0.16, 8, 6], p: [0.55, 1.2, 0.2], m: 'steam', rise: [0.6, 1.2] }),
+      ...mm({ g: 'sphere', a: [0.13, 8, 6], p: [-0.5, 0.8, -0.25], m: 'steam', rise: [0.8, 1.2] }),
+      { g: 'sphere', a: [0.11, 8, 6], p: [0.1, 1.6, -0.5], m: 'steam', rise: [0.7, 1.1] },
+      { g: 'ring', a: [0.5, 1.1, 36], p: [0, 0.02, 0], r: [-1.57, 0, 0], m: 'trans' },
+    ],
+  },
+
+  // Madeira+Areia — prisma vivo: estilhaços que ricocheteiam -------------
+  cristal: {
+    bob: 0.05,
+    parts: [
+      { g: 'octa', a: [0.55, 0], p: [0, 0.95, 0], s: [0.9, 1.3, 0.9], m: 'body' },
+      { g: 'octa', a: [0.26, 0], p: [0, 1.85, 0], s: [0.9, 1.4, 0.9], m: 'glow', flick: 0.06 },
+      ...mm({ g: 'octa', a: [0.18, 0], p: [0.5, 0.6, 0.25], s: [0.7, 1.8, 0.7], r: [0.2, 0, -0.6], m: 'body' }),
+      ...mm({ g: 'octa', a: [0.15, 0], p: [-0.45, 0.9, -0.2], s: [0.7, 1.7, 0.7], r: [-0.2, 0, 0.7], m: 'body' }),
+      ...mm({ g: 'octa', a: [0.12, 0], p: [0.3, 1.5, -0.4], s: [0.7, 1.6, 0.7], r: [0.4, 0, -0.3], m: 'body' }),
+      ...mm(WEYE(0.13, 1.6, 0.42)),
+      ...mm(WPUPIL(0.13, 1.6, 0.42)),
+      { g: 'sphere', a: [0.07, 8, 6], p: [0.7, 1.5, 0.1], m: 'glow', group: 0, flick: 0.3 },
+      { g: 'sphere', a: [0.06, 8, 6], p: [-0.6, 1.7, -0.2], m: 'glow', group: 0, flick: 0.3 },
+      { g: 'torus', a: [0.6, 0.04, 6, 26], p: [0, 1.2, 0], r: [1.4, 0.3, 0], m: 'accent', group: 1 },
+    ],
+    groups: { 0: 1.8, 1: -1.1 },
+  },
+
+  // Tempestade+Plasma — entidade estelar: constelação viva a Nv.8 --------
+  cosmico: {
+    floatY: 0.5,
+    bob: 0.14,
+    parts: [
+      { g: 'ico', a: [0.42], p: [0, 1.55, 0], m: 'glow', flick: 0.12 },
+      { g: 'dodeca', a: [0.56], p: [0, 1.55, 0], m: 'body' },
+      { g: 'torus', a: [0.85, 0.05, 8, 30], p: [0, 1.55, 0], r: [1.25, 0.3, 0], m: 'accent', group: 0 },
+      { g: 'torus', a: [0.72, 0.04, 8, 28], p: [0, 1.55, 0], r: [1.57, 0, 1.0], m: 'glow', group: 1 },
+      ...mm(WEYE(0.17, 1.66, 0.42)),
+      ...mm(WPUPIL(0.17, 1.66, 0.42)),
+      ...mm({ g: 'cone', a: [0.06, 0.4, 5], p: [0.3, 2.2, 0], r: [0, 0, -0.5], m: 'accent', flick: 0.2 }),
+      { g: 'drop', a: [0.2, 0.6, 16, 14], p: [0, 2.9, 0], m: 'glow', flick: 0.3, amp: 0.1 },
+      { g: 'sphere', a: [0.11, 8, 6], p: [0.95, 1.7, 0.15], m: 'glow', group: 0, flick: 0.25 },
+      { g: 'sphere', a: [0.09, 8, 6], p: [-0.7, 1.35, 0.55], m: 'accent', group: 0, flick: 0.25 },
+      { g: 'sphere', a: [0.08, 8, 6], p: [-0.4, 2.0, -0.75], m: 'glow', group: 1, flick: 0.3 },
+    ],
+    groups: { 0: 1.4, 1: -1.9 },
+  },
+
+  // Obsidiana+Cristal — catedral de geodo: o mais duro dos tanques -------
+  geodo: {
+    bob: 0.02,
+    parts: [
+      { g: 'dodeca', a: [0.85], p: [0, 1.0, 0], s: [1.1, 1.0, 1.05], m: 'body' },
+      { g: 'sphere', a: [0.4, 10, 8], p: [0, 1.2, 0.45], s: [0.9, 0.8, 0.6], m: 'glow', flick: 0.05 },
+      { g: 'octa', a: [0.3, 0], p: [0, 2.1, 0], s: [1.0, 1.3, 1.0], m: 'body' },
+      ...mm({ g: 'cone', a: [0.16, 0.7, 6], p: [0.62, 1.9, 0.1], r: [0, 0, -0.4], m: 'accent' }),
+      ...mm({ g: 'cone', a: [0.13, 0.55, 6], p: [-0.5, 2.15, -0.15], r: [0, 0, 0.5], m: 'accent' }),
+      ...mm({ g: 'cone', a: [0.1, 0.45, 6], p: [0.3, 2.45, -0.35], r: [0.3, 0, -0.25], m: 'accent' }),
+      ...mm({ g: 'box', a: [0.4, 0.5, 0.46], p: [-0.72, 0.42, 0.05], m: 'dark' }),
+      ...mm(SEYE(0.18, 2.14, 0.36)),
+      ...mm(SPUPIL(0.18, 2.14, 0.36)),
+      { g: 'torus', a: [0.7, 0.06, 8, 24], p: [0, 0.16, 0], r: [1.57, 0, 0], m: 'accent' },
+      { g: 'octa', a: [0.09, 0], p: [0.75, 0.6, 0.4], s: [0.7, 1.5, 0.7], m: 'glow', group: 0 },
+      { g: 'octa', a: [0.08, 0], p: [-0.7, 0.8, -0.35], s: [0.7, 1.4, 0.7], m: 'glow', group: 0 },
+    ],
+    groups: { 0: 0.8 },
+  },
+
+  // Plasma+Obsidiana — catástrofe andante: o vulcão primordial a Nv.8 ----
+  vulcanico: {
+    bob: 0.02,
+    parts: [
+      ...mm({ g: 'box', a: [0.42, 0.5, 0.48], p: [-0.38, 0.25, 0], m: 'dark' }),
+      { g: 'box', a: [1.2, 1.0, 0.95], p: [0, 1.0, 0], m: 'body' },
+      ...mm({ g: 'dodeca', a: [0.3], p: [0.78, 1.45, 0], m: 'dark' }),
+      { g: 'box', a: [0.09, 0.62, 0.03], p: [-0.3, 1.05, 0.49], m: 'glow', flick: 0.08 },
+      { g: 'box', a: [0.07, 0.45, 0.03], p: [0.22, 0.9, 0.49], r: [0, 0, 0.4], m: 'glow', flick: 0.1 },
+      { g: 'box', a: [0.06, 0.35, 0.03], p: [0.05, 1.2, -0.48], m: 'glow', flick: 0.12 },
+      { g: 'dodeca', a: [0.42], p: [0, 1.72, 0], m: 'dark' },
+      { g: 'cone', a: [0.22, 0.4, 7], p: [0, 2.15, 0], m: 'dark' },
+      { g: 'drop', a: [0.24, 0.7, 18, 16], p: [0, 2.35, 0], m: 'glow', flick: 0.35, amp: 0.12 },
+      { g: 'sphere', a: [0.1, 10, 8], p: [0, 1.78, 0.36], m: 'glow', flick: 0.06 },
+      ...mm(SEYE(0.18, 1.74, 0.34)),
+      ...mm(SPUPIL(0.18, 1.74, 0.34)),
+      ...mm({ g: 'cone', a: [0.24, 0.6, 6], p: [-0.78, 0.9, -0.2], r: [0, 0, 0.4], m: 'body' }),
+      { g: 'sphere', a: [0.13, 8, 6], p: [0.3, 2.9, -0.1], m: 'steam', rise: [0.7, 0.9] },
+      { g: 'sphere', a: [0.11, 8, 6], p: [-0.25, 2.75, 0.15], m: 'steam', rise: [0.9, 0.9] },
+    ],
+  },
+
+  // Cósmico+Abissal — titão celestial que dobra céu e mar (Nv.9) ---------
+  astral: {
+    floatY: 0.45,
+    bob: 0.12,
+    parts: [
+      { g: 'sphere', a: [0.5, 12, 10], p: [0, 1.7, 0], m: 'body' },
+      { g: 'sphere', a: [0.3, 10, 8], p: [0, 2.45, 0], m: 'body' },
+      { g: 'ico', a: [0.2], p: [0, 1.7, 0], m: 'glow', flick: 0.12 },
+      ...mm(WEYE(0.13, 2.5, 0.26)),
+      ...mm(WPUPIL(0.13, 2.5, 0.26)),
+      { g: 'torus', a: [0.85, 0.04, 8, 32], p: [0, 1.7, 0], r: [1.2, 0.3, 0], m: 'accent', group: 0 },
+      { g: 'torus', a: [0.7, 0.035, 8, 30], p: [0, 1.7, 0], r: [1.57, 0, 0.9], m: 'glow', group: 1 },
+      { g: 'torus', a: [0.55, 0.03, 8, 28], p: [0, 1.7, 0], r: [1.35, -0.4, 0], m: 'accent', group: 2 },
+      ...mm({ g: 'sphere', a: [0.08, 8, 6], p: [0.9, 1.85, 0.1], m: 'glow', group: 0, flick: 0.3 }),
+      { g: 'sphere', a: [0.07, 8, 6], p: [-0.75, 1.5, 0.45], m: 'accent', group: 1, flick: 0.3 },
+      { g: 'sphere', a: [0.06, 8, 6], p: [0.4, 2.3, -0.6], m: 'glow', group: 2, flick: 0.3 },
+      { g: 'drop', a: [0.3, 0.9, 18, 16], p: [0, 3.1, 0], m: 'glow', flick: 0.3, amp: 0.12 },
+      { g: 'drop', a: [0.14, 0.45, 14, 12], p: [0.2, 3.5, -0.1], m: 'accent', flick: 0.35, amp: 0.08 },
+      ...mm({ g: 'capsule', a: [0.06, 0.5], p: [0.45, 0.7, 0], r: [0, 0, -0.5], m: 'body' }),
+    ],
+    groups: { 0: 1.1, 1: -1.5, 2: 1.9 },
+  },
+
+  // Geodo+Vulcânico — a montanha que anda (Nv.9) -------------------------
+  colosso: {
+    bob: 0.02,
+    parts: [
+      ...mm({ g: 'box', a: [0.5, 0.55, 0.56], p: [-0.45, 0.28, 0], m: 'dark' }),
+      { g: 'box', a: [1.4, 1.1, 1.1], p: [0, 1.1, 0], m: 'body' },
+      { g: 'cone', a: [0.85, 1.0, 7], p: [0, 2.1, 0], m: 'body' },
+      { g: 'cone', a: [0.5, 0.7, 7], p: [0, 2.75, 0], m: 'dark' },
+      ...mm({ g: 'dodeca', a: [0.34], p: [0.9, 1.6, 0], m: 'dark' }),
+      { g: 'octa', a: [0.2, 0], p: [0.3, 3.1, 0.1], s: [0.8, 1.4, 0.8], m: 'accent' },
+      { g: 'octa', a: [0.15, 0], p: [-0.35, 2.9, -0.15], s: [0.8, 1.3, 0.8], m: 'accent' },
+      { g: 'box', a: [0.1, 0.7, 0.03], p: [-0.35, 1.15, 0.56], m: 'glow', flick: 0.08 },
+      { g: 'box', a: [0.07, 0.5, 0.03], p: [0.3, 1.0, 0.56], r: [0, 0, 0.35], m: 'glow', flick: 0.1 },
+      { g: 'sphere', a: [0.12, 10, 8], p: [0, 1.6, 0.5], m: 'glow', flick: 0.06 },
+      ...mm(SEYE(0.18, 1.55, 0.52)),
+      ...mm(SPUPIL(0.18, 1.55, 0.52)),
+      { g: 'drop', a: [0.2, 0.6, 16, 14], p: [0, 3.3, 0], m: 'glow', flick: 0.3, amp: 0.1 },
+    ],
+  },
+
+  // Astral+Colosso — a entidade que precede os quatro elementos (Nv.10) --
+  primordial: {
+    floatY: 0.35,
+    bob: 0.1,
+    parts: [
+      { g: 'sphere', a: [0.8, 14, 12], p: [0, 1.7, 0], m: 'body' },
+      { g: 'ico', a: [0.42], p: [0, 1.7, 0], m: 'glow', flick: 0.12 },
+      ...mm(WEYE(0.22, 2.0, 0.62)),
+      ...mm(WPUPIL(0.22, 2.0, 0.62)),
+      { g: 'torus', a: [1.15, 0.05, 8, 36], p: [0, 1.7, 0], r: [1.2, 0.25, 0], m: 'accent', group: 0 },
+      { g: 'torus', a: [1.0, 0.04, 8, 34], p: [0, 1.7, 0], r: [1.57, 0, 0.8], m: 'glow', group: 1 },
+      { g: 'torus', a: [1.3, 0.045, 8, 36], p: [0, 0.1, 0], r: [1.57, 0, 0], m: 'accent', spin: [0, 0, 2.2] },
+      // satélites elementais: fogo, água, terra, ar — os quatro dentro do um
+      { g: 'drop', a: [0.16, 0.45, 14, 12], p: [1.05, 2.2, 0], m: 'glow', group: 0, flick: 0.4, amp: 0.08 },
+      { g: 'sphere', a: [0.13, 10, 8], p: [-1.0, 2.3, 0.2], m: 'glow', group: 0, rise: [0.8, 0.4] },
+      ...mm({ g: 'octa', a: [0.12, 0], p: [0.55, 2.7, -0.6], s: [0.8, 1.4, 0.8], m: 'accent', group: 1 }),
+      { g: 'vortex', a: [0.14, 0.05, 0.5, 12, 16, 1.6], p: [-0.6, 2.6, 0.5], m: 'trans', group: 1 },
+      // coroa da criação: anéis ascendentes + chama primordial no topo
+      { g: 'cone', a: [0.09, 0.4, 5], p: [-0.3, 2.95, 0.1], r: [0, 0, 0.35], m: 'accent', flick: 0.2 },
+      { g: 'cone', a: [0.09, 0.4, 5], p: [0.3, 2.95, -0.1], r: [0, 0, -0.35], m: 'accent', flick: 0.2 },
+      { g: 'cone', a: [0.07, 0.32, 5], p: [0, 3.15, 0.25], r: [0.3, 0, 0], m: 'accent', flick: 0.25 },
+      { g: 'drop', a: [0.34, 1.0, 20, 18], p: [0, 3.3, 0], m: 'glow', flick: 0.35, amp: 0.14 },
+      { g: 'drop', a: [0.16, 0.5, 14, 12], p: [0.28, 3.6, -0.12], m: 'glow', flick: 0.4, amp: 0.1 },
+      ...mm({ g: 'capsule', a: [0.11, 0.7], p: [0.75, 0.7, 0.1], r: [0, 0, -0.6], m: 'body' }),
+      { g: 'ring', a: [0.6, 1.4, 40], p: [0, 0.03, 0], r: [-1.57, 0, 0], m: 'trans' },
+    ],
+    groups: { 0: 1.2, 1: -1.6 },
   },
 };

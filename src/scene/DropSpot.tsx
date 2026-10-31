@@ -134,6 +134,39 @@ function hintTexture(): THREE.Texture {
   return hintTex;
 }
 
+let mergeTex: THREE.CanvasTexture | null = null;
+/** etiqueta "→ Nome Nv.X" do resultado de uma fusão válida no alvo do arraste */
+function drawMergeLabel(
+  texture: THREE.CanvasTexture,
+  label: string,
+  level: number,
+  known: boolean,
+): void {
+  const c = texture.image as HTMLCanvasElement;
+  const ctx = c.getContext('2d')!;
+  const w = c.width;
+  const h = c.height;
+  ctx.clearRect(0, 0, w, h);
+  const text = `\u2192 ${known ? label : '???'} Nv.${level}`;
+  ctx.font = 'bold 52px "Segoe UI", system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const tw = Math.min(w - 24, ctx.measureText(text).width + 36);
+  const x = (w - tw) / 2;
+  ctx.fillStyle = 'rgba(8,12,22,0.82)';
+  ctx.beginPath();
+  ctx.roundRect(x, h / 2 - 40, tw, 80, 40);
+  ctx.fill();
+  ctx.strokeStyle = known ? 'rgba(66,232,164,0.9)' : 'rgba(255,210,63,0.9)';
+  ctx.lineWidth = 5;
+  if (!known) ctx.setLineDash([10, 8]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = known ? '#8ff2c6' : '#ffd23f';
+  ctx.fillText(text, w / 2, h / 2);
+  texture.needsUpdate = true;
+}
+
 // ---------------------------------------------------------------------------
 
 export function DropSpot() {
@@ -146,7 +179,9 @@ export function DropSpot() {
   const collarRef = useRef<THREE.Mesh>(null!);
   const crossRef = useRef<THREE.Group>(null!);
   const sparksRef = useRef<THREE.Group>(null!);
+  const labelRef = useRef<THREE.Sprite>(null!);
   const hintRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const labelKey = useRef<string>('');
 
   const appear = useRef(1);
   const wasActive = useRef(false);
@@ -228,6 +263,7 @@ export function DropSpot() {
 
     if (!kind) {
       if (root.visible) root.visible = false;
+      if (labelRef.current?.visible) labelRef.current.visible = false;
       wasActive.current = false;
       return;
     }
@@ -332,6 +368,34 @@ export function DropSpot() {
           ch.position.set(Math.cos(a) * 1.05, 0.55 + 0.35 * Math.sin(a * 2), Math.sin(a) * 0.78);
           setColor((ch as THREE.Mesh).material);
         });
+      }
+    }
+
+    // etiqueta com o RESULTADO da fusão (nome oculto se espécie inédita)
+    const label = labelRef.current;
+    if (label) {
+      const fusion = kind === 'merge' ? hv?.fusion : undefined;
+      if (!fusion) {
+        if (label.visible) label.visible = false;
+      } else {
+        const key = `${fusion.label}|${fusion.level}|${fusion.known}`;
+        if (labelKey.current !== key) {
+          labelKey.current = key;
+          if (!mergeTex) {
+            const c = document.createElement('canvas');
+            c.width = 512;
+            c.height = 128;
+            mergeTex = new THREE.CanvasTexture(c);
+          }
+          drawMergeLabel(mergeTex, fusion.label, fusion.level, fusion.known);
+          (label.material as THREE.SpriteMaterial).map = mergeTex;
+          (label.material as THREE.SpriteMaterial).needsUpdate = true;
+        }
+        const target = hv && hv.targetId !== undefined ? eng?.getUnit(hv.targetId) : undefined;
+        const topY = 1.6 + 0.16 * ((target?.level ?? 1) - 1);
+        label.position.set(px, topY + 1.15 + Math.sin(t * 2.4) * 0.06, pz);
+        label.scale.set(2.3, 0.575, 1);
+        label.visible = true;
       }
     }
   });
@@ -485,6 +549,11 @@ export function DropSpot() {
           ))}
         </group>
       </group>
+
+      {/* etiqueta do resultado da fusão (fora do root: não herdava a escala) */}
+      <sprite ref={labelRef} scale={[2.3, 0.575, 1]} visible={false}>
+        <spriteMaterial transparent depthWrite={false} opacity={0.96} toneMapped={false} />
+      </sprite>
     </group>
   );
 }

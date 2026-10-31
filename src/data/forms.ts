@@ -17,22 +17,26 @@ export const BASE_FORM_TOP = 1.93;
 /** Centro do corpo das criaturas sem formas por nível (valor histórico do motor). */
 export const AIM_FALLBACK_Y = 0.6;
 
-/** índice da forma no catálogo (níveis fora de 1..5 são nivelados) */
-const idx = (level: number): number => Math.min(4, Math.max(0, Math.round(level) - 1));
+/** índice da forma no catálogo, relativo ao nível inicial da espécie (formStartLevel) */
+const idx = (def: SpeciesDef, level: number): number => {
+  const start = def.formStartLevel ?? 1;
+  const count = def.formTops?.length ?? def.formNames?.length ?? 1;
+  return Math.max(0, Math.min(count - 1, Math.round(level) - start));
+};
 
-/** A espécie muda de silhueta ao fundir unidades do mesmo elemento? */
+/** A espécie muda de silhueta ao fundir unidades do mesmo elemento? (puros) */
 export function hasForms(def: SpeciesDef): boolean {
   return Boolean(def.formTops && def.formTops.length > 1);
 }
 
 /** Altura do topo da criatura no nível dado (unidades de mundo). */
 export function formTop(def: SpeciesDef, level: number): number {
-  return def.formTops?.[idx(level)] ?? BASE_FORM_TOP;
+  return def.formTops?.[idx(def, level)] ?? BASE_FORM_TOP;
 }
 
 /** Nome da forma no nível dado (bestiário/inspetor). */
 export function formName(def: SpeciesDef, level: number): string | undefined {
-  return def.formNames?.[idx(level)];
+  return def.formNames?.[idx(def, level)];
 }
 
 /**

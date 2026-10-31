@@ -205,6 +205,30 @@ export function slowIconTexture(): THREE.Texture {
   return slowTex;
 }
 
+let poisonTex: THREE.Texture | null = null;
+export function poisonIconTexture(): THREE.Texture {
+  if (poisonTex) return poisonTex;
+  const [c, ctx] = makeCanvas(64);
+  // três bolhas verdes (núcleo tóxico) + borda clara
+  const bubbles: [number, number, number][] = [
+    [32, 24, 13],
+    [21, 42, 10],
+    [44, 41, 9],
+  ];
+  for (const [x, y, r] of bubbles) {
+    ctx.fillStyle = '#57a83c';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#a9e05a';
+    ctx.beginPath();
+    ctx.arc(x - r * 0.3, y - r * 0.35, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  poisonTex = new THREE.CanvasTexture(c);
+  return poisonTex;
+}
+
 /** Desenha texto (número de dano) num canvas de sprite. */
 export function drawPopupText(
   ctx: CanvasRenderingContext2D,

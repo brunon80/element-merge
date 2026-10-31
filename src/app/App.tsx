@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import { useMemo } from 'react';
 import { Bestiary } from '../components/Bestiary';
 import { BattleControls } from '../components/BattleControls';
+import { DiscoveryOverlay } from '../components/DiscoveryOverlay';
 import { HUD } from '../components/HUD';
 import { InspectorPanel } from '../components/InspectorPanel';
 import { MenuScreen } from '../components/MenuScreen';
@@ -49,6 +50,7 @@ export function App() {
       {!inGame && <MenuScreen />}
       <ResultScreen />
       <Bestiary />
+      <DiscoveryOverlay />
       <SettingsMenu />
       <ToastLayer />
     </div>

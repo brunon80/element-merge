@@ -35,9 +35,11 @@ describe('Custo de reposição derivado das regras de fusão', () => {
     expect(unitCoinCost('zephyr', 5)).toBe(1600);
   });
 
-  test('híbridos custam o dobro do nível (valem dois puros)', () => {
-    expect(unitCoinCost('vulcane', 1)).toBe(200);
-    expect(unitCoinCost('tempest', 3)).toBe(800);
+  test('espécies da árvore custam as sementes que consomem (nível fixo 6–10)', () => {
+    // 2→1 em toda a árvore: Nv.6 = 32 sementes, Nv.7 = 64, Nv.10 = 512
+    expect(unitCoinCost('magma', 6)).toBe(3200);
+    expect(unitCoinCost('tempestade', 7)).toBe(6400);
+    expect(unitCoinCost('primordial', 10)).toBe(51200);
   });
 
   test('teamValue soma os custos', () => {
@@ -87,32 +89,54 @@ describe('Orçamento e legalidade da composição', () => {
   });
 });
 
-describe('Dificuldade escala tamanho, nível e híbridos', () => {
-  test('nível máximo respeitado: fácil ≤2, normal ≤3, difícil ≤4', () => {
+describe('Dificuldade escala tamanho, nível e árvore elemental', () => {
+  test('nível máximo respeitado: puras ≤ maxLevel; árvore ≤ treeMaxLevel (no nível fixo)', () => {
     for (const d of ['easy', 'normal', 'hard'] as Difficulty[]) {
       const max = TEAM_RULES[d].maxLevel;
+      const treeMax = TEAM_RULES[d].treeMaxLevel;
       for (let seed = 1; seed <= 60; seed++) {
         for (const u of plan(d, seed).units) {
-          expect(u.level).toBeLessThanOrEqual(max);
-          expect(u.level).toBeGreaterThanOrEqual(1);
+          const def = getSpecies(u.species);
+          if (def.levelMin === def.levelMax) {
+            expect(u.level).toBe(def.levelMin); // árvore: nível fixo, jamais inventado
+            expect(u.level).toBeLessThanOrEqual(treeMax);
+          } else {
+            expect(u.level).toBeLessThanOrEqual(max);
+            expect(u.level).toBeGreaterThanOrEqual(1);
+          }
         }
       }
     }
   });
 
-  test('fácil jamais usa híbridos; difícil usa híbridos quando o orçamento permite', () => {
-    for (let seed = 1; seed <= 60; seed++) {
-      for (const u of plan('easy', seed).units) {
-        expect(getSpecies(u.species).elements.length).toBe(1);
+  test('fácil jamais entra na árvore; difícil entra mais que o normal quando o orçamento paga', () => {
+    // times ricos (5 puros Nv.5 = 8000) dão orçamento para criaturas Nv.6+
+    const big: { species: SpeciesId; level: MonsterLevel }[] = [
+      { species: 'ignis', level: 5 },
+      { species: 'golem', level: 5 },
+      { species: 'nereia', level: 5 },
+      { species: 'zephyr', level: 5 },
+      { species: 'ignis', level: 5 },
+    ];
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const u of plan('easy', seed, big).units) {
+        const def = getSpecies(u.species);
+        expect(def.levelMin === def.levelMax).toBe(false); // fácil: só puras (treeMaxLevel 0)
+        expect(def.elements.length).toBe(1);
       }
     }
-    let hybrids = 0;
-    for (let seed = 1; seed <= 60; seed++) {
-      for (const u of plan('hard', seed).units) {
-        if (getSpecies(u.species).elements.length > 1) hybrids++;
+    let treeHard = 0;
+    let treeNormal = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const u of plan('hard', seed, big).units) {
+        if (getSpecies(u.species).levelMin === getSpecies(u.species).levelMax) treeHard++;
+      }
+      for (const u of plan('normal', seed, big).units) {
+        if (getSpecies(u.species).levelMin === getSpecies(u.species).levelMax) treeNormal++;
       }
     }
-    expect(hybrids).toBeGreaterThan(5);
+    expect(treeNormal).toBeGreaterThan(0); // normal alcança Nv.6–7
+    expect(treeHard).toBeGreaterThan(treeNormal); // difícil (hybridChance 0.6 / Nv.10) usa mais
   });
 
   test('orçamento e gasto crescem com a dificuldade (mesmo time, mesmos seeds)', () => {
@@ -183,7 +207,7 @@ describe('Contra-escolha e posicionamento', () => {
       { species: 'ignis', level: 3 },
       { species: 'nereia', level: 3 },
     ]; // valor 2000 → orçamento difícil 2800
-    const tanky = new Set(['golem', 'verdan', 'vulcane', 'duna', 'vaporis']);
+    const tanky = new Set(['golem', 'madeira', 'magma', 'obsidiana', 'pantano', 'geodo', 'colosso']);
     let ok = 0;
     let checked = 0;
     for (let seed = 1; seed <= 40; seed++) {

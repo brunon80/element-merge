@@ -10,24 +10,52 @@
 export type ElementId = 'fire' | 'water' | 'earth' | 'air';
 
 export type SpeciesId =
-  // Puros
+  // Puros (evoluem sozinhos até o Nv.5)
   | 'ignis' // fogo
   | 'nereia' // água
   | 'golem' // terra
   | 'zephyr' // ar
-  // Híbridos
-  | 'vulcane' // fogo + terra
-  | 'tempest' // água + ar
-  | 'verdan' // água + terra
-  | 'solaris' // fogo + ar
-  | 'vaporis' // fogo + água
-  | 'duna'; // terra + ar
+  // Nv.6 — híbridos (nascem da fusão de dois puros Nv.5)
+  | 'raio' // fogo + ar
+  | 'madeira' // água + terra
+  | 'magma' // fogo + terra
+  | 'gelo' // água + ar
+  | 'vapor' // fogo + água
+  | 'areia' // terra + ar
+  // Nv.7 — compostos
+  | 'tempestade' // raio + gelo
+  | 'obsidiana' // magma + areia
+  | 'pantano' // madeira + vapor
+  | 'plasma' // raio + magma
+  | 'nevoa' // gelo + vapor
+  | 'cristal' // madeira + areia
+  // Nv.8 — avançados
+  | 'cosmico' // tempestade + plasma
+  | 'geodo' // obsidiana + cristal
+  | 'abissal' // pântano + névoa
+  | 'vulcanico' // plasma + obsidiana
+  // Nv.9 — lendários
+  | 'astral' // cósmico + abissal
+  | 'colosso' // geodo + vulcânico
+  // Nv.10 — primordial
+  | 'primordial'; // astral + colosso
 
-/** Nível de evolução: exatamente 1..5 (fusões acima de 5 são bloqueadas). */
-export type MonsterLevel = 1 | 2 | 3 | 4 | 5;
+/**
+ * Nível de evolução: 1..10. Puros existem em 1..5 (fusão vertical 2→1);
+ * criaturas da árvore elemental existem exatamente no seu nível (6..10),
+ * alcançado apenas pelas receitas da árvore (ver data/fusionRecipes.ts).
+ */
+export type MonsterLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
-export const MONSTER_LEVELS: readonly MonsterLevel[] = [1, 2, 3, 4, 5];
-export const MAX_LEVEL = 5 as const;
+export const MONSTER_LEVELS: readonly MonsterLevel[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+export const MAX_LEVEL = 10 as const;
+/** Puros param de subir de nível aqui; acima disso só a árvore elemental. */
+export const PURE_MAX_LEVEL = 5 as const;
+/** Fusões entre espécies diferentes só acontecem a partir deste nível. */
+export const CROSS_FUSION_MIN_LEVEL = 5 as const;
+
+/** Categoria de progressão da espécie na árvore elemental. */
+export type SpeciesCategory = 'pure' | 'hybrid' | 'advanced' | 'primordial';
 
 // ---------------------------------------------------------------------------
 // Atributos e habilidades
@@ -35,31 +63,36 @@ export const MAX_LEVEL = 5 as const;
 
 export type TargetingRule = 'closest' | 'lowestHp' | 'farthest' | 'backmost';
 
-export type StatusType = 'burn' | 'slow';
+export type StatusType = 'burn' | 'slow' | 'poison';
 
 export type AbilityKind =
   | 'burn' // aplica queimadura com chance
   | 'slow' // aplica lentidão com chance
+  | 'poison' // aplica envenenamento (dano contínuo) com chance
   | 'splash' // dano em área no impacto
   | 'pierce' // projétil atravessa alvos
-  | 'chain' // respinga para um segundo alvo
+  | 'chain' // respinga para outros alvos (jumps = quicadas)
   | 'doubleShot' // dois projéteis por disparo
   | 'swift' // projéteis velozes e cadência maior (passivo)
-  | 'heavy'; // dano alto e cadência baixa (passivo)
+  | 'heavy' // dano alto e cadência baixa (passivo)
+  | 'regen' // regenera fração do HP máximo por segundo (passivo)
+  | 'drain'; // drena vida do alvo ao acertar (fração do dano)
 
 export interface AbilityDef {
   kind: AbilityKind;
-  /** Chance 0..1 de aplicar (para burn/slow) ou de efeito extra. */
+  /** Chance 0..1 de aplicar (para burn/slow/poison) ou de efeito extra. */
   chance?: number;
   /** Raio do splash / parâmetro de pierce / multiplicador. */
   radius?: number;
   factor?: number;
   /** Duração do efeito aplicado (segundos). */
   duration?: number;
-  /** DPS da queimadura como fração do dano do atacante. */
+  /** DPS da queimadura/veneno como fração do dano do atacante. */
   dpsFraction?: number;
   /** Fator de redução de cadência da lentidão (intervalo × (1+factor)). */
   slowFactor?: number;
+  /** Alvos extras do chain (1 = respinga uma vez; usado por quicadas). */
+  jumps?: number;
 }
 
 /** Resistências elementais (0..1 reduzem dano; negativas = fraqueza). */
@@ -92,20 +125,41 @@ export interface BaseStats {
 export interface SpeciesDef {
   id: SpeciesId;
   name: string;
-  /** Componentes elementais; puros têm 1, híbridos têm 2 (ordem canônica). */
+  /**
+   * Componentes elementais (linhagem): puros têm 1; criaturas da árvore têm a
+   * união ordenada dos elementos dos pais (Nv.6 têm 2, Nv.7+ até 4).
+   */
   elements: readonly ElementId[];
+  /**
+   * Intervalo de níveis em que a espécie pode existir. Puros: 1..5 (fusão
+   * vertical 2→1). Criaturas da árvore: levelMin === levelMax === nível da
+   * árvore — só nascem pela receita e não fundem verticalmente.
+   */
+  levelMin: number;
+  levelMax: number;
   base: BaseStats;
   blurb: string;
   /** Chave de modelo procedural (usado pela camada de renderização). */
   modelKey: string;
   /**
-   * Altura do topo da criatura em cada forma (índice 0 = Nv1). Quando existe,
-   * a criatura muda de silhueta a cada fusão do mesmo elemento e o motor usa
-   * esses valores para calcular a altura do disparo e do acerto.
-   */
+    * Altura do topo da criatura em cada forma. O índice 0 corresponde ao nível
+    * `formStartLevel` (padrão 1). Puros declaram 5 formas; criaturas da árvore
+    * declaram 1 forma (existem num único nível). Quando existe, o motor usa
+    * esses valores para calcular a altura do disparo e do acerto.
+    */
   formTops?: number[];
   /** Nome da forma em cada nível (mesmo índice de `formTops`). */
   formNames?: string[];
+  /** Nível do índice 0 de `formTops`/`formNames` (espécies da árvore ≠ 1). */
+  formStartLevel?: number;
+}
+
+/** Categoria de progressão derivada do nível da espécie. */
+export function speciesCategory(def: SpeciesDef): SpeciesCategory {
+  if (def.elements.length === 1) return 'pure';
+  if (def.levelMin >= 10) return 'primordial';
+  if (def.levelMin >= 8) return 'advanced';
+  return 'hybrid';
 }
 
 // ---------------------------------------------------------------------------
@@ -118,8 +172,8 @@ export interface FusionOutcome {
   kind: FusionKind;
   species: SpeciesId;
   level: MonsterLevel;
-  /** Quantidade exata de unidades produzidas (regra obrigatória). */
-  outputCount: 1 | 2;
+  /** Quantidade exata de unidades produzidas: sempre 1 (regra 2→1 em todo nível). */
+  outputCount: 1;
 }
 
 export type FusionRejectReason =
@@ -128,6 +182,7 @@ export type FusionRejectReason =
   | 'UNIT_GONE'
   | 'MAX_LEVEL'
   | 'DIFFERENT_LEVEL'
+  | 'MIN_LEVEL'
   | 'INCOMPATIBLE_SPECIES'
   | 'BOARD_FULL';
 
@@ -151,10 +206,12 @@ export type TileIndex = number;
 export interface StatusEffect {
   type: StatusType;
   remaining: number;
-  /** DPS para burn. */
+  /** DPS para burn/poison. */
   dps?: number;
   /** Intervalo multiplicado por (1 + slowFactor) para slow. */
   slowFactor?: number;
+  /** Elemento usado no cálculo do dano de status (burn/poison). */
+  element?: ElementId;
 }
 
 export interface CombatUnit {
@@ -231,7 +288,11 @@ export interface FxEvent {
     | 'mergeDone'
     | 'status'
     | 'chain'
-    | 'sell';
+    | 'sell'
+    /** descoberta inédita de espécie (camada visual: apresentação especial) */
+    | 'discovery'
+    /** criação de uma criatura Nv.10 (apresentação do primordial) */
+    | 'primordial';
   pos: [number, number, number];
   pos2?: [number, number, number];
   element?: ElementId;

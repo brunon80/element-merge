@@ -1,11 +1,14 @@
 import { describe, expect, test } from 'vitest';
+import { TREE_SPECIES_IDS, getSpecies } from '../data/monsters';
 import { sellValue } from '../game/economy/economy';
+import type { MonsterLevel } from '../game/types';
 import { makeEngine, mustMerge, mustSummon } from './helpers';
 
 /**
  * Venda na lixeira: o reembolso é exatamente a soma do que a criatura custou
- * para existir — pelas fusões 2→1, Nv.1=100, Nv.2=200, Nv.3=400, Nv.4=800,
- * Nv.5=1600; híbridos valem o dobro do nível. Vender nunca gera lucro.
+ * para existir — pelas fusões 2→1 em TODA a árvore, Nv.1=100, Nv.2=200 ...
+ * Nv.10=51200. Espécies da árvore só existem no seu nível fixo. Vender nunca
+ * gera lucro.
  */
 
 describe('Valor de venda (custo acumulado)', () => {
@@ -16,10 +19,14 @@ describe('Valor de venda (custo acumulado)', () => {
     expect([1, 2, 3].map((l) => sellValue('golem', l))).toEqual([100, 200, 400]);
   });
 
-  test('híbrido vale o dobro do nível (nasce de duas invocações)', () => {
-    expect(sellValue('vulcane', 1)).toBe(200);
-    expect(sellValue('vulcane', 2)).toBe(400);
-    expect(sellValue('vulcane', 5)).toBe(3200);
+  test('espécies da árvore devolvem as sementes que consumiram (regra 2→1 até o Nv.10)', () => {
+    expect(sellValue('magma', 6)).toBe(3200); // 32 invocações Nv.1
+    expect(sellValue('tempestade', 7)).toBe(6400);
+    expect(sellValue('primordial', 10)).toBe(51200); // coroa: 512 sementes
+    for (const id of TREE_SPECIES_IDS) {
+      const lv = getSpecies(id).levelMin as MonsterLevel;
+      expect(sellValue(id, lv), id).toBe(100 * 2 ** (lv - 1));
+    }
   });
 
   test('vender e recomprar o mesmo nível é neutro em moedas', () => {
@@ -63,14 +70,15 @@ describe('Venda na lixeira (motor)', () => {
     expect(eng.world.playerCoins).toBe(1000);
   });
 
-  test('híbrido Nv.1 vendido devolve 200', () => {
+  test('criatura da árvore vendida devolve exatamente o seu custo em sementes', () => {
     const eng = makeEngine({ playerCoins: 500, seed: 7 });
-    const a = mustSummon(eng, 'ignis');
-    const b = mustSummon(eng, 'golem');
-    const [hy] = mustMerge(eng, a, b);
-    expect(eng.getUnit(hy)!.species).toBe('vulcane');
+    const injected = eng.addRetainedUnit('magma', 6);
+    expect(injected.ok).toBe(true);
+    const hy = injected.unitId!;
+    expect(eng.getUnit(hy)!.species).toBe('magma');
     const res = eng.sellUnit(hy);
-    expect(res.refund).toBe(200);
+    expect(res.refund).toBe(3200); // 32 sementes pagas para existir
+    expect(eng.world.playerCoins).toBe(500 + 3200);
   });
 
   test('não vende unidade do inimigo nem inexistente (sem muda saldo)', () => {
