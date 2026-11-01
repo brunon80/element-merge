@@ -8,6 +8,7 @@ import { getEngine } from '../store/gameStore';
 import { circleTexture, drawPopupText, flameDropGeometry, flameIconTexture, getGeometry, slowIconTexture } from './assets';
 import { makeFlameMaterial } from './flameShaders';
 import { makeStoneMaterial } from './stoneShaders';
+import { makeWaterMaterial } from './waterShaders';
 import { makeWoodMaterial } from './woodShaders';
 import { plugArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
@@ -284,13 +285,36 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e os TORRÕES de lodo molhado do impacto do Pântano (o MESMO shader de
+  // lodo do corpo: breu esverdeado com mancha de bolor — o globo cuspido pela
+  // hidra estoura em massa pesada que esborracha, não em pedra seca)
+  const shardMud = useMemo(() => {
+    const geo = new THREE.IcosahedronGeometry(0.46, 2); // denso (anti low-poly: a lama amassa)
+    geo.scale(1.1, 0.72, 1.0); // torrão achatado irregular (gomos de gosma)
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeWaterMaterial({
+        deep: '#141a0d', // breu do fundo da gosma
+        mid: '#41522a', // lodo do corpo (mesma família do montículo)
+        foam: '#93a76a', // mancha de bolor pálido (nunca #ffffff)
+        amp: 0.07, // lodo molhado tremelica até cambalhoteando no ar
+        foamAmt: 0.26, // bolor minoritário: espuma branca é sabão, não brejo
+        swell: 0.02,
+        bend: 0.02,
+        yOff: 0.35,
+        modelH: 0.7,
+        seed: 3.3 + i * 2.6,
+        teamColor: '#8a9a62', // aro de musgo: estilhaço do brejo não usa tint de equipe
+      }),
+    );
+    return { geo, mats };
+  }, []);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
         life: 0,
         max: 0.62,
         size: 1,
-        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice' | 'glass',
+        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice' | 'glass' | 'mud',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -314,10 +338,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       shardIce.geo.dispose();
       for (const m of shardGlass.mats) m.dispose();
       shardGlass.geo.dispose();
+      for (const m of shardMud.mats) m.dispose();
+      shardMud.geo.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
-  }, [burstFlame, shardRock, shardWood, shardLava, shardIce, shardGlass, arcGeo, arcMat]);
+  }, [burstFlame, shardRock, shardWood, shardLava, shardIce, shardGlass, shardMud, arcGeo, arcMat]);
   const flameSprites = useRef<THREE.Sprite[]>([]);
   const slowSprites = useRef<THREE.Sprite[]>([]);
   const spriteData = useMemo(
@@ -467,7 +493,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     y: number,
     z: number,
     size = 1,
-    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' | 'iceShard' | 'glassShard' = 'flame',
+    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' | 'iceShard' | 'glassShard' | 'mudShard' = 'flame',
     life?: number,
   ) => {
     if (kind === 'flame') {
@@ -506,19 +532,24 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               ? 'ice'
               : kind === 'glassShard'
                 ? 'glass'
-                : 'rock';
+                : kind === 'mudShard'
+                  ? 'mud'
+                  : 'rock';
       const a = Math.random() * Math.PI * 2;
       // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
       // cambalhota que a pedra (que só desmorona). O VIDRO da Obsidiana é
-      // ainda mais NERVOSO: farpa leve de um material duro, girando rápido
+      // ainda mais NERVOSO: farpa leve de um material duro, girando rápido.
+      // O LODO é o oposto do vidro: torrão PESADO e mole, arremessado para
+      // cima mas sem inércia de pedra seca — sai devagar, gira pouco
       const ice = kind === 'iceShard';
       const glass = kind === 'glassShard';
+      const mud = kind === 'mudShard';
       const fast = ice || glass;
-      const s = (fast ? 2.2 : 1.6) + Math.random() * (fast ? 2.4 : 1.8);
+      const s = (fast ? 2.2 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : mud ? 1.2 : 1.8);
       d.vx = Math.cos(a) * s;
-      d.vy = (fast ? 2.1 : 1.6) + Math.random() * (ice ? 2.4 : 1.8);
+      d.vy = (fast ? 2.1 : mud ? 1.1 : 1.6) + Math.random() * (ice ? 2.4 : mud ? 1.1 : 1.8);
       d.vz = Math.sin(a) * s;
-      const spin = glass ? 19 : ice ? 16 : 11;
+      const spin = glass ? 19 : ice ? 16 : mud ? 6 : 11;
       d.rx = (Math.random() - 0.5) * spin;
       d.ry = (Math.random() - 0.5) * spin;
       d.rz = (Math.random() - 0.5) * spin;
@@ -605,7 +636,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     // pedra: se um dia o branch próprio da Obsidiana cair, ela tem que
     // ESTILHAÇAR em cacos de vidro — nunca rachar em blocos de rocha
     obsidiana: 'crystal',
-    pantano: 'rock',
+    // o brejo é LÍQUIDO (splash com peso, poça que alarga), não rocha: se um
+    // dia cair no branch genérico, tem que ESPALHAR lodo — nunca desmoronar
+    // em blocos secos como o golem
+    pantano: 'wave',
     geodo: 'rock',
     colosso: 'rock',
     zephyr: 'gale',
@@ -849,6 +883,30 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               heat: 0.25, // pó de vidro QUENTE (o fogo que estava preso no vidro)
               life: 1.0,
               speed: 1.2,
+            });
+          } else if (ev.species === 'pantano') {
+            // a hidra COSPE um globo de lodo: no alvo o globo ESTOURA em
+            // torrões pesados de brejo (física mole: saem devagar, esborracham
+            // sem quicar), o vitríolo espirra para os lados, o bafo de gás do
+            // brejo sobe e a POÇA alarga no piso (a marca lenta do pântano).
+            // SEM aditivo: a identidade é o ALBEDO verde do lodo, nunca nuvem
+            // de brilho — e o verde é SEMPRE o vitríolo do motor (#a8cf4a)
+            const lv = Math.max(7, Math.min(10, ev.level ?? 7));
+            const k = 1 + (lv - 7) * 0.1;
+            // o globo estoura no impacto (o pool de estilhaços é disputado: 3)
+            for (let i = 0; i < 3; i++)
+              spawnBurst(x, y, z, 0.34 + 0.05 * (lv - 7), 'mudShard', 1.05);
+            spawnParticles(x, y, z, '#a8cf4a', 9 + (lv - 7) * 2, 2.1, 0.55, -0.8, 0.5); // vitríolo vazio subindo
+            spawnParticles(x, y, z, '#33411f', 12, 2.4, 0.6, 3.2, 0.4); // respingo de lodo (TEM peso: cai rápido)
+            spawnParticles(x, y, z, '#1b2211', 8, 1.9, 0.6, 3.6, 0.2); // torrões escuros do brejo
+            spawnParticles(x, y, z, '#9db46f', 6, 1.5, 0.45, 1.1, 0.3); // farrapo de bolor flutuante
+            spawnRing(x, 0.1, z, '#6d7a52', 2.3 * k); // poça que alarga (a marca do brejo no piso)
+            spawnRing(x, 0.16, z, '#a8cf4a', 1.05); // anel interno = a pustula de veneno estourada
+            spawnSmoke(x, y, z, 5, {
+              size: 0.1,
+              heat: 0, // gás do pântano é FRIA (nunca brasa de fogueira)
+              life: 1.3,
+              speed: 0.8,
             });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
@@ -1222,7 +1280,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               ? shardIce
               : d.kind === 'glass'
                 ? shardGlass
-                : shardRock;
+                : d.kind === 'mud'
+                  ? shardMud
+                  : shardRock;
       const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {
@@ -1231,7 +1291,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         d.life -= dt;
         const t = 1 - Math.max(0, d.life) / d.max;
         mat.uniforms.uTime.value = clockT + i * 2.3;
-        mat.uniforms.uCharge.value = Math.max(0, 1 - t * 1.8);
+        // o lodo não tem uCharge (é água, não rocha): o vigor do estilhaço
+        // molhado entra pelo uFlare (a gosma tremelicando no impacto)
+        if (mat.uniforms.uCharge) mat.uniforms.uCharge.value = Math.max(0, 1 - t * 1.8);
+        if (mat.uniforms.uFlare) mat.uniforms.uFlare.value = Math.max(0, 1 - t * 1.5);
         if (mat.uniforms.uSap) mat.uniforms.uSap.value = 0.7;
         d.vy -= 10.5 * dt; // pedra tem peso
         mesh.position.x += d.vx * dt;
@@ -1240,9 +1303,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         const floor = 0.1 + 0.1 * d.size;
         if (mesh.position.y < floor) {
           mesh.position.y = floor;
-          d.vy = Math.abs(d.vy) * 0.38;
-          d.vx *= 0.72;
-          d.vz *= 0.72;
+          // lodo molhado NÃO quica: o torrão esborracha no chão (splat morto),
+          // enquanto a pedra seca salta — é isso que vende "lama" na física
+          const wet = d.kind === 'mud';
+          d.vy = Math.abs(d.vy) * (wet ? 0.08 : 0.38);
+          d.vx *= wet ? 0.45 : 0.72;
+          d.vz *= wet ? 0.45 : 0.72;
         }
         mesh.rotation.x += d.rx * dt;
         mesh.rotation.y += d.ry * dt;

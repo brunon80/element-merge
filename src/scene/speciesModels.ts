@@ -91,7 +91,10 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   // Nv.7 — compostos
   tempestade: { body: '#7186a8', dark: '#333f58', glow: '#ffe066', accent: '#cfe9ff', roughness: 0.65 },
   obsidiana: { body: '#241d33', dark: '#120e1b', glow: '#8f5cff', accent: '#b9a6d9', roughness: 0.2, metalness: 0.55 },
-  pantano: { body: '#66784a', dark: '#39422a', glow: '#b7e05a', accent: '#8fae5d', roughness: 0.9 },
+  // Nv.7 — lodo do brejo (quase preto esverdeado, encharcado) + o VITRÍOLO do
+  // veneno (#a8cf4a): a identidade única da espécie, do motor ao FX. O lodo
+  // nunca é verde-folha (a cor da Madeira) e o veneno nunca é amarelo (do Raio)
+  pantano: { body: '#33411f', dark: '#1b2211', glow: '#a8cf4a', accent: '#5d6b39', roughness: 0.95 },
   plasma: { body: '#ff8ae0', dark: '#7c2d63', glow: '#ffd0f2', accent: '#ffe14d', roughness: 0.3 },
   nevoa: { body: '#cfe2ea', dark: '#5f7683', glow: '#eef7fb', accent: '#a8e6ff', bodyOpacity: 0.75, roughness: 0.4 },
   cristal: { body: '#b7a6ff', dark: '#5d4a9c', glow: '#e6dcff', accent: '#8fd0ff', bodyOpacity: 0.9, roughness: 0.15, metalness: 0.3 },
@@ -1084,25 +1087,91 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     ],
   },
 
-  // Madeira+Vapor — hidra do lodo: veneno contínuo e carne que volta -----
+  // Madeira+Vapor — HIDRA DO LODO (Nv.7): o brejo que engoliu o ancião e o
+  // caldeirão. MALHA DENSE (regra anti low-poly): lodo em icosaedro sub 2
+  // (a casca ferve — precisa de vértice pra bolhar), crosta em poliedro sub 1
+  // achatado, tronco/raiz com casca sulcada, anel de bolor com 56 radiais.
+  // Silhueta: POÇA de lodo espalhada pelo slot (a lama escorre para fora) +
+  // MONTÍCULO que borbulha + TRONCO AF OGADO com raízes escarradas e musgo
+  // pendurado (o ancião da Madeira) + CALDEIRÃO AF OGado crostoso com o lodo
+  // subindo pela boca e o gás do brejo saindo (o caldeireiro do Vapor) + 3
+  // PESCOÇOS DE HIDRA de lodo com maxilar e fenda de olho (a assinatura da
+  // espécie) + fogo-fátuo pairando sobre a poça (o fogo da fusão) + juncos.
+  // formTop 4,6 — o topo é aproveitado pelos pescoços e pelo bafo do caldeirão.
   pantano: {
-    bob: 0.05,
+    bob: 0.02,
     parts: [
-      { g: 'sphere', a: [0.75, 12, 10], p: [0, 0.7, 0], s: [1.2, 0.9, 1.1], m: 'body' },
-      ...mm({ g: 'capsule', a: [0.13, 0.5], p: [0.4, 1.35, 0.05], r: [0, 0, -0.35], m: 'body' }),
-      { g: 'capsule', a: [0.12, 0.45], p: [-0.25, 1.3, -0.25], r: [0.4, 0, 0.3], m: 'body' },
-      ...mm({ g: 'sphere', a: [0.19, 10, 8], p: [0.5, 1.78, 0.08], m: 'body' }),
-      { g: 'sphere', a: [0.17, 10, 8], p: [-0.33, 1.72, -0.38], m: 'body' },
-      ...mm(EYE(0.54, 1.82, 0.24)),
-      ...mm(PUPIL(0.54, 1.82, 0.24)),
-      EYE(-0.36, 1.76, -0.22),
-      PUPIL(-0.36, 1.76, -0.22),
-      ...mm({ g: 'sphere', a: [0.1, 8, 6], p: [0.62, 2.02, 0.05], m: 'glow', flick: 0.1, rise: [0.5, 0.5] }),
-      { g: 'sphere', a: [0.085, 8, 6], p: [-0.4, 2.0, -0.4], m: 'glow', flick: 0.12, rise: [0.55, 0.5] },
-      { g: 'sphere', a: [0.08, 8, 6], p: [0.05, 1.95, 0.3], m: 'glow', flick: 0.1, rise: [0.6, 0.5] },
-      ...mm({ g: 'cone', a: [0.18, 0.4, 5], p: [0.5, 0.2, 0.4], r: [0.6, 0, 0.6], m: 'dark' }),
-      { g: 'cone', a: [0.18, 0.4, 5], p: [-0.1, 0.2, -0.55], r: [-2.6, 0, 0.2], m: 'dark' },
-      { g: 'torus', a: [0.62, 0.06, 6, 22], p: [0, 0.42, 0], r: [1.57, 0, 0], m: 'accent' },
+      // ---- poça: o brejo escorre e cobre as duas linhas do slot ----
+      { g: 'ico', a: [1.3, 2], p: [0, 0.08, 0.05], s: [1.5, 0.09, 1.3], m: 'body', amp: 0.085 },
+      // filme de bolor na borda da poça (ANEL, não disco: a lama respira)
+      { g: 'ring', a: [1.08, 1.62, 56], p: [0, 0.035, 0.05], r: [-1.57, 0, 0], m: 'trans' },
+      // crostas secas boiando na lama (a pele rachada do brejo)
+      ...mm({ g: 'octa', a: [0.4, 1], p: [1.24, 0.08, 0.6], s: [1.45, 0.12, 1.1], r: [0, 0.5, 0], m: 'dark', amp: 0.028 }),
+      ...mm({ g: 'octa', a: [0.3, 1], p: [0.5, 0.09, 1.34], s: [1.25, 0.11, 1.0], r: [0, 1.9, 0], m: 'dark', amp: 0.026 }),
+      // ---- montículo: a barriga que ferve ----
+      { g: 'ico', a: [1.0, 2], p: [0, 0.62, 0], s: [1.22, 0.6, 1.06], m: 'body', amp: 0.115 },
+      { g: 'ico', a: [0.76, 2], p: [0, 1.2, -0.04], s: [1.0, 0.62, 0.9], m: 'body', amp: 0.1 },
+      // carapaça de crosta seca nas costas (o que racha e fecha: carne que volta)
+      { g: 'dodeca', a: [0.58, 1], p: [0, 1.14, -0.42], s: [1.2, 0.9, 0.66], m: 'dark', amp: 0.045 },
+      ...mm({ g: 'octa', a: [0.44, 1], p: [0.62, 0.96, -0.26], s: [1.0, 0.8, 0.88], r: [0, -0.45, 0], m: 'dark', amp: 0.04 }),
+      // bile presa sob o lodo (o veneno que sobe para a boca) — miúda e FUNDA:
+      // brasa grande demais virava vaga-lume amarelo no print
+      ...mm({ g: 'ico', a: [0.09, 1], p: [0.34, 0.98, 0.24], m: 'glow', tag: 'bile' }),
+      { g: 'ico', a: [0.08, 1], p: [-0.22, 0.84, 0.3], m: 'glow', tag: 'bile' },
+      // ---- o ancião afogado: tronco caído, raízes escarradas, musgo ----
+      { g: 'cyl', a: [0.17, 0.29, 1.5, 20, 6], p: [-0.2, 1.9, -0.34], r: [0.08, 0, 0.17], m: 'accent', amp: 0.055, tag: 'trunk' },
+      { g: 'capsule', a: [0.1, 0.66], p: [-0.72, 0.6, 0.2], r: [0.3, 0, 0.78], m: 'accent', amp: 0.05, tag: 'root' },
+      { g: 'capsule', a: [0.09, 0.56], p: [0.5, 0.58, 0.58], r: [0.45, 0, -0.85], m: 'accent', amp: 0.05, tag: 'root' },
+      { g: 'capsule', a: [0.085, 0.5], p: [0.18, 0.54, -0.7], r: [-0.55, 0, -0.5], m: 'accent', amp: 0.05, tag: 'root' },
+      // toco quebrado COLADO no topo do tronco (solto, virava braço flutuando)
+      { g: 'cone', a: [0.085, 0.48, 12], p: [-0.42, 2.45, -0.34], r: [0, 0, 1.35], m: 'accent', amp: 0.035 },
+      // musgo pendurado junto do tronco (fiapo de brejo, balança no bafo)
+      ...mm({ g: 'cone', a: [0.04, 0.32, 8], p: [-0.02, 2.02, -0.2], r: [3.14, 0, -0.14], m: 'accent', amp: 0.028, tag: 'moss' }),
+      // ---- o caldeirão afogado (MAIOR e mais FORA do montículo: enterrado,
+      // virava monte de musgo sem leitura nenhuma) ----
+      { g: 'sphere', a: [0.5, 24, 18], p: [0.4, 1.8, -0.8], s: [1.25, 1.0, 1.15], r: [0.28, 0, -0.14], m: 'dark', amp: 0.032, tag: 'pot' },
+      { g: 'torus', a: [0.58, 0.08, 12, 48], p: [0.4, 2.12, -0.86], r: [1.3, 0, -0.14], m: 'dark', amp: 0.018, tag: 'pot' },
+      ...mm({ g: 'torus', a: [0.18, 0.055, 10, 28], p: [0.96, 1.86, -0.78], r: [1.57, 0, -0.14], m: 'dark', amp: 0.016, tag: 'pot' }),
+      // o lodo enche e bota pela boca do caldeirão
+      { g: 'ico', a: [0.44, 2], p: [0.4, 2.12, -0.86], s: [1.05, 0.42, 1.0], r: [0.28, 0, -0.14], m: 'body', amp: 0.13, tag: 'brew' },
+      { g: 'ico', a: [0.06, 1], p: [0.3, 2.26, -0.76], m: 'glow', flick: 0.14, tag: 'brew' },
+      { g: 'ico', a: [0.05, 1], p: [0.52, 2.24, -0.92], m: 'glow', flick: 0.2, tag: 'brew' },
+      { g: 'ico', a: [0.045, 1], p: [0.42, 2.32, -0.66], m: 'glow', flick: 0.24, tag: 'brew' },
+      // o gás do brejo escapando da boca e das bordas da poça
+      { g: 'sphere', a: [0.3, 18, 14], p: [0.4, 2.5, -0.82], m: 'steam', amp: 0.16, tag: 'gas' },
+      { g: 'sphere', a: [0.22, 16, 12], p: [0.28, 2.85, -0.9], m: 'steam', amp: 0.14, tag: 'gas' },
+      ...mm({ g: 'sphere', a: [0.24, 16, 12], p: [1.2, 0.4, 0.72], m: 'steam', amp: 0.13, tag: 'gas' }),
+      // ---- 3 hidras de lodo: a assinatura da espécie. GROSSAS (pescoço
+      // cônico GROSSO enterrado fundo no montículo — fino, parece broto de
+      // brócolis solto no print), uma peça só por pescoço (duas juntas viravam
+      // fiapos flutuando); cabeça em octaedro sub 1 alongado = focinho chato
+      // de losango; maxilar é LASCA chata que abre no cuspe; olho é FENDA
+      // encaixada na superfície — nunca bolinha de boneca) ----
+      // do meio: o que cospe o globo (o pescoço sobe até o topo da forma)
+      { g: 'cyl', a: [0.2, 0.32, 1.55, 20, 7], p: [0, 2.05, 0.34], r: [-0.18, 0, 0], m: 'body', amp: 0.075, tag: 'neck', group: 1 },
+      { g: 'octa', a: [0.36, 1], p: [0.02, 3.12, 0.62], s: [1.0, 0.85, 1.5], r: [-0.1, 0, 0], m: 'body', amp: 0.055, tag: 'head', group: 1 },
+      { g: 'box', a: [0.26, 0.09, 0.52], p: [0.02, 2.9, 0.92], r: [0.16, 0, 0], m: 'body', amp: 0.026, tag: 'jaw', group: 1 },
+      ...mm({ g: 'box', a: [0.1, 0.06, 0.075], p: [0.11, 3.24, 0.82], m: 'white', tag: 'eye', group: 1 }),
+      { g: 'ico', a: [0.12, 1], p: [0.02, 2.42, 0.52], m: 'glow', tag: 'gullet', group: 1 },
+      { g: 'drop', a: [0.11, 0.36, 18, 16], p: [0.02, 2.72, 0.98], r: [3.14, 0, 0], m: 'body', amp: 0.028, tag: 'drip', group: 1 },
+      // hidra da frente-esquerda (mais baixa: a silhueta é em degrau)
+      { g: 'cyl', a: [0.17, 0.28, 1.25, 18, 6], p: [-0.6, 1.7, 0.2], r: [-0.16, 0, 0.4], m: 'body', amp: 0.065, tag: 'neck', group: 2 },
+      { g: 'octa', a: [0.3, 1], p: [-0.94, 2.5, 0.36], s: [1.0, 0.85, 1.4], r: [-0.12, 0.3, 0.24], m: 'body', amp: 0.05, tag: 'head', group: 2 },
+      { g: 'box', a: [0.22, 0.08, 0.44], p: [-1.08, 2.28, 0.62], r: [0.14, 0.3, 0.2], m: 'body', amp: 0.024, tag: 'jaw', group: 2 },
+      { g: 'box', a: [0.085, 0.05, 0.065], p: [-0.86, 2.62, 0.5], r: [0, -0.3, 0], m: 'white', tag: 'eye', group: 2 },
+      { g: 'box', a: [0.085, 0.05, 0.065], p: [-1.02, 2.6, 0.44], r: [0, 0.3, 0], m: 'white', tag: 'eye', group: 2 },
+      // hidra da trás-direita (média: fecha o triângulo assimétrico)
+      { g: 'cyl', a: [0.16, 0.27, 1.4, 18, 6], p: [0.66, 1.85, -0.05], r: [-0.12, 0, -0.36], m: 'body', amp: 0.065, tag: 'neck', group: 3 },
+      { g: 'octa', a: [0.3, 1], p: [1.0, 2.78, 0.06], s: [1.0, 0.85, 1.4], r: [-0.08, 0, -0.28], m: 'body', amp: 0.05, tag: 'head', group: 3 },
+      { g: 'box', a: [0.21, 0.075, 0.44], p: [1.1, 2.56, 0.32], r: [0.12, 0, -0.22], m: 'body', amp: 0.024, tag: 'jaw', group: 3 },
+      { g: 'box', a: [0.08, 0.05, 0.06], p: [0.94, 2.9, 0.2], r: [0, 0.24, 0], m: 'white', tag: 'eye', group: 3 },
+      { g: 'box', a: [0.08, 0.05, 0.06], p: [1.12, 2.88, 0.14], r: [0, -0.24, 0], m: 'white', tag: 'eye', group: 3 },
+      // ---- fogo-fátuo do brejo (o fogo da fusão pairando sobre a poça) ----
+      ...mm({ g: 'ico', a: [0.045, 1], p: [1.28, 0.72, 0.5], m: 'glow', flick: 0.22, tag: 'wisp' }),
+      { g: 'ico', a: [0.04, 1], p: [-1.06, 0.95, -0.78], m: 'glow', flick: 0.26, tag: 'wisp' },
+      // juncos do brejo (a orla do slot: o pântano tem beirada) — densos: o
+      // junco fino em 8 radiais virava palito facetado no print
+      ...mm({ g: 'cyl', a: [0.026, 0.032, 0.92, 12, 4], p: [1.46, 0.5, -0.92], r: [0.1, 0, -0.16], m: 'accent', amp: 0.02, tag: 'reed' }),
     ],
   },
 

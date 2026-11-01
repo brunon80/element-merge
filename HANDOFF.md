@@ -561,12 +561,88 @@
 >   viewer windup/release, frente, macro, 40 b-frames e prints de lasca em voo
 >   + cacos no impacto).
 >
+> ### 🟢 ATUALIZAÇÃO 8 — Pântano virou HIDRA DO LODO (+ a regra do veio contido)
+>
+> Terceira espécie Nv.7 revisada (água+terra+fogo). Zero shader novo de novo,
+> agora por escolha declarada: lodo = `makeWaterMaterial` lido como brejo,
+> crosta/ferro = `stoneShaders`, raiz/tronco = `woodShaders`, gás/bolor =
+> `steamShaders`, bile/fogo-fátuo = `makeCoreMaterial` (plasma do Raio) em
+> **vitríolo não-aditivo**. Espécie = figurino, não shader.
+>
+> - **Pântano = hidra do lodo plantada** (forma única Nv.7, `moveSpeed 0`,
+>   formTop 4,6): **POÇA** de lodo ico 1,3 sub2 achatada cobrindo as duas
+>   linhas do slot + filme de **bolor em anel** (ring 56 radiais, role `trans`)
+>   + montículo que ferve + **o ancião da Madeira afogado** (tronco 20 radiais,
+>   raízes escarradas, musgo pendurado, toco colado no tronco — solto, virava
+>   braço flutuando) + **caldeirão do Vapor afogado** (esfera 0,5 exposta ACIMA
+>   do montículo, boca em torus 0,58, alças; enterrado, virava monte de musgo
+>   sem leitura) com caldo borbulhando pela boca + **3 PESCOÇOS DE HIDRA de
+>   peça ÚNICA** (cyl grossos [0,2→0,32] com ≥18 radiais × ≥6 anéis; finos e
+>   em duas juntas viravam "brócolis solto" no print) com maxilar, **olhos em
+>   FENDA colados na frente das cabeças** (6, à frente do centro da cabeça e
+>   acima do maxilar), gosma pingando do queixo e bile na goela.
+> - **Pescoços animados por matemática de pivô**: rotação da montagem em torno
+>   da âncora da base via `part.group` (1/2/3) — sem esqueleto, sem shader.
+> - **⚡ A regra nova: VEIO DE PEDRA É BRASA, NÃO SOLDA ELÉTRICA** — o stone-
+>   Shader soma o veio ANTES da luz da arena (`uCrack × glow × pulse × 1,7 ×
+>   boost`), então explode fácil: no print o veio vitríolo virava **RELÂMPAGO
+>   amarelo zigue-zaguante** cobrindo a crosta inteira. 3 cortes até aprovar:
+>   CRUST `crackGlow 0,33 / crackScale 2,1 / width 0,045`, IRON `0,45 / 1,9 /
+>   0,045 / boost 0,8` — **crackScale ALTO = trama curta e densa**; escala
+>   baixa = zigue-zague de raio. Feedback de dano NÃO vai pro albedo (bran-
+>   queamento apaga a identidade, herança da Obsidiana): `uHurt ×0,25-0,3` e o
+>   feedback migra pro veio (`glow/width × (1 + wound·1,5 + hurt·0,9 +
+>   charge·1,1)`), a seiva (uSap) e o pulo elástico da geleia (uFlare).
+> - **Plasma em criatura = alfa contida**: bile/fogo-fátuo grandes e em alpha 1
+>   viravam **bola de fogo amarela**; miúdos (a[0] ≤0,06 rasteiros) e `uAlpha
+>   0,85` no rig. Gás/bolor com alfa 0,5/0,45 e o `steamShaders` **nem tem**
+>   `uTeamColor` — amarra estrutural de "nuvem nunca usa tint da equipe" agora
+>   pinada em teste.
+> - **Paleta única #a8cf4a** (vitríolo): motor (`projectileColor`) = `VISUALS.
+>   pantano.glow` = veios da crosta/ferro = seiva da raiz = bile = pustula do
+>   projétil = anel/FX do impacto. Amarrada em teste.
+> - **Coreografia de GOSMA** (exportada p/ teste): `PANTANO_ATTACK_WINDOW =
+>   0,72` — peso do meio da árvore: mais rápida que a fortaleza de vidro (0,95),
+>   mais pesada que vapor (0,62) e tempestade (0,55). `WINDUP 0,45`: pescoços
+>   RECOLHEM (encovam, coil<−0,6), bile enche a goela, montículo afunda/bulge;
+>   no disparo os pescoços **CHICOTEIAM** (coil>+0,5), maxilar ESCANCA (gape
+>   >0,8), o corpo destorce e o `uSurge` do shader de lodo faz a massa bofar
+>   para fora. A hidra **não anda**: `stepZ` empurra só o tronco.
+> - **Projétil-assinatura: GLOBO DE LODO** (pools `mudGlob/mudPust/mudDrip` no
+>   `ProjectileField`): ico 0,26 sub2 **achatado** com o MESMO lodo do corpo +
+>   **PUSTULA de bile vitríola** arrombando o topo + **fiapo escorrendo atrás**
+>   (o globo perde massa no voo). Gosma PESADA: tumbling lento, rampa de saída
+>   0,22s, **wobble de geleia** no voo, halo contido 1,45×.
+> - **FX de impacto com física de LODO** (branch `pantano` + pool `shardMud`
+>   no `Effects`): o globo **estoura em 3 torrões** de lodo (ico 0,46 sub2 com
+>   o mesmo material de água) — velocidade/spin baixos e **o torrão NÃO QUICA**
+>   (`bounce 0,08`, arrasto 0,45: esborracha no chão; pedra seca quica 0,38 — é
+>   isso que vende "lama"), respingo ocre/breu com peso, vitríolo subindo,
+>   **poça que alarga** no piso + anel de pustula, gás frio (`heat 0`). O lodo
+>   não tem `uCharge` (é água): o loop de shards ganhou guards `if (mat.
+>   uniforms.uCharge/uFlare)`. `VISUAL_FAMILY.pantano` = **wave** (líquido),
+>   nunca rock.
+> - **Testes**: `pantanoProgression.test.ts` com 10 pinos — rig registrado e
+>   forma única; silhueta (poça chata ≥0,12 ratio, anel de bolor rente ao chão,
+>   3 grupos pescoço+cabeça+maxilar com pescoço GROSSO, caldeirão ≥0,45 exposto
+>   y>1,5, ≥3 borbulhas na boca, juncos); olhos-fenda×6 colados na frente,
+>   drip/gullet/wisps miúdos rasteiros/gás da boca à borda; anti low-poly (contagens reais da malha);
+>   invólucro (halfX 1,7–2,6, poça ≥1,6 nas duas linhas, maxY ≤ formTop+0,25);
+>   lodo **OPACO/NORMAL/depthWrite** e espuma contida ≤0,4; amarra da paleta
+>   vitríolo em motor/rig/projétil + glow contido; gás sem `uTeamColor` (ama-
+>   rração estrutural); coreografia (janelas TEMPESTADE < VAPOR < PANTANO <
+>   OBSIDIANA amarradas); motor (poison+slow+regen, gosma ≤8 de velocidade,
+>   projétil em voo + impacto com pos2). Total: **227 testes** verdes; tsc/
+>   build OK; 4 rodadas de QA (~120 b-frames; console limpo em todas; a 1ª
+>   rodada cobrou hidra-fina/caldeirão-enterrado/veio-relâmpago e a 4ª aprovou
+>   o veio-costura).
+>
 > ### 🗺️ PRÓXIMO PLANO (combinado com o usuário) — revisar o bestiário inteiro
 >
 > Rodar o ciclo `qa/inspect-species.mjs` em **cada** espécie restante, **um
 > commit + push por monstro**, sem pressa: ~~vapor~~ ✅ → ~~areia~~ ✅ →
-> ~~tempestade~~ ✅ → ~~obsidiana~~ ✅ →
-> pântano, plasma, névoa, cristal (Nv.7) → cósmico, geodo, abissal,
+> ~~tempestade~~ ✅ → ~~obsidiana~~ ✅ → ~~pântano~~ ✅ →
+> plasma, névoa, cristal (Nv.7) → cósmico, geodo, abissal,
 > vulcânico (Nv.8) → astral, colosso (Nv.9) → **primordial (Nv.10)**.
 > Pedido especial para o último: **buraco negro com disco de acreção**, grande,
 > e o ataque é uma **rajada de energia** (rever projétil/FX do primordial).

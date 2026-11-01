@@ -42,7 +42,8 @@ function speciesColor(species: SpeciesId): THREE.Color {
       // Nv.7 — compostos
       tempestade: '#d0b6ff',
       obsidiana: '#8f5cff',
-      pantano: '#6a8f3d',
+      // o vitríolo do Pântano (a MESMA cor do motor/rig/FX — amarrada em teste)
+      pantano: '#a8cf4a',
       plasma: '#ff9ef5',
       nevoa: '#cfe6ee',
       cristal: '#b7a6ff',
@@ -124,6 +125,9 @@ export function ProjectileField() {
   const stormCoreRef = useRef<THREE.InstancedMesh | null>(null);
   const hailRef = useRef<THREE.InstancedMesh | null>(null);
   const shardRef = useRef<THREE.InstancedMesh | null>(null);
+  const globRef = useRef<THREE.InstancedMesh | null>(null);
+  const pustRef = useRef<THREE.InstancedMesh | null>(null);
+  const dripRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -514,14 +518,83 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const mudGlob = useMemo(() => {
+    // cuspe da HIDRA DO LODO: o GLOBO DE LODO é o MESMO lodo do corpo
+    // (waterShaders lido como brejo — albedo de breu esverdeado com bolor
+    // verde escorrendo pela casca). Gosma PESADA: sai devagar, tomba lento e
+    // tremelica no ar (a amp do shader é a geleia vibrando). Não é bola de
+    // lama de obra: o veneno mostra na PUSTULA de bile que arrebenta em cima
+    const geo = new THREE.IcosahedronGeometry(0.26, 2); // denso: a lama bolha, precisa de vértice
+    geo.scale(1.0, 0.86, 1.0); // globo ACHATADO: projétil de poça, não bala de canhão
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeWaterMaterial({
+      deep: '#131a0c', // breu do fundo da gosma
+      mid: '#465a26', // lodo do corpo (mesma família do montículo)
+      foam: '#9db46f', // mancha de bolor verde (nunca #ffffff: espuma é sabão)
+      amp: 0.05, // a gosma TREMELICA em voo
+      foamAmt: 0.3,
+      swell: 0.02,
+      bend: 0.02,
+      yOff: 0.28, // gradiente da poça sobre a própria peça
+      modelH: 0.56,
+      seed: 4.7,
+      // o globo não aceita tint de equipe: é o brejo (aro de musgo)
+      teamColor: '#8a9a62',
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const mudPust = useMemo(() => {
+    // a PUSTULA de veneno que arrebenta no topo do globo: bile do mesmo
+    // vitríolo do motor (não-aditivo — plasma lido em veneno, nunca branco puro)
+    const geo = new THREE.IcosahedronGeometry(0.13, 1); // densa (anti low-poly)
+    geo.scale(1.0, 0.8, 1.0);
+    geo.translate(0, 0.17, 0.04); // irrompe pela casca de lodo (o miolo fica dentro)
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: '#a8cf4a', // o vitríolo do motor
+      white: '#e4f3b4', // miolo quente CONTIDO (nunca #ffffff)
+      cool: '#3d5a1b', // contorno envenenado (o azul elétrico do raio não serve aqui)
+      amp: 0.03,
+      seed: 8.3,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const mudDrip = useMemo(() => {
+    // fiapo de lodo que ESCORREGA da parte de trás do globo — a gosma perde
+    // massa no voo (o rastro grudento da hidra)
+    const geo = flameDropGeometry(0.085, 0.26, 14, 12); // denso
+    geo.rotateX(Math.PI); // a cauda aponta para TRÁS do sentido (o fio pingando)
+    geo.translate(0, -0.05, 0);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeWaterMaterial({
+      deep: '#101509',
+      mid: '#3c4d22',
+      foam: '#8ea463',
+      amp: 0.03, // o fio estica e ondula devagar
+      foamAmt: 0.22,
+      swell: 0.015,
+      bend: 0.015,
+      yOff: 0.2,
+      modelH: 0.5,
+      seed: 2.9,
+      teamColor: '#8a9a62',
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -542,6 +615,7 @@ export function ProjectileField() {
     let stormN = 0;
     let hailN = 0;
     let flakeN = 0;
+    let globN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -579,6 +653,17 @@ export function ProjectileField() {
     // a lasca voa com a brasa do interior acesa (o fogo vulcânico encapsulado
     // no vidro — a assinatura da espécie, NUNCA aditivo)
     obsFlake.mat.uniforms.uCharge.value = 0.6 + 0.25 * Math.sin(time * 2.7);
+    // o globo de lodo voa FRESCO (a gosma ainda escorre): ondas descendo pela
+    // casca e a geleia tremelicando (uFlare é o tremor, não energia)
+    mudGlob.mat.uniforms.uTime.value = time;
+    mudGlob.mat.uniforms.uFlare.value = 0.4 + 0.25 * Math.sin(time * 3.4);
+    mudGlob.mat.uniforms.uSurge.value = 0.12 * Math.sin(time * 5.2); // a gosma ondulando
+    mudDrip.mat.uniforms.uTime.value = time;
+    mudDrip.mat.uniforms.uFlare.value = 0.5 + 0.2 * Math.sin(time * 4.1);
+    // a pustula de veneno lateja (esta acesa por dentro — o veneno procura
+    // arrebentar no impacto)
+    mudPust.mat.uniforms.uTime.value = time;
+    mudPust.mat.uniforms.uCharge.value = 0.75 + 0.2 * Math.sin(time * 5.6);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
     plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat]);
@@ -609,6 +694,7 @@ export function ProjectileField() {
         const isBlast = p.species === 'areia';
         const isStorm = p.species === 'tempestade';
         const isFlake = p.species === 'obsidiana';
+        const isGlob = p.species === 'pantano';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -875,6 +961,27 @@ export function ProjectileField() {
             haloScale = scale * 1.35; // halo contido: o brilho é da faceta, não da bola
             signature = true;
           }
+        } else if (isGlob) {
+          // cuspe da hidra: o globo de lodo é GOSMA PESADA — tomba lento
+          // (mais devagar até que a lasca de vidro) e tremelica inteiro com a
+          // elasticidade da geleia; a pustula e o fiapo acompanham o tumbling
+          dummy.rotation.set(time * 1.15 + p.id, time * 0.8 + p.id * 0.6, 0.5 + time * 0.55);
+          if (globN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.22 + p.age / 0.18); // a lama tem inércia de brejo
+            const wobble = 1 + 0.08 * Math.sin(time * 6.2 + p.id * 2.1); // geleia vibrando
+            const scale = (0.95 + 0.1 * (lv - 7)) * launch * wobble;
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            globRef.current?.setMatrixAt(globN, dummy.matrix);
+            mudGlob.seeds.setX(globN, ((p.id * 47) % 83) / 6.9);
+            pustRef.current?.setMatrixAt(globN, dummy.matrix);
+            mudPust.seeds.setX(globN, ((p.id * 31) % 67) / 5.9);
+            dripRef.current?.setMatrixAt(globN, dummy.matrix);
+            mudDrip.seeds.setX(globN, ((p.id * 37) % 71) / 5.7);
+            globN++;
+            haloScale = scale * 1.45; // halo contido: o veneno brilha na pustula, não na bola
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -943,6 +1050,9 @@ export function ProjectileField() {
       [stormCoreRef.current, stormN, stormCore.seeds],
       [hailRef.current, hailN, stormHail.seeds],
       [shardRef.current, flakeN, obsFlake.seeds],
+      [globRef.current, globN, mudGlob.seeds],
+      [pustRef.current, globN, mudPust.seeds],
+      [dripRef.current, globN, mudDrip.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -1130,6 +1240,32 @@ export function ProjectileField() {
           shardRef.current = m;
         }}
         args={[obsFlake.geo, obsFlake.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Pântano: o MESMO lodo do corpo — globo achatado de brejo com bolor
+          verde, tombando lento e tremelicando como gosma (NUNCA aditivo) */}
+      <instancedMesh
+        ref={(m) => {
+          globRef.current = m;
+        }}
+        args={[mudGlob.geo, mudGlob.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Pântano: a pustula de bile vitríola que arromba o topo do globo
+          (plasma do veneno, nao-aditivo — nunca tinta de equipe) */}
+      <instancedMesh
+        ref={(m) => {
+          pustRef.current = m;
+        }}
+        args={[mudPust.geo, mudPust.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Pântano: o fiapo de lodo que escorre atras do globo no voo */}
+      <instancedMesh
+        ref={(m) => {
+          dripRef.current = m;
+        }}
+        args={[mudDrip.geo, mudDrip.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

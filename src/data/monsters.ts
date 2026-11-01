@@ -391,7 +391,9 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
       moveSpeed: 0,
       targeting: 'closest',
       damageElement: 'earth',
-      projectileColor: '#6a8f3d',
+      // o VITRÍOLO do veneno (a mesma cor do rig, do globo de lodo e do FX):
+      // #6a8f3d era lodo apagado demais no tabuleiro — o veneno tem que ARDER
+      projectileColor: '#a8cf4a',
       resist: { water: 0.25, earth: 0.25, fire: -0.2 },
       abilities: [
         { kind: 'poison', chance: 0.6, duration: 4, dpsFraction: 0.3 },
