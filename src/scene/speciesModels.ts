@@ -17,6 +17,8 @@ export type MatRole =
   | 'accent'
   | 'trans'
   | 'steam'
+  | 'robe'
+  | 'armveil'
   | 'veil';
 
 export interface Part {
@@ -100,7 +102,11 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   // gaiola, do plasma e do FX (identidade amarrada em teste). O ferro nunca é
   // cinza-obra; a estrela nunca é #ffffff
   plasma: { body: '#241d28', dark: '#141019', glow: '#ff9ef5', accent: '#6a6168', roughness: 0.45, metalness: 0.4 },
-  nevoa: { body: '#cfe2ea', dark: '#5f7683', glow: '#eef7fb', accent: '#a8e6ff', bodyOpacity: 0.75, roughness: 0.4 },
+  // Nv.7 — o ESPECTRO DA BRUMA: nuvem fria quase branca (body) com a geada
+  // vitrificada #cfe6ee como identidade única (= cor do projétil no motor =
+  // veios da máscara = anéis do FX), amarrada em teste. A névoa nunca usa
+  // tint da equipe (regra estrutural do steamShaders)
+  nevoa: { body: '#cfe2ea', dark: '#33465a', glow: '#cfe6ee', accent: '#d7e6f2', bodyOpacity: 0.75, roughness: 0.4 },
   cristal: { body: '#b7a6ff', dark: '#5d4a9c', glow: '#e6dcff', accent: '#8fd0ff', bodyOpacity: 0.9, roughness: 0.15, metalness: 0.3 },
   // Nv.8 — avançados
   cosmico: { body: '#2b3560', dark: '#141a33', glow: '#9ad0ff', accent: '#ffe9a8', roughness: 0.4 },
@@ -1240,20 +1246,87 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     ],
   },
 
-  // Gelo+Vapor — espectro da bruma: ninguém acerta o que não enxerga -----
+  // Gelo+Vapor — ESPECTRO DA BRUMA plantado na poça de geada: TÚNICA cônica
+  // larga descendo dos ombros até a bainha rasgada sobre a poça (a silhueta
+  // fantasma clássica — funil fino POR DEMAIS virou casquinha de sorvete),
+  // manto de nuvem em camadas (ico sub 2, NADA low-poly), capuz com MÁSCARA
+  // de gelo-ardósia (o rosto sai da superfície — a regra da face) com olhos
+  // FENDADOS miúdos (googly mataria o frio), coração congelado na fresta do
+  // peito, coroa de icicles, ombreiras de gelo CLARO (dark vitrificado virava
+  // disco preto), garras de bruma em funil raso (tag arm) e gotas congeladas
+  // em órbita. Silhueta plantada: a poça de geada ancora o espectro no slot.
   nevoa: {
-    floatY: 0.3,
-    bob: 0.12,
+    floatY: 0,
+    bob: 0.03,
     parts: [
-      { g: 'vortex', a: [0.7, 0.16, 2.6, 20, 24, 1.5, 0.08], p: [0, 0.15, 0], m: 'body' },
-      { g: 'sphere', a: [0.3, 10, 8], p: [0, 2.55, 0], m: 'body' },
-      ...mm(WEYE(0.12, 2.6, 0.24)),
-      ...mm(WPUPIL(0.12, 2.6, 0.24)),
-      ...mm({ g: 'sphere', a: [0.16, 8, 6], p: [0.55, 1.2, 0.2], m: 'steam', rise: [0.6, 1.2] }),
-      ...mm({ g: 'sphere', a: [0.13, 8, 6], p: [-0.5, 0.8, -0.25], m: 'steam', rise: [0.8, 1.2] }),
-      { g: 'sphere', a: [0.11, 8, 6], p: [0.1, 1.6, -0.5], m: 'steam', rise: [0.7, 1.1] },
-      { g: 'ring', a: [0.5, 1.1, 36], p: [0, 0.02, 0], r: [-1.57, 0, 0], m: 'trans' },
+      // poça de geada = GELO OPACO (alpha 0,85, depthWrite ligado — a regra
+      // do gelo translúcido): antes era véu translúcido e a casca escura do
+      // sino desenhada ATRÁS vazava através dela (a poça lia como buraco
+      // negro no sino). Relevo contido p/ minY não afundar sob o piso
+      { g: 'ico', a: [1.0, 2], p: [0, 0.09, 0], s: [1.05, 0.15, 1.0], m: 'accent', amp: 0.03 },
+      // halo de bruma rente ao chão: anel de gelo RASO (envMix/sparkle
+      // cortados — peça rente ao chão nunca é espelho, a lição da geada)
+      { g: 'ring', a: [0.55, 1.25, 48], p: [0, 0.03, 0], r: [-1.57, 0, 0], m: 'accent', amp: 0.035 },
+      // TÚNICA DE ESPECTRO: coluna cônica LARGA descendo dos ombros (r 0,62)
+      // até a bainha (r 1,12) com fiapo de névoa (1,32) prolongando até a
+      // poça (lathe 36×48). CASCA DUPLA: o alfa do vapor é multiplicado pelo
+      // ruído den — uma casca só lia como "gelatina de vidro" (dava pra ver a
+      // cloaca do sino); a casca de dentro some o miolo oco e as duas somadas
+      // fecham o corpo (a barra continua desfiando porque o ruído vive na
+      // superfície de fora)
+      { g: 'vortex', a: [0.03, 1.32, 3.5, 36, 48, 1.12, 0.62], p: [0, 0.06, 0], m: 'robe', amp: 0.11 },
+      // casca do meio: de FRENTE só há UMA superfície por casca (FrontSide) —
+      // sem casca extra o sino de baixo lia como taça de vidro (uma camada de
+      // alfa 0,94 * den ~0,65 dá só ~0,7 de opacidade)
+      { g: 'vortex', a: [0.03, 1.16, 3.42, 32, 44, 1.06, 0.56], p: [0, 0.07, 0], m: 'robe', amp: 0.09 },
+      { g: 'vortex', a: [0.03, 1.0, 3.34, 28, 40, 1.0, 0.5], p: [0, 0.09, 0], m: 'robe', amp: 0.07 },
+      // mais duas cascas no VENTRE do sino (as metades de lathe do manto —
+      // o corpo do espectro é volume, não traje de vidro): o ruído alto
+      // (amp 0,13–0,16) esculpe a barra desfiada e fecha o ventre de frente
+      { g: 'vortex', a: [0.3, 0.92, 2.0, 28, 34, 0.9, 0.42], p: [0, 0.35, 0], m: 'robe', amp: 0.13 },
+      ...mm({ g: 'vortex', a: [0.26, 0.82, 1.8, 26, 32, 0.82, 0.38], p: [0, 0.55, 0], m: 'robe', amp: 0.16 }),
+      // bainha da túnica: o aro da barra rasgada contornando a poça (PLANO,
+      // -1,57 no X: sem isso o torus fica de pé no plano XY e metade dele
+      // afunda 1,08 sob o tabuleiro — a barra sangrava pelo chão)
+      { g: 'torus', a: [1.06, 0.16, 14, 40], p: [0, 0.14, 0], r: [-1.57, 0, 0], m: 'robe', amp: 0.09 },
+      // coluna do manto: corpo em ovo LARGO (uma massa, não bolas soltas)
+      { g: 'sphere', a: [0.72, 24, 18], p: [0, 2.66, 0], s: [1.32, 1.16, 1.06], m: 'steam', amp: 0.05 },
+      { g: 'sphere', a: [0.52, 20, 16], p: [0, 2.16, 0.06], s: [1.3, 1.1, 1.0], m: 'steam', amp: 0.045 },
+      // ombrões: meias-esferas achatadas fundidas ao corpo (a bola inteira
+      // separada virava Mickey; aqui é ombro que sai do manto)
+      { g: 'sphere', a: [0.5, 20, 16], p: [0.66, 2.86, 0], s: [1.05, 0.66, 1.12], m: 'steam', amp: 0.04 },
+      ...mm({ g: 'sphere', a: [0.5, 20, 16], p: [-0.66, 2.86, 0], s: [1.05, 0.66, 1.12], m: 'steam', amp: 0.04 }),
+      // capuz (CASCA FINA e alta: a esfera densa engolia a máscara — o rosto
+      // tem que SAIR do véu, a regra da face) + dobra do manto pelas costas
+      { g: 'sphere', a: [0.4, 20, 16], p: [0, 3.56, -0.16], s: [1.18, 1.05, 0.92], m: 'steam', amp: 0.045 },
+      { g: 'drop', a: [0.52, 0.95, 20, 18], p: [0, 3.0, -0.5], r: [-0.34, 0, 0], m: 'steam', amp: 0.055 },
+      // máscara de gelo-ardósia aparafusada na frente do capuz (o rosto sai
+      // da superfície — a regra da face). SLATE MÉDIO: breu absoluto virava
+      // cartucho de bala; o rosto lê pela trama de trincas + specular.
+      // Olhos FENDADOS miúdos (o googly mataria o frio): elipses horizontais
+      { g: 'octa', a: [0.3, 1], p: [0, 3.34, 0.4], s: [0.95, 1.1, 0.62], m: 'dark' },
+      ...mm({ g: 'sphere', a: [0.062, 12, 10], p: [0.105, 3.4, 0.55], s: [1.0, 0.46, 0.42], m: 'white' }),
+      ...mm({ g: 'sphere', a: [0.028, 10, 8], p: [0.105, 3.4, 0.585], s: [1.0, 0.4, 0.45], m: 'glow' }),
+      // coroa de icicles PLANTADA no capuz (o pino enterrado na nuvem não é
+      // coroa — a base afunda ~0,2 no véu e a ponta sobe; tag spike: eriçam
+      // quando o espectro inspira)
+      { g: 'cone', a: [0.1, 0.6, 6], p: [0, 4.15, -0.1], m: 'accent', tag: 'spike' },
+      ...mm({ g: 'cone', a: [0.08, 0.46, 6], p: [0.3, 3.96, -0.18], r: [0, 0, -0.42], m: 'accent', tag: 'spike' }),
+      ...mm({ g: 'cone', a: [0.06, 0.34, 6], p: [0.2, 3.82, 0.1], r: [0.32, 0, 0.2], m: 'accent', tag: 'spike' }),
+      // ombreiras de gelo CLARO (a lasca precisa pegAR a luz da arena, não
+      // engoli-la — dark vitrificado virava disco preto nos ombros)
+      ...mm({ g: 'octa', a: [0.22, 1], p: [0.92, 3.02, 0], s: [1.3, 0.5, 1.05], m: 'accent' }),
+      // garras de bruma (tag arm): funil de névoa RASO (casca oca vista de
+      // lado DOBRA o caminho óptico — alfa 0,8 fechava como tinta preta) +
+      // lasca de gelo claro no punho
+      ...mm({ g: 'vortex', a: [0.06, 0.3, 0.72, 18, 22, 1.25, 0.03], p: [0.98, 2.42, 0.32], r: [0.22, 0, -0.55], m: 'armveil', amp: 0.03, tag: 'arm' }),
+      ...mm({ g: 'octa', a: [0.13, 1], p: [1.04, 2.14, 0.44], s: [0.55, 1.5, 0.55], r: [0.1, 0, -0.5], m: 'accent', tag: 'arm' }),
+      // gotas congeladas em órbita (chuva que o espectro nunca deixa cair)
+      ...mm({ g: 'octa', a: [0.1, 1], p: [1.15, 2.85, 0.25], s: [0.8, 1.5, 0.8], m: 'accent', group: 0, flick: 0.12 }),
+      { g: 'octa', a: [0.08, 1], p: [-0.9, 3.3, -0.45], s: [0.8, 1.6, 0.8], m: 'accent', group: 0, flick: 0.12 },
+      { g: 'ico', a: [0.09, 2], p: [0.15, 4.05, 0.45], m: 'accent', group: 0, flick: 0.15 },
     ],
+    groups: { 0: 0.55 },
   },
 
   // Madeira+Areia — prisma vivo: estilhaços que ricocheteiam -------------

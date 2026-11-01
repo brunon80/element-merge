@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
 > Estado verificado em **01/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **237 testes / 24 arquivos, todos
+> `npx tsc --noEmit` OK · `npx vitest run` **246 testes / 25 arquivos, todos
 > verdes** · `npm run build` OK · git limpo em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -18,19 +18,22 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | Espécie | Nv | Status |
 |---|---|---|
 | raio, madeira, magma, gelo, vapor, areia | 6 | ✅ figurino próprio + testes |
-| tempestade, obsidiana, pantano, **plasma** | 7 | ✅ figurino próprio + testes |
-| **névoa, cristal** | 7 | ⬜ pendente (rig genérico) |
+| tempestade, obsidiana, pantano, plasma, **névoa** | 7 | ✅ figurino próprio + testes |
+| **cristal** | 7 | ⬜ pendente (rig genérico) |
 | cósmico, geodo, abissal, vulcânico | 8 | ⬜ pendente |
 | astral, colosso | 9 | ⬜ pendente |
 | **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **buraco negro
   com disco de acreção, grande, ataque em rajada de energia** |
 
-**Último monstro melhorado: PLASMA (Nv.7 — "estrela de bolso": bigorna de
-ferro + jaula de garfos em tripé + gyro de 3 anéis com grampos + manchas
-solares; lança de plasma que cauteriza ponto) — commit `9d7a881`.**
+**Último monstro melhorado: NÉVOA (Nv.7 — "espectro da bruma": planta os pés
+numa POÇA de geada opaca, TÚNICA de cinco cascas de lathe (36×48) com aro plano
+da barra rasgada, capuz com máscara de gelo-ardósia e olhos fendados, coroa de
+icicles plantada no véu, garras de bruma; ataque = ASPIRA FUNDO e SOLTA O BAFO
+(pluma de névoa fria com semente de geada; splash 2,4 + slow 0,5)) — commit
+mais recente de `main` (`git log -1`).** Anterior: plasma `9d7a881`.
 
-**Próximo: NÉVOA (Nv.7, gelo+vapor, "espectro da bruma")**, depois na ordem da
-tabela.
+**Próximo: CRISTAL (Nv.7, água+terra+ar, "prisma vivo" — estilhaços que
+encadeiam: `chain`)**, depois na ordem da tabela.
 
 ### Regras do loop (valem para cada monstro)
 
@@ -50,8 +53,8 @@ tabela.
    - toros ≥12 tubulares × ≥30 radiais; lathe ≥1700 verts em peças grandes;
    - malha de peça com relevo: ≥10 radiais, ≥4 verticais (corte longo do golem).
 5. Silhueta plantada com raiz no tabuleiro é o padrão das espécies pesadas;
-   voadoras (com `floatY`) são exceção justificada (névoa é flutuante por
-   conceito — decidir por espécie).
+   voadoras (com `floatY`) são exceção justificada (a Névoa, mesmo espectro, é
+   PLANTADA na poça de geada — `floatY: 0`; decidir por espécie).
 6. Invólucro amarrado: halfX < 2,6 · maxZ ≤ 2·ROW_DEPTH · minY ≥ −0,1 ·
    maxY ≤ formTop + 0,25 (ver `partsEnvelope` em `tests/helpers.ts`).
 
@@ -90,15 +93,44 @@ tabela.
 - Peças animadas sem esqueleto: `part.group` + matemática de pivô via
   `part.group` rotation no rig (pescoços do Pântano, gyro do Plasma).
 
+### Lições da Névoa (nuvem clara/fria — as quatro que o print cobrou)
+
+- **O `smokePool` é grafite-fuligem**: o frag pinta `(0.42,0.38,0.36)` mesmo com
+  `heat: 0`. Espécie clara/fria NUNCA usa fumaça do pool (a "bruma" manchava a
+  poça branca de cinza). Vazão = motes de geada + véus do próprio corpo; frio
+  não suja, só geada. (Na falta de fumaça, o FX de impacto usou 3 anéis de
+  geada no piso em vez de puff.)
+- **Corpo de nuvem precisa de CASCA ANINHADA** (3–5 lathes concêntricos, mesmo
+  material compartilhado de propósito): com `FrontSide` há UMA superfície por
+  casca no caminho óptico, e o alfa do vapor é multiplicado pelo ruído `den`
+  (~0,65 médio) → uma casca só lia como "gelatina de vidro" (dava pra ver o
+  miolo oco do sino). No teto: `uAlpha` 0,94 (clamp do frag) + `uCharge` de base
+  ~0,55 no material da túnica (`userData.robe`), senão a opacidade real é ~0,6.
+- **O fiapo vem do VÉRTICE, não do alfa**: `amp` alto (0,09–0,16) desfia a
+  barra; `swirl` alto abria buraco no meio do tecido. E **véu oco** (funil de
+  garma, casca única vista de lado) DOBRA o caminho óptico → alfa raso (0,4),
+  senão fecha como tinta preta.
+- **`torus` sem rotação fica de pé no plano XY** (metade dele afunda no
+  tabuleiro — o aro da barra da Névoa furava o piso em −1,08): aro de chão é
+  sempre `r: [-1.57, 0, 0]`, e o pino `minY ≥ −0.1` do invólucro pega.
+- Rosto: **slate médio** (`#5c7488`) — breu puro virava "cartucho"; olhos
+  FENDADOS miúdos (≤0,07 de raio, escala y < x) — googly mata o frio. Máscara
+  aparafusada NA FRENTE do capuz (a face sai do véu) e **só a máscara é `dark`**
+  (gelo escuro nos ombros virava disco preto que engolia a silhueta clara).
+
 ### Ferramentas de QA
 
 `qa/inspect-species.mjs <especie> [aliada]` · `qa/find-particles.ps1 <especie>
 [saida] [ice|hot|leaf|bright|sand]` (acha projétil/estilhaço nos 40 b-frames) ·
 `qa/diff-shots.ps1 a.png b.png` · `qa/probe-parts.mjs` (inventário de meshes/
 materials/uniforms) · `qa/probe-flake.mjs` (print na hora do voo) ·
+`qa/probe-nevoa.mjs` (varre a CENA atrás da pluma/estilhaço em voo e printa —
+útil quando o projétil é LENTO e o b-frame de 0,25 s atravessa o voo) ·
 `qa/probe-veil*.mjs` / `probe-quad.mjs` (sondas de material/cena). Prints em
-`%LOCALAPPDATA%\Temp\opencode\shots`. Pré-requisito: `npm run dev` + chromium
-do Playwright (já instalado).
+`%LOCALAPPDATA%\Temp\opencode\shots`. ⚠️ sonda: só roda o `wheel` de zoom no
+centro do canvas — `page.mouse.click` no tabuleiro ANTES do `start-battle`
+agarra unidade e hijacks a luta (a sonda dispara um tiro só). Pré-requisito:
+`npm run dev` + chromium do Playwright (já instalado).
 
 ---
 

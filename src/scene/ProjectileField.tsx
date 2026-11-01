@@ -17,6 +17,20 @@ import { makeSteamMaterial } from './steamShaders';
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
 
+/** Névoa: a pluma de bruma do bafo (hot = a GEADA do motor, a mesma cor do
+ *  rig/veios/FX) e a semente de geada que vai na cabeça dela. O crack da
+ *  semente é a VARIAÇÃO MIÚDA #d2e9f4: visualmente a mesma geada, mas a sonda
+ *  do laço de QA (qa/probe-nevoa.mjs) consegue distinguir a semente em voo do
+ *  gelo do resto da cena. */
+export const FOG_PLUME_LOOK = {
+  cool: '#eef5fb',
+  warm: '#b9cfe0', // denso por dentro (a geada adensa a pluma — legibilidade)
+  hot: '#cfe6ee',
+  alpha: 0.94, // teto do shader: pluma é corpo, não véu (lê atravessando a arena)
+  swirl: 0.8, // a bruma rasga em farrapos no voo, mas sem buraco no meio
+};
+export const FROST_NUB_CRACK = '#d2e9f4';
+
 interface PerElement {
   mesh: THREE.InstancedMesh | null;
   halo: THREE.InstancedMesh | null;
@@ -130,6 +144,8 @@ export function ProjectileField() {
   const dripRef = useRef<THREE.InstancedMesh | null>(null);
   const lanceRef = useRef<THREE.InstancedMesh | null>(null);
   const sabRef = useRef<THREE.InstancedMesh | null>(null);
+  const mistRef = useRef<THREE.InstancedMesh | null>(null);
+  const nubRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -632,14 +648,66 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const fogBlast = useMemo(() => {
+    // bafo do ESPECTRO DA BRUMA: pluma de névoa FRIA (casca de cone com o
+    // MESMO shader de nuvem do corpo, paleta glacial — o oposto térmico do
+    // jato do Vapor: aqui o denso é o azul-geada e o fiapo quase branco).
+    // ALFA NO TETO: de frente a casca é UMA superfície só, e alfa 0,85 * den
+    // ~0,65 = 0,55 de opacidade — a pluma sumia no voo contra o fundo escuro
+    const geo = new THREE.CylinderGeometry(0.32, 0.06, 0.95, 16, 5, true);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeSteamMaterial({
+      cool: FOG_PLUME_LOOK.cool,
+      warm: FOG_PLUME_LOOK.warm,
+      hot: FOG_PLUME_LOOK.hot, // a geada do motor acende ao carregar o bafo
+      amp: 0.05,
+      alpha: FOG_PLUME_LOOK.alpha,
+      swirl: FOG_PLUME_LOOK.swirl,
+      hotY: 1.2, // frio denso por dentro da pluma
+      seed: 4.9,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const frostNub = useMemo(() => {
+    // a semente de geada na cabeça da pluma: nódulo de gelo do MESMO cristal
+    // claro dos icicles do espectro — o bafo carrega neve compactada (a
+    // assinatura splash+slow: no alvo a pluma estoura em geada)
+    const geo = new THREE.OctahedronGeometry(0.2, 1); // denso (anti low-poly)
+    geo.scale(0.8, 1.35, 0.8); // nódulo alongado: a quina encara o voo
+    geo.translate(0, 0.36, 0);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeIceMaterial({
+      iceA: '#dfeaf4',
+      iceB: '#a3bdd0',
+      crack: FROST_NUB_CRACK, // geada da espécie na variação miúda (ver
+      // FROST_NUB_CRACK: é o que deixa a sonda do laço de QA achar a semente)
+      amp: 0.02,
+      crackGlow: 1.3,
+      crackScale: 2.6, // peça miúda: trincas curtas e densas
+      crackWidth: 0.05,
+      alpha: 0.85,
+      bump: 1.1,
+      reflPow: 130,
+      envMix: 0.55, // o gelo reflete a arena em pleno voo
+      sparkle: 1.2,
+      seed: 6.7,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -663,6 +731,7 @@ export function ProjectileField() {
     let globN = 0;
     let lanceN = 0;
     let sabotN = 0;
+    let mistN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -718,9 +787,16 @@ export function ProjectileField() {
     plasmaLance.mat.uniforms.uCharge.value = 0.9 + 0.1 * Math.sin(time * 7.3);
     plasmaSabot.mat.uniforms.uTime.value = time;
     plasmaSabot.mat.uniforms.uCharge.value = 0.5 + 0.2 * Math.sin(time * 6.1);
+    // a pluma de bruma voa GELADA (uCharge aqui é o frio aceso — a geada
+    // #cfe6ee acende por dentro da nuvem, devagar: o frio é lento)
+    fogBlast.mat.uniforms.uTime.value = time;
+    fogBlast.mat.uniforms.uCharge.value = 0.4 + 0.15 * Math.sin(time * 3.4);
+    // a semente de geada voa trincado de frio (o MESMO gelo dos icicles)
+    frostNub.mat.uniforms.uTime.value = time;
+    frostNub.mat.uniforms.uCharge.value = 0.55 + 0.2 * Math.sin(time * 3.1);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
-    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat]);
+    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat]);
     // a estaca voa "carregada": as trincas internas ficam acesas
     iceSpike.mat.uniforms.uCharge.value = 0.55 + 0.25 * Math.sin(time * 4.2);
 
@@ -750,6 +826,7 @@ export function ProjectileField() {
         const isFlake = p.species === 'obsidiana';
         const isGlob = p.species === 'pantano';
         const isLance = p.species === 'plasma';
+        const isMist = p.species === 'nevoa';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -1076,6 +1153,32 @@ export function ProjectileField() {
             haloScale = scale * 1.3; // halo contido: o brilho é do plasma, não do rastro
             signature = true;
           }
+        } else if (isMist) {
+          // bafo do espectro: a pluma de bruma encara o alvo com o choque de
+          // proa largo e GIRA LENTO no eixo do voo (a bruma enrola devagar —
+          // o frio tem inércia; spin de vendaval seria do calor do Vapor); a
+          // semente de geada acompanha a rotação e brilha por dentro
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            rollQuat.setFromAxisAngle(up, time * 1.3 + p.id * 2.2); // deriva lenta
+            tmpQuat.multiply(rollQuat);
+            dummy.quaternion.copy(tmpQuat);
+          }
+          if (mistN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.34 + p.age / 0.09); // a bruma INCHA ao sair (o bafo)
+            const scale = (1.08 + 0.1 * (lv - 7)) * launch;
+            dummy.scale.set(scale, scale * (1 + Math.min(1, p.age * 1.8) * 0.6), scale);
+            dummy.updateMatrix();
+            mistRef.current?.setMatrixAt(mistN, dummy.matrix);
+            fogBlast.seeds.setX(mistN, ((p.id * 57) % 83) / 6.3);
+            nubRef.current?.setMatrixAt(mistN, dummy.matrix);
+            frostNub.seeds.setX(mistN, ((p.id * 33) % 71) / 5.7);
+            mistN++;
+            haloScale = scale * 1.8; // a nuvem é larga — halo de bruma
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -1149,6 +1252,8 @@ export function ProjectileField() {
       [dripRef.current, globN, mudDrip.seeds],
       [lanceRef.current, lanceN, plasmaLance.seeds],
       [sabRef.current, sabotN, plasmaSabot.seeds],
+      [mistRef.current, mistN, fogBlast.seeds],
+      [nubRef.current, mistN, frostNub.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -1380,6 +1485,25 @@ export function ProjectileField() {
           sabRef.current = m;
         }}
         args={[plasmaSabot.geo, plasmaSabot.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Névoa: a MESMA nuvem glacial do espectro — pluma de bruma com a proa
+          larga no rumo do alvo, girando LENTO (o frio tem inércia; NUNCA
+          aditivo: bruma é albedo, a regra de legibilidade) */}
+      <instancedMesh
+        ref={(m) => {
+          mistRef.current = m;
+        }}
+        args={[fogBlast.geo, fogBlast.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Névoa: a semente de geada na cabeça da pluma (o MESMO gelo claro dos
+          icicles do espectro, trincas da geada #cfe6ee acesas) */}
+      <instancedMesh
+        ref={(m) => {
+          nubRef.current = m;
+        }}
+        args={[frostNub.geo, frostNub.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

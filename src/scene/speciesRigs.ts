@@ -14,6 +14,7 @@ import { TempestadeRig } from './TempestadeRig';
 import { ObsidianaRig } from './ObsidianaRig';
 import { PantanoRig } from './PantanoRig';
 import { PlasmaRig } from './PlasmaRig';
+import { NevoaRig } from './NevoaRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -61,4 +62,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   obsidiana: ObsidianaRig,
   pantano: PantanoRig,
   plasma: PlasmaRig,
+  nevoa: NevoaRig,
 };

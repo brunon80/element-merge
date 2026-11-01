@@ -109,6 +109,8 @@ function SpeciesRig({
         emissiveIntensity: 0.15,
       }),
       steam: std('#dfe9f5', { transparent: true, opacity: 0.3, depthWrite: false }),
+      robe: std('#dfe9f5', { transparent: true, opacity: 0.3, depthWrite: false }),
+      armveil: std('#dfe9f5', { transparent: true, opacity: 0.22, depthWrite: false }),
       veil: std(v.body, { transparent: true, opacity: 0.55, depthWrite: false, roughness: 0.8 }),
     };
     if (locked) {

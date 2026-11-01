@@ -931,6 +931,28 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 0.8, // rápido: feixe cauteriza PONTO, nunca vira bola de fogo
               speed: 1.4,
             });
+          } else if (ev.species === 'nevoa') {
+            // o espectro SOLTA O BAFO: no alvo a pluma de bruma ESTOURA em
+            // nuvem fria que POUSA no chão (o splash 2,4 + slow 0,5 do motor
+            // escritos em FX: geada espalhando no piso, neve caindo pesado
+            // para baixo — o oposto da faísca que sobe do zéfiro), estilhaça
+            // cacos de gelo da semente de geada e congela o piso num anel de
+            // geada. SEM aditivo: bruma é albedo; SEM raio (assinatura do
+            // Raio); a paleta é a geada do motor #cfe6ee
+            const lv = Math.max(7, Math.min(10, ev.level ?? 7));
+            const k = 1 + (lv - 7) * 0.1;
+            // a semente de geada estoura no impacto (pool de estilhaços: 3)
+            for (let i = 0; i < 3; i++)
+              spawnBurst(x, y, z, 0.34 + 0.06 * (lv - 7), 'iceShard', 0.95);
+            spawnParticles(x, y, z, '#cfe6ee', 12 + (lv - 7) * 2, 2.4, 0.5, 1.6, 0.6); // estilhaços de geada caem (o gelo tem peso)
+            spawnParticles(x, y, z, '#eef7fb', 6, 1.6, 0.35, 0.9, 0.4); // nêve clara do miolo da pluma
+            spawnParticles(x, y, z, '#8fb8d0', 8, 2.4, 0.6, 2.8, 0.5); // farelo azulado rastejando (a bruma POUSA)
+            spawnRing(x, 0.1, z, '#cfe6ee', 2.2 * k); // geada espalhando no piso (a marca do slow)
+            spawnRing(x, 0.16, z, '#eef7fb', 1.15); // anel interno = o bafo condensado no alvo
+            spawnRing(x, 0.24, z, '#8fb8d0', 1.45 * k); // halo rasteiro: o frio que toca o chão e fica
+            // SEM smoke do pool: o shader de fumaça é grafite-fuligem e a
+            // "bruma" poluiria o gelo de cinza — frio não suja, só geada;
+            // a névoa do impacto é o anel largo + os estilhaços claros
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e

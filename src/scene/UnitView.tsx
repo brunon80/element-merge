@@ -29,6 +29,8 @@ interface Mats {
   black: THREE.MeshBasicMaterial;
   trans: THREE.MeshStandardMaterial;
   steam: THREE.MeshStandardMaterial;
+  robe: THREE.MeshStandardMaterial;
+  armveil: THREE.MeshStandardMaterial;
   veil: THREE.MeshStandardMaterial;
 }
 
@@ -95,6 +97,8 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
         emissiveIntensity: 0.15,
       }),
       steam: std('#dfe9f5', { transparent: true, opacity: 0.3, depthWrite: false }),
+      robe: std('#dfe9f5', { transparent: true, opacity: 0.34, depthWrite: false }),
+      armveil: std('#dfe9f5', { transparent: true, opacity: 0.22, depthWrite: false }),
       veil: std(v.body, { transparent: true, opacity: 0.55, depthWrite: false, roughness: 0.8 }),
     };
   }, [visuals]);
@@ -124,6 +128,10 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
         return mats.trans;
       case 'steam':
         return mats.steam;
+      case 'robe':
+        return mats.robe;
+      case 'armveil':
+        return mats.armveil;
       case 'veil':
         return mats.veil;
     }
