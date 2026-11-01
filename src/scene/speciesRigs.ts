@@ -13,6 +13,7 @@ import { SandRig } from './SandRig';
 import { TempestadeRig } from './TempestadeRig';
 import { ObsidianaRig } from './ObsidianaRig';
 import { PantanoRig } from './PantanoRig';
+import { PlasmaRig } from './PlasmaRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -38,8 +39,10 @@ export interface SpeciesRigProps {
  * deserto com cauda-funil de areia em turbilhão), Tempestade (muralha de
  * supercélula com
  * mastros para-raios e cortinas de chuva), Obsidiana (fortaleza de vidro
- * negro plantada, brasa violeta nas costuras) e Pântano (hidra do lodo: poça
- * que borbulha, caldeirão afogado e três pescoços que cospem veneno) já
+ * negro plantada, brasa violeta nas costuras), Pântano (hidra do lodo: poça
+ * que borbulha, caldeirão afogado e três pescoços que cospem veneno) e Plasma
+ * (estrela de bolso: sol em miniatura numa jaula de ferro forjado com anéis
+ * de contenção que giram) já
  * têm figurino próprio; as demais espécies da árvore ainda usam o rig padrão:
  * a busca é por espécie e o fallback é o rig padrão.
  */
@@ -57,4 +60,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   tempestade: TempestadeRig,
   obsidiana: ObsidianaRig,
   pantano: PantanoRig,
+  plasma: PlasmaRig,
 };

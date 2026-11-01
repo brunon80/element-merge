@@ -128,6 +128,8 @@ export function ProjectileField() {
   const globRef = useRef<THREE.InstancedMesh | null>(null);
   const pustRef = useRef<THREE.InstancedMesh | null>(null);
   const dripRef = useRef<THREE.InstancedMesh | null>(null);
+  const lanceRef = useRef<THREE.InstancedMesh | null>(null);
+  const sabRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -587,14 +589,57 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const plasmaLance = useMemo(() => {
+    // feixe da ESTRELA DE BOLSO: o MESMO plasma do corpo em LUSA COMPRIDA — o
+    // pierce 3 que atravessa fileiras. Encara o alvo com a ponta e GIRA no
+    // eixo do voo (a broca magnética do Raio); não é bola de fogo de canhão,
+    // é uma lasca de matéria em estado puro costurando o ar (veloz: 13 m/s)
+    const geo = flameDropGeometry(0.15, 1.05, 16, 16); // denso e COMPRIDO
+    geo.scale(0.85, 1, 0.85); // lusa esguia (o canhão não cospe bola)
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: '#ff9ef5', // a centelha do motor (mesma cor do astro/FX)
+      white: '#ffe3f6', // miolo quente CONTIDO (nunca #ffffff)
+      cool: '#6d2a55', // orla ameixa queimada (o azul do Raio não serve aqui)
+      amp: 0.03,
+      seed: 6.1,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const plasmaSabot = useMemo(() => {
+    // os dois anéis de contenção que ESCORREGAM pelo feixe (a jaula de ferro
+    // que o canhão arranca junto com a estrela — o MESMO ferro da gaiola, com
+    // a costura rosa acesa). É o que vende "acelerador magnético" no voo
+    const geo = new THREE.TorusGeometry(0.24, 0.035, 8, 28); // denso (anti low-poly)
+    geo.rotateX(Math.PI / 2); // o aro fica PERPENDICULAR ao voo (eixo +Y, o mesmo da lança)
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: '#6a6168',
+      rockB: '#241d28',
+      crack: '#ff9ef5',
+      amp: 0.012, // anel pequeno: quase liso (senão esburaca o aro)
+      crackGlow: 0.55,
+      crackScale: 2.4, // veio CURTO e denso (a regra do Pântano)
+      crackWidth: 0.05,
+      crackBoost: 0.9,
+      speck: 0.1,
+      seed: 3.7,
+      teamColor: '#8a8f9c',
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -616,6 +661,8 @@ export function ProjectileField() {
     let hailN = 0;
     let flakeN = 0;
     let globN = 0;
+    let lanceN = 0;
+    let sabotN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -664,6 +711,13 @@ export function ProjectileField() {
     // arrebentar no impacto)
     mudPust.mat.uniforms.uTime.value = time;
     mudPust.mat.uniforms.uCharge.value = 0.75 + 0.2 * Math.sin(time * 5.6);
+    // o feixe voa à ENERGIA MÁXIMA (é um pierce que costura fileiras): plasma
+    // em carga total e os grampos de ferro com a costura acesa (a jaula que
+    // arrancou junto com a estrela)
+    plasmaLance.mat.uniforms.uTime.value = time;
+    plasmaLance.mat.uniforms.uCharge.value = 0.9 + 0.1 * Math.sin(time * 7.3);
+    plasmaSabot.mat.uniforms.uTime.value = time;
+    plasmaSabot.mat.uniforms.uCharge.value = 0.5 + 0.2 * Math.sin(time * 6.1);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
     plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat]);
@@ -695,6 +749,7 @@ export function ProjectileField() {
         const isStorm = p.species === 'tempestade';
         const isFlake = p.species === 'obsidiana';
         const isGlob = p.species === 'pantano';
+        const isLance = p.species === 'plasma';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -982,6 +1037,45 @@ export function ProjectileField() {
             haloScale = scale * 1.45; // halo contido: o veneno brilha na pustula, não na bola
             signature = true;
           }
+        } else if (isLance) {
+          // estrela de bolso: o feixe NÃO é tombado — é uma LUSA que já sai na
+          // velocidade máxima (o gatilho nervoso do canhão): encara o alvo com
+          // a ponta de plasma e BROCA no eixo do voo (o magnetismo do Raio);
+          // os dois grampos de ferro escorregam pelo eixo (a jaula que foi
+          // arrancada junto com a estrela)
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            rollQuat.setFromAxisAngle(up, time * 8.5 + p.id * 2.4); // broca rápida
+            tmpQuat.multiply(rollQuat);
+            dummy.quaternion.copy(tmpQuat);
+          }
+          if (lanceN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.4 + p.age / 0.05); // o feixe nasce quase instantâneo (13 m/s)
+            const scale = (0.95 + 0.1 * (lv - 7)) * launch;
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            lanceRef.current?.setMatrixAt(lanceN, dummy.matrix);
+            plasmaLance.seeds.setX(lanceN, ((p.id * 43) % 79) / 6.3);
+            lanceN++;
+            for (const off of [0.3, -0.05]) {
+              if (sabotN >= MAX_PER_ELEMENT) break;
+              // o grampo desliza pelo eixo: pos do tiro + dir·desloc
+              dummy.position.set(
+                p.pos[0] + dir.x * off * scale,
+                p.pos[1] + dir.y * off * scale,
+                p.pos[2] + dir.z * off * scale,
+              );
+              dummy.updateMatrix();
+              sabRef.current?.setMatrixAt(sabotN, dummy.matrix);
+              plasmaSabot.seeds.setX(sabotN, ((p.id * 29) % 71) / 5.9 + off * 1.7);
+              sabotN++;
+            }
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]); // devolve o centro p/ o halo
+            haloScale = scale * 1.3; // halo contido: o brilho é do plasma, não do rastro
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -1053,6 +1147,8 @@ export function ProjectileField() {
       [globRef.current, globN, mudGlob.seeds],
       [pustRef.current, globN, mudPust.seeds],
       [dripRef.current, globN, mudDrip.seeds],
+      [lanceRef.current, lanceN, plasmaLance.seeds],
+      [sabRef.current, sabotN, plasmaSabot.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -1266,6 +1362,24 @@ export function ProjectileField() {
           dripRef.current = m;
         }}
         args={[mudDrip.geo, mudDrip.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Plasma: a LUSA de plasma (o MESMO core do corpo) encarando o alvo e
+          brocando no eixo do voo — o pierce que costura fileiras (NUNCA aditivo) */}
+      <instancedMesh
+        ref={(m) => {
+          lanceRef.current = m;
+        }}
+        args={[plasmaLance.geo, plasmaLance.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Plasma: os grampos de contenção que escorregam pelo feixe (o MESMO
+          ferro da jaula, com a costura rosa acesa — a gaiola arrancada junto) */}
+      <instancedMesh
+        ref={(m) => {
+          sabRef.current = m;
+        }}
+        args={[plasmaSabot.geo, plasmaSabot.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

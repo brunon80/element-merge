@@ -637,12 +637,94 @@
 >   rodada cobrou hidra-fina/caldeirão-enterrado/veio-relâmpago e a 4ª aprovou
 >   o veio-costura).
 >
+> ### 🌟 ATUALIZAÇÃO 9 — Plasma virou ESTRELA DE BOLSO (+ o gyro que mostra giro)
+>
+> Quarta espécie Nv.7 revisada (fogo+ar+terra). Zero shader novo de novo:
+> ferro = `stoneShaders` lido como FERRO FORJADO, plasma = `makeCoreMaterial`
+> (o do Raio) em rosa-vitríolo NÃO-aditivo, bafo = `steamShaders`, manchas/
+> olhos = preto puro. Espécie = figurino, não shader.
+>
+> - **Plasma = estrela de bolso plantada** (forma única Nv.7, `moveSpeed 0`,
+>   formTop 4,2, SEM `floatY` — o print da versão genérica era "dodeca pink +
+>   hula-hoop de Saturno + bolinhas + olhinhos = puído"): **forja** de 3 platôs
+>   que afunilam + rebites + 3 pernas + **anel de scorch rente ao chão** (a
+>   marca queimada; não aceita tint de equipe — é fuligem do tabuleiro) +
+>   **3 GARFOS em tripé encastrados na bigorna** (colares `socket` soldando a
+>   base; no print da rodada 1 a jaula FLUTUAVA sobre a forja: garfo de 0,8
+>   terminava em y1,35 e a bigorna parava em y0,85 — garfos agora com 1,85 de
+>   comprimento descem até y~0,5, enterrados nos platôs) + garras fechando
+>   sobre o aro + anéis de contenção + **MANCHAS SOLARES pretas aparafusadas**
+>   na casca (é isso que vende "sol"; preto sobre plasma é o único contraste
+>   que lê — olho branco sumiria no albedo) + olhos fendados + glints miúdos +
+>   proeminências (drops) e línguas de coroa + faíscas orbitando miúdas.
+> - **O gyro que mostra giro**: torus simétrico NÃO mostra rotação própria —
+>   o rig gira o conjunto anel+grampos (`part.group` 11/12/13) em torno do
+>   **normal do anel** ((0,0,1) applyEuler do euler da peça) e a carga ACELERA
+>   a contenção (×3.2). Matemática de pivô igual às hidras do Pântano. **Os 3
+>   planos têm que ser DISTINTOS**: o teste cobrou anel 12 (Euler 1,57/0,5)
+>   quase paralelo ao 11 (dot 0,88 — virava "hula-hoop duplo") → trocado para
+>   0,6/0/0,9 (34°) e os grampos remontados sobre o plano NOVO (pino: grampo a
+>   r±0,15 do centro do anel; colado no aro, não boiando).
+> - **Anel externo = 1,2 de raio**: maior que a abertura dos garfos (1,03) — é
+>   nele que a jaula se apoia; o anel "abraça" os garfos.
+> - **A estrela sempre ferve**: núcleo ico sub 3 (960 verts), `side =
+>   FrontSide` (no print o DoubleSide deixava as costas do plasma transpassarem
+>   a frente — a bola virava CHICLETE LAVADO), `uAmp` 0,09 no núcleo e
+>   `uCharge` com base (0,3 + boil·0,22): ocioso não é mais pirulito parado.
+>   Bafo: cinza-quente ESCURO (`#8f8089/#7d5165/#f0a9cd`, alfa 0,38) — o bafo
+>   claro virava BOLA DE NEVE no macro.
+> - **Paleta única #ff9ef5**: motor (`projectileColor`) = `VISUALS.plasma.glow`
+>   = costura da gaiola (CAGE_LOOK) = costura da bigorna (FORGE_LOOK) = ouro do
+>   núcleo = lança = FX. Orla do plasma é AMEIXA queimada `#6d2a55` (nunca o
+>   azul elétrico do Raio, nunca #ffffff; amarrado em teste por componentes:
+>   r > b > g). A **regra do veio** do Pântano já entrou de largada: trama
+>   curta e densa (crackScale 1,9/2,2) com glow contido (0,5/0,26, width
+>   0,045/0,04) — ferro vivo com costura acesa, não solda elétrica.
+> - **Coreografia de GATILHO NERVOSO** (exportada p/ teste): `PLASMA_ATTACK_
+>   WINDOW = 0,48` — a mais rápida da árvore: < tempestade (0,55) < vapor
+>   (0,62) < pântano (0,72) < obsidiana (0,95). `WINDUP 0,62`: os garfos
+>   APERTAM a jaula (bloom −0,6), o núcleo ENCOVA sob a pressão (bulge −0,55),
+>   a forja afunda; na descarga quase instantânea a jaula ESCANCARA (bloom
+>   +0,5), o plasma ESTUFA (bulge +1,05) e a gaiola SOLTA o torque (twist
+>   negativo). Plantada: o `stepZ` empurra só a base.
+> - **Projétil-assinatura: LANÇA DE PLASMA** (pools `plasmaLance`/
+>   `plasmaSabot` no `ProjectileField`): `flameDropGeometry(0.15, 1.05)` esguia
+>   com o MESMO core do corpo, encarando o alvo e BROCANDO no eixo do voo
+>   (roll 8,5 rad/s) + **2 grampos de contenção** (torus ⊥ ao voo com o MESMO
+>   ferro da gaiola) escorregando pelo eixo — acelerador magnético Raio+Magma.
+>   Rampa de saída 0,05s (o feixe nasce na velocidade máxima — 13 m/s) e halo
+>   contido 1,3×.
+> - **FX de impacto que CAUTERIZA PONTO** (branch `plasma` no `Effects`): o
+>   pierce 3 não tem massa — SEM estilhaço físico, SEM raio/`bolt` aditivo (o
+>   arco é identidade do Raio) e SEM bola de fogo. A assinatura: furo de
+>   entrada cauterizado (anel miúdo #ff9ef5) + fagulhas de forja COM PESO
+>   arqueando e caindo + caroço claro brevíssimo (#ffe3f6) + gotas de ameixa
+>   esfriando no chão + limalha do grampo que desfez + piso escurecido em breu
+>   ameixa + flash miúdo e quente (heat 0,6 em 4 puffes de vida 0,8 — feixe
+>   queima PONTO, não área). `VISUAL_FAMILY.plasma` = flame.
+> - **Testes**: `plasmaProgression.test.ts` com 10 pinos — rig registrado e
+>   forma única (≥40 peças; SEM floatY = plantada; grupos 11/12/13); silhueta
+>   (bigorna de platôs que afunilam, scorch-anel no chão, garfos que nascem da
+>   forja e alcançam a contenção, sockets, garras, anel externo ≥1,1, grampos
+>   colados no aro, planos do gyro distintos dot<0,85); estrela legível (núcleo
+>   ico sub 3 único, manchas pretas na casca aparafusadas, olhos fendados
+>   espelhados, proeminências/flares, faíscas miúdas, bafo rente à base); anti
+>   low-poly (960 verts no núcleo, 40+ radiais nos anéis); invólucro (scorch
+>   ancora largo, minY ≥ −0,1, maxY ≤ formTop+0,25 e ≥ 3,0); veio curto e
+>   contido + ferro da bigorna mais escuro que a gaiola; core não-aditivo com
+>   branco cortado e orla ameixa; bafo SEM `uTeamColor` e sem bola de neve;
+>   coreografia (PLASMA é a janela mais rápida, jaula aperta→escancara, torque
+>   solto); motor (fire + farthest + pierce 3 + burn + lança ≥10 de velocidade
+>   em voo com pierce/burn + impacto com pos2). Total: **237 testes** verdes;
+>   tsc/build OK; 3 rodadas de QA (1ª cobrou jaula flutuando/chiclete lavado/
+>   bola de neve; 2ª ainda legível; 3ª aprovou o gyro de 3 planos).
+>
 > ### 🗺️ PRÓXIMO PLANO (combinado com o usuário) — revisar o bestiário inteiro
 >
 > Rodar o ciclo `qa/inspect-species.mjs` em **cada** espécie restante, **um
 > commit + push por monstro**, sem pressa: ~~vapor~~ ✅ → ~~areia~~ ✅ →
-> ~~tempestade~~ ✅ → ~~obsidiana~~ ✅ → ~~pântano~~ ✅ →
-> plasma, névoa, cristal (Nv.7) → cósmico, geodo, abissal,
+> ~~tempestade~~ ✅ → ~~obsidiana~~ ✅ → ~~pântano~~ ✅ → ~~plasma~~ ✅ →
+> névoa, cristal (Nv.7) → cósmico, geodo, abissal,
 > vulcânico (Nv.8) → astral, colosso (Nv.9) → **primordial (Nv.10)**.
 > Pedido especial para o último: **buraco negro com disco de acreção**, grande,
 > e o ataque é uma **rajada de energia** (rever projétil/FX do primordial).

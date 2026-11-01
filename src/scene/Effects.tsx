@@ -908,6 +908,29 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 1.3,
               speed: 0.8,
             });
+          } else if (ev.species === 'plasma') {
+            // a estrela de bolso DISPARA a lança: no alvo o feixe ATRAVESSA e
+            // CAUTERIZA — sem estilhaço e sem globo (o pierce 3 não é projétil
+            // com massa: é energia costurando a fileira). A assinatura é o furo
+            // de entrada cauterizado + limalha de ferro caindo pesada (o grampo
+            // da jaula que veio junto e se desfez) + fagulhas de forja com peso e
+            // piso escurecido pela sombra da estrela. SEM raio e SEM bolt aqui
+            // (arco/raio são a assinatura do Raio) e SEM bola de fogo (um feixe
+            // queima PONTO, não área): o flash é miúdo, quente e brevíssimo
+            const lv = Math.max(7, Math.min(10, ev.level ?? 7));
+            const k = 1 + (lv - 7) * 0.1;
+            spawnParticles(x, y, z, '#ff9ef5', 10 + (lv - 7) * 2, 2.8, 0.5, 2.2, 0.6); // fagulhas quentes ARQUEANDO e caindo (fagulha de forja tem peso)
+            spawnParticles(x, y, z, '#ffe3f6', 6, 2.0, 0.3, 1.2, 0.4); // caroço claro do furo (branco-cortado, miúdo e brevíssimo)
+            spawnParticles(x, y, z, '#6d2a55', 6, 2.2, 0.7, 3.0, 0.9); // gotas de ameixa que ESFRIAM morrendo ao cair
+            spawnParticles(x, y, z, '#463c44', 6, 1.8, 0.6, 3.4, 0.5); // limalha escura do grampo de ferro que desfez
+            spawnRing(x, 0.1, z, '#5b3247', 2.1 * k); // piso ESCURECIDO pela queima (breu ameixa, nunca o ocre da areia)
+            spawnRing(x, 0.16, z, '#ff9ef5', 1.0); // furo de entrada cauterizado (a seção do feixe)
+            spawnSmoke(x, y, z, 4, {
+              size: 0.08,
+              heat: 0.6, // flash QUENTE (a forja tocando o alvo) — mas miúdo e
+              life: 0.8, // rápido: feixe cauteriza PONTO, nunca vira bola de fogo
+              speed: 1.4,
+            });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e

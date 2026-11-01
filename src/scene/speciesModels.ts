@@ -95,7 +95,11 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   // veneno (#a8cf4a): a identidade única da espécie, do motor ao FX. O lodo
   // nunca é verde-folha (a cor da Madeira) e o veneno nunca é amarelo (do Raio)
   pantano: { body: '#33411f', dark: '#1b2211', glow: '#a8cf4a', accent: '#5d6b39', roughness: 0.95 },
-  plasma: { body: '#ff8ae0', dark: '#7c2d63', glow: '#ffd0f2', accent: '#ffe14d', roughness: 0.3 },
+  // Nv.7 — a ESTRELA DE BOLSO: albedo é o ferro da forja (breu roxo-ferro), o
+  // glow é a centelha vitríola rosa #ff9ef5 — a MESMA cor do motor, do veio da
+  // gaiola, do plasma e do FX (identidade amarrada em teste). O ferro nunca é
+  // cinza-obra; a estrela nunca é #ffffff
+  plasma: { body: '#241d28', dark: '#141019', glow: '#ff9ef5', accent: '#6a6168', roughness: 0.45, metalness: 0.4 },
   nevoa: { body: '#cfe2ea', dark: '#5f7683', glow: '#eef7fb', accent: '#a8e6ff', bodyOpacity: 0.75, roughness: 0.4 },
   cristal: { body: '#b7a6ff', dark: '#5d4a9c', glow: '#e6dcff', accent: '#8fd0ff', bodyOpacity: 0.9, roughness: 0.15, metalness: 0.3 },
   // Nv.8 — avançados
@@ -746,23 +750,84 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     ],
   },
 
-  // Fogo+Ar+Terra — estrela de bolso: plasma contido em anéis -------------
+  // Raio+Magma — ESTRELA DE BOLSO (Nv.7): um sol em miniatura acorrentado a
+  // uma forja. SILHUETA: base de bigorna plantada (o ferro da Terra/Magma) +
+  // três GARFOS que fecham uma GAIOLA sobre o núcleo + anéis de contenção que
+  // GIRAM (o ar/Raio domando a estrela) + PROTUBERÂNCIAS de plasma arqueando
+  // e MANCHAS SOLARES pretas (é isso que vende "sol" na silhueta — nunca
+  // bolinha rosa de Saturno como a versão genérica). MALHA DENSE: núcleo ico
+  // sub 3, anéis com ≥40 radiais, base em cil 14 radiais × 3 anéis.
+  // formTop 4,2 — os garfos/garras fecham o topo; o núcleo flutua dentro da
+  // gaiola (sustentado pelos garfos, não por floatY: plantada = sombra e
+  // leitura de volume no tabuleiro).
   plasma: {
-    floatY: 0.5,
-    bob: 0.14,
+    bob: 0.02,
     parts: [
-      { g: 'ico', a: [0.38], p: [0, 1.15, 0], m: 'glow', flick: 0.1 },
-      { g: 'dodeca', a: [0.5], p: [0, 1.15, 0], m: 'body' },
-      { g: 'torus', a: [0.7, 0.05, 8, 28], p: [0, 1.15, 0], r: [1.25, 0.3, 0], m: 'body', spin: [0.4, 0, 0.5] },
-      { g: 'torus', a: [0.58, 0.04, 8, 26], p: [0, 1.15, 0], r: [1.57, 0, 1.1], m: 'accent', spin: [-0.6, 0, 0.3] },
-      { g: 'sphere', a: [0.11, 8, 6], p: [0.74, 1.3, 0.1], m: 'glow', group: 0, flick: 0.25 },
-      { g: 'sphere', a: [0.085, 8, 6], p: [-0.55, 0.95, 0.5], m: 'glow', group: 0, flick: 0.25 },
-      { g: 'sphere', a: [0.07, 8, 6], p: [-0.3, 1.5, -0.7], m: 'accent', group: 0, flick: 0.3 },
-      ...mm(WEYE(0.15, 1.24, 0.34)),
-      ...mm(WPUPIL(0.15, 1.24, 0.34)),
-      { g: 'cone', a: [0.05, 0.3, 5], p: [0, 1.75, 0], m: 'accent', flick: 0.2 },
+      // ---- a forja: bigornas empilhadas, rebites, três pernas ----
+      { g: 'cyl', a: [0.95, 1.12, 0.3, 14, 3], p: [0, 0.15, 0], m: 'dark', amp: 0.03, tag: 'forge' },
+      { g: 'cyl', a: [0.66, 0.86, 0.26, 14, 3], p: [0, 0.43, 0], m: 'dark', amp: 0.026, tag: 'forge' },
+      { g: 'cyl', a: [0.4, 0.55, 0.3, 12, 2], p: [0, 0.7, 0], m: 'body', amp: 0.022, tag: 'forge' },
+      ...mm({ g: 'box', a: [0.08, 0.08, 0.09], p: [0.86, 0.3, 0.2], m: 'accent', tag: 'rivet' }),
+      ...mm({ g: 'box', a: [0.08, 0.08, 0.09], p: [0.55, 0.3, -0.66], m: 'accent', tag: 'rivet' }),
+      { g: 'box', a: [0.08, 0.08, 0.09], p: [0, 0.3, 0.92], m: 'accent', tag: 'rivet' },
+      ...mm({ g: 'capsule', a: [0.1, 0.5], p: [0.98, 0.3, -0.28], r: [0.5, 0, 1.25], m: 'dark', amp: 0.02, tag: 'leg' }),
+      { g: 'capsule', a: [0.1, 0.5], p: [-0.1, 0.3, -1.05], r: [1.35, 0, 0], m: 'dark', amp: 0.02, tag: 'leg' },
+      // a marca queimada no chão ao redor da forja (ferro quente derrete o piso)
+      { g: 'ring', a: [1.1, 1.45, 44], p: [0, 0.03, 0], r: [1.57, 0, 0], m: 'dark', amp: 0.012, tag: 'scorch' },
+      // ---- os três garfos da gaiola (120°): ferro que segura a estrela ----
+      ...mm({ g: 'capsule', a: [0.115, 1.85], p: [0.92, 1.49, 0.32], r: [-0.12, 0, -0.26], m: 'body', amp: 0.026, tag: 'prong' }),
+      { g: 'capsule', a: [0.115, 1.85], p: [0, 1.49, -0.92], r: [-0.24, 0, 0], m: 'body', amp: 0.026, tag: 'prong' },
+      // as bases soldadas na bigorna (colares onde o garfo brota do ferro)
+      ...mm({ g: 'box', a: [0.3, 0.26, 0.3], p: [0.68, 0.72, 0.4], r: [-0.12, 0, -0.26], m: 'accent', tag: 'socket' }),
+      { g: 'box', a: [0.3, 0.26, 0.3], p: [0, 0.72, -0.72], r: [-0.24, 0, 0], m: 'accent', tag: 'socket' },
+      ...mm({ g: 'cone', a: [0.085, 0.42, 8], p: [1.15, 2.62, 0.22], r: [0.12, 0, 0.5], m: 'accent', tag: 'claw' }),
+      { g: 'cone', a: [0.085, 0.42, 8], p: [0, 2.6, -1.1], r: [0.3, 0, 0], m: 'accent', tag: 'claw' },
+      ...mm({ g: 'box', a: [0.2, 0.24, 0.2], p: [0.92, 1.49, 0.32], r: [0, 0, -0.26], m: 'accent', tag: 'band' }),
+      { g: 'box', a: [0.2, 0.24, 0.2], p: [0, 1.49, -0.92], r: [-0.24, 0, 0], m: 'accent', tag: 'band' },
+      // os suportes curtos que encostam no núcleo (a gaiola TOCA a estrela)
+      ...mm({ g: 'capsule', a: [0.05, 0.5], p: [0.58, 2.32, 0.2], r: [0, 0, 1.57], m: 'accent', tag: 'strut' }),
+      { g: 'capsule', a: [0.05, 0.5], p: [0, 2.3, -0.85], r: [1.57, 0, 0], m: 'accent', tag: 'strut' },
+      // ---- os três anéis de contenção (gyro): giram em planos diferentes.
+      // tag 'ring' + tag 'clamp' compartilham o `group`: o rig gira o conjunto
+      // inteiro em torno do normal do anel (torus simétrico NÃO mostra giro —
+      // o que vende a rotação é o grampo passeando pelo aro) ----
+      { g: 'torus', a: [1.2, 0.06, 10, 44], p: [0, 2.35, 0], r: [1.57, 0, 0], m: 'accent', tag: 'ring', group: 11 },
+      ...mm({ g: 'box', a: [0.12, 0.15, 0.14], p: [1.2, 2.35, 0], m: 'accent', tag: 'clamp', group: 11 }),
+      { g: 'box', a: [0.12, 0.15, 0.14], p: [-0.6, 2.35, -1.04], m: 'accent', tag: 'clamp', group: 11 },
+      { g: 'torus', a: [0.88, 0.055, 10, 40], p: [0, 2.35, 0], r: [0.6, 0, 0.9], m: 'accent', tag: 'ring', group: 12 },
+      ...mm({ g: 'box', a: [0.11, 0.14, 0.13], p: [0.88, 2.35, 0], m: 'accent', tag: 'clamp', group: 12 }),
+      { g: 'box', a: [0.11, 0.14, 0.13], p: [0, 3.08, 0.51], m: 'accent', tag: 'clamp', group: 12 },
+      { g: 'torus', a: [0.92, 0.05, 10, 40], p: [0, 2.35, 0], r: [0, 0, 0.4], m: 'accent', tag: 'ring', group: 13 },
+      { g: 'box', a: [0.11, 0.13, 0.12], p: [0.86, 2.67, 0], m: 'accent', tag: 'clamp', group: 13 },
+      { g: 'box', a: [0.11, 0.13, 0.12], p: [-0.86, 2.03, 0], m: 'accent', tag: 'clamp', group: 13 },
+      // ---- A ESTRELA: núcleo denso incandescente + MANCHAS SOLARES pretas ----
+      { g: 'ico', a: [0.56, 3], p: [0, 2.35, 0], m: 'glow', tag: 'core' },
+      { g: 'sphere', a: [0.12, 14, 10], p: [-0.23, 2.53, 0.45], s: [1, 1, 0.3], r: [-0.35, 0.45, 0], m: 'black', tag: 'spot' },
+      { g: 'sphere', a: [0.08, 12, 10], p: [0.44, 2.27, 0.32], s: [1, 1, 0.3], r: [-0.3, -0.9, 0], m: 'black', tag: 'spot' },
+      { g: 'sphere', a: [0.1, 12, 10], p: [0.05, 2.79, -0.33], s: [0.9, 0.9, 0.3], r: [0.65, 0, 0], m: 'black', tag: 'spot' },
+      // olhos FENDADOS pretos (a estrela tem cara — e preto sobre plasma é o
+      // único contraste que lê: olho branco sumiria no brilho)
+      ...mm({ g: 'sphere', a: [0.085, 12, 10], p: [0.19, 2.45, 0.5], s: [0.6, 1.5, 0.5], r: [-0.25, -0.25, 0], m: 'black', tag: 'eye' }),
+      ...mm({ g: 'box', a: [0.022, 0.055, 0.03], p: [0.17, 2.51, 0.55], m: 'white', tag: 'glint' }),
+      // ---- proeminências: arcos de plasma saltando da superfície (laços
+      // magnéticos); pingam faíscas e esticam na carga ----
+      ...mm({ g: 'drop', a: [0.06, 0.5, 14, 10], p: [0.42, 2.62, 0.16], r: [0, 0, 1.15], m: 'glow', flick: 0.14, tag: 'loop' }),
+      { g: 'drop', a: [0.05, 0.42, 14, 10], p: [-0.1, 2.75, -0.35], r: [-0.8, 0, 0.3], m: 'glow', flick: 0.16, tag: 'loop' },
+      ...mm({ g: 'drop', a: [0.05, 0.34, 12, 8], p: [0.3, 1.98, 0.34], r: [0.3, 0, -0.9], m: 'glow', flick: 0.12, tag: 'loop' }),
+      // línguas de fogo curtas ao redor da coroa
+      ...mm({ g: 'cone', a: [0.075, 0.3, 8], p: [0.34, 2.83, 0.2], r: [-0.5, 0, 0.6], m: 'glow', flick: 0.22, tag: 'flare' }),
+      { g: 'cone', a: [0.09, 0.34, 8], p: [0, 2.95, -0.1], r: [0.28, 0, 0], m: 'glow', flick: 0.2, tag: 'flare' },
+      // faíscas que orbitam a gaiola (o saldo do que a estrela perde)
+      { g: 'ico', a: [0.06, 1], p: [1.2, 2.6, 0.35], m: 'glow', flick: 0.3, tag: 'spark' },
+      { g: 'ico', a: [0.05, 1], p: [-1.05, 1.9, -0.6], m: 'glow', flick: 0.32, tag: 'spark' },
+      { g: 'ico', a: [0.045, 1], p: [0.35, 3.25, -0.75], m: 'glow', flick: 0.34, tag: 'spark' },
+      { g: 'ico', a: [0.055, 1], p: [-0.5, 3.05, 0.75], m: 'glow', flick: 0.28, tag: 'spark' },
+      // o bafo quente subindo da forja (fumaça quente, SEM tint da equipe)
+      ...mm({ g: 'sphere', a: [0.17, 14, 12], p: [0.8, 0.55, 0.55], m: 'steam', amp: 0.13, tag: 'heat' }),
+      ...mm({ g: 'sphere', a: [0.13, 12, 10], p: [0.9, 0.3, -0.6], m: 'steam', amp: 0.11, tag: 'heat' }),
+      { g: 'sphere', a: [0.15, 12, 10], p: [-0.75, 0.5, 0.7], m: 'steam', amp: 0.12, tag: 'heat' },
     ],
-    groups: { 0: 1.6 },
+    groups: { 11: 0.35, 12: -0.5, 13: 0.62 },
   },
 
   // Água+Ar — golem de CRISTAL de gelo (Nv.6): o gelo cresce em PRISMAS
