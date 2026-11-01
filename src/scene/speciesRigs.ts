@@ -15,6 +15,7 @@ import { ObsidianaRig } from './ObsidianaRig';
 import { PantanoRig } from './PantanoRig';
 import { PlasmaRig } from './PlasmaRig';
 import { NevoaRig } from './NevoaRig';
+import { CrystalRig } from './CrystalRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -43,7 +44,11 @@ export interface SpeciesRigProps {
  * negro plantada, brasa violeta nas costuras), Pântano (hidra do lodo: poça
  * que borbulha, caldeirão afogado e três pescoços que cospem veneno) e Plasma
  * (estrela de bolso: sol em miniatura numa jaula de ferro forjado com anéis
- * de contenção que giram) já
+ * de contenção que giram), Névoa (espectro da bruma plantado numa poça de
+ * geada, túnica de cascas de nuvem) e Cristal (prisma vivo: colosso de
+ * colunas hexagonais de ametista fundado numa duna mineral com raízes
+ * petrificadas, miolo de luz na fresta do peito e farpas de ricochete em
+ * leque nos braços) já
  * têm figurino próprio; as demais espécies da árvore ainda usam o rig padrão:
  * a busca é por espécie e o fallback é o rig padrão.
  */
@@ -63,4 +68,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   pantano: PantanoRig,
   plasma: PlasmaRig,
   nevoa: NevoaRig,
+  cristal: CrystalRig,
 };

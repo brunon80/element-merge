@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
 > Estado verificado em **01/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **246 testes / 25 arquivos, todos
+> `npx tsc --noEmit` OK · `npx vitest run` **258 testes / 26 arquivos, todos
 > verdes** · `npm run build` OK · git limpo em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -18,22 +18,25 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | Espécie | Nv | Status |
 |---|---|---|
 | raio, madeira, magma, gelo, vapor, areia | 6 | ✅ figurino próprio + testes |
-| tempestade, obsidiana, pantano, plasma, **névoa** | 7 | ✅ figurino próprio + testes |
-| **cristal** | 7 | ⬜ pendente (rig genérico) |
+| tempestade, obsidiana, pantano, plasma, névoa, **cristal** | 7 | ✅ figurino próprio + testes |
 | cósmico, geodo, abissal, vulcânico | 8 | ⬜ pendente |
 | astral, colosso | 9 | ⬜ pendente |
 | **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **buraco negro
   com disco de acreção, grande, ataque em rajada de energia** |
 
-**Último monstro melhorado: NÉVOA (Nv.7 — "espectro da bruma": planta os pés
-numa POÇA de geada opaca, TÚNICA de cinco cascas de lathe (36×48) com aro plano
-da barra rasgada, capuz com máscara de gelo-ardósia e olhos fendados, coroa de
-icicles plantada no véu, garras de bruma; ataque = ASPIRA FUNDO e SOLTA O BAFO
-(pluma de névoa fria com semente de geada; splash 2,4 + slow 0,5)) — commit
-mais recente de `main` (`git log -1`).** Anterior: plasma `9d7a881`.
+**Último monstro melhorado: CRISTAL (Nv.7 — areia+madeira, "prisma vivo":
+colosso PLANTADO na DUNA com raiz petrificada, tronco que é um FEIXE de colunas
+de SEIS FACES costuradas por flautas, máscara clara de cristal no diamante da
+cabeça com olhos fendidos, GEMA de ametista encaixada DO FORA no colar hexagonal
+do peito, HALO HORIZONTAL de seis farpas que orbita e acelera na afinação, duas
+órbitas de cacos-filhote (os dois saltos da cadeia escritos na silhueta); ataque
+= AFINA a nota (55% do tempo é o zumbido contraindo) e VARRE o braço inteiro
+cuspindo a farpa hexagonal que ricocheteia — `chain jumps 2`; 102 peças / ~7,9
+mil vértices desenhados)** — commit mais recente de `main` (`git log -1`).
+Anteriores: névoa, depois plasma `9d7a881`.
 
-**Próximo: CRISTAL (Nv.7, água+terra+ar, "prisma vivo" — estilhaços que
-encadeiam: `chain`)**, depois na ordem da tabela.
+**Próximo: CÓSMICO (Nv.8)** e depois geodo, abissal, vulcânico (Nv.8), astral e
+colosso (Nv.9), primordial (Nv.10) na ordem da tabela.
 
 ### Regras do loop (valem para cada monstro)
 
@@ -117,6 +120,40 @@ encadeiam: `chain`)**, depois na ordem da tabela.
   FENDADOS miúdos (≤0,07 de raio, escala y < x) — googly mata o frio. Máscara
   aparafusada NA FRENTE do capuz (a face sai do véu) e **só a máscara é `dark`**
   (gelo escuro nos ombros virava disco preto que engolia a silhueta clara).
+
+### Lições do Cristal (prisma translúcido plantado — as cinco que o print cobrou)
+
+- **Anel EM PÉ não existe na natureza do figurino**: os dois `ring` sem rotação
+  ficavam verticais no plano XY cortando a cabeça a 3,16/4,30 (o "ouriço de
+  satélite" do print). Aro de espécie é sempre DEITADO (`r: [-1.57, 0, 0]`) e,
+  quando a peça tem que ORBITAR, ela é um `ringAround(n, raio, y, tilt, …)` —
+  círculo horizontal de peças reais, com inclinação radial (tilt ≈ 0,4 rad).
+- **Translucidez tem orçamento**: corpo de gelo com alfa 0,78–0,84 + sparkle 1,1
+  + `uHurt` 0,5 virava **"poste de gelo leitoso"** e "candelabro oco" (a luz
+  vazando por trás). Pedra-densa: `alpha ≥ 0,9`, `sparkle ≤ 0,5` (o sparkle do
+  `iceShaders` é AZUL-BRANCO — em corpo grande ele lava a cor da espécie),
+  `envMix ≤ 0,45`, `crackGlow ≤ 0,7` e flash de dano `uHurt * 0,3`.
+- **Quem brilha é um ponto só.** A matriz (duna/collar/cinto) com veio aceso em
+  glow 0,3 + boost 0,8 lia "obsidiana com veios de LAVA" — magma, fora do blurb
+  de areia+raiz. Matriz de pedra com gema = **pedra CLARA de geodo** (luma > 0,3,
+  `crackGlow × crackBoost ≤ 0,12`) e SÓ a gema do peito acesa.
+- **A luz presa em pedra tem que ficar FORA do invólucro translúcido**: enterrada
+  no prisma, o alfa comia a luz e o peito lia roxo liso. Gema = octaedro facetado
+  (nunca bola: bola virava "olho de bode"/disco de opalina) encaixado num colar
+  hexagonal aparafusado na FRENTE da pedra, com `CORE_POS` além da frente da
+  pedra, e escala NÃO-uniforme (ponta alongada no Z). Girar octaedro alongado no
+  Y inteiro faz a ponta "espetar" para dentro do corpo — balança, não gira.
+- **Braço é cadeia, não pílulas soltas**: bola do ombro → úmero → bola do punho →
+  rádio → garra de farpas, com cada peça encostando na vizinha, e o rig gira o
+  braço INTEIRO no pivô da bola do ombro (exportado). Girar cada peça no próprio
+  centro desarticulava o ombro no meio do arremesso.
+- **Face escura em corpo escuro = buraco negro no card**: a placa da face recebia
+  só 0,32 do key light (a face olha para +Z e a luz vem de cima) e virava
+  cartucho. Placa CLARA (o próprio material de crescimento) + sobrancelha e
+  boca-trinca ESCURAS por cima é o que faz o rosto ler de longe.
+- **Anti low-poly em prisma não é arredondar**: o DNA da espécie são as SEIS
+  FACES, então a densidade vem dos ANÉIS VERTICAIS (6 faces × 5–7 seções) e dos
+  poliedros SUB 1/2 — um `cyl` de 24 radiais seria outro material, não cristal.
 
 ### Ferramentas de QA
 

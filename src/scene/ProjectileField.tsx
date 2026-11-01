@@ -13,6 +13,7 @@ import { makeWoodMaterial } from './woodShaders';
 import { plugArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
 import { makeSteamMaterial } from './steamShaders';
+import { SHARD_LOOK, SLIVER_LOOK } from './CrystalRig';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -146,6 +147,8 @@ export function ProjectileField() {
   const sabRef = useRef<THREE.InstancedMesh | null>(null);
   const mistRef = useRef<THREE.InstancedMesh | null>(null);
   const nubRef = useRef<THREE.InstancedMesh | null>(null);
+  const prismRef = useRef<THREE.InstancedMesh | null>(null);
+  const slvRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -700,9 +703,64 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const cristalPrism = useMemo(() => {
+    // a FARPAS do PRISMA VIVO: PIRÂMIDE DE BASE HEXAGONAL (a costela de seis
+    // faces da espécie — o mesmo cristal do colosso, arrancada do braço-em
+    // leque). Encara o alvo com a PONTA e ricocheteia nervosa no eixo do voo
+    // (chain 2: o estilhaço salta de alvo em alvo, nunca tomba como pedra)
+    const geo = new THREE.ConeGeometry(0.2, 1.0, 6, 1);
+    geo.rotateX(Math.PI / 2); // a ponta encara +Y (o eixo do voo)
+    geo.translate(0, 0.3, 0); // a base fica atrás: a QUINA que fura é a ponta
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeIceMaterial({
+      iceA: SHARD_LOOK.iceA, // a AMETISTA do motor é o claro (a lição do vidro
+      iceB: SHARD_LOOK.iceB, // negro: contra o fundo escuro só lê pedra FUNDA
+      crack: SHARD_LOOK.crack, // com veio CLARO pulsando — é o que a sonda do
+      amp: SHARD_LOOK.amp, // laço de QA varre em voo)
+      crackGlow: SHARD_LOOK.crackGlow,
+      crackScale: SHARD_LOOK.crackScale,
+      crackWidth: SHARD_LOOK.crackWidth,
+      alpha: SHARD_LOOK.alpha,
+      bump: SHARD_LOOK.bump,
+      reflPow: SHARD_LOOK.reflPow,
+      envMix: SHARD_LOOK.envMix, // em pleno voo a faceta espelha a arena
+      sparkle: SHARD_LOOK.sparkle,
+      seed: 5.3,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const cristalSliver = useMemo(() => {
+    // a LASCA que acompanha a farpa (o braço-leque do colosso dispara o filhote
+    // junto — é o que vende "cadeia" no voo): lasca miúda do MESMO cristal
+    const geo = new THREE.OctahedronGeometry(0.1, 1); // facetada e densa (anti low-poly)
+    geo.scale(0.32, 1.5, 0.32); // lasca CHATA e comprida (estilhaço, não conta)
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeIceMaterial({
+      iceA: SLIVER_LOOK.iceA,
+      iceB: SLIVER_LOOK.iceB,
+      crack: SLIVER_LOOK.crack,
+      amp: 0.015,
+      crackGlow: 0.9,
+      crackScale: 2.6, // lasca miúda: trinca curta e densa
+      crackWidth: 0.05,
+      alpha: 0.8,
+      bump: 1.0,
+      reflPow: 130,
+      envMix: 0.55,
+      sparkle: 1.1,
+      seed: 8.9,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver]) {
         x.geo.dispose();
         x.mat.dispose();
       }
@@ -732,6 +790,8 @@ export function ProjectileField() {
     let lanceN = 0;
     let sabotN = 0;
     let mistN = 0;
+    let prismN = 0;
+    let slvN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -794,9 +854,15 @@ export function ProjectileField() {
     // a semente de geada voa trincado de frio (o MESMO gelo dos icicles)
     frostNub.mat.uniforms.uTime.value = time;
     frostNub.mat.uniforms.uCharge.value = 0.55 + 0.2 * Math.sin(time * 3.1);
+    // a farpa do prisma voa AFINADA: o veio claro pulsa (a luz ainda presa na
+    // pedra, saindo pelo ar) e a lasca-filhote que vem junto também
+    cristalPrism.mat.uniforms.uTime.value = time;
+    cristalPrism.mat.uniforms.uCharge.value = 0.6 + 0.25 * Math.sin(time * 5.2);
+    cristalSliver.mat.uniforms.uTime.value = time;
+    cristalSliver.mat.uniforms.uCharge.value = 0.45 + 0.2 * Math.sin(time * 6.4);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
-    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat]);
+    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat, cristalPrism.mat, cristalSliver.mat]);
     // a estaca voa "carregada": as trincas internas ficam acesas
     iceSpike.mat.uniforms.uCharge.value = 0.55 + 0.25 * Math.sin(time * 4.2);
 
@@ -827,6 +893,7 @@ export function ProjectileField() {
         const isGlob = p.species === 'pantano';
         const isLance = p.species === 'plasma';
         const isMist = p.species === 'nevoa';
+        const isPrism = p.species === 'cristal';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -1179,6 +1246,45 @@ export function ProjectileField() {
             haloScale = scale * 1.8; // a nuvem é larga — halo de bruma
             signature = true;
           }
+        } else if (isPrism) {
+          // o prisma vivo DISPARA a própria farpa: ela encara o alvo com a
+          // PONTA da base hexagonal e BROCA nervosa no eixo do voo (o tiro de
+          // canhão de cristal que salta de alvo em alvo — chain 2; pedra que
+          // tomba seria do Gólem, aqui é quina que fura); a lasca-filhote do
+          // braço-em-leque vem junto, atrasada, no mesmo eixo
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            rollQuat.setFromAxisAngle(up, time * 6.2 + p.id * 2.7); // broca de ricochete
+            tmpQuat.multiply(rollQuat);
+            dummy.quaternion.copy(tmpQuat);
+          }
+          if (prismN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.42 + p.age / 0.06); // sai quase pronta (12 m/s)
+            const scale = (1.0 + 0.08 * (lv - 7)) * launch;
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            prismRef.current?.setMatrixAt(prismN, dummy.matrix);
+            cristalPrism.seeds.setX(prismN, ((p.id * 61) % 83) / 6.7);
+            prismN++;
+            for (const off of [-0.34, -0.52]) {
+              if (slvN >= MAX_PER_ELEMENT) break;
+              // a lasca desliza atrás da farpa (o eixo do tiro + recuo)
+              dummy.position.set(
+                p.pos[0] + dir.x * off * scale,
+                p.pos[1] + dir.y * off * scale,
+                p.pos[2] + dir.z * off * scale,
+              );
+              dummy.updateMatrix();
+              slvRef.current?.setMatrixAt(slvN, dummy.matrix);
+              cristalSliver.seeds.setX(slvN, ((p.id * 31) % 71) / 5.9 + off * 2.3);
+              slvN++;
+            }
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]); // devolve o centro p/ o halo
+            haloScale = scale * 1.25; // halo contido: a farpa é quina, não bola
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -1254,6 +1360,8 @@ export function ProjectileField() {
       [sabRef.current, sabotN, plasmaSabot.seeds],
       [mistRef.current, mistN, fogBlast.seeds],
       [nubRef.current, mistN, frostNub.seeds],
+      [prismRef.current, prismN, cristalPrism.seeds],
+      [slvRef.current, slvN, cristalSliver.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -1504,6 +1612,25 @@ export function ProjectileField() {
           nubRef.current = m;
         }}
         args={[frostNub.geo, frostNub.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Cristal: a farpa de seis faces do PRISMA VIVO (o MESMO ametista do
+          colosso), ponta no rumo do alvo e brocando no eixo — a quina do
+          ricochete; NUNCA aditivo: pedra é albedo + veio, a regra da leitura */}
+      <instancedMesh
+        ref={(m) => {
+          prismRef.current = m;
+        }}
+        args={[cristalPrism.geo, cristalPrism.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Cristal: as lascas-filhote que vêm atrás da farpa no mesmo eixo (o
+          braço-em-leque dispara a cadeia junto — é o que vende o chain 2) */}
+      <instancedMesh
+        ref={(m) => {
+          slvRef.current = m;
+        }}
+        args={[cristalSliver.geo, cristalSliver.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

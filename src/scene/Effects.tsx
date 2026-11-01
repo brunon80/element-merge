@@ -12,6 +12,9 @@ import { makeWaterMaterial } from './waterShaders';
 import { makeWoodMaterial } from './woodShaders';
 import { plugArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
+// paleta do CRISTAL (o caco do impacto é o MESMO cristal do colosso e da farpa
+// — identidade amarrada em teste; ver CrystalRig SLIVER_LOOK)
+import { SLIVER_LOOK } from './CrystalRig';
 import type { SmokePool } from './smokePool';
 
 const PARTICLE_CAP = 400;
@@ -285,6 +288,35 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e as FARPAS de ametista do impacto do CRISTAL (o MESMO cristal do
+  // colosso: o estilhaço que ricocheteia se estilhaça no alvo em pirâmides de
+  // seis faces — farpa NERVOSA de material duro, saltando como o chain do motor)
+  const shardPrism = useMemo(() => {
+    const geo = new THREE.OctahedronGeometry(0.46, 1); // facetada e densa (anti low-poly)
+    geo.scale(0.5, 1.6, 0.5); // farpa bicuda comprida (a quina que fura)
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeIceMaterial({
+        // O MESMO cristal do colosso e da farpa em voo: o caco do FX é a paleta
+        // da espécie (SLIVER_LOOK), não cor solta — e o veio é a AMETISTA #b7a6ff
+        // do motor (identidade amarrada em teste do projétil ao impacto)
+        iceA: SLIVER_LOOK.iceA,
+        iceB: SLIVER_LOOK.iceB,
+        crack: SLIVER_LOOK.crack,
+        amp: 0.02,
+        crackGlow: 1.5,
+        crackScale: 2.2,
+        crackWidth: 0.05,
+        alpha: 0.88,
+        bump: 1.1,
+        reflPow: 140,
+        envMix: 0.6, // caco rodando espelha a arena (a receita do gelo)
+        sparkle: 0.7,
+        seed: 6.4 + i * 2.6,
+        breath: 0.4,
+      }),
+    );
+    return { geo, mats };
+  }, []);
   // ...e os TORRÕES de lodo molhado do impacto do Pântano (o MESMO shader de
   // lodo do corpo: breu esverdeado com mancha de bolor — o globo cuspido pela
   // hidra estoura em massa pesada que esborracha, não em pedra seca)
@@ -314,7 +346,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         life: 0,
         max: 0.62,
         size: 1,
-        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice' | 'glass' | 'mud',
+        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice' | 'glass' | 'mud' | 'prism',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -493,7 +525,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     y: number,
     z: number,
     size = 1,
-    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' | 'iceShard' | 'glassShard' | 'mudShard' = 'flame',
+    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' | 'iceShard' | 'glassShard' | 'mudShard' | 'prismShard' = 'flame',
     life?: number,
   ) => {
     if (kind === 'flame') {
@@ -534,7 +566,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                 ? 'glass'
                 : kind === 'mudShard'
                   ? 'mud'
-                  : 'rock';
+                  : kind === 'prismShard'
+                    ? 'prism'
+                    : 'rock';
       const a = Math.random() * Math.PI * 2;
       // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
       // cambalhota que a pedra (que só desmorona). O VIDRO da Obsidiana é
@@ -544,12 +578,16 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       const ice = kind === 'iceShard';
       const glass = kind === 'glassShard';
       const mud = kind === 'mudShard';
-      const fast = ice || glass;
+      // a farpa do PRISMA é a mais nervosa de todas: é o estilhaço que o motor
+      // já arremessa SALTO (chain 2) — quica alto e gira muito (o ricochete
+      // escrito em física no chão do tabuleiro)
+      const prism = kind === 'prismShard';
+      const fast = ice || glass || prism;
       const s = (fast ? 2.2 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : mud ? 1.2 : 1.8);
       d.vx = Math.cos(a) * s;
-      d.vy = (fast ? 2.1 : mud ? 1.1 : 1.6) + Math.random() * (ice ? 2.4 : mud ? 1.1 : 1.8);
+      d.vy = (prism ? 2.6 : fast ? 2.1 : mud ? 1.1 : 1.6) + Math.random() * (ice ? 2.4 : prism ? 2.8 : mud ? 1.1 : 1.8);
       d.vz = Math.sin(a) * s;
-      const spin = glass ? 19 : ice ? 16 : mud ? 6 : 11;
+      const spin = prism ? 23 : glass ? 19 : ice ? 16 : mud ? 6 : 11;
       d.rx = (Math.random() - 0.5) * spin;
       d.ry = (Math.random() - 0.5) * spin;
       d.rz = (Math.random() - 0.5) * spin;
@@ -953,6 +991,30 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
             // SEM smoke do pool: o shader de fumaça é grafite-fuligem e a
             // "bruma" poluiria o gelo de cinza — frio não suja, só geada;
             // a névoa do impacto é o anel largo + os estilhaços claros
+          } else if (ev.species === 'cristal') {
+            // o prisma vivo DISPARA a própria farpa: no alvo ela SE ESTILHAÇA
+            // em pirâmides de seis faces que QUICAM (a assinatura chain 2
+            // escrita em física: estilhaço ricocheteando pelo tabuleiro), a
+            // luz presa na pedra vaza num flash miúdo de ametista e o mineral
+            // da duna solta pó seco. SEM smoke do pool (grafite suja a pedra
+            // clara), SEM arco (assinatura do Raio); a paleta é a ametista do
+            // motor #b7a6ff com o veio pálido do corpo
+            const lv = Math.max(7, Math.min(10, ev.level ?? 7));
+            const k = 1 + (lv - 7) * 0.1;
+            // a farpa quebra no impacto em farpas de prisma (pool: 3) — elas
+            // saltam e giram nervosas (o chain do motor é isso em escala)
+            for (let i = 0; i < 3; i++)
+              spawnBurst(x, y, z, 0.3 + 0.05 * (lv - 7), 'prismShard', 0.85);
+            spawnParticles(x, y, z, '#b7a6ff', 10 + (lv - 7) * 2, 2.8, 0.5, 1.8, 0.6); // farpas de ametista ARQUEANDO e caindo (pedra tem peso)
+            spawnParticles(x, y, z, '#efe8ff', 6, 1.8, 0.3, 0.8, 0.3); // a luz que vazou da pedra (miúda e brevíssima)
+            spawnParticles(x, y, z, '#8f76e0', 7, 2.2, 0.6, 2.6, 0.4); // lasca clara pegando a luz da arena
+            spawnParticles(x, y, z, '#413754', 7, 1.6, 0.65, 3.2, 0.3); // PÓ mineral da duna (seco, cai direto)
+            spawnParticles(x, y - 0.1, z, '#d6c8ff', 5, 1.3, 0.35, 1.2, 0.25); // glit miúdo de cristal no chão
+            spawnRing(x, 0.1, z, '#5d4a9c', 2.0 * k); // onda de choque do impacto no piso (breu ameixa)
+            spawnRing(x, 0.16, z, '#b7a6ff', 1.1); // anel interno = a seção da farpa estourada
+            spawnRing(x, 0.24, z, '#d6c8ff', 0.7); // estouro miúdo da luz presa (nunca bola de fogo)
+            // SEM smoke: pedra quebrando solta PÓ (os motes/specs claros), não
+            // fuligem — e o pool do shader é grafite-fuligem (a lição da Névoa)
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e
@@ -1304,7 +1366,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
 
     // os cacos de gelo/vidro leem o MESMO cubemap da arena (captura one-shot
     // do IceRig) — plug idempotente e barato
-    plugArenaEnv(state.gl, [...shardIce.mats, ...shardGlass.mats]);
+    plugArenaEnv(state.gl, [...shardIce.mats, ...shardGlass.mats, ...shardPrism.mats]);
     // estilhaços de pedra do impacto do Gólem: saem disparados para os lados,
     // a gravidade os puxa para o chão (quicam), cambalhotam e apagam
     // encolhendo — as fissuras de magma acendem no instante do impacto e
@@ -1327,7 +1389,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                 ? shardGlass
                 : d.kind === 'mud'
                   ? shardMud
-                  : shardRock;
+                  : d.kind === 'prism'
+                    ? shardPrism
+                    : shardRock;
       const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {

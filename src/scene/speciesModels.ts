@@ -107,7 +107,12 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   // veios da máscara = anéis do FX), amarrada em teste. A névoa nunca usa
   // tint da equipe (regra estrutural do steamShaders)
   nevoa: { body: '#cfe2ea', dark: '#33465a', glow: '#cfe6ee', accent: '#d7e6f2', bodyOpacity: 0.75, roughness: 0.4 },
-  cristal: { body: '#b7a6ff', dark: '#5d4a9c', glow: '#e6dcff', accent: '#8fd0ff', bodyOpacity: 0.9, roughness: 0.15, metalness: 0.3 },
+  // Nv.7 — o PRISMA VIVO: a pedra é ametista FUNDA (body #7d5ec8), a matriz da
+  // duna que a ancora é pedra CLARA de geodo (dark #a296a6 — breu com veio
+  // acesso lia "obsidiana com lava") e o que brilha é a gema do peito. A
+  // IDENTIDADE é o ametista #b7a6ff do motor: veios de fratura do cristal,
+  // veio da matriz/da raiz petrificada, veio da farpa e anéis do FX
+  cristal: { body: '#7d5ec8', dark: '#a296a6', glow: '#b7a6ff', accent: '#d9c9ff', bodyOpacity: 0.9, roughness: 0.18, metalness: 0.15 },
   // Nv.8 — avançados
   cosmico: { body: '#2b3560', dark: '#141a33', glow: '#9ad0ff', accent: '#ffe9a8', roughness: 0.4 },
   geodo: { body: '#8a7fae', dark: '#453c63', glow: '#e0b3ff', accent: '#c77dff', roughness: 0.5, metalness: 0.2 },
@@ -175,6 +180,30 @@ const mm = (p: Part): Part[] => [
     r: p.r ? [p.r[0], -p.r[1], -p.r[2]] : undefined,
   },
 ];
+
+/**
+ * Coroa/halo de peças num CÍRCULO HORIZONTAL de raio R (n peças igualmente
+ * espaçadas, cada uma inclinada `tilt` radiais para fora). É como se desenha um
+ * anel-ressoador sem anel: o CRISTAL não tem toros em pé boiando — tem um halo
+ * de farpas que orbita. A rotação em Y é só a ordem da seção transversal (peças
+ * de 6 faces são quase simétricas, então o euler pequeno de inclinação chega:
+ * rotação vetorial ≈ (tilt·sinφ, 0, −tilt·cosφ)).
+ */
+const ringAround = (
+  n: number,
+  radius: number,
+  y: number,
+  tilt: number,
+  part: Omit<Part, 'p' | 'r'>,
+): Part[] =>
+  Array.from({ length: n }, (_, k) => {
+    const phi = (k / n) * Math.PI * 2;
+    return {
+      ...part,
+      p: [radius * Math.cos(phi), y, radius * Math.sin(phi)],
+      r: [tilt * Math.sin(phi), 0, -tilt * Math.cos(phi)],
+    } as Part;
+  });
 
 export const MODELS: Record<SpeciesId, SpeciesModel> = {
   // Fogo — progressão viva da chama. Nv1 é o imps de fogo (a gota que já
@@ -1329,22 +1358,157 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     groups: { 0: 0.55 },
   },
 
-  // Madeira+Areia — prisma vivo: estilhaços que ricocheteiam -------------
+  // Raiz+Duna — PRISMA VIVO (areia cimentada + raiz petrificada que viram
+  // cristal). O primeiro print lia "obsidiana com veios de lava" (breu + veio
+  // acesso = magma): aqui a MATRIZ é pedra CLARA de geodo (ardósia lavanda com
+  // veio ameixa contido) e quem brilha é só a GEMA do peito. Silhueta em A: pé
+  // de prismas escamados → coluna hexagonal (costela de 6 faces da espécie) →
+  // ombros de farpa → cabeça com HALO horizontal de farpas orbitando (adeus aos
+  // anéis em pé que boiavam) e coroa de pontas. Peito = gema ENCAIXADA num
+  // colar hexagonal: luz DO FORA, que lê no card miúdo da enciclopédia.
+  // Anti low-poly: toda ponta é octa SUB 1, toda coluna é 6 faces × 5–7 anéis,
+  // o anel de areia tem 56 radiais e a matriz da duna é ico sub 2.
   cristal: {
-    bob: 0.05,
+    // PLANTADO na duna: o prisma nasce do chão do slot (nada de colosso boiando)
+    floatY: 0,
+    bob: 0.03,
     parts: [
-      { g: 'octa', a: [0.55, 0], p: [0, 0.95, 0], s: [0.9, 1.3, 0.9], m: 'body' },
-      { g: 'octa', a: [0.26, 0], p: [0, 1.85, 0], s: [0.9, 1.4, 0.9], m: 'glow', flick: 0.06 },
-      ...mm({ g: 'octa', a: [0.18, 0], p: [0.5, 0.6, 0.25], s: [0.7, 1.8, 0.7], r: [0.2, 0, -0.6], m: 'body' }),
-      ...mm({ g: 'octa', a: [0.15, 0], p: [-0.45, 0.9, -0.2], s: [0.7, 1.7, 0.7], r: [-0.2, 0, 0.7], m: 'body' }),
-      ...mm({ g: 'octa', a: [0.12, 0], p: [0.3, 1.5, -0.4], s: [0.7, 1.6, 0.7], r: [0.4, 0, -0.3], m: 'body' }),
-      ...mm(WEYE(0.13, 1.6, 0.42)),
-      ...mm(WPUPIL(0.13, 1.6, 0.42)),
-      { g: 'sphere', a: [0.07, 8, 6], p: [0.7, 1.5, 0.1], m: 'glow', group: 0, flick: 0.3 },
-      { g: 'sphere', a: [0.06, 8, 6], p: [-0.6, 1.7, -0.2], m: 'glow', group: 0, flick: 0.3 },
-      { g: 'torus', a: [0.6, 0.04, 6, 26], p: [0, 1.2, 0], r: [1.4, 0.3, 0], m: 'accent', group: 1 },
+      // ===== DUNA-MATRIZ: laje de pedra CLARA de geodo + saia de areia. A
+      // primeira versão era breu com veio acesso e o print lia "obsidiana com
+      // veios de LAVA" (magma, fora do tema): a matriz agora é ardósia lavanda
+      // com veio ameixa CONTIDO — quem brilha é só a gema do peito =====
+      { g: 'ico', a: [1.05, 2], p: [0, 0.12, 0], s: [1.1, 0.17, 0.98], m: 'dark', amp: 0.02, tag: 'plinth' },
+      // saia de areia rente ao tabuleiro: anel PLANO de 56 radiais (sem o
+      // -1,57 no X o aro fica de pé no plano XY e afunda sob o piso)
+      { g: 'ring', a: [0.55, 1.32, 56], p: [0, 0.045, 0], r: [-1.57, 0, 0], m: 'dark' },
+      // duna cimentada em degraus (dois tambores de 6 faces = a geometria da espécie)
+      { g: 'cyl', a: [0.82, 1.14, 0.3, 6, 3], p: [0, 0.27, 0], m: 'dark', tag: 'plinth' },
+      { g: 'cyl', a: [0.6, 0.82, 0.24, 6, 3], p: [0, 0.5, 0], m: 'dark', tag: 'plinth' },
+      // ===== RAIZ PETRIFICADA (tag root = casca de madeira virada pedra no
+      // rig): a raiz da Madeira vira rocha e a rocha vira semente de cristal =====
+      ...mm({ g: 'cone', a: [0.15, 0.78, 7], p: [1.02, 0.3, -0.3], r: [-0.3, 0, -1.45], m: 'body', tag: 'root' }),
+      ...mm({ g: 'cone', a: [0.12, 0.62, 7], p: [0.86, 0.28, 0.6], r: [0.55, 0, -1.5], m: 'body', tag: 'root' }),
+      ...mm({ g: 'cone', a: [0.13, 0.66, 7], p: [0.5, 0.26, -0.9], r: [-1.15, 0, -1.1], m: 'body', tag: 'root' }),
+      { g: 'cone', a: [0.11, 0.5, 7], p: [0.05, 0.24, 1.02], r: [1.35, 0, 0], m: 'body', tag: 'root' },
+      { g: 'cone', a: [0.1, 0.46, 7], p: [-0.12, 0.22, -1.04], r: [-1.4, 0, 0.12], m: 'body', tag: 'root' },
+      // cascalho de ametista na duna: o LASCO CLARO que lê no card miúdo
+      ...mm({ g: 'octa', a: [0.14, 1], p: [0.94, 0.44, 0.5], s: [1.0, 0.62, 1.0], r: [0, 0.3, 0.4], m: 'accent' }),
+      ...mm({ g: 'octa', a: [0.11, 1], p: [0.82, 0.42, -0.66], s: [1.0, 0.6, 1.0], r: [0.2, 0, -0.5], m: 'accent' }),
+      { g: 'octa', a: [0.1, 1], p: [0.16, 0.46, 1.04], s: [1.0, 0.55, 1.0], r: [0.3, 0, 0.2], m: 'accent' },
+      // ===== PÉ: leque de prismas grossos escamados que fura a duna (é o pé,
+      // não uma estaca lisa) — 6 faces × 5 anéis verticais =====
+      { g: 'cyl', a: [0.2, 0.36, 1.2, 6, 5], p: [0, 1.02, -0.52], r: [-0.3, 0, 0], m: 'body' },
+      ...mm({ g: 'cyl', a: [0.17, 0.31, 1.1, 6, 5], p: [0.46, 0.98, 0.34], r: [0.22, 0, -0.26], m: 'body' }),
+      ...mm({ g: 'cyl', a: [0.14, 0.26, 0.96, 6, 5], p: [0.64, 0.94, -0.36], r: [-0.18, 0, -0.42], m: 'body' }),
+      { g: 'cyl', a: [0.16, 0.28, 0.9, 6, 5], p: [0, 1.0, 0.52], r: [0.3, 0, 0], m: 'body' },
+      // farpa crescida no pé: crescimento VIVO (peça nova brota da velha)
+      ...mm({ g: 'octa', a: [0.2, 1], p: [0.5, 1.62, -0.74], s: [0.6, 1.5, 0.6], r: [-0.45, 0, 0.25], m: 'accent', tag: 'growth' }),
+      // ===== TRONCO = FEIXE DE PRISMAS (a lição do print: um tambor liso lia
+      // "poste roxo de gelatina"). Em volta da coluna-mãe de seis faces, duas
+      // colunas laterais giradas e uma frontal onde a gema se encaixa; por
+      // fora, seis flautas finas costurando o conjunto — a silhueta passa a
+      // ser um CACHO de prismas, não um cilindro =====
+      { g: 'cyl', a: [0.52, 0.76, 2.15, 6, 7], p: [0, 2.0, -0.06], m: 'body' },
+      { g: 'cyl', a: [0.44, 0.58, 1.9, 6, 6], p: [0, 1.94, 0.26], r: [0.05, 0.52, 0.05], m: 'body' },
+      ...mm({ g: 'cyl', a: [0.34, 0.46, 1.94, 6, 6], p: [0.4, 1.98, 0.02], r: [0.03, 0.3, -0.14], m: 'body' }),
+      ...mm({ g: 'cyl', a: [0.26, 0.34, 1.7, 6, 5], p: [0.6, 1.84, -0.4], r: [-0.1, 0.2, -0.22], m: 'body' }),
+      { g: 'cyl', a: [0.24, 0.32, 1.5, 6, 5], p: [0, 1.9, 0.4], r: [0.14, 0, 0.04], m: 'body' },
+      // flautas (tag growth zumbe na afinação): arestas de crescimento do feixe
+      ...ringAround(6, 0.74, 2.02, 0.09, {
+        g: 'cyl',
+        a: [0.08, 0.11, 1.78, 6, 5],
+        m: 'accent',
+        tag: 'growth',
+      }),
+      // crista dorsal: leque de farpas subindo pelas COSTAS (altura de perfil)
+      ...mm({ g: 'octa', a: [0.18, 1], p: [0.3, 2.9, -0.78], s: [0.55, 1.9, 0.55], r: [-0.35, 0, 0.3], m: 'accent', tag: 'growth' }),
+      { g: 'octa', a: [0.16, 1], p: [0, 3.22, -0.84], s: [0.6, 1.8, 0.6], r: [-0.4, 0, 0], m: 'accent', tag: 'growth' },
+      // ===== PEITO ABERTO: jaula de costelas de cristal (tag growth) =====
+      ...mm({ g: 'cyl', a: [0.05, 0.065, 0.92, 6, 4], p: [0.62, 2.5, 0.4], r: [0.25, 0, -0.28], m: 'accent', tag: 'growth' }),
+      ...mm({ g: 'cyl', a: [0.045, 0.06, 0.82, 6, 4], p: [0.6, 2.12, 0.38], r: [0.2, 0, -0.32], m: 'accent', tag: 'growth' }),
+      // ===== A GEMA DO PEITO: placa de pedra + colar hexagonal aparafusado na
+      // frente e quatro garras segurando a luz. O miolo NÃO mora dentro do
+      // prisma translúcido (o alfa comia a luz — no print o peito era roxo
+      // liso): a gema fica ENCAIXADA DO FORA e é por isso que ela lê =====
+      { g: 'cyl', a: [0.3, 0.36, 0.16, 6, 1], p: [0, 2.36, 0.6], r: [1.57, 0, 0], m: 'dark', tag: 'ring' },
+      { g: 'cyl', a: [0.24, 0.28, 0.1, 6, 1], p: [0, 2.36, 0.46], r: [1.57, 0, 0], m: 'dark', tag: 'ring' },
+      ...mm({ g: 'octa', a: [0.1, 1], p: [0.3, 2.36, 0.66], s: [0.45, 1.5, 0.45], r: [0, 0, -0.5], m: 'accent', tag: 'spike' }),
+      ...mm({ g: 'octa', a: [0.09, 1], p: [0.2, 2.68, 0.6], s: [0.45, 1.3, 0.45], r: [0.4, 0, -0.35], m: 'accent', tag: 'spike' }),
+      // cinto-ressoador: banda hexagonal + aro PLANO em volta do tronco (o
+      // diafragma que o prisma percutiu — tag ring: vibra na afinação)
+      { g: 'cyl', a: [0.84, 0.78, 0.16, 6, 1], p: [0, 1.44, -0.06], m: 'dark', tag: 'ring' },
+      { g: 'ring', a: [0.5, 0.92, 40], p: [0, 1.33, -0.06], r: [-1.57, 0, 0], m: 'dark' },
+      // ===== OMBROS: prisma-placa + lasca chata + espada de farpa (tag spike:
+      // eriçam na afinação e apontam no tiro) =====
+      ...mm({ g: 'cyl', a: [0.17, 0.25, 0.98, 6, 3], p: [1.0, 2.86, 0], r: [0, 0, -1.15], m: 'body' }),
+      ...mm({ g: 'octa', a: [0.2, 1], p: [0.98, 3.1, 0], s: [1.3, 0.5, 1.05], r: [0, 0, -0.2], m: 'accent', tag: 'spike' }),
+      ...mm({ g: 'octa', a: [0.12, 1], p: [1.2, 3.18, 0.02], s: [0.55, 1.9, 0.55], r: [0, 0, -0.45], m: 'accent', tag: 'spike' }),
+      // ===== BRAÇOS CORRENTES (tag arm): antes eram pílulas soltas boiando no
+      // ar (o print lia "manequim desmontado"). Agora a cadeia é contínua e
+      // sobreposta — bola do ombro → úmero → bola do punho → rádio → garra de
+      // farpas — e o rig gira o braço INTEIRO no pivô do ombro =====
+      ...mm({ g: 'octa', a: [0.15, 1], p: [1.42, 3.02, 0.02], s: [1, 1, 1], m: 'accent', tag: 'arm' }),
+      ...mm({ g: 'cyl', a: [0.13, 0.17, 0.94, 6, 5], p: [1.54, 2.56, 0.08], r: [-0.2, 0, -0.2], m: 'body', tag: 'arm' }),
+      ...mm({ g: 'octa', a: [0.14, 1], p: [1.66, 2.1, 0.2], s: [1, 1, 1], m: 'accent', tag: 'arm' }),
+      ...mm({ g: 'cyl', a: [0.12, 0.15, 0.88, 6, 5], p: [1.78, 1.64, 0.38], r: [0.5, 0, -0.28], m: 'body', tag: 'arm' }),
+      // garra de farpas (as sementes do ricochete — chain 2 do motor)
+      ...mm({ g: 'octa', a: [0.1, 1], p: [1.84, 1.2, 0.66], s: [0.5, 1.8, 0.5], r: [-0.78, 0, -0.32], m: 'accent', tag: 'arm' }),
+      ...mm({ g: 'octa', a: [0.09, 1], p: [1.94, 1.32, 0.38], s: [0.5, 1.6, 0.5], r: [-0.35, 0, -0.62], m: 'accent', tag: 'arm' }),
+      { g: 'cone', a: [0.07, 0.5, 6], p: [1.68, 1.14, 0.12], r: [-0.1, 0, -0.92], m: 'accent', tag: 'arm' },
+      // ===== PESCOÇO + CABEÇA DE DIAMANTE (octa facetado, nunca bola) =====
+      { g: 'cyl', a: [0.22, 0.3, 0.44, 6, 3], p: [0, 3.38, -0.04], m: 'body' },
+      { g: 'octa', a: [0.46, 1], p: [0, 3.68, -0.02], s: [0.95, 1.05, 0.92], m: 'body' },
+      ...mm({ g: 'octa', a: [0.14, 1], p: [0.46, 3.6, -0.08], s: [0.36, 1.35, 0.55], r: [0, 0, 0.32], m: 'accent', tag: 'spike' }),
+      // máscara NA FRENTE do diamante (a face SAI do cristal — a regra da face).
+      // MASCARA CLARA DE CRISTAL: a pedra escura da primeira versão recebia só
+      // 0,32 do key light (a face olha para +Z e a luz vem de cima) e virava
+      // BURACO NEGRO no card miúdo — a lição da ombreira vitrificada da Névoa.
+      // O contraste do rosto agora é feito pela SOBRANCELHA e pela boca-trinca
+      // escuras sobre a placa clara
+      { g: 'cyl', a: [0.3, 0.34, 0.18, 6, 1], p: [0, 3.64, 0.42], r: [1.57, 0, 0], m: 'accent' },
+      { g: 'box', a: [0.48, 0.08, 0.14], p: [0, 3.88, 0.44], m: 'dark' },
+      ...mm({ g: 'sphere', a: [0.09, 12, 10], p: [0.14, 3.66, 0.56], s: [1.0, 0.42, 0.42], m: 'white' }),
+      ...mm({ g: 'box', a: [0.048, 0.016, 0.02], p: [0.14, 3.66, 0.61], m: 'black' }),
+      { g: 'box', a: [0.2, 0.035, 0.08], p: [0, 3.42, 0.28], m: 'dark' }, // boca-trinca
+      // coroa de prismas PLANTADA no diamante (pino enterrado: a base afunda
+      // na cabeça e a ponta sai por cima — a regra da coroa da Névoa)
+      { g: 'octa', a: [0.17, 1], p: [0, 4.08, -0.06], s: [0.5, 2.6, 0.5], r: [0, 0, 0.06], m: 'accent', tag: 'spike' },
+      ...mm({ g: 'octa', a: [0.14, 1], p: [0.22, 4.0, -0.14], s: [0.5, 2.2, 0.5], r: [-0.12, 0, -0.36], m: 'accent', tag: 'spike' }),
+      ...mm({ g: 'cone', a: [0.07, 0.42, 6], p: [0.36, 3.86, -0.26], r: [-0.4, 0, -0.66], m: 'accent', tag: 'spike' }),
+      // ===== HALO RESSOADOR: seis farpas longas num círculo HORIZONTAL em
+      // volta da cabeça (o anel com que o prisma afina). Adeus aos dois anéis
+      // EM PÉ que boiavam e ao confete de lasquinhas: o halo é chato, as farpas
+      // são compridas e inclinadas para fora igual, orbita (grupo 0) e ACELERA
+      // com a carga — a afinação vira velocidade, não tremor de arame =====
+      ...ringAround(6, 0.74, 3.74, 0.4, {
+        g: 'cyl',
+        a: [0.05, 0.08, 0.62, 6, 3],
+        m: 'accent',
+        tag: 'growth',
+        group: 0,
+        flick: 0.1,
+      }),
+      // ===== CACOS-FILHOTE em duas órbitas: uma BAIXA raspando a duna (grupo
+      // 1, sentido contrário) e uma ALTA e larga na altura do ombro (grupo 2)
+      // — os dois saltos da cadeia do motor escritos na silhueta =====
+      ...ringAround(5, 1.24, 0.94, 0.5, {
+        g: 'octa',
+        a: [0.11, 1],
+        s: [0.7, 1.5, 0.7],
+        m: 'glow',
+        group: 1,
+        flick: 0.15,
+      }),
+      ...ringAround(3, 1.6, 3.42, 0.28, {
+        g: 'octa',
+        a: [0.1, 1],
+        s: [0.7, 1.6, 0.7],
+        m: 'glow',
+        group: 2,
+        flick: 0.16,
+      }),
     ],
-    groups: { 0: 1.8, 1: -1.1 },
+    groups: { 0: 0.9, 1: -0.6, 2: 0.45 },
   },
 
   // Tempestade+Plasma — entidade estelar: constelação viva a Nv.8 --------
