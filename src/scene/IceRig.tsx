@@ -578,7 +578,8 @@ void main() {
   vec3 p = vec3(cos(ang) * r, y, sin(ang) * r);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float size = (2.4 + 3.2 * aRand.z) * (1.0 + uCharge * 0.35) * uSizeMul;
-  gl_PointSize = size * (28.0 / max(0.5, -mv.z));
+  // clamp: perto da câmera o sprite não pode virar parede (envelope fantasma)
+  gl_PointSize = min(90.0, size * (28.0 / max(0.5, -mv.z)));
   vA = smoothstep(0.0, 0.06, prog) * (1.0 - smoothstep(0.82, 0.99, prog)) * uAlpha;
   vRot = uTime * (0.6 + 2.2 * aRand.w) + aRand.y * 6.28318;
   gl_Position = projectionMatrix * mv;

@@ -12,6 +12,7 @@ import { makeArcMaterial, makeCoreMaterial } from './lightningShaders';
 import { makeWoodMaterial } from './woodShaders';
 import { plugArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
+import { makeSteamMaterial } from './steamShaders';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -107,6 +108,8 @@ export function ProjectileField() {
   const boulderRef = useRef<THREE.InstancedMesh | null>(null);
   const heartRef = useRef<THREE.InstancedMesh | null>(null);
   const spikeRef = useRef<THREE.InstancedMesh | null>(null);
+  const jetRef = useRef<THREE.InstancedMesh | null>(null);
+  const jetCoreRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -315,14 +318,51 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const steamJet = useMemo(() => {
+    // rajada do Vapor: cunha de VAPOR escaldante (a casca do cone abre no
+    // choque de proa, o fiapo estreito fica na cauda) com o MESMO shader da
+    // nuvem da criatura — alfa em ruído correndo, a pluma se desfaz em voo
+    const geo = new THREE.CylinderGeometry(0.3, 0.04, 0.95, 14, 4, true);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeSteamMaterial({
+      cool: '#f2f7fb',
+      warm: '#ffcf9e',
+      hot: '#fff0dd',
+      amp: 0.05,
+      alpha: 0.85, // projétil precisa ser mais denso que o corpo
+      swirl: 1.5, // a pluma rasga em fiapos no voo
+      seed: 5.1,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const jetCore = useMemo(() => {
+    // o núcleo: um nódulo de água em ebulição na cabeça da pluma (o MESMO
+    // material fervente da boca da caldeira — paleta água, não plasma)
+    const geo = new THREE.IcosahedronGeometry(0.15, 2); // denso (anti low-poly)
+    geo.translate(0, 0.3, 0);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: '#ffe0b0', // a gota em ebulição (mesma paleta da boca da caldeira)
+      white: '#fff8ec',
+      cool: '#cfe8ff',
+      amp: 0.06,
+      seed: 3.7,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -338,6 +378,7 @@ export function ProjectileField() {
     let seedN = 0;
     let boulderN = 0;
     let spikeN = 0;
+    let jetN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -353,6 +394,11 @@ export function ProjectileField() {
     lavaBoulder.mat.uniforms.uCharge.value = 0.8 + 0.2 * Math.sin(time * 3.1);
     lavaHeart.mat.uniforms.uTime.value = time;
     iceSpike.mat.uniforms.uTime.value = time;
+    steamJet.mat.uniforms.uTime.value = time;
+    // a pluma voa incandescente: o vapor do jato está fresco saído da fornalha
+    steamJet.mat.uniforms.uCharge.value = 0.45 + 0.15 * Math.sin(time * 4.4);
+    jetCore.mat.uniforms.uTime.value = time;
+    jetCore.mat.uniforms.uCharge.value = 0.7 + 0.2 * Math.sin(time * 3.2);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
     plugArenaEnv(state.gl, [iceSpike.mat]);
@@ -379,6 +425,7 @@ export function ProjectileField() {
         const isSeed = p.species === 'madeira';
         const isBoulder = p.species === 'magma';
         const isSpike = p.species === 'gelo';
+        const isJet = p.species === 'vapor';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -540,6 +587,32 @@ export function ProjectileField() {
             haloScale = scale * 1.3;
             signature = true;
           }
+        } else if (isJet) {
+          // rajada do Vapor: a pluma encara o alvo com o topo largo (o choque
+          // de proa) e o fiapo fino na cauda; enrola de leve no eixo do voo
+          // (a coluna de vapor girando — vórtice de escoamento)
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            rollQuat.setFromAxisAngle(up, time * 1.8 + p.id * 2.1);
+            tmpQuat.multiply(rollQuat);
+            dummy.quaternion.copy(tmpQuat);
+          }
+          if (jetN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.3 + p.age / 0.08); // a pluma infla ao sair
+            const scale = (0.9 + 0.12 * (lv - 6)) * launch;
+            dummy.scale.set(scale, scale * (1 + Math.min(1, p.age * 2) * 0.55), scale);
+            dummy.updateMatrix();
+            jetRef.current?.setMatrixAt(jetN, dummy.matrix);
+            steamJet.seeds.setX(jetN, ((p.id * 61) % 79) / 6.1);
+            // nódulo fervente na cabeça da pluma (gira com ela)
+            jetCoreRef.current?.setMatrixAt(jetN, dummy.matrix);
+            jetCore.seeds.setX(jetN, ((p.id * 43) % 71) / 5.3);
+            jetN++;
+            haloScale = scale * 1.9; // a nuvem é larga — halo de vapor
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -600,6 +673,8 @@ export function ProjectileField() {
       [boulderRef.current, boulderN, lavaBoulder.seeds],
       [heartRef.current, boulderN, lavaHeart.seeds],
       [spikeRef.current, spikeN, iceSpike.seeds],
+      [jetRef.current, jetN, steamJet.seeds],
+      [jetCoreRef.current, jetN, jetCore.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -717,6 +792,24 @@ export function ProjectileField() {
           spikeRef.current = m;
         }}
         args={[iceSpike.geo, iceSpike.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Vapor: a MESMA nuvem da criatura — pluma de vapor com o topo largo
+          no rumo do alvo (a pluma some nas bordas: depthWrite off, NUNCA
+          aditivo) */}
+      <instancedMesh
+        ref={(m) => {
+          jetRef.current = m;
+        }}
+        args={[steamJet.geo, steamJet.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Vapor: nódulo de água em ebulição na cabeça da pluma */}
+      <instancedMesh
+        ref={(m) => {
+          jetCoreRef.current = m;
+        }}
+        args={[jetCore.geo, jetCore.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

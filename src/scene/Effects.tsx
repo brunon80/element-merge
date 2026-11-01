@@ -717,6 +717,23 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 1.1,
               speed: 1.0,
             });
+          } else if (ev.species === 'vapor') {
+            // rajada de vapor no alvo: a pluma ESCALDANTE se desfaz em nuvem
+            // branca-pêssego (heat quente, NUNCA fuligem), espirra água
+            // fervente para os lados (o splash) e marca o chão com anéis de
+            // escaldadura (a assinatura burn+slow)
+            const lv = Math.max(6, Math.min(10, ev.level ?? 6));
+            spawnParticles(x, y, z, '#ffe3c4', 12 + (lv - 6) * 2, 2.6, 0.55, 0.8, 0.5); // vapor pêssego subindo
+            spawnParticles(x, y, z, '#ffffff', 7, 1.9, 0.45, 0.4, 0.3); // miolo branco escaldante
+            spawnParticles(x, y, z, '#9fc7e8', 8, 2.8, 0.5, -1.9, 0.5); // gotas ferventes caindo (splash)
+            spawnRing(x, 0.1, z, '#ffcaa0', 1.8 + 0.12 * (lv - 6)); // anel escaldante
+            spawnRing(x, 0.16, z, '#fff0dd', 1.0); // núcleo do anel (queimadura)
+            spawnSmoke(x, y, z, 5, {
+              size: 0.12,
+              heat: 0.35, // vapor quente e claro
+              life: 1.3,
+              speed: 1.2,
+            });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e

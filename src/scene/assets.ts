@@ -54,10 +54,12 @@ export function getGeometry(kind: GeoKind, args: number[]): THREE.BufferGeometry
       geo = new THREE.OctahedronGeometry(args[0], args[1] ?? 0);
       break;
     case 'ico':
-      geo = new THREE.IcosahedronGeometry(args[0]);
+      // [1] = subdivisão (era IGNORADO: o modelo pedia sub 2 e vinha sub 0 —
+      // essa era a fonte do "low poly" escondido nos poliedros)
+      geo = new THREE.IcosahedronGeometry(args[0], args[1] ?? 0);
       break;
     case 'capsule':
-      geo = new THREE.CapsuleGeometry(args[0], args[1], 4, 10);
+      geo = new THREE.CapsuleGeometry(args[0], args[1], 6, 16);
       break;
     case 'plane':
       geo = new THREE.PlaneGeometry(args[0], args[1]);

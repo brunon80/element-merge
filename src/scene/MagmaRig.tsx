@@ -506,7 +506,8 @@ void main() {
   vec3 p = vec3(cos(ang) * r, y, sin(ang) * r);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float size = (1.8 + 2.8 * aRand.z) * (0.8 + uCharge * 0.5) * uSizeMul;
-  gl_PointSize = size * (28.0 / max(0.5, -mv.z));
+  // clamp: perto da câmera o sprite não pode virar parede (envelope fantasma)
+  gl_PointSize = min(90.0, size * (28.0 / max(0.5, -mv.z)));
   // nasce acesa, morre devagar; some no alto
   vA = (1.0 - smoothstep(0.55, 1.0, prog)) * uAlpha;
   // esfriando: branca no berço -> laranja -> brasa vermelha no alto

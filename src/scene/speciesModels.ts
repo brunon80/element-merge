@@ -85,7 +85,7 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   madeira: { body: '#7fae5f', dark: '#4d3a22', glow: '#d8f0a8', accent: '#a9d67e', roughness: 0.85 },
   magma: { body: '#5a4038', dark: '#281e1c', glow: '#ff5a1f', accent: '#ff8a2a', roughness: 0.9 },
   gelo: { body: '#eaf6ff', dark: '#5f7f96', glow: '#ffffff', accent: '#bfe4ff', bodyOpacity: 0.88, roughness: 0.1, metalness: 0.15 },
-  vapor: { body: '#a87f4f', dark: '#54422a', glow: '#ffb37a', accent: '#5fa8a0', roughness: 0.35, metalness: 0.65 },
+  vapor: { body: '#7f8794', dark: '#39414d', glow: '#ff9a4d', accent: '#c98a4b', roughness: 0.5, metalness: 0.6 },
   areia: { body: '#d9b87a', dark: '#9c7c42', glow: '#ffe9a8', accent: '#bfe9ff', roughness: 0.75 },
   // Nv.7 — compostos
   tempestade: { body: '#7186a8', dark: '#333f58', glow: '#ffe066', accent: '#cfe9ff', roughness: 0.65 },
@@ -837,21 +837,64 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
 
   // Fogo+Água — caldeiro vivo (Nv.6): jatos de vapor escaldante ----------
   vapor: {
-    bob: 0.05,
+    bob: 0.04,
     parts: [
-      { g: 'capsule', a: [0.44, 0.5], p: [0, 0.72, 0], m: 'body' },
-      { g: 'torus', a: [0.45, 0.045, 8, 24], p: [0, 0.5, 0], r: [1.57, 0, 0], m: 'dark' },
-      { g: 'torus', a: [0.43, 0.045, 8, 24], p: [0, 0.96, 0], r: [1.57, 0, 0], m: 'dark' },
-      { g: 'cone', a: [0.16, 0.36, 8], p: [0, 1.34, 0], m: 'dark' },
-      { g: 'cyl', a: [0.055, 0.055, 0.5, 6], p: [0.36, 1.0, 0], r: [0, 0, -0.65], m: 'dark' },
-      { g: 'sphere', a: [0.1, 10, 8], p: [0, 0.78, 0.45], m: 'glow', flick: 0.12 },
-      { g: 'cyl', a: [0.1, 0.12, 0.22, 8], p: [-0.26, 0.12, 0.2], m: 'dark' },
-      { g: 'cyl', a: [0.1, 0.12, 0.22, 8], p: [0.26, 0.12, 0.2], m: 'dark' },
-      { g: 'cyl', a: [0.1, 0.12, 0.22, 8], p: [0, 0.12, -0.3], m: 'dark' },
-      { g: 'sphere', a: [0.12, 8, 6], p: [0.02, 1.55, 0.02], m: 'steam', rise: [0.75, 1.0] },
-      { g: 'sphere', a: [0.1, 8, 6], p: [-0.08, 1.55, 0.08], m: 'steam', rise: [0.95, 1.0] },
-      { g: 'sphere', a: [0.085, 8, 6], p: [0.34, 1.2, -0.06], m: 'steam', rise: [0.85, 0.8] },
+      // ================= CALDEIRA VIVA (Nv.6 — fogo+água) =================
+      // Panela de FERRO gigante nos pés de cobre, brasa embaixo da barriga,
+      // água fervendo na boca e CABEÇA de nuvem de vapor empilhada. MALHA
+      // DENSE em tudo (regra anti low-poly: 20 radiais × 5-6 anéis nos
+      // tambores, ico sub 2 na nuvem, toros 12×40 — o subdiv do 'ico' era
+      // IGNORADO pelo assets.ts; corrigido)
+      // ---- 3 pés de ferro (ponta no chão, ventre apoiado neles) ----
+      ...mm({ g: 'cone', a: [0.16, 0.62, 10, 5], p: [0.62, 0.33, 0.36], r: [3.14, 0, 0.38], m: 'dark' }),
+      { g: 'cone', a: [0.16, 0.62, 10, 5], p: [0, 0.33, -0.66], r: [3.46, 0, 0], m: 'dark' },
+      // ---- leito de brasas + lenha sob o ventre (o fogo que ferve) ----
+      ...mm({ g: 'ico', a: [0.1, 2], p: [0.3, 0.16, 0.3], s: [1.2, 0.6, 1.2], m: 'glow', flick: 0.16 }),
+      { g: 'ico', a: [0.12, 2], p: [-0.05, 0.16, -0.36], s: [1.2, 0.6, 1.2], m: 'glow', flick: 0.12 },
+      ...mm({ g: 'cyl', a: [0.07, 0.09, 0.5, 12, 3], p: [0.18, 0.13, 0.06], r: [0.4, 1.3, 1.57], m: 'dark' }),
+      // ---- corpo da panela em 3 socalcos de chapa (sino que afunila na boca) ----
+      { g: 'cyl', a: [1.34, 0.88, 0.55, 20, 5], p: [0, 0.86, 0], m: 'dark', amp: 0.028 }, // sai dos pés
+      { g: 'cyl', a: [1.52, 1.34, 0.62, 20, 6], p: [0, 1.45, 0], m: 'body', amp: 0.032 }, // o ventre
+      { g: 'cyl', a: [1.26, 1.46, 0.5, 20, 5], p: [0, 2.01, 0], m: 'body', amp: 0.028 }, // afunila pra boca (o ventre PRECISA ser o mais largo — senão a panela chapa)
+      // ---- arcos e reforços de cobre (as soldas que a luz pega) ----
+      { g: 'torus', a: [1.54, 0.07, 12, 40], p: [0, 1.18, 0], r: [1.57, 0, 0], m: 'dark' },
+      { g: 'torus', a: [1.5, 0.07, 12, 40], p: [0, 1.72, 0], r: [1.57, 0, 0], m: 'dark' },
+      { g: 'torus', a: [1.58, 0.05, 12, 40], p: [0, 1.45, 0], r: [1.57, 0, 0], m: 'accent' },
+      // ---- a BOCA da caldeira: aro de ferro grosso ----
+      { g: 'torus', a: [1.28, 0.14, 12, 40], p: [0, 2.28, 0], r: [1.57, 0, 0], m: 'dark', amp: 0.02 },
+      // alça de arco sobre a boca (atravessa a nuvem — panela que é criatura)
+      { g: 'torus', a: [1.3, 0.07, 12, 40], p: [0, 2.3, 0], m: 'dark' },
+      ...mm({ g: 'ico', a: [0.12, 1], p: [1.3, 2.3, 0], m: 'dark' }),
+      // ---- porta do fogo na frente da barriga (+z): o braseiro aceso ----
+      { g: 'box', a: [0.6, 0.5, 0.14], p: [0, 0.95, 1.3], m: 'dark' },
+      { g: 'box', a: [0.42, 0.34, 0.08], p: [0, 0.95, 1.38], m: 'glow', flick: 0.2 },
+      ...mm({ g: 'box', a: [0.05, 0.32, 0.03], p: [0.1, 0.95, 1.43], m: 'dark' }),
+      // ---- bicos de vapor laterais (o rig varre no jato; tag arm) ----
+      ...mm({ g: 'cyl', a: [0.15, 0.2, 0.5, 16, 4], p: [1.36, 1.9, 0.18], r: [0, 0, -0.9], m: 'accent' }),
+      ...mm({ g: 'cone', a: [0.22, 0.75, 12, 5], p: [1.62, 2.3, 0.18], r: [0, 0, -1.05], m: 'steam', amp: 0.06, tag: 'arm' }),
+      // ---- válvulas de alívio nas costas (tag spike: assobiam na carga) ----
+      ...mm({ g: 'cyl', a: [0.09, 0.13, 0.42, 14, 3], p: [0.92, 2.18, -0.62], m: 'accent' }),
+      ...mm({ g: 'cone', a: [0.15, 0.5, 10, 4], p: [0.99, 2.62, -0.66], r: [0.12, 0, -0.3], m: 'steam', amp: 0.05, tag: 'spike' }),
+      // ---- CABEÇA de vapor: nuvens de ico SUB 2 empilhadas (a fumaça que
+      // coroa a caldeira; o vapor denso sobe da boca e adensa em camadas) ----
+      { g: 'ico', a: [0.95, 2], p: [0, 2.8, 0], m: 'steam', amp: 0.115 },
+      { g: 'ico', a: [0.7, 2], p: [0.5, 3.18, 0.12], m: 'steam', amp: 0.095 },
+      { g: 'ico', a: [0.66, 2], p: [-0.42, 3.12, -0.12], m: 'steam', amp: 0.095 },
+      { g: 'ico', a: [0.5, 2], p: [-0.02, 3.36, 0.3], m: 'steam', amp: 0.075 },
+      // olhos acesos NA nuvem (o braseiro espiando pelo vapor)
+      ...mm({ g: 'sphere', a: [0.11, 12, 10], p: [0.26, 2.96, 0.86], m: 'white' }),
+      ...mm({ g: 'sphere', a: [0.06, 8, 6], p: [0.26, 2.96, 0.91], m: 'black' }),
+      // gotas de água fervente em órbita (a panela que espirra sozinha):
+      // role STEAM, não 'glow' — o print mostrou CARVÃOes vermelhos orbitando
+      // (o papel é gota fervente soltando vapor, brasa aqui é erro de leitura)
+      { g: 'octa', a: [0.13, 1], p: [1.35, 2.9, 0.4], m: 'steam', amp: 0.02, group: 0, flick: 0.14 },
+      { g: 'octa', a: [0.12, 1], p: [-1.3, 2.5, -0.45], m: 'steam', amp: 0.02, group: 0, flick: 0.12 },
+      { g: 'octa', a: [0.1, 1], p: [0.55, 3.55, -0.85], m: 'steam', amp: 0.02, group: 0, flick: 0.16 },
+      { g: 'octa', a: [0.11, 1], p: [-0.62, 3.3, 0.8], m: 'steam', amp: 0.02, group: 0, flick: 0.1 },
+      // anel escaldante rente ao chão (o vapor que rola pela arena)
+      { g: 'ring', a: [0.7, 1.85, 48], p: [0, 0.04, 0], r: [-1.57, 0, 0], m: 'trans' },
     ],
+    groups: { 0: 0.7 },
   },
 
   // Pântano+Névoa — senhor das marés mortas: drena a vida alheia (Nv.8) --

@@ -761,7 +761,8 @@ void main() {
   // faísca ESTALA: quadrado de alta frequência com aleatoriedade por partícula
   float flick = step(0.62, fract(sin(floor(uTime * (16.0 + 14.0 * aRand.z) + aRand.y * 43.0)) * 43758.5453));
   float size = (3.4 + 2.6 * aRand.z) * (0.7 + 0.5 * flick) * uSizeMul * (1.0 + uCharge * 0.6);
-  gl_PointSize = size * (28.0 / max(0.5, -mv.z));
+  // clamp: perto da câmera o sprite não pode virar parede (envelope fantasma)
+  gl_PointSize = min(90.0, size * (28.0 / max(0.5, -mv.z)));
   vA = flick * uAlpha * (0.55 + 0.2 * uCharge);
   // metade das faíscas é azul elétrica, metade dourada (o acento); a que
   // ESTALA vai para o branco-quente, como um mini-estalo

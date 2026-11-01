@@ -500,7 +500,8 @@ void main() {
   vec3 p = vec3(cos(ang) * r, max(0.02, y), sin(ang) * r);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float size = (1.2 + 1.9 * aRand.z) * uSizeMul;
-  gl_PointSize = size * (28.0 / max(0.5, -mv.z));
+  // clamp: perto da câmera o sprite não pode virar parede (envelope fantasma)
+  gl_PointSize = min(90.0, size * (28.0 / max(0.5, -mv.z)));
   vA = smoothstep(0.0, 0.06, prog) * (1.0 - smoothstep(0.78, 0.98, prog)) * uAlpha;
   // gotas AZULADAS (partículas quase brancas lambiam o corpo da criatura);
   // clareiam um pouco quando a maré está carregada

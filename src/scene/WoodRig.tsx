@@ -474,7 +474,8 @@ void main() {
   vec3 p = vec3(cos(ang) * r + swayX, y - 0.06 * sin(prog * 22.0), sin(ang) * r);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float size = (2.0 + 2.6 * aRand.z) * uSizeMul;
-  gl_PointSize = size * (28.0 / max(0.5, -mv.z));
+  // clamp: perto da câmera o sprite não pode virar parede (envelope fantasma)
+  gl_PointSize = min(90.0, size * (28.0 / max(0.5, -mv.z)));
   vA = smoothstep(0.0, 0.06, prog) * (1.0 - smoothstep(0.8, 0.98, prog)) * uAlpha;
   // folha verde com broto âmbar quando a seiva corre acesa (carregando)
   float leaf = step(0.35, aRand.z);

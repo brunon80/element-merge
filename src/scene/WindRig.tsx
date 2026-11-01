@@ -511,7 +511,8 @@ void main() {
   p.z += cos(uTime * 2.7 + aRand.y * 7.0 + prog * 6.0) * 0.06;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float size = (4.4 * (1.0 - prog) + 1.5) * (0.65 + 0.6 * aRand.z) * uSizeMul;
-  gl_PointSize = size * (28.0 / max(0.5, -mv.z));
+  // clamp: perto da câmera o sprite não pode virar parede (envelope fantasma)
+  gl_PointSize = min(90.0, size * (28.0 / max(0.5, -mv.z)));
   // vivem até o topo do funil (o rastro de detritos é a marca do tornado)
   vA = smoothstep(0.0, 0.08, prog) * (1.0 - smoothstep(0.72, 1.0, prog)) * uAlpha;
   vec3 dust = vec3(0.7, 0.65, 0.53);

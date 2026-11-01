@@ -298,10 +298,69 @@
 >   figurino (e o jogador também aproveita).
 > - Total segue **182 testes** verdes; tsc/build OK.
 >
+> ### ♨️ ATUALIZAÇÃO 4 — Vapor virado CALDEIRA VIVA (sessão atual)
+>
+> Pedido em andamento do usuário: *"tente adicionar mais vérticies, para ficar
+> menos low polly"* — virou **regra do projeto** e está amarrada em teste.
+>
+> - **Achado da leva: o `assets.ts` IGNORAVA o argumento de subdivisão do
+>   'ico'** (`IcosahedronGeometry(args[0])` puro). Todo poliedro que pedia
+>   sub 2 vinha sub 0 — essa era a fonte do "low poly" escondido. Corrigido
+>   (`args[1] ?? 0`) + capsule 6×16; teste pin: `getGeometry('ico',[r,2])`
+>   tem >3× os vértices de sub 0.
+> - **Densidade mínima amarrada** (`steamProgression.test.ts`): tambores com
+>   deslocamento ≥16 radiais × ≥4 anéis verticais; poliedro com `amp` exige
+>   subdivisão ≥1; toros de reforço ≥12 tubulares × ≥30 ao redor.
+> - **Vapor = caldeira de ferro viva** (Nv.6): corpo de chapa em 3 socalcos
+>   (o VENTRE é o mais largo — o teste pegou a gargalo 1.52 empatada com o
+>   ventre e a silhueta chapava), pés de cone com a ponta no chão, leito de
+>   brasas + porta do fogo acesa na barriga, arcos de cobre (accent), bicos
+>   de vapor laterais (tag arm, o rig varre no jato), válvulas nas costas
+>   (tag spike), aro + alça sobre a boca, **cabeça de nuvem** (4 ico sub 2
+>   empilhados, amp até 0.115), olhos do braseiro NA nuvem, gotas ferventes
+>   em órbita e anel escaldante rente ao chão. Forma única Nv.6 (sem
+>   variantes de nível) e invólucro: ventre >1.5m, maxY ≈ 3.86 ≤ formTop+0.4.
+> - **`steamShaders.ts`** (novo): nuvem com alfa em ruído FBM correndo para
+>   baixo + gradiente térmico pela **altura de mundo** (pêssego embaixo do
+>   braseiro → branco-azulado no alto). Lições do print: alfa alta no
+>   rasante = **bola de aquário** → alfa INVERTIDA (`1.06 - 0.5*fres`, fiapo
+>   no limbo); contraste de densidade alto (caroco denso + buraco fiapo);
+>   nuvem translúcida **nunca** usa tint da equipe (regra do halo de geada —
+>   o uTeamColor foi REMOVIDO do shader).
+> - **Chapa de ferro** = shader de pedra com paleta ferro (`IRON_ROLE_LOOK`):
+>   corpo `crackScale 3.2 / crackWidth 0.012 / crackGlow ≤0.5` — veio FINO e
+>   denso (a lição do Gelo; veios largos renderizaram "aros de mármore
+>   queimado") e rockA clareado (`#b9c2cf`) porque ferro escuro lia "fundido
+>   queimado". Fervura na boca = `makeCoreMaterial` repaletado quente
+>   (`#ffe0b0/#fff8ec/#cfe8ff`, amp 0.09, y-scale 0.38): azul-pálido +
+>   facetado virava **cubo de gelo**; amp .12 achatado virava **pão sovado**.
+> - **Gotas orbitais**: papel é gota fervente soltando vapor → role `steam`,
+>   NUNCA `glow` (o print mostrou carvões vermelhos orbitando).
+> - **Projétil-assinatura** (`ProjectileField`): pluma de vapor — casca de
+>   cone (raio 0.3 no topo voltado ao ALVO, 0.04 na cauda) com o MESMO shader
+>   da nuvem + nódulo de água em ebulição na cabeça (`jetCore`). No print:
+>   pluma branca no alvo ✓. FX de impacto (`Effects` branch `vapor`): vapor
+>   pêssego subindo + gotas ferventes caindo + 2 anéis de escaldadura; a
+>   rajada aplica burn+slow (amarrado em teste).
+> - **Envelope fantasma (fix)**: o ponto de `gl_PointSize = size*(28/-z)`
+>   estourava para centenas de px rente à câmera e desenhava uma redha de
+>   vapor envolvendo a caldeira (print b-10). **Clamp `min(90.0, ...)`
+>   aplicado nos 9 rigs** (Ice/Lightning/Magma/Flame/Stone/Vapor/Water/Wind/
+>   Wood) — b-10 limpo na re-captura.
+> - **VaporRig.tsx**: clone do padrão MagmaRig — janela de ataque 0.62s,
+>   windup 0.5 (fervura sobe devagar e segura), nuvem inteira incha/clareia
+>   (uCharge), bicos recuam e varrem, baforada de smoke na boca no disparo
+>   + fio contínuo de vapor, morte = caldeira **arreenta em vapor**
+>   (crumble → uCharge + amp).
+> - Total: **189 testes** verdes (7 novos de vapor); tsc/build OK; 4 rodadas
+>   de QA (console limpo = GLSL compila; viewer macro + b-frames + zoom de
+>   partículas).
+>
 > ### 🗺️ PRÓXIMO PLANO (combinado com o usuário) — revisar o bestiário inteiro
 >
 > Rodar o ciclo `qa/inspect-species.mjs` em **cada** espécie restante, **um
-> commit + push por monstro**, sem pressa: vapor e areia (Nv.6) → tempestade,
+> commit + push por monstro**, sem pressa: ~~vapor~~ ✅ → areia (Nv.6) →
+> tempestade,
 > obsidiana, pântano, plasma, névoa, cristal (Nv.7) → cósmico, geodo, abissal,
 > vulcânico (Nv.8) → astral, colosso (Nv.9) → **primordial (Nv.10)**.
 > Pedido especial para o último: **buraco negro com disco de acreção**, grande,
