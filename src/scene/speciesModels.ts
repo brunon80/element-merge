@@ -1029,21 +1029,58 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     groups: { 0: 1.5, 1: -1.9 },
   },
 
-  // Magma+Areia — fortaleza de vidro negro, quase impenetrável -----------
+  // Fogo+Terra+Ar — FORTALEZA DE VIDRO NEGRO (Nv.7): o tanque que não anda.
+  // MALHA DENSE (regra anti low-poly): platôs e cacos em octa/dodeca
+  // subdivididos (amp = lasca conchoidal), anel de halo 48 radiais. Silhueta:
+  // zigurrate de vidro plantado (três platôs achatados → torso maciço),
+  // OMBREIRAS de lasca grossa (tag arm — a fortaleza balançá-las no
+  // arremesso pesado), barbatanas-muralha nas laterais, chifrão central
+  // coroa + chifres menores, visor de vidro sobre olhos-rasgo, brasa roxa
+  // presa nas costuras, limalhas de vidro piscando nas encostas, halo de
+  // vidro no chão + cacos espalhados na raiz. formTop 4.3.
   obsidiana: {
     bob: 0.02,
     parts: [
-      { g: 'octa', a: [0.75, 0], p: [0, 0.95, 0], s: [1.05, 1.15, 1.0], m: 'body' },
-      { g: 'octa', a: [0.4, 0], p: [0, 1.9, 0], s: [1.0, 1.2, 0.9], m: 'body' },
-      ...mm({ g: 'box', a: [0.36, 0.5, 0.42], p: [-0.66, 0.45, 0], m: 'dark' }),
-      ...mm({ g: 'octa', a: [0.2, 0], p: [0.55, 1.5, 0.2], s: [0.8, 1.4, 0.8], r: [0, 0, -0.5], m: 'body' }),
-      ...mm({ g: 'box', a: [0.05, 0.5, 0.02], p: [0.12, 1.0, 0.68], r: [0, 0, -0.25], m: 'glow', flick: 0.08 }),
-      ...mm({ g: 'box', a: [0.04, 0.35, 0.02], p: [-0.3, 0.72, 0.66], m: 'glow', flick: 0.1 }),
-      ...mm(SEYE(0.16, 1.92, 0.34)),
-      ...mm(SPUPIL(0.16, 1.92, 0.34)),
-      { g: 'cone', a: [0.3, 0.6, 4], p: [0, 2.5, 0], m: 'dark' },
-      { g: 'cone', a: [0.09, 0.3, 4], p: [0, 2.72, 0], m: 'glow', flick: 0.12 },
-      { g: 'ring', a: [0.4, 0.95, 6], p: [0, 0.04, 0], r: [-1.57, 0, 0], m: 'trans' },
+      // ---- raiz: três platôs achatados (a fortaleza cria raiz no tabuleiro) ----
+      { g: 'octa', a: [1.1, 2], p: [0, 0.42, 0], s: [1.5, 0.46, 1.15], m: 'dark', amp: 0.07 },
+      { g: 'octa', a: [0.9, 2], p: [0, 1.0, 0], s: [1.3, 0.44, 1.05], m: 'body', amp: 0.07 },
+      { g: 'dodeca', a: [0.7, 1], p: [0, 1.6, 0], s: [1.15, 0.55, 0.95], m: 'dark', amp: 0.06 },
+      // ---- torso maciço (o vidro grosso do núcleo) ----
+      { g: 'dodeca', a: [0.82, 2], p: [0, 2.32, 0], s: [1.06, 1.02, 0.94], m: 'body', amp: 0.09 },
+      // ---- ombreiras de lasca grossa (tag arm: a fortaleza as ergue e
+      // balança no arremesso pesado). AMP alto + corpo ACHATADO: é LAINA de
+      // vidro (a lição do print: octa liso virava ombreira de boneca) ----
+      ...mm({ g: 'octa', a: [0.52, 2], p: [0.98, 2.62, 0], s: [1.45, 0.42, 1.05], r: [0, 0, -0.7], m: 'body', amp: 0.09, tag: 'arm' }),
+      // ---- barbatanas-muralha nas laterais (as asas da fortaleza) ----
+      ...mm({ g: 'octa', a: [0.4, 1], p: [1.22, 1.72, -0.1], s: [0.5, 1.7, 0.55], r: [0, 0, -0.22], m: 'dark', amp: 0.08 }),
+      // ---- coroa: chifrão central + chifres de flanco (a crista da
+      // fortaleza aproveita o formTop 4.3) ----
+      { g: 'octa', a: [0.3, 2], p: [0, 3.3, -0.02], s: [0.8, 2.4, 0.8], m: 'dark', amp: 0.075 },
+      ...mm({ g: 'octa', a: [0.22, 1], p: [0.46, 2.95, -0.06], s: [0.55, 1.7, 0.55], r: [0, 0, 0.26], m: 'dark', amp: 0.06 }),
+      // ---- testa/sobeira de vidro: o parapeito da seteira, encostado na
+      // frente do torso (a 0,64 de profundidade a superfície já passa aqui) ----
+      { g: 'box', a: [0.7, 0.1, 0.34], p: [0, 2.8, 0.55], r: [0.12, 0, 0], m: 'dark' },
+      // ---- olhos RASGO (sem bolinha de boneca: a fortaleza encara estreita).
+      // Z 0,74+ porque o torso é esfera: a superfície na altura do olho é
+      // z ~0,72 — enterrado, o rasgo SUMIA (a lição do print de frente). X
+      // ±0,26: mais juntos que isso vira olho de ciclope ----
+      ...mm({ g: 'box', a: [0.26, 0.13, 0.06], p: [0.26, 2.6, 0.74], r: [0, 0, 0.16], m: 'black' }),
+      ...mm({ g: 'box', a: [0.2, 0.065, 0.07], p: [0.26, 2.6, 0.78], r: [0, 0, 0.16], m: 'white' }),
+      // ---- brasa roxa presa NAS COSTURAS do vidro (o fogo vulcânico
+      // encapsulado — nunca colada na frente do corpo como as outras espécies) ----
+      { g: 'octa', a: [0.3, 1], p: [0.02, 2.05, 0.15], m: 'glow' },
+      ...mm({ g: 'octa', a: [0.22, 1], p: [0.4, 1.5, 0.08], m: 'glow' }),
+      // ---- limalhas de vidro finas que piscam NAS ENCOSTAS (lasca solta
+      // vibrando na superfície — enterradas elas somem, soltas de mais viram
+      // palito flutuando fora da silhueta) ----
+      ...mm({ g: 'box', a: [0.045, 0.34, 0.02], p: [0.28, 1.26, 0.84], r: [0, 0, -0.28], m: 'glow', flick: 0.08 }),
+      ...mm({ g: 'box', a: [0.035, 0.26, 0.02], p: [-0.36, 0.84, 0.74], m: 'glow', flick: 0.1 }),
+      // ---- halo de vidro rente ao chão + cacos espalhados na raiz. ANEL
+      // (não disco): o miolo fica livre para a raiz assentar, e o alfa é de
+      // reflexo de piso — alfa alto virava LAMA VIOLETA no tabuleiro ----
+      { g: 'ring', a: [0.85, 1.3, 48], p: [0, 0.03, 0], r: [-1.57, 0, 0], m: 'trans' },
+      ...mm({ g: 'octa', a: [0.26, 1], p: [1.32, 0.08, 0.55], s: [1.25, 0.32, 0.8], r: [0, 0.4, 0], m: 'dark', amp: 0.03 }),
+      ...mm({ g: 'octa', a: [0.2, 1], p: [1.05, 0.06, -0.85], s: [1.15, 0.3, 0.85], r: [0, -0.5, 0], m: 'dark', amp: 0.03 }),
     ],
   },
 

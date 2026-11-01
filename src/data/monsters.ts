@@ -360,7 +360,9 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
       moveSpeed: 0,
       targeting: 'closest',
       damageElement: 'earth',
-      projectileColor: '#4a3a63',
+      // o VIOLETA da brasa encapsulada (a mesma cor do rig, do projétil de
+      // vidro e do FX): #4a3a63 era apagado demais no tabuleiro
+      projectileColor: '#8f5cff',
       resist: { earth: 0.3, fire: 0.2, water: -0.2 },
       abilities: [
         { kind: 'heavy' },

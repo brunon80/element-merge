@@ -255,13 +255,42 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e os cacos de VIDRO NEGRO do impacto da Obsidiana (o MESMO shader do
+  // corpo: obsidiana quase preta, faceta violeta e brasa encapsulada acesa na
+  // costura no instante do choque)
+  const shardGlass = useMemo(() => {
+    // farpa CHATA (lasca conchoidal): o vidro vulcânico fratura em LÂMINA —
+    // o octaedro redondo do gelo não serve (o print do gelo já tinha cobrado
+    // a "bola de neve" do dodecahedron rodando)
+    const geo = new THREE.OctahedronGeometry(0.5, 0);
+    geo.scale(0.6, 1.5, 0.34);
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeIceMaterial({
+        iceA: '#2a2438',
+        iceB: '#130f1e',
+        crack: '#8f5cff',
+        amp: 0.02,
+        crackGlow: 1.8,
+        crackScale: 1.8,
+        crackWidth: 0.06,
+        alpha: 0.9,
+        bump: 1.1, // cacos girando: cada faceta pisca no reflexo da arena
+        reflPow: 150,
+        envMix: 0.6,
+        sparkle: 0.7,
+        seed: 4.9 + i * 2.2,
+        breath: 0.4,
+      }),
+    );
+    return { geo, mats };
+  }, []);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
         life: 0,
         max: 0.62,
         size: 1,
-        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice',
+        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice' | 'glass',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -283,10 +312,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       for (const m of shardLava.mats) m.dispose();
       for (const m of shardIce.mats) m.dispose();
       shardIce.geo.dispose();
+      for (const m of shardGlass.mats) m.dispose();
+      shardGlass.geo.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
-  }, [burstFlame, shardRock, shardWood, shardLava, shardIce, arcGeo, arcMat]);
+  }, [burstFlame, shardRock, shardWood, shardLava, shardIce, shardGlass, arcGeo, arcMat]);
   const flameSprites = useRef<THREE.Sprite[]>([]);
   const slowSprites = useRef<THREE.Sprite[]>([]);
   const spriteData = useMemo(
@@ -436,7 +467,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     y: number,
     z: number,
     size = 1,
-    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' | 'iceShard' = 'flame',
+    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' | 'iceShard' | 'glassShard' = 'flame',
     life?: number,
   ) => {
     if (kind === 'flame') {
@@ -473,16 +504,21 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
             ? 'lava'
             : kind === 'iceShard'
               ? 'ice'
-              : 'rock';
+              : kind === 'glassShard'
+                ? 'glass'
+                : 'rock';
       const a = Math.random() * Math.PI * 2;
       // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
-      // cambalhota que a pedra (que só desmorona)
+      // cambalhota que a pedra (que só desmorona). O VIDRO da Obsidiana é
+      // ainda mais NERVOSO: farpa leve de um material duro, girando rápido
       const ice = kind === 'iceShard';
-      const s = (ice ? 2.2 : 1.6) + Math.random() * (ice ? 2.4 : 1.8);
+      const glass = kind === 'glassShard';
+      const fast = ice || glass;
+      const s = (fast ? 2.2 : 1.6) + Math.random() * (fast ? 2.4 : 1.8);
       d.vx = Math.cos(a) * s;
-      d.vy = (ice ? 2.1 : 1.6) + Math.random() * (ice ? 2.4 : 1.8);
+      d.vy = (fast ? 2.1 : 1.6) + Math.random() * (ice ? 2.4 : 1.8);
       d.vz = Math.sin(a) * s;
-      const spin = ice ? 16 : 11;
+      const spin = glass ? 19 : ice ? 16 : 11;
       d.rx = (Math.random() - 0.5) * spin;
       d.ry = (Math.random() - 0.5) * spin;
       d.rz = (Math.random() - 0.5) * spin;
@@ -565,7 +601,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     golem: 'rock',
     madeira: 'rock',
     areia: 'rock',
-    obsidiana: 'rock',
+    // o vidro vulcânico é da FAMÍLIA do cristal (estilhaço facetado), não da
+    // pedra: se um dia o branch próprio da Obsidiana cair, ela tem que
+    // ESTILHAÇAR em cacos de vidro — nunca rachar em blocos de rocha
+    obsidiana: 'crystal',
     pantano: 'rock',
     geodo: 'rock',
     colosso: 'rock',
@@ -783,9 +822,33 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
             spawnRing(x, y * 0.5, z, '#eaf6ff', 0.95); // anel de choque no ar
             spawnSmoke(x, y, z, 5, {
               size: 0.1,
-              heat: 0, // bruma FRIOA (nunca fuligem)
+              heat: 0, // bruma FRIA (nunca fuligem)
               life: 1.15,
               speed: 1.1,
+            });
+          } else if (ev.species === 'obsidiana') {
+            // a fortaleza ARREMESSA um caco de vidro: no alvo a lasca se
+            // ESTILHAÇA em farpas conchoidais (o brief "estilhaça inimigos em
+            // impactos pesados"), chove vidro negro pesado no piso (o splash
+            // 1,6 escrito no FX) e a brasa encapsulada escapa das costuras em
+            // fagulhas violetas. SEM raio e SEM aditivo aqui: o peso é FÍSICO
+            // (cacos + poeira quente de vulcão)
+            const lv = Math.max(7, Math.min(10, ev.level ?? 7));
+            const k = 1 + (lv - 7) * 0.12;
+            // o caco quebra no impacto (o pool de estilhaços é disputado: 3)
+            for (let i = 0; i < 3; i++)
+              spawnBurst(x, y, z, 0.3 + 0.05 * (lv - 7), 'glassShard', 0.85);
+            spawnParticles(x, y, z, '#8f5cff', 8 + (lv - 7) * 2, 2.6, 0.5, -1.2, 0.8); // brasa violeta subindo
+            spawnParticles(x, y, z, '#3a3050', 10, 3.0, 0.5, 2.6, 0.5); // chuva de LASCA de vidro (tem peso)
+            spawnParticles(x, y, z, '#b9a6d9', 6, 2.2, 0.4, 1.6, 0.4); // farpa clara pegando a luz da arena
+            spawnParticles(x, y, z, '#efe6ff', 4, 1.4, 0.3, 0.4, 0.2); // glint miúdo de vidro
+            spawnRing(x, 0.1, z, '#6f5aa8', 2.0 * k); // onda de choque do impacto no piso
+            spawnRing(x, 0.16, z, '#c6aaff', 1.0); // anel interno = a quebra do caco
+            spawnSmoke(x, y, z, 4, {
+              size: 0.09,
+              heat: 0.25, // pó de vidro QUENTE (o fogo que estava preso no vidro)
+              life: 1.0,
+              speed: 1.2,
             });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
@@ -1136,9 +1199,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       }
     }
 
-    // os cacos de gelo leem o MESMO cubemap da arena (captura one-shot do
-    // IceRig) — plug idempotente e barato
-    plugArenaEnv(state.gl, shardIce.mats);
+    // os cacos de gelo/vidro leem o MESMO cubemap da arena (captura one-shot
+    // do IceRig) — plug idempotente e barato
+    plugArenaEnv(state.gl, [...shardIce.mats, ...shardGlass.mats]);
     // estilhaços de pedra do impacto do Gólem: saem disparados para os lados,
     // a gravidade os puxa para o chão (quicam), cambalhotam e apagam
     // encolhendo — as fissuras de magma acendem no instante do impacto e
@@ -1151,7 +1214,15 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       // Madeira, basalto incandescente do Magma, cristal do Gelo) — o par
       // geometry/material troca a cada uso
       const set =
-        d.kind === 'wood' ? shardWood : d.kind === 'lava' ? shardLava : d.kind === 'ice' ? shardIce : shardRock;
+        d.kind === 'wood'
+          ? shardWood
+          : d.kind === 'lava'
+            ? shardLava
+            : d.kind === 'ice'
+              ? shardIce
+              : d.kind === 'glass'
+                ? shardGlass
+                : shardRock;
       const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {

@@ -41,7 +41,7 @@ function speciesColor(species: SpeciesId): THREE.Color {
       areia: '#e8d49a',
       // Nv.7 — compostos
       tempestade: '#d0b6ff',
-      obsidiana: '#6a4a93',
+      obsidiana: '#8f5cff',
       pantano: '#6a8f3d',
       plasma: '#ff9ef5',
       nevoa: '#cfe6ee',
@@ -96,6 +96,10 @@ const dir = new THREE.Vector3();
  *    (o MESMO material dos mastros da muralha) com o núcleo de plasma aceso
  *    na cabeça e um GRODO de granizo congelado colado nela: o dardo chega
  *    escoltado por gelo (a marca fogo+água+ar).
+ *  - Obsidiana (Nv.7, árvore): a FARPA DE VIDRO — lasca conchoidal do MESMO
+ *    vidro negro do corpo (breu com faceta violeta e brasa encapsulada na
+ *    costura), tombando PESADA no ar: o arremesso heavy da fortaleza não é
+ *    bola nem raio, é um caco de vidro vulcânico girando devagar.
  * Híbridos e o resto usam as silhuetas básicas instanciadas por elemento,
  * com cor por espécie (instanceColor). Todo projétil ganha um halo billboard
  * que cresce com o nível.
@@ -119,6 +123,7 @@ export function ProjectileField() {
   const stormRef = useRef<THREE.InstancedMesh | null>(null);
   const stormCoreRef = useRef<THREE.InstancedMesh | null>(null);
   const hailRef = useRef<THREE.InstancedMesh | null>(null);
+  const shardRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -481,14 +486,42 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const obsFlake = useMemo(() => {
+    // lasca da Obsidiana: FARPA CONCHOIDAL de vidro vulcânico com o MESMO
+    // material do corpo (breu com brilho violeta nas facetas + brasa
+    // ENCAPSULADA acesa nas costuras). É o arremesso heavy da fortaleza: a
+    // quina encara o voo e ela TOMBA devagar no ar (vidro grosso é pesado)
+    const geo = new THREE.OctahedronGeometry(0.24, 1); // densa (anti low-poly)
+    geo.scale(0.8, 1.95, 0.5); // lasca alongada e achatada (fratura de vidro)
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeIceMaterial({
+      iceA: '#332c47', // breu com o violeta da faceta (o albedo nunca lavanda)
+      iceB: '#150f22',
+      crack: '#8f5cff', // a brasa presa no vidro (mesma cor do motor/rig/FX)
+      amp: 0.018, // pequeno p/ não esburacar a lasca
+      crackGlow: 1.6,
+      crackScale: 2.2, // faceta miúda: trincas curtas e densas
+      crackWidth: 0.055,
+      alpha: 0.9,
+      bump: 1.0,
+      reflPow: 150, // vidro polido: specular bem pontual
+      envMix: 0.6, // tombando, cada faceta espelha a arena
+      sparkle: 0.8,
+      seed: 6.1,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -508,6 +541,7 @@ export function ProjectileField() {
     let blastN = 0;
     let stormN = 0;
     let hailN = 0;
+    let flakeN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -541,9 +575,13 @@ export function ProjectileField() {
     stormHail.mat.uniforms.uTime.value = time;
     // o granizo voa trincado de frio: veios acesos por dentro
     stormHail.mat.uniforms.uCharge.value = 0.5 + 0.2 * Math.sin(time * 3.6);
+    obsFlake.mat.uniforms.uTime.value = time;
+    // a lasca voa com a brasa do interior acesa (o fogo vulcânico encapsulado
+    // no vidro — a assinatura da espécie, NUNCA aditivo)
+    obsFlake.mat.uniforms.uCharge.value = 0.6 + 0.25 * Math.sin(time * 2.7);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
-    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat]);
+    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat]);
     // a estaca voa "carregada": as trincas internas ficam acesas
     iceSpike.mat.uniforms.uCharge.value = 0.55 + 0.25 * Math.sin(time * 4.2);
 
@@ -570,6 +608,7 @@ export function ProjectileField() {
         const isJet = p.species === 'vapor';
         const isBlast = p.species === 'areia';
         const isStorm = p.species === 'tempestade';
+        const isFlake = p.species === 'obsidiana';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -820,6 +859,22 @@ export function ProjectileField() {
             stormHail.seeds.setX(hailN, ((p.id * 53) % 73) / 6.3);
             hailN++;
           }
+        } else if (isFlake) {
+          // lasca da fortaleza: vidro grossO arremessado TOMBA de ponta-cabeça
+          // no ar (cambalhota PESADA, bem mais lenta que a do matacão do golem
+          // — a inércia do vidro), e cada faceta espelha a arena ao virar
+          dummy.rotation.set(time * 1.5 + p.id, time * 1.05 + p.id * 0.7, 0.6 + time * 0.5);
+          if (flakeN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.3 + p.age / 0.12); // o peso demora a sair
+            const scale = (0.95 + 0.12 * (lv - 7)) * launch;
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            shardRef.current?.setMatrixAt(flakeN, dummy.matrix);
+            obsFlake.seeds.setX(flakeN, ((p.id * 43) % 79) / 6.7);
+            flakeN++;
+            haloScale = scale * 1.35; // halo contido: o brilho é da faceta, não da bola
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -887,6 +942,7 @@ export function ProjectileField() {
       [stormRef.current, stormN, stormBolt.seeds],
       [stormCoreRef.current, stormN, stormCore.seeds],
       [hailRef.current, hailN, stormHail.seeds],
+      [shardRef.current, flakeN, obsFlake.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -1065,6 +1121,15 @@ export function ProjectileField() {
           hailRef.current = m;
         }}
         args={[stormHail.geo, stormHail.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Obsidiana: a MESMA obsidiana do corpo — farpa conchoidal de vidro
+          negro com a brasa violeta acesa nas costuras, tombando pesada */}
+      <instancedMesh
+        ref={(m) => {
+          shardRef.current = m;
+        }}
+        args={[obsFlake.geo, obsFlake.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

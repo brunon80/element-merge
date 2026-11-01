@@ -472,12 +472,101 @@
 >   ~10 rodadas de QA (console limpo; idle/viewer/windup/release/macro/
 >   b-frames; blowout cortado em todos os prints).
 >
+> ### 🖤 ATUALIZAÇÃO 7 — Obsidiana virou FORTALEZA DE VIDRO NEGRO (+ as 3 regras do vidro)
+>
+> Segunda espécie Nv.7 revisada (fogo+terra+ar). Zero shader novo de propósito:
+> o vidro negro é o **MESMO `iceShaders` do Gelo** lido em outra paleta — o
+> print provou que "espécie nova" não exige shader novo, exige paleta/pose.
+>
+> - **Obsidiana = fortaleza de vidro plantada** (forma única Nv.7, `moveSpeed 0`):
+>   zigurate de **3 platôs que afunilam** (octa 1,1 sub2 → 0,9 → dodeca 0,7,
+>   escalas y 0,46/0,44/0,55 = a fortaleza cria raiz no tabuleiro), **torso
+>   dodeca 0,82 sub2** (972 verts) maciço, **ombreiras-lasca** (octa 0,52 sub2
+>   achatadas `s[1.45,0.42,1.05]`, tag arm), barbatanas-muralha (|x| 1,22,
+>   altas e finas), **chifrão central** (octa sub2 escalado y 2,4 = coroa no
+>   formTop 4,3) + chifres de flanco, **olhos-rasgo** + parapeito da seteira,
+>   brasa violeta `glow` ENCAPSULADA nas costuras (z 0,08-0,15 = dentro do
+>   corpo, nunca colada na frente), limalhas de vidro `flick` finas (a[0] ≤0,05)
+>   coladas nas encostas e **anel de vidro no chão** (0,85–1,3, 48 radiais).
+> - **🩸 VIDRO NEGRO SE LÊ POR SPECULAR/REFLEXO/BRASA, NUNCA POR ALBEDO** — a
+>   primeira rodada pintava a fortaleza de **lavanda** (iceA `#4a4463` × luz da
+>   arena) e no b-frame ela lia **prata**. Paleta final: albedo em breu
+>   (`#2a2438`/`#130f1e`), `reflPow 150`, `envMix 0,5`, **`sparkle ≤ 1`** (o
+>   print cobrou: glitter alto em corpo escuro é **POEIRA**, não vidro),
+>   `crackScale 1,3` + `crackWidth 0,07` = **costura contínua e larga**
+>   (crackScale alto vira linha tracejada / poeira pontilhada).
+> - **🐛 O branqueamento de dano do cristal apagava a identidade da fortaleza**:
+>   o `mix(vec3(1.0), col, 1-uHurt*0.5)` do `ICE_FRAG` pintava a Obsidiana de
+>   **cinza-bege** no combate — e ela passa a luta INTEIRA tanqueando (o Gelo
+>   tem o mesmo comportamento e por isso já apareceu pálido nos b-frames dele).
+>   Corrigido **no rig** (shader do Gelo intocado): `uHurt ×0,3` no albedo e o
+>   feedback de dano migrou para a BRASA (`crackGlow × (1 + (emberPulse +
+>   hurt×1,6) ×0,55)` — a fortaleza apanha e as costuras acendem). O print de
+>   combate voltou preto com veios violetas.
+> - **Regra nova: peça RENTE AO CHÃO não pode ser espelho** — os cacos da raiz
+>   (placas chatas de frente pro piso) refletiam a arena e liam **lâminas
+>   violetas acesas**. No rig, peça com `y < 0,25` (exceto `trans`) cai em
+>   `OBS_GROUND` = albedo `#1a1523` + `envMix 0,16`. E o anel do halo virou
+>   **anel** (miolo livre) com alfa 0,24 / env 0,3 — alfa alto era **LAMA
+>   VIOLETA** no tabuleiro (a lição da geada do Gelo: nunca tint da equipe).
+> - **Peça de face tem que SAIR da superfície do corpo redondo**: os olhos-rasgo
+>   enterrados SUMIAM — a superfície do torso (dodeca 0,82 sub2) é z ≈0,72,
+>   então o rasgo foi para z 0,74/0,78 (e x ±0,26: mais junto = olho de ciclope).
+> - **Coreografia PESADA** (exportada p/ teste): `OBSIDIANA_ATTACK_WINDOW = 0,95`
+>   — a **mais lenta da árvore** ( > do Gelo 0,5 e da Tempestade) com
+>   `OBSIDIANA_WINDUP = 0,58`, **squash & bulge** (o vidro grosso enverga
+>   `k**2`), ombreiras recuam/erguem e **VARREM** para frente, barbatanas e
+>   chifres eriçam, e a fortaleza **não anda** (`stepZ` empurra só o tronco).
+>   Morte = a fortaleza **ESTILHAÇA** (`amp ×3,4`) e afunda as fundações.
+> - **Projétil-assinatura**: a **FARPA CONCHOIDAL de vidro** (octa 0,24 sub1
+>   escalada `[0.8,1.95,0.5]` = lasca alongada e chata) com o MESMO material do
+>   corpo — não é bola nem raio; tomba **pesada** (rampa de saída 0,12s,
+>   cambalhota lenta) com halo contido 1,35×. FX de impacto (branch `obsidiana`
+>   em `Effects`): **quebra FÍSICA** — 3 cacos `glassShard` (pool novo
+>   `shardGlass`, kind `glass`, spin 19 = caco nervoso de material duro), brasa
+>   violeta subindo, chuva de lasca escura com peso, anéis no piso e **pó de
+>   vidro QUENTE** (`heat 0,25`); zero aditivo.
+> - **Paleta única #8f5cff** do motor ao FX (o `projectileColor` do motor era
+>   `#4a3a63`, apagado no tabuleiro): motor = `VISUALS.obsidiana.glow` = trincas
+>   do rig (`OBS_ROLE_LOOK.*.crack`) = plasma (`OBS_CORE_LOOK.gold`) = projétil
+>   = cacos do FX. Amarrado em teste.
+> - **🔍 Caçada ao "quadrilátero violeta" do chão** (aparecia em TODO print de
+>   toda espécie, sempre no mesmo lugar): `qa/probe-quad.mjs` escondeu por
+>   classe — 97 placas básicas do chão sumiram e o quadrilátero ficou; a sonda
+>   de inventário provou que **todas as pools instanciadas estão ociosas
+>   (`count=0`) na origem** (não é instância identidade desenhada) e que os
+>   materiais da criatura no chão já estão escuros. **É mobília da cena: o
+>   cristal central da arena** (`Arena.tsx` octaedro 0,55 com `emissive
+>   #8f5cff` no meio da ilha). Registrado, nada mexido.
+> - **Sondas novas reutilizáveis nas próximas espécies**: `qa/probe-parts.mjs`
+>   (inventário de malhas: geometria/verts/posição de mundo via `matrixWorld`,
+>   material + uniforms `uIceA/uIceB/uEnvMix/uAlpha/uCrackGlow/uTeamColor`,
+>   visibilidade, `count` de instância e TODO objeto perto de um ponto —
+>   mesh/sprite/points/line) e `qa/probe-flake.mjs` (dispara quando a lasca
+>   está EM VOO e quando os cacos do impacto aparecem; print na hora).
+> - **Testes**: `obsidianaProgression.test.ts` com 10 pinos — rig registrado e
+>   forma única Nv.7; silhueta (3 platôs afunilando, torso dodeca grosso,
+>   ombreiras chatas |x| ≥0,9 e y >2,4, chifrão escalar y ≥2, olhos-rasgo
+>   saindo da superfície do torso, brasa encapsulada |z| <0,3, anel plano no
+>   chão, ≥4 cacos chatos na raiz); anti low-poly (todo octa/dodeca com sub ≥1,
+>   contagens reais 216/972, anel 48 radiais); invólucro (halfX 1,7 < 2,6,
+>   maxZ ≤ 2·ROW_DEPTH, minY ≥ −0,1, maxY ≤ formTop+0,25); vidro **não-aditivo**
+>   com `depthWrite`/`uEnv` e albedo em breu (luma <0,3) + sparkle ≤1 +
+>   crackScale ≤2; chão sem tint + raiz não-espelho; plasma não-aditivo com
+>   branco cortado e orla violeta; coreografia (idle=0 / windup charge>0,8,
+>   swing<−0,5, bulge>0,8 / fire swing>0,3, stepZ>0,05 / decay e fora da janela
+>   = 0, janela mais lenta da árvore); motor (lasca em voo com espécie/nível/
+>   splash e impacto no FX com espécie/nível/pos2). Total: **217 testes**
+>   verdes; tsc/build OK; ~6 rodadas de QA (console limpo em todas; idle,
+>   viewer windup/release, frente, macro, 40 b-frames e prints de lasca em voo
+>   + cacos no impacto).
+>
 > ### 🗺️ PRÓXIMO PLANO (combinado com o usuário) — revisar o bestiário inteiro
 >
 > Rodar o ciclo `qa/inspect-species.mjs` em **cada** espécie restante, **um
 > commit + push por monstro**, sem pressa: ~~vapor~~ ✅ → ~~areia~~ ✅ →
-> ~~tempestade~~ ✅ →
-> obsidiana, pântano, plasma, névoa, cristal (Nv.7) → cósmico, geodo, abissal,
+> ~~tempestade~~ ✅ → ~~obsidiana~~ ✅ →
+> pântano, plasma, névoa, cristal (Nv.7) → cósmico, geodo, abissal,
 > vulcânico (Nv.8) → astral, colosso (Nv.9) → **primordial (Nv.10)**.
 > Pedido especial para o último: **buraco negro com disco de acreção**, grande,
 > e o ataque é uma **rajada de energia** (rever projétil/FX do primordial).
