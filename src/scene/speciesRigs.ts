@@ -16,6 +16,7 @@ import { PantanoRig } from './PantanoRig';
 import { PlasmaRig } from './PlasmaRig';
 import { NevoaRig } from './NevoaRig';
 import { CrystalRig } from './CrystalRig';
+import { CosmicoRig } from './CosmicoRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -69,4 +70,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   plasma: PlasmaRig,
   nevoa: NevoaRig,
   cristal: CrystalRig,
+  cosmico: CosmicoRig,
 };

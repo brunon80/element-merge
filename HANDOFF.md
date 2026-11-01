@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
 > Estado verificado em **01/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **258 testes / 26 arquivos, todos
+> `npx tsc --noEmit` OK · `npx vitest run` **272 testes / 27 arquivos, todos
 > verdes** · `npm run build` OK · git limpo em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -18,25 +18,30 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | Espécie | Nv | Status |
 |---|---|---|
 | raio, madeira, magma, gelo, vapor, areia | 6 | ✅ figurino próprio + testes |
-| tempestade, obsidiana, pantano, plasma, névoa, **cristal** | 7 | ✅ figurino próprio + testes |
-| cósmico, geodo, abissal, vulcânico | 8 | ⬜ pendente |
+| tempestade, obsidiana, pantano, plasma, névoa, cristal | 7 | ✅ figurino próprio + testes |
+| **cósmico** | 8 | ✅ figurino próprio + testes |
+| geodo, abissal, vulcânico | 8 | ⬜ pendente |
 | astral, colosso | 9 | ⬜ pendente |
 | **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **buraco negro
   com disco de acreção, grande, ataque em rajada de energia** |
 
-**Último monstro melhorado: CRISTAL (Nv.7 — areia+madeira, "prisma vivo":
-colosso PLANTADO na DUNA com raiz petrificada, tronco que é um FEIXE de colunas
-de SEIS FACES costuradas por flautas, máscara clara de cristal no diamante da
-cabeça com olhos fendidos, GEMA de ametista encaixada DO FORA no colar hexagonal
-do peito, HALO HORIZONTAL de seis farpas que orbita e acelera na afinação, duas
-órbitas de cacos-filhote (os dois saltos da cadeia escritos na silhueta); ataque
-= AFINA a nota (55% do tempo é o zumbido contraindo) e VARRE o braço inteiro
-cuspindo a farpa hexagonal que ricocheteia — `chain jumps 2`; 102 peças / ~7,9
-mil vértices desenhados)** — commit mais recente de `main` (`git log -1`).
-Anteriores: névoa, depois plasma `9d7a881`.
+**Último monstro melhorado: CÓSMICO (Nv.8 — tempestade+plasma, "constelação
+viva": entidade PLANTADA na própria cumulonimbus da mãe (cascos achatados +
+rolo de tempestade ATRÁS), loriga de tambores de DOZE FACES que ALARGAM para
+cima e torcem 15° por tambor (a régua da passada 1: "pilha de bolas azuis com
+estourinhos" → A ARMADURA FAZ A SILHUETA), asterismo desenhado por cima com
+fios de oito faces e nós MIÚDOS, discos de lua nos joelhos / fagulhas no disco
+do chão / cometas altos em órbitas contrárias, coroa W de cinco estrelas
+(Cassiopeia) costurada em V ao crânio, estrela caída presa no obelisco de doze
+faces (o `uCoreCut` do shell abre a cavidade na rocha — a herança do Plasma sem
+grade de ferro); ataque = ALINHA a coroa travando o alvo mais distante (62% da
+janela, o mais longo da árvore junto com o Plasma) e cospe DUAS estrelas de
+oito pontas que saltam — `farthest` + `doubleShot` + `chain 2` + burn; 141
+peças / ~14,8 mil vértices desenhados)** — commit mais recente de `main`
+(`git log -1`). Anteriores: cristal, depois névoa/plasma `9d7a881`.
 
-**Próximo: CÓSMICO (Nv.8)** e depois geodo, abissal, vulcânico (Nv.8), astral e
-colosso (Nv.9), primordial (Nv.10) na ordem da tabela.
+**Próximo: GEODO (Nv.8)** e depois abissal, vulcânico (Nv.8), astral e colosso
+(Nv.9), primordial (Nv.10) na ordem da tabela.
 
 ### Regras do loop (valem para cada monstro)
 
@@ -154,6 +159,41 @@ colosso (Nv.9), primordial (Nv.10) na ordem da tabela.
 - **Anti low-poly em prisma não é arredondar**: o DNA da espécie são as SEIS
   FACES, então a densidade vem dos ANÉIS VERTICAIS (6 faces × 5–7 seções) e dos
   poliedros SUB 1/2 — um `cyl` de 24 radiais seria outro material, não cristal.
+
+### Lições do Cósmico (constelação viva — as seis que o print cobrou)
+
+- **A ARMADURA FAZ A SILHUETA.** A passada 1 tinha nós do MESMO tamanho da
+  loriga e oito pontas compridas em cada nó: o print lia "pilha de bolas azuis
+  com estourinhos". A régua nova: loriga opaca de DOZE FACES (largos tambores
+  verticais) desenhando a silhueta, e a constelação só POR CIMA dela com nós
+  MIÚDOS (raio ≤ 0,13) e pontas CURTAS (≤ 0,16). Densidade de "espécie de
+  armadura" vem dos anéis verticais do tambor, nunca de arredondar.
+- **A RÉGUA DO JITTER tem que caber no raio do fio** (a lição do Raio amarrada
+  em teste): traço do `makeArcMaterial` zigue-zagueia por ruído de `vUv.y` em
+  `uJitter`; se `uJitter × pico (1,6)` > raio do tubo, o arco rasga o próprio
+  corpo. Aqui `STRAND_LOOK.jitter = 0,028` com fio mais fino de raio 0,048, e
+  o projétil voante usa 0,015 (agulha 0,11). Pinar `jitter*1.6 < menor raio` e
+  também o `uniforms.uJitter.value` (senão era enfeite de TS).
+- **`mm()` espelha POSIÇÃO e INVERTE as rotações y/z** — então o *midpoint* de
+  um `strand` espelhado é `(-m.x, m.y, m.z)`, NÃO a média dos dois nós
+  espelhados… que é exatamente `mm(médio)`. Fios W soldam nas duas estrelas
+  mesmo com o par espelhado. O que QUEBRA é fio torto com as duas pontas em x
+  diferentes: a cópia espelhada do pescoço ficou solta no ar. Pinar o fio pelas
+  **PONTAS recuperadas** (`p ± applyEuler(Y-up)·altura/2`), soldando em duas
+  estrelas OU enterrando a ponta livre dentro do crânio (`dist < raio`).
+- **`THREE.Color` armazena LINEAR** (`ColorManagement` converte sRGB hex ao
+  carregar): `#a2b0d4` → luma 0,435, não 0,66. Pinos de "isso é pedra-da-lua
+  clara?" têm que usar limiares LINEARES (lua > 0,35 · corpo > 0,02 · breu <
+  0,05), senão o teste mente contra a paleta do designer.
+- **O decay da coreografia começa NO disparo**: `charge` sobe até o release
+  (a=windup) e cai direto, então pinar "meia-carga no shot" é erro — no
+  `windup + 0,22·(1−windup)` o valor real é 0,25. Medir a curva num scratch
+  (varrer `attackPose` de 0,2 a 1,0) antes de escrever qualquer pino de pose.
+- **Física de caco do FX é por espécie**: o ramo `star` caiu no `default` do
+  `switch` de shards (velocidade/spin de estilhaço comum) e a estrela caía feito
+  pedra comum. Cacos de nova espécie entram na condição `fast` do `vy` e no spin
+  (`star: 21`), e os pools `shardPrism`/`shardStar` precisam de `dispose()` na
+  limpeza (o vazamento do `shardObsidian` já estava amarrado — copiar o padrão).
 
 ### Ferramentas de QA
 

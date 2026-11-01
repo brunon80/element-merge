@@ -14,9 +14,38 @@ import { plugArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
 import { makeSteamMaterial } from './steamShaders';
 import { SHARD_LOOK, SLIVER_LOOK } from './CrystalRig';
+// paleta do CÓSMICO (a estrela voante é o MESMO plasma frio dos nós do corpo e
+// o fio dela é o MESMO traje dos fios da constelação — identidade amarrada em
+// teste do motor ao impacto; ver CosmicoRig)
+import { COSMICO_HEAT, COSMICO_STARLIGHT } from './CosmicoRig';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
+
+/** Cósmico: a ESTRELA arremessada (o corpo do tiro) — plasma frio fervendo,
+ *  azul-estrela com o miolo quase branco e o OURO do plasma da mãe no fresnel.
+ *  É a mesma receita dos nós do corpo e do sprite do peito: `gold` = a cor do
+ *  motor (#9ad0ff), amarrado em teste do motor ao impacto */
+export const COSMICO_STAR_LOOK = {
+  gold: COSMICO_STARLIGHT,
+  white: '#e6f1ff',
+  cool: COSMICO_HEAT,
+  amp: 0.03,
+};
+
+/** Cósmico: os OITO PONTAS da estrela voante (4 agulhas bicudas = 8 bicos) —
+ *  o mesmo traje dos FIOS do corpo (traço azul-estrela, acento ouro), e o
+ *  jitter é MIÚDIO (0,015 ≤ o raio da agulha 0,16): a corrente agita, nunca
+ *  sai do próprio corpo (a régua do jitter da árvore) */
+export const COSMICO_FLARE_LOOK = {
+  gold: COSMICO_STARLIGHT,
+  white: '#e6f1ff',
+  cool: COSMICO_HEAT,
+  coolAmt: 0.34,
+  jitter: 0.015,
+  dash: 3.0,
+  flow: 5.5,
+};
 
 /** Névoa: a pluma de bruma do bafo (hot = a GEADA do motor, a mesma cor do
  *  rig/veios/FX) e a semente de geada que vai na cabeça dela. O crack da
@@ -149,6 +178,8 @@ export function ProjectileField() {
   const nubRef = useRef<THREE.InstancedMesh | null>(null);
   const prismRef = useRef<THREE.InstancedMesh | null>(null);
   const slvRef = useRef<THREE.InstancedMesh | null>(null);
+  const starRef = useRef<THREE.InstancedMesh | null>(null);
+  const flareRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -758,14 +789,58 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const cosmicoStar = useMemo(() => {
+    // o NÓ da estrela arremessada (o corpo do tiro): o MESMO plasma frio dos
+    // nós do corpo e do sprite do peito — ICOSAEDRO SUB 2 denso e redondo (é
+    // plasma fervendo, não gema facetada: a farpa do Cristal era octaedro
+    // pontudo porque era PEDRA; aqui é estrela e por isso é bola que ferve).
+    // `gold` = #9ad0ff = a cor do motor (identidade amarrada em teste)
+    const geo = new THREE.IcosahedronGeometry(0.3, 2); // 320 faces: redondo (anti low-poly)
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: COSMICO_STAR_LOOK.gold,
+      white: COSMICO_STAR_LOOK.white,
+      cool: COSMICO_STAR_LOOK.cool, // o OURO do plasma da mãe no fresnel
+      amp: COSMICO_STAR_LOOK.amp,
+      seed: 4.7,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const cosmicoFlare = useMemo(() => {
+    // as QUATRO AGULHAS que atravessam o nó e formam a ESTRELA DE OITO PONTAS
+    // em voo (cada agulha bicada dos dois lados = 2 pontas ⇒ 8 pontas = a
+    // STAR8 das mãos escrita no projétil). Traje dos FIOS do corpo em cima do
+    // metal — o traço é AZUL-ESTRELA (a identidade) com acento OURO, o
+    // INVERSO do pai Raio; jitter 0,015 ≤ o raio da agulha (a régua do
+    // jitter da árvore) e as pontas são CURTAS perto do nó (a lição da
+    // silhueta do Cósmico: armadura faz a forma, pontas só desenham)
+    const geo = new THREE.OctahedronGeometry(0.5, 1); // bicuda dos dois lados, densa (32 faces)
+    geo.scale(0.11, 0.92, 0.11); // agulha: meia-longa 0,46 contra o nó 0,30 — bico CURTO
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeArcMaterial({
+      gold: COSMICO_FLARE_LOOK.gold,
+      white: COSMICO_FLARE_LOOK.white,
+      cool: COSMICO_FLARE_LOOK.cool,
+      coolAmt: COSMICO_FLARE_LOOK.coolAmt,
+      jitter: COSMICO_FLARE_LOOK.jitter, // 0,015 ≤ 0,11 (raio da agulha)
+      dash: COSMICO_FLARE_LOOK.dash,
+      flow: COSMICO_FLARE_LOOK.flow,
+      seed: 2.3,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -792,6 +867,8 @@ export function ProjectileField() {
     let mistN = 0;
     let prismN = 0;
     let slvN = 0;
+    let starN = 0;
+    let flareN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -860,6 +937,13 @@ export function ProjectileField() {
     cristalPrism.mat.uniforms.uCharge.value = 0.6 + 0.25 * Math.sin(time * 5.2);
     cristalSliver.mat.uniforms.uTime.value = time;
     cristalSliver.mat.uniforms.uCharge.value = 0.45 + 0.2 * Math.sin(time * 6.4);
+    // a estrela arremessada voa a CARGA MÁXIMA (saiu das mãos-estrela agora):
+    // o nó ferve aceso e a corrente das agulhas corre no pico (o par do
+    // doubleShot ainda carregado — é luz saindo do peito, não brasa)
+    cosmicoStar.mat.uniforms.uTime.value = time;
+    cosmicoStar.mat.uniforms.uCharge.value = 0.85 + 0.1 * Math.sin(time * 6.8);
+    cosmicoFlare.mat.uniforms.uTime.value = time;
+    cosmicoFlare.mat.uniforms.uCharge.value = 0.8 + 0.12 * Math.sin(time * 8.1);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
     plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat, cristalPrism.mat, cristalSliver.mat]);
@@ -894,6 +978,7 @@ export function ProjectileField() {
         const isLance = p.species === 'plasma';
         const isMist = p.species === 'nevoa';
         const isPrism = p.species === 'cristal';
+        const isStar = p.species === 'cosmico';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -1285,6 +1370,49 @@ export function ProjectileField() {
             haloScale = scale * 1.25; // halo contido: a farpa é quina, não bola
             signature = true;
           }
+        } else if (isStar) {
+          // a CONSTELAÇÃO cospe a própria mão-estrela: o NÓ de plasma (a mesma
+          // bola que ferve nos nós do corpo e no sprite do peito) atravessado
+          // por QUATRO agulhas de corrente — cada agulha é bicuda dos dois
+          // lados, então 4 agulhas = a ESTRELA DE OITO PONTAS das mãos escrita
+          // em voo (o doubleShot do motor: as duas estrelas saem das mãos). O
+          // par de agulhas frontal encara o rumo do voo e o conjunto gira no
+          // eixo (estrela arremessada, não bolinha à deriva)
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir); // o plano ⊥ ao voo onde a estrela desenha
+          }
+          const launch = Math.min(1, 0.42 + p.age / 0.06); // cospe quase pronta (14 m/s)
+          const scale = (1.0 + 0.08 * (lv - 8)) * launch;
+          if (starN < MAX_PER_ELEMENT) {
+            // o NÓ: redondo e fervendo (o shader já é o movimento) — só um
+            // tumbling lento, giro rápido borrar a estrela no print
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
+            dummy.rotation.set(time * 1.3 + p.id, time * 2.1 + p.id * 0.7, 0);
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            starRef.current?.setMatrixAt(starN, dummy.matrix);
+            cosmicoStar.seeds.setX(starN, ((p.id * 47) % 79) / 6.1);
+            starN++;
+            // as QUATRO AGULHAS no plano perpendicular ao voo (0°, 45°, 90°,
+            // 135° = oito raios) girando no eixo do arremesso
+            for (let k = 0; k < 4; k++) {
+              if (flareN >= MAX_PER_ELEMENT) break;
+              const th = (k * Math.PI) / 4 + time * 3.4 + p.id * 1.7;
+              dir.set(Math.cos(th), 0, Math.sin(th)).applyQuaternion(tmpQuat);
+              rollQuat.setFromUnitVectors(up, dir);
+              dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
+              dummy.quaternion.copy(rollQuat);
+              dummy.scale.setScalar(scale);
+              dummy.updateMatrix();
+              flareRef.current?.setMatrixAt(flareN, dummy.matrix);
+              cosmicoFlare.seeds.setX(flareN, ((p.id * 23 + k * 17) % 71) / 5.9 + k * 1.3);
+              flareN++;
+            }
+            haloScale = scale * 1.55; // halo da estrela inteira (nó + bicos), nunca bola de fogo
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -1362,6 +1490,8 @@ export function ProjectileField() {
       [nubRef.current, mistN, frostNub.seeds],
       [prismRef.current, prismN, cristalPrism.seeds],
       [slvRef.current, slvN, cristalSliver.seeds],
+      [starRef.current, starN, cosmicoStar.seeds],
+      [flareRef.current, flareN, cosmicoFlare.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -1631,6 +1761,28 @@ export function ProjectileField() {
           slvRef.current = m;
         }}
         args={[cristalSliver.geo, cristalSliver.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Cósmico: o NÓ de plasma da estrela arremessada (a mesma receita dos
+          nós do corpo e do sprite do peito — azul-estrela fervendo, miolo
+          quase branco, ouro do plasma da mãe no fresnel). Redondo: é estrela,
+          não farpa — a quina que fura é do Cristal */}
+      <instancedMesh
+        ref={(m) => {
+          starRef.current = m;
+        }}
+        args={[cosmicoStar.geo, cosmicoStar.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Cósmico: as quatro agulhas de corrente que atravessam o nó — a
+          ESTRELA DE OITO PONTAS das mãos escrita em voo (o doubleShot), no
+          mesmo traje dos fios do corpo: traço azul-estrela, acento ouro (o
+          inverso do pai Raio) */}
+      <instancedMesh
+        ref={(m) => {
+          flareRef.current = m;
+        }}
+        args={[cosmicoFlare.geo, cosmicoFlare.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

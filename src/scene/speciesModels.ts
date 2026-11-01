@@ -205,6 +205,88 @@ const ringAround = (
     } as Part;
   });
 
+/**
+ * Rotação que aponta o +Y local (o eixo do `cyl`/`cone` do three) para o rumo
+ * `d`. Na ordem de Euler 'XYZ' do three a imagem do eixo Y local é
+ * (−sin rz, cos rx·cos rz, sin rx·cos rz), então bx = −asin(dx/|d|) e
+ * rx = atan2(dz, dy) resolvem exato — é o que faz o FIO da constelação sair
+ * RETO entre duas estrelas (nada de cabo torto ou solto no ar).
+ */
+const aim = (d: [number, number, number]): [number, number, number] => {
+  const L = Math.hypot(d[0], d[1], d[2]) || 1;
+  const ux = Math.max(-1, Math.min(1, d[0] / L));
+  return [Math.atan2(d[2], d[1]), 0, -Math.asin(ux)];
+};
+
+/**
+ * FIO DE CORRENTE entre duas estrelas do asterismo (o traço desenhado da
+ * constelação): um tubo fino de OITO FACES cujo +Y vai de `a` até `b` (`rA` é a
+ * espessura na chegada, na ponta é 0,72·rA — o fio afina e morre na estrela).
+ * Os anéis verticais são GENEROSOS (≥10 por unidade de comprimento) porque o
+ * shader do arco dobra o traço em zigue-zague por ruído de `vUv.y`: poucos
+ * anéis = linha reta morta, muitos = corrente viva.
+ */
+const strand = (
+  a: [number, number, number],
+  b: [number, number, number],
+  thick: number,
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const dz = b[2] - a[2];
+  const len = Math.hypot(dx, dy, dz);
+  return {
+    ...part,
+    g: 'cyl',
+    a: [thick, thick * 0.72, len + 0.05, 8, Math.max(7, Math.round(len * 10))],
+    p: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2],
+    r: aim([dx, dy, dz]),
+  };
+};
+
+/** as oito pontas da estrela (a costela do CÓSMICO: o cristal tem seis FACES,
+ *  a constelação tem OITO PONTAS): `dirs` cones finos plantados na casca do nó,
+ *  sempre com a BASE AFUNDADA no nó (pino enterrado não é ponta — a regra da
+ *  coroa da Névoa) e a bicuda saindo para o espaço. */
+const starPoints = (
+  c: [number, number, number],
+  nodeR: number,
+  len: number,
+  thick: number,
+  dirs: [number, number, number][],
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part[] =>
+  dirs.map((d) => {
+    const L = Math.hypot(d[0], d[1], d[2]) || 1;
+    const ux = d[0] / L;
+    const uy = d[1] / L;
+    const uz = d[2] / L;
+    const back = nodeR - 0.05; // base enterrada na casca
+    return {
+      ...part,
+      g: 'cone',
+      a: [thick, len, 8, 1],
+      p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
+      r: aim([ux, uy, uz]),
+    } as Part;
+  });
+
+/** um leque de pontas simétrico no plano da FRENTE (a estrela de oito bicos
+ *  vista de frente) + uma ponta para dentro/para fora no Z, para a estrela não
+ *  colapsar em linha quando a câmera vem de lado */
+const STAR8: [number, number, number][] = [
+  [1, 0.35, 0.12],
+  [0.7, 0.7, 0.12],
+  [0.35, 1, 0.12],
+  [-0.35, 1, 0.12],
+  [-0.7, 0.7, 0.12],
+  [-1, 0.35, 0.12],
+  [-1, -0.45, 0.12],
+  [1, -0.45, 0.12],
+];
+const STAR6: [number, number, number][] = STAR8.filter((_, i) => i % 3 !== 2).slice(0, 6);
+
 export const MODELS: Record<SpeciesId, SpeciesModel> = {
   // Fogo — progressão viva da chama. Nv1 é o imps de fogo (a gota que já
   // existe); a cada fusão do mesmo elemento o fogo CRESCE e ganha chamas
@@ -1513,22 +1595,146 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
 
   // Tempestade+Plasma — entidade estelar: constelação viva a Nv.8 --------
   cosmico: {
-    floatY: 0.5,
-    bob: 0.14,
+    // PLANTADA NA PRÓPRIA TEMPESTADE. O print da primeira passada dizia "pilha
+    // de bolas azuis com estourinhos": nós do MESMO tamanho da armadura e oito
+    // pontas compridas em cada nó comiam a silhueta. A régua agora é uma só:
+    // A ARMADURA FAZ A SILHUETA (tambores de DOZE FACES, largos e opacos) e a
+    // constelação é desenhada POR CIMA dela com nós MIÚDOS e pontas CURTAS.
+    floatY: 0,
+    bob: 0.025,
     parts: [
-      { g: 'ico', a: [0.42], p: [0, 1.55, 0], m: 'glow', flick: 0.12 },
-      { g: 'dodeca', a: [0.56], p: [0, 1.55, 0], m: 'body' },
-      { g: 'torus', a: [0.85, 0.05, 8, 30], p: [0, 1.55, 0], r: [1.25, 0.3, 0], m: 'accent', group: 0 },
-      { g: 'torus', a: [0.72, 0.04, 8, 28], p: [0, 1.55, 0], r: [1.57, 0, 1.0], m: 'glow', group: 1 },
-      ...mm(WEYE(0.17, 1.66, 0.42)),
-      ...mm(WPUPIL(0.17, 1.66, 0.42)),
-      ...mm({ g: 'cone', a: [0.06, 0.4, 5], p: [0.3, 2.2, 0], r: [0, 0, -0.5], m: 'accent', flick: 0.2 }),
-      { g: 'drop', a: [0.2, 0.6, 16, 14], p: [0, 2.9, 0], m: 'glow', flick: 0.3, amp: 0.1 },
-      { g: 'sphere', a: [0.11, 8, 6], p: [0.95, 1.7, 0.15], m: 'glow', group: 0, flick: 0.25 },
-      { g: 'sphere', a: [0.09, 8, 6], p: [-0.7, 1.35, 0.55], m: 'accent', group: 0, flick: 0.25 },
-      { g: 'sphere', a: [0.08, 8, 6], p: [-0.4, 2.0, -0.75], m: 'glow', group: 1, flick: 0.3 },
+      // ===== A TEMPESTADE DA MÃE AOS PÉS (cascos achatados de cumulonimbus +
+      // o rolo da frente de tempestade ATRÁS, para não engolir os pés) =====
+      { g: 'ico', a: [1.05, 2], p: [0, 0.28, -0.02], s: [1.35, 0.3, 1.0], m: 'veil', amp: 0.085 },
+      ...mm({ g: 'ico', a: [0.72, 2], p: [1.06, 0.2, 0.18], s: [1.1, 0.26, 0.9], m: 'veil', amp: 0.07 }),
+      ...mm({ g: 'ico', a: [0.6, 2], p: [-0.86, 0.18, 0.6], s: [1.05, 0.24, 0.85], m: 'veil', amp: 0.06 }),
+      { g: 'cyl', a: [0.46, 0.54, 2.5, 20, 4, 1], p: [0, 0.52, -0.78], r: [0, 0, 1.5708], m: 'veil', amp: 0.05 },
+
+      // ===== ÂNCORA: o DISCO de órbita riscado no tabuleiro POR FORA da nuvem
+      // + o obelisco de noite com a ESTRELA CAÍDA presa dentro (o `uCoreCut`
+      // do traje do Raio abre a cavidade sobre ela: a herança do Plasma lida
+      // para a pedra, sem jaula de ferro) =====
+      { g: 'ring', a: [1.45, 2.25, 56], p: [0, 0.05, 0], r: [-1.57, 0, 0], m: 'accent', tag: 'disk' },
+      { g: 'cyl', a: [0.22, 0.3, 0.72, 12, 4], p: [0, 0.44, 0.66], m: 'dark', amp: 0.02, tag: 'plinth' },
+      { g: 'cyl', a: [0.36, 0.26, 0.14, 12, 2], p: [0, 0.87, 0.66], m: 'accent', amp: 0.014, tag: 'plinth' },
+      { g: 'sphere', a: [0.19, 16, 12], p: [0, 0.52, 0.66], m: 'glow', flick: 0.1, tag: 'caged' },
+
+      // ===== PERNAS: fio de corrente por dentro, CANELEIRA DE DOZE FACES por
+      // cima (a armadura é o que lê) e casco de joelho/pé de pedra-da-lua =====
+      ...mm(strand([0.34, 1.74, 0.06], [0.5, 1.18, 0.02], 0.055, { m: 'trans', tag: 'leg.strand' })),
+      ...mm(strand([0.5, 1.18, 0.02], [0.52, 0.5, 0.06], 0.05, { m: 'trans', tag: 'leg.strand' })),
+      ...mm({ g: 'cyl', a: [0.19, 0.28, 0.72, 12, 5], p: [0.51, 0.86, 0.04], m: 'accent', amp: 0.016, tag: 'limb' }),
+      ...mm({ g: 'octa', a: [0.22, 1], p: [0.5, 1.2, 0.04], s: [1, 0.85, 0.9], m: 'accent', amp: 0.02, tag: 'limb' }),
+      ...mm({ g: 'cyl', a: [0.2, 0.22, 0.34, 12, 3], p: [0.44, 1.52, 0.04], r: [0.3, 0, -0.3], m: 'dark', amp: 0.018, tag: 'limb' }),
+      ...mm({ g: 'octa', a: [0.23, 1], p: [0.53, 0.5, 0.16], s: [1.05, 0.45, 1.6], m: 'accent', amp: 0.02, tag: 'limb' }),
+
+      // ===== QUADRIL + SAIA DE PLACAS (tombam para fora: a constelação é
+      // larga de base, firme na tempestade) =====
+      { g: 'cyl', a: [0.5, 0.44, 0.32, 12, 4], p: [0, 1.72, 0.02], m: 'accent', amp: 0.022 },
+      ...ringAround(6, 0.52, 1.44, 0.55, {
+        g: 'cyl', a: [0.24, 0.28, 0.44, 12, 3], m: 'dark', amp: 0.02, tag: 'skirt',
+      }),
+
+      // ===== TRONCO: A LORIGA — tambores de DOZE FACES empilhados, largando o
+      // quadril e ALARGANDO para cima (o peitoral de um guerreiro) e TORCIDOS
+      // ~15° cada peça (o giro da galáxia escrito na costura). Peças ALTAS e
+      // com degrau de raio pequeno: no print da segunda passada a loriga de
+      // tambores baixos e esbugalhados lia "pilha de chapéus/embudos" =====
+      { g: 'cyl', a: [0.52, 0.46, 0.44, 12, 4], p: [0, 2.08, 0.02], m: 'accent', amp: 0.024 },
+      { g: 'cyl', a: [0.58, 0.52, 0.44, 12, 4], p: [0, 2.5, 0.02], r: [0, 0.26, 0], m: 'accent', amp: 0.026 },
+      { g: 'cyl', a: [0.62, 0.58, 0.4, 12, 4], p: [0, 2.9, 0.02], r: [0, 0.52, 0], m: 'accent', amp: 0.026, tag: 'chest' },
+      { g: 'cyl', a: [0.5, 0.56, 0.3, 12, 3], p: [0, 3.24, 0.02], r: [0, 0.79, 0], m: 'dark', amp: 0.022, tag: 'yoke' },
+      // costelas de noite parafusadas nas laterais da loriga (tag spike:
+      // apontam na afinação — as escamas do asterismo abrindo)
+      ...mm({ g: 'box', a: [0.12, 0.44, 0.24], p: [0.62, 2.42, 0.02], m: 'dark', amp: 0.02, tag: 'spike' }),
+
+      // ===== O PEITO: soquete de lua ABERTO na frente da loriga + quatro
+      // garras; a ESTRELA (rig) fica DO LADO DE FORA, encaixada no soquete —
+      // enterrada na placa ela era comida pelo alfa (a lição do Cristal) =====
+      { g: 'cyl', a: [0.28, 0.3, 0.22, 12, 1, 1], p: [0, 2.54, 0.62], r: [1.57, 0, 0], m: 'accent', tag: 'socket' },
+      ...mm({ g: 'cone', a: [0.07, 0.3, 8, 1], p: [0.32, 2.54, 0.66], r: [0, 0, -1.5708], m: 'accent', tag: 'spike' }),
+      { g: 'cone', a: [0.07, 0.3, 8, 1], p: [0, 2.86, 0.66], m: 'accent', tag: 'spike' },
+      { g: 'cone', a: [0.07, 0.3, 8, 1], p: [0, 2.22, 0.66], r: [3.1416, 0, 0], m: 'accent', tag: 'spike' },
+
+      // ===== BRAÇOS DE CORRENTE COM UMA ESTRELA DE OITO PONTAS EM CADA MÃO
+      // (o doubleShot do motor escrito na silhueta: a constelação cospe DUAS
+      // estrelas) — ombreira de lua por cima do fio, cotoveleira e punho =====
+      // ombreira: TAMBOR DE DOZE FACES inclinado para fora (a carapuça do
+      // ombro, colada na costura do yoke — solta, virava bloco flutuando) +
+      // bico de farpa por cima
+      ...mm({ g: 'cyl', a: [0.3, 0.4, 0.44, 12, 3], p: [0.86, 3.14, 0.04], r: [0, 0, -0.7], m: 'accent', amp: 0.02, tag: 'arm.pauldron' }),
+      ...mm({ g: 'cone', a: [0.1, 0.46, 8, 1], p: [1.28, 3.5, 0.04], r: [0, 0, -0.8], m: 'dark', tag: 'spike' }),
+      ...mm({ g: 'sphere', a: [0.15, 16, 12], p: [0.92, 3.02, 0.08], m: 'glow', flick: 0.12, tag: 'arm.node' }),
+      ...mm(strand([0.92, 3.02, 0.08], [1.34, 2.42, 0.14], 0.052, { m: 'trans', tag: 'arm.strand' })),
+      ...mm({ g: 'cyl', a: [0.12, 0.17, 0.5, 12, 4], p: [1.16, 2.76, 0.12], r: [0.3, 0, -0.44], m: 'accent', amp: 0.016, tag: 'arm.bracer' }),
+      ...mm({ g: 'sphere', a: [0.1, 14, 12], p: [1.34, 2.42, 0.14], m: 'glow', flick: 0.1, tag: 'arm.node' }),
+      ...mm(strand([1.34, 2.42, 0.14], [1.5, 1.84, 0.24], 0.05, { m: 'trans', tag: 'arm.strand' })),
+      ...mm({ g: 'cyl', a: [0.1, 0.13, 0.3, 12, 3], p: [1.45, 2.06, 0.2], r: [0.35, 0, -0.2], m: 'dark', amp: 0.016, tag: 'arm.bracer' }),
+      ...mm({ g: 'sphere', a: [0.17, 16, 12], p: [1.52, 1.74, 0.28], m: 'glow', flick: 0.16, tag: 'arm.node' }),
+      // as OITO PONTAS da mão-estrela: base enterrada no nó, bicuda CURTA
+      // (0,26 no nó de 0,17): estrela, não ouriço
+      ...starPoints([1.52, 1.74, 0.28], 0.17, 0.26, 0.05, STAR8, { m: 'trans', tag: 'arm.flare' }).flatMap(mm),
+
+      // ===== O FIO DA CONSTELAÇÃO DESENHADO NA ARMADURA (o asterismo da
+      // figura: quadril→peito, peito→ombro, o X das costelas, o pescoço) =====
+      { ...strand([0, 1.9, 0.4], [0, 2.54, 0.72], 0.055, { m: 'trans', tag: 'strand' }) },
+      ...mm(strand([0, 2.54, 0.72], [0.92, 3.02, 0.08], 0.05, { m: 'trans', tag: 'strand' })),
+      ...mm(strand([0.92, 3.02, 0.08], [-0.3, 1.94, 0.32], 0.048, { m: 'trans', tag: 'strand' })),
+      { ...strand([0, 3.3, 0.02], [0, 3.56, 0.02], 0.05, { m: 'trans', tag: 'strand' }) },
+
+      // ===== CABEÇA: crânio de NOITE (traje do Raio) com a PLACA CLARA DA
+      // FACE de pedra-da-lua na frente, sobrancelha e boca em barra escura e
+      // os OLHOS SENDO Fagulhas dentro de duas órbitas escuras — placa clara,
+      // órbita escura, miúdo claro: é o único contraste que lê no card (esfera
+      // branca com breu na frente virava o olho googly proibido na árvore) =====
+      { g: 'ico', a: [0.5, 2], p: [0, 3.92, 0.02], s: [1, 1.04, 0.98], m: 'body', amp: 0.026 },
+      { g: 'cyl', a: [0.34, 0.36, 0.16, 12, 2], p: [0, 3.9, 0.44], r: [1.57, 0, 0], m: 'accent', amp: 0.008, tag: 'mask' },
+      { g: 'box', a: [0.46, 0.07, 0.06], p: [0, 4.14, 0.52], m: 'dark', tag: 'brow' },
+      ...mm({ g: 'box', a: [0.15, 0.13, 0.04], p: [0.17, 3.98, 0.52], m: 'black', tag: 'socket' }),
+      ...mm({ g: 'sphere', a: [0.055, 12, 10], p: [0.17, 3.98, 0.56], m: 'white' }),
+      { g: 'box', a: [0.24, 0.05, 0.05], p: [0, 3.7, 0.5], m: 'dark' },
+      // a cabeça É a estrela-mor: oito bicos plantados no crânio (longe o
+      // bastante para lerem ESTRELA na escala da arena, curtos o bastante para
+      // não virarem ouriço)
+      ...starPoints([0, 3.92, 0.02], 0.5, 0.28, 0.055, STAR8, { m: 'trans', tag: 'flare' }),
+
+      // ===== COROA = A CONSTELAÇÃO DE CINCO ESTRELAS EM W (Cassiopeia)
+      // ligada ao topo do crânio por dois fios; o rig a ERGUE e acende na
+      // afinação (o alvo MAIS DISTANTE travado). Sobe a 4,46-4,90 para não
+      // se colar com os bicos da cabeça (no print da primeira passada coroa e
+      // cabeça viraram um cacho só) =====
+      { g: 'sphere', a: [0.13, 16, 12], p: [0, 4.9, 0], m: 'glow', flick: 0.18, tag: 'crown' },
+      ...mm({ g: 'sphere', a: [0.1, 14, 12], p: [0.44, 4.72, -0.05], m: 'glow', flick: 0.16, tag: 'crown' }),
+      ...mm({ g: 'sphere', a: [0.085, 12, 10], p: [0.82, 4.46, -0.12], m: 'glow', flick: 0.2, tag: 'crown' }),
+      ...mm(strand([0.82, 4.46, -0.12], [0.44, 4.72, -0.05], 0.05, { m: 'trans', tag: 'crown.strand' })),
+      ...mm(strand([0.44, 4.72, -0.05], [0, 4.9, 0], 0.05, { m: 'trans', tag: 'crown.strand' })),
+      // pescoço do W: fio DIAGONAL do topo do crânio (enterrado na borda, a
+      // 0,41 do centro — o crânio tem raio 0,5) até a estrela média; mm
+      // espelha posição E rotação, então o par desenha um V perfeito do
+      // crânio às duas estrelas médias do W
+      ...mm(strand([0.2, 4.28, 0.02], [0.44, 4.72, -0.05], 0.048, { m: 'trans', tag: 'crown.strand' })),
+      // as três estrelas maiores da coroa têm bicos MIÚDOS (0,13) para lerem
+      // ESTRELA no print de arena (sem eles a coroa eram cinco bolinhas iguais
+      // às fagulhas do chão); tag 'crown.flare' entra na rotação rígida da
+      // coroa e no traje duro emissivo
+      ...starPoints([0, 4.9, 0], 0.13, 0.16, 0.034, STAR6, { m: 'trans', tag: 'crown.flare' }),
+      ...starPoints([0.44, 4.72, -0.05], 0.1, 0.13, 0.032, STAR6, { m: 'trans', tag: 'crown.flare' }).flatMap(mm),
+
+      // ===== TRÊS CORPOS EM MOVIMENTO em três alturas que NÃO cortam a
+      // armadura: seis farpas de lua ORBITANDO os joelhos (0), sete fagulhas
+      // contrárias ESQUIANDO no disco do chão (1) e três cometas altos, acima
+      // da coroa (2) =====
+      ...ringAround(6, 1.05, 1.5, 0.25, {
+        g: 'octa', a: [0.13, 1], s: [0.5, 1.9, 0.5], m: 'accent', tag: 'dart', group: 0, flick: 0.14,
+      }),
+      ...ringAround(7, 1.9, 0.3, 0.1, {
+        g: 'octa', a: [0.11, 1], s: [0.6, 1.7, 0.6], m: 'glow', tag: 'dart', group: 1, flick: 0.18,
+      }),
+      ...ringAround(3, 1.62, 4.86, 0.35, {
+        g: 'octa', a: [0.14, 1], s: [0.55, 1.8, 0.55], m: 'glow', tag: 'dart', group: 2, flick: 0.2,
+      }),
     ],
-    groups: { 0: 1.4, 1: -1.9 },
+    groups: { 0: 0.85, 1: -0.62, 2: 0.4 },
   },
 
   // Obsidiana+Cristal — catedral de geodo: o mais duro dos tanques -------

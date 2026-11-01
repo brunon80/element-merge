@@ -12,9 +12,13 @@ import { makeWaterMaterial } from './waterShaders';
 import { makeWoodMaterial } from './woodShaders';
 import { plugArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
+import { makeCoreMaterial } from './lightningShaders';
 // paleta do CRISTAL (o caco do impacto é o MESMO cristal do colosso e da farpa
 // — identidade amarrada em teste; ver CrystalRig SLIVER_LOOK)
 import { SLIVER_LOOK } from './CrystalRig';
+// paleta do CÓSMICO (o caco do impacto é o MESMO plasma frio dos nós do corpo:
+// azul-estrela com o ouro do plasma no aro — identidade do projétil ao impacto)
+import { COSMICO_HEAT, COSMICO_STARLIGHT } from './CosmicoRig';
 import type { SmokePool } from './smokePool';
 
 const PARTICLE_CAP = 400;
@@ -340,13 +344,32 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e as ESTRELAS PARTIDAS do impacto do CÓSMICO: o caco é um fragmento de
+  // estrela — o MESMO plasma frio dos nós do corpo (`makeCoreMaterial`: corpo
+  // azul-estrela fervendo, miolo quase branco e o OURO do plasma da mãe no
+  // fresnel), bicudo dos dois lados e girando nervoso: o chain 2 do motor
+  // arremessa a estrela SALTO, e o que salta também é estrela
+  const shardStar = useMemo(() => {
+    const geo = new THREE.OctahedronGeometry(0.42, 1); // facetada e densa (anti low-poly)
+    geo.scale(0.55, 1.7, 0.55); // lasca bicuda comprida (o bico da estrela)
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeCoreMaterial({
+        gold: COSMICO_STARLIGHT, // = a cor do motor (identidade do projétil ao impacto)
+        white: '#e6f1ff', // o miolo fervendo (nunca #ffffff puro)
+        cool: COSMICO_HEAT, // aro dourado = o plasma da mãe
+        amp: 0.02,
+        seed: 4.1 + i * 2.4,
+      }),
+    );
+    return { geo, mats };
+  }, []);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
         life: 0,
         max: 0.62,
         size: 1,
-        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice' | 'glass' | 'mud' | 'prism',
+        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice' | 'glass' | 'mud' | 'prism' | 'star',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -372,10 +395,28 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       shardGlass.geo.dispose();
       for (const m of shardMud.mats) m.dispose();
       shardMud.geo.dispose();
+      // (o caco de ametista do Cristal entrou sem entrar aqui — corrigido: 12
+      // materiais de shader + uma malha por montagem ficam vivos sem isto)
+      for (const m of shardPrism.mats) m.dispose();
+      shardPrism.geo.dispose();
+      for (const m of shardStar.mats) m.dispose();
+      shardStar.geo.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
-  }, [burstFlame, shardRock, shardWood, shardLava, shardIce, shardGlass, shardMud, arcGeo, arcMat]);
+  }, [
+    burstFlame,
+    shardRock,
+    shardWood,
+    shardLava,
+    shardIce,
+    shardGlass,
+    shardMud,
+    shardPrism,
+    shardStar,
+    arcGeo,
+    arcMat,
+  ]);
   const flameSprites = useRef<THREE.Sprite[]>([]);
   const slowSprites = useRef<THREE.Sprite[]>([]);
   const spriteData = useMemo(
@@ -525,7 +566,16 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     y: number,
     z: number,
     size = 1,
-    kind: 'flame' | 'shard' | 'sprout' | 'lavaShard' | 'iceShard' | 'glassShard' | 'mudShard' | 'prismShard' = 'flame',
+    kind:
+      | 'flame'
+      | 'shard'
+      | 'sprout'
+      | 'lavaShard'
+      | 'iceShard'
+      | 'glassShard'
+      | 'mudShard'
+      | 'prismShard'
+      | 'starShard' = 'flame',
     life?: number,
   ) => {
     if (kind === 'flame') {
@@ -568,7 +618,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                   ? 'mud'
                   : kind === 'prismShard'
                     ? 'prism'
-                    : 'rock';
+                    : kind === 'starShard'
+                      ? 'star'
+                      : 'rock';
       const a = Math.random() * Math.PI * 2;
       // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
       // cambalhota que a pedra (que só desmorona). O VIDRO da Obsidiana é
@@ -578,16 +630,21 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       const ice = kind === 'iceShard';
       const glass = kind === 'glassShard';
       const mud = kind === 'mudShard';
-      // a farpa do PRISMA é a mais nervosa de todas: é o estilhaço que o motor
-      // já arremessa SALTO (chain 2) — quica alto e gira muito (o ricochete
-      // escrito em física no chão do tabuleiro)
+      // a farpa do PRISMA e o caco do CÓSMICO são os mais nervosos: os dois
+      // motores arremessam SALTO (chain 2) — quicam alto e giram muito (o
+      // ricochete escrito em física no chão do tabuleiro)
       const prism = kind === 'prismShard';
-      const fast = ice || glass || prism;
+      // o caco do Cósmico é ESTRELA partida: plasma frio SEM inércia de pedra
+      // — sobe tanto quanto a farpa e gira quase tanto (só um degrau abaixo)
+      const star = kind === 'starShard';
+      const fast = ice || glass || prism || star;
       const s = (fast ? 2.2 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : mud ? 1.2 : 1.8);
       d.vx = Math.cos(a) * s;
-      d.vy = (prism ? 2.6 : fast ? 2.1 : mud ? 1.1 : 1.6) + Math.random() * (ice ? 2.4 : prism ? 2.8 : mud ? 1.1 : 1.8);
+      d.vy =
+        (prism || star ? 2.6 : fast ? 2.1 : mud ? 1.1 : 1.6) +
+        Math.random() * (ice ? 2.4 : prism || star ? 2.8 : mud ? 1.1 : 1.8);
       d.vz = Math.sin(a) * s;
-      const spin = prism ? 23 : glass ? 19 : ice ? 16 : mud ? 6 : 11;
+      const spin = prism ? 23 : star ? 21 : glass ? 19 : ice ? 16 : mud ? 6 : 11;
       d.rx = (Math.random() - 0.5) * spin;
       d.ry = (Math.random() - 0.5) * spin;
       d.rz = (Math.random() - 0.5) * spin;
@@ -1015,6 +1072,31 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
             spawnRing(x, 0.24, z, '#d6c8ff', 0.7); // estouro miúdo da luz presa (nunca bola de fogo)
             // SEM smoke: pedra quebrando solta PÓ (os motes/specs claros), não
             // fuligem — e o pool do shader é grafite-fuligem (a lição da Névoa)
+          } else if (ev.species === 'cosmico') {
+            // a constelação cospe DUAS estrelas (doubleShot) e cada uma SALTA
+            // de alvo em alvo (chain 2): no alvo a estrela se ESTILHAÇA em
+            // cacos que TAMBÉM são estrelas (o pool `starShard`, plasma frio
+            // bicudo com o ouro do plasma no aro), a luz vaza num flash miúdo
+            // azul-estrela, o OURO do plasma da mãe salta como brasa pesada
+            // (cai — é plasma, não faísca de vento) e o piso fica marcado com
+            // o anel da órbita riscada. SEM fuligem do pool (a nuvem da espécie
+            // é o próprio corpo), SEM bola de fogo: queima em PONTO — o burn
+            // 0,3/3s do motor é o plasma da mãe tocando o alvo, e o status
+            // cuida do resto
+            const lv = Math.max(8, Math.min(10, ev.level ?? 8));
+            const k = 1 + (lv - 8) * 0.12;
+            // 4 cacos (a mais alta contagem de estilhaço da árvore): a estrela
+            // partida é a assinatura, tem que ser LIDA
+            for (let i = 0; i < 4; i++)
+              spawnBurst(x, y, z, 0.3 + 0.05 * (lv - 8), 'starShard', 1.0);
+            spawnParticles(x, y, z, COSMICO_STARLIGHT, 11 + (lv - 8) * 2, 2.6, 0.45, 1.2, 0.55); // cacos de luz ARQUEANDO e caindo (plasma tem peso)
+            spawnParticles(x, y, z, '#e6f1ff', 6, 1.7, 0.3, 0.7, 0.3); // o miolo fervendo que apagou (nunca #ffffff puro)
+            spawnParticles(x, y, z, COSMICO_HEAT, 7, 2.4, 0.55, 2.6, 0.8); // ouro do plasma CAINDO (brasa pesada da mãe)
+            spawnParticles(x, y, z, '#2b3560', 6, 1.5, 0.6, 3.0, 0.35); // nódulo da noite do corpo esfarelando
+            spawnParticles(x, y - 0.1, z, '#c9dcf7', 5, 1.2, 0.3, 1.0, 0.25); // poeira estelar miúda no piso
+            spawnRing(x, 0.1, z, '#3a4670', 2.2 * k); // marca da noite no piso
+            spawnRing(x, 0.16, z, COSMICO_STARLIGHT, 1.15); // anel = a seção da estrela estourada
+            spawnRing(x, 0.26, z, COSMICO_HEAT, 0.62); // ouro MIÚDO do plasma (nunca bola de fogo)
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e
@@ -1173,7 +1255,23 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         }
         case 'chain': {
           if (ev.pos2) {
-            if (ev.species === 'raio' || ev.species === 'tempestade') {
+            if (ev.species === 'cosmico') {
+              // a corrente do Cósmico SALTA de estrela em estrela com o MESMO
+              // traje dos fios do corpo: traço AZUL-ESTRELA (a identidade) com
+              // acento OURO (o plasma da mãe) — o INVERSO do pai Raio (ouro com
+              // acento azul), é assim que um print separa pai de filho. No
+              // destino acende uma estrela nova: caco bicudo + fagulhas de ouro
+              // pesadas + anel miúdo da órbita
+              const ax = ev.pos2[0] - x;
+              const ay = ev.pos2[1] + 0.7 - (y + 0.7);
+              const az = ev.pos2[2] - z;
+              const al = Math.hypot(ax, ay, az);
+              spawnArc([x, y + 0.6, z], ax, ay, az, Math.max(0.5, Math.min(al, 6)), 0.18, 0.16, 0.95, 0.3);
+              spawnBurst(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 0.26, 'starShard', 0.9);
+              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], COSMICO_STARLIGHT, 7, 1.8, 0.35, 0.8, 0.5);
+              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], COSMICO_HEAT, 5, 2.0, 0.4, 2.2, 0.6); // ouro CAINDO (o plasma da mãe pesa)
+              spawnRing(ev.pos2[0], 0.12, ev.pos2[2], COSMICO_STARLIGHT, 1.0);
+            } else if (ev.species === 'raio' || ev.species === 'tempestade') {
               // respingo da corrente: salto em ARCO JAGADO — no Raio, azul
               // elétrico com osso DOURADO (o fio duro de relâmpago); na
               // TEMPESTADE o mesmo traje mas LILÁS (gold baixo) e o salto
@@ -1391,7 +1489,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                   ? shardMud
                   : d.kind === 'prism'
                     ? shardPrism
-                    : shardRock;
+                    : d.kind === 'star'
+                      ? shardStar
+                      : shardRock;
       const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {
