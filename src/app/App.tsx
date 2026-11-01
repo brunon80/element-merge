@@ -11,8 +11,10 @@ import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
 import { ToastLayer } from '../components/ToastLayer';
 import { useGameDriver } from '../hooks/useGameDriver';
+import { BestiaryStage } from '../scene/BestiaryStage';
 import { BattleScene } from '../scene/BattleScene';
 import { useGameStore } from '../store/gameStore';
+import { GLBoundary } from './GLBoundary';
 
 export function App() {
   useGameDriver();
@@ -25,16 +27,18 @@ export function App() {
 
   return (
     <div className="app-shell" data-screen={screen}>
-      <Canvas
-        shadows
-        dpr={[1, 2]}
-        camera={{ position: [0, 14.2, 19.5], fov: 42 }}
-        onPointerMissed={() => selectUnit(null)}
-      >
-        <color attach="background" args={['#0b1020']} />
-        <fog attach="fog" args={['#0b1020', 30, 80]} />
-        <BattleScene key={matchKey ?? `menu-${seed}`} menuMode={!inGame} />
-      </Canvas>
+      <GLBoundary>
+        <Canvas
+          shadows
+          dpr={[1, 2]}
+          camera={{ position: [0, 14.2, 19.5], fov: 42 }}
+          onPointerMissed={() => selectUnit(null)}
+        >
+          <color attach="background" args={['#0b1020']} />
+          <fog attach="fog" args={['#0b1020', 30, 80]} />
+          <BattleScene key={matchKey ?? `menu-${seed}`} menuMode={!inGame} />
+        </Canvas>
+      </GLBoundary>
 
       {inGame && (
         <>
@@ -49,6 +53,9 @@ export function App() {
 
       {!inGame && <MenuScreen />}
       <ResultScreen />
+      {/* palco WebGL da enciclopédia: UM contexto para todos os cards (o iOS
+          perderia o canvas da batalha se cada card montasse o seu) */}
+      <BestiaryStage />
       <Bestiary />
       <DiscoveryOverlay />
       <SettingsMenu />

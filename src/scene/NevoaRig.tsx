@@ -7,7 +7,7 @@ import { makeSteamMaterial } from './steamShaders';
 import { makeIceMaterial } from './iceShaders';
 import { makeCoreMaterial } from './lightningShaders';
 import { arenaEnvTexture, captureArenaEnv } from './envProbe';
-import { circleTexture, getGeometry } from './assets';
+import { circleTexture, getGeometry, setSeedAttribute } from './assets';
 import { MODELS, partsForLevel } from './speciesModels';
 import type { SmokePool } from './smokePool';
 import { formTop } from '../data/forms';
@@ -144,7 +144,8 @@ export const ICE_LOOK = {
   sparkle: 1.2,
 };
 
-function makeMoteGeo(n: number): THREE.BufferGeometry {
+/** nuvem/gelo leem aSeed por peça; shared com o CrystalRig (o mesmo padrão de motes) */
+export function makeMoteGeo(n: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const rnd = new Float32Array(n * 3);
@@ -347,7 +348,7 @@ export function NevoaRig({
       const mat = partMats.list[i];
       if (mat instanceof THREE.ShaderMaterial && mat.vertexShader.includes('aSeed')) {
         const g = geo.clone();
-        g.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array([seed + i * 1.9]), 1));
+        setSeedAttribute(g, seed + i * 1.9);
         geoClones.current.push(g);
         return g;
       }

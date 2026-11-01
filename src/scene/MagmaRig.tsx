@@ -5,7 +5,7 @@ import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { getEngine } from '../store/gameStore';
 import { makeStoneMaterial, TEAM_TINT } from './stoneShaders';
 import { makeCoreMaterial } from './lightningShaders';
-import { circleTexture, getGeometry } from './assets';
+import { circleTexture, getGeometry, setSeedAttribute } from './assets';
 import { MODELS, partsForLevel, type MatRole } from './speciesModels';
 import type { SmokePool } from './smokePool';
 import { formTop } from '../data/forms';
@@ -276,7 +276,7 @@ export function MagmaRig({
       const mat = partMats.list[i];
       if (mat instanceof THREE.ShaderMaterial && mat.vertexShader.includes('aSeed')) {
         const g = geo.clone();
-        g.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array([seed + i * 1.9]), 1));
+        setSeedAttribute(g, seed + i * 1.9);
         geoClones.current.push(g);
         return g;
       }

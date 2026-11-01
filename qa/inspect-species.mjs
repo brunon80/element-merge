@@ -52,14 +52,15 @@ await page.waitForTimeout(2200);
 const canvas = page.locator('canvas').first();
 await canvas.screenshot({ path: `${OUT}\\${sp}-idle.png` });
 
-// close no bestiário (reabre): viewer próprio por card (câmera frontal,
-// autoRotate); clique SEM arrasto no canvas dispara a demo de ataque
+// close no bestiário (reabre): o card é uma JANELA do palco único de contexto
+// (BestiaryStage) — o print do elemento pega o 3D por cima do DOM; clique SEM
+// arrasto na caixa dispara a demo de ataque
 await page.click('[data-testid="open-bestiary"]');
 await page.waitForSelector('[data-testid="bestiary"]');
 const card = page.locator(`.beast-card:has([data-testid="debug-spawn-${sp}"])`);
 await card.scrollIntoViewIfNeeded();
 await page.waitForTimeout(1600); // viewer monta (IntersectionObserver)
-const viewer = card.locator('canvas').first();
+const viewer = card.locator('.beast-card-model');
 await viewer.screenshot({ path: `${OUT}\\${sp}-view-1.png` });
 const vb = await viewer.boundingBox();
 await page.mouse.move(vb.x + vb.width / 2, vb.y + vb.height / 2);

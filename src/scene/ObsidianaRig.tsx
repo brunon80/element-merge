@@ -7,7 +7,7 @@ import { arenaEnvTexture, captureArenaEnv } from './envProbe';
 import { makeIceMaterial } from './iceShaders';
 import { makeCoreMaterial } from './lightningShaders';
 import { TEAM_TINT } from './stoneShaders';
-import { circleTexture, getGeometry } from './assets';
+import { circleTexture, getGeometry, setSeedAttribute } from './assets';
 import { MODELS, partsForLevel, type MatRole } from './speciesModels';
 import type { SmokePool } from './smokePool';
 import { formTop } from '../data/forms';
@@ -361,7 +361,7 @@ export function ObsidianaRig({
         // plástico redondo). Poliedros já vêm não-indexados: clone neles
         const g = geo.index ? geo.toNonIndexed() : geo.clone();
         g.computeVertexNormals();
-        g.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array([seed + i * 1.9]), 1));
+        setSeedAttribute(g, seed + i * 1.9);
         geoClones.current.push(g);
         return g;
       }

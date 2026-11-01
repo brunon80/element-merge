@@ -659,7 +659,9 @@ describe('Enciclopédia (bestiário)', () => {
     const card = models[0].closest('.beast-card') as HTMLElement;
     expect(card.querySelector('.beast-head')).toBeInTheDocument();
     // o modelo vem antes da descrição e da tabela de estatísticas
-    const all = Array.from(card.querySelectorAll('.beast-head, .beast-model, .beast-blurb, .beast-table'));
+    const all = Array.from(
+      card.querySelectorAll('.beast-head, .beast-card-model, .beast-blurb, .beast-table'),
+    );
     expect(all.indexOf(models[0])).toBe(1);
     expect(card.textContent).toContain('Nv');
 

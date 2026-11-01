@@ -663,13 +663,33 @@ button {
 }
 .beast-top {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 14px;
-  position: sticky;
-  top: 0;
-  background: var(--panel-solid);
-  padding: 10px 0;
-  z-index: 2;
+  padding: 2px 44px 10px 0; /* folga à direita: o fechar fica flutuando aqui */
+}
+/* fechar da enciclopédia: fixo no canto e ACIMA do palco 3D (z-index 46 > 45).
+   não dá para deixar o botão dentro do painel: o palco desenha os modelos por
+   cima do overlay, então um card rolando cobriria o botão (e o título) */
+.beast-close-float {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 46;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(9, 13, 25, 0.86);
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1;
+}
+.beast-close-float:hover {
+  border-color: rgba(140, 170, 230, 0.5);
+  background: rgba(16, 22, 40, 0.92);
 }
 .beast-top h2 {
   margin: 0;
@@ -718,17 +738,37 @@ button {
   opacity: 0.65;
   border-style: dashed;
 }
-.beast-model {
+.beast-card-model {
   position: relative;
   height: 170px;
-  margin: 6px 0 10px;
+  margin: 6px 0 6px;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: radial-gradient(circle at 50% 30%, #17233d 0%, #0b1122 72%);
-}
-.beast-model canvas {
-  border-radius: 10px;
   touch-action: pan-y; /* só rolagem vertical no toque; arrasto horizontal gira o modelo */
+}
+/* marca da caixa no palco único da enciclopédia: o drei `View` recorta este
+   retângulo no canvas compartilhado — o 3D não é montado dentro dele */
+.beast-model {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* o palco da enciclopédia: um canvas, um contexto WebGL, para TODOS os cards.
+   fica ACIMA do overlay (z-index 40) e é transparente fora das caixas dos cards */
+.beast-stage {
+  z-index: 45;
+  pointer-events: none;
+}
+/* linha embaixo da caixa com os chips de forma, o nome da forma e a dica de
+   clique: fora da caixa de propósito — dentro, o modelo 3D desenhado por cima
+   do canvas cobriria esses textos */
+.beast-model-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 22px;
+  margin: 0 0 10px;
 }
 .beast-model-hint {
   position: absolute;
@@ -739,11 +779,34 @@ button {
   color: var(--muted);
   font-size: 11px;
 }
-.beast-model-click-hint {
+/* aviso quando o navegador não entrega WebGL2 (iPhone com iOS < 15, WebViews) */
+.gl-missing {
   position: absolute;
-  right: 8px;
-  bottom: 6px;
-  z-index: 1;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  background: radial-gradient(circle at 50% 40%, #131c33 0%, #080d18 78%);
+}
+.gl-missing h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+}
+.gl-missing p {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.beast-model-click-hint {
+  margin-left: auto;
   color: var(--muted);
   font-size: 10px;
   opacity: 0.65;
@@ -751,10 +814,6 @@ button {
 }
 /* seletor de forma por nível (fusões do mesmo elemento mudam a aparência) */
 .beast-level-chips {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  z-index: 2;
   display: flex;
   gap: 4px;
 }
@@ -781,10 +840,6 @@ button {
   font-weight: 700;
 }
 .beast-model-form {
-  position: absolute;
-  left: 9px;
-  bottom: 6px;
-  z-index: 1;
   color: var(--muted);
   font-size: 10px;
   letter-spacing: 0.05em;

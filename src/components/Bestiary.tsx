@@ -200,15 +200,22 @@ export function Bestiary() {
 
   return (
     <div className="overlay bestiary-overlay" data-testid="bestiary">
+      {/* fechar sempre à mão: fixo e ACIMA do palco 3D (z-index 46), senão o
+          modelo de um card rolando por baixo cobriria o botão */}
+      <button
+        className="beast-close-float"
+        data-testid="close-bestiary"
+        aria-label="Fechar enciclopédia"
+        onClick={() => setOpen(false)}
+      >
+        ✕
+      </button>
       <div className="bestiary panel">
         <div className="beast-top">
           <h2>Enciclopédia Elemental</h2>
           <span className="beast-progress" data-testid="bestiary-progress">
             Árvore elemental: {foundTree}/{TREE_SPECIES_IDS.length}
           </span>
-          <button className="btn ghost small" data-testid="close-bestiary" onClick={() => setOpen(false)}>
-            ✕
-          </button>
         </div>
 
         <h3 className="beast-section">Elementos puros (Nv.1–5)</h3>

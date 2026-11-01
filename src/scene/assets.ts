@@ -87,6 +87,22 @@ export function getGeometry(kind: GeoKind, args: number[]): THREE.BufferGeometry
 }
 
 /**
+ * aSeed por peça (a fase do ruído do shader). O buffer precisa de UM VALOR POR
+ * VÉRTICE da geometria: o WebKit (o motor do iOS Safari) valida o limite do
+ * bound e RECUSA o draw — `WebGL: INVALID_OPERATION: glDrawArrays: Vertex
+ * buffer is not big enough for the draw call` — quando o atributo é mais curto
+ * que a contagem de vértices. O ANGLE do Windows lê fora do buffer e tolera,
+ * por isso a criatura aparecia no desktop e sumia no iPhone. Clonamos a
+ * geometria da cache e carimbamos o seed em TODOS os vértices da peça.
+ */
+export function setSeedAttribute(geo: THREE.BufferGeometry, seed: number): void {
+  const pos = geo.getAttribute('position');
+  const n = pos ? pos.count : 0;
+  if (!n) return;
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(n).fill(seed), 1));
+}
+
+/**
  * Gota de chama (lathe): base larga, bojo abaixo do meio, afunilando até a
  * ponta; ondulação de borda tipo língua de fogo. Sem cache quando chamada
  * direto (útil para geometrias que precisam de atributos próprios,

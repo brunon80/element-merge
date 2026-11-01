@@ -130,7 +130,71 @@ materials/uniforms) · `qa/probe-flake.mjs` (print na hora do voo) ·
 `%LOCALAPPDATA%\Temp\opencode\shots`. ⚠️ sonda: só roda o `wheel` de zoom no
 centro do canvas — `page.mouse.click` no tabuleiro ANTES do `start-battle`
 agarra unidade e hijacks a luta (a sonda dispara um tiro só). Pré-requisito:
-`npm run dev` + chromium do Playwright (já instalado).
+`npm run dev` + chromium do Playwright (já instalado). Para o iOS há três sondas
+irmãs no WebKit (o motor do Safari do iPhone): `qa/probe-webkit.mjs` (caps +
+console), `qa/inspect-webkit.mjs <especie> [aliada]` (o mesmo roteiro do
+inspect-species no WebKit) e `qa/audit-bestiary.mjs [chromium|webkit] [saida]
+[especies...]` (enciclopédia inteira: printa CADA CARD como o usuário vê, conta os
+contextos WebGL da página e cataloga erros do console). Requer
+`npx playwright install webkit` (instalado).
+
+---
+
+## Compatibilidade iOS/WebKit (corrigido em 01/nov — NÃO reverter)
+
+Dois defeitos reais do WebKit faziam os monstros SUMIREM no iPhone e aparecerem
+no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
+é `node qa/audit-bestiary.mjs webkit`: **2 canvases vivos e CONSOLE: 0**).
+
+1. **`aSeed` com bound curto → o WebKit recusa o draw.** Os rigs criavam o
+   atributo de fase com UM valor (`new BufferAttribute(new Float32Array([seed]), 1)`)
+   em geometrias de milhares de vértices. O ANGLE-D3D do Windows lê fora do
+   buffer e tolera; o WebKit valida o bound e **não desenha nada**:
+   `WebGL: INVALID_OPERATION: glDrawArrays: Vertex buffer is not big enough for
+   the draw call`. Corrigido por `setSeedAttribute(geo, seed)` em
+   `scene/assets.ts` (carimba o seed em TODOS os vértices da peça clonada), usado
+   pelos 12 rigs cujo shader lê `aSeed`. Nos projéteis instanciados o atributo já
+   estava certo (`InstancedBufferAttribute` = um valor por INSTÂNCIA).
+2. **Teto de contextos WebGL → a batalha perdia o canvas.** Cada card do
+   bestiário montava um `<Canvas>` próprio. No WebKit, estourado o teto, o
+   contexto sacrificado é o MAIS ANTIGO — o canvas da batalha. `forceContextLoss()`
+   no desmonte + orçamento de slots **não resolveu**: a contagem interna do Safari
+   só cai no GC, e o GC nunca chega a tempo (sonda com contexto sintético também
+   não vale, o WebKit só conta os que desenham). Arquitetura definitiva: **DOIS
+   contextos no jogo inteiro** — o da batalha e um ÚNICO palco para a
+   enciclopédia (`scene/BestiaryStage.tsx`: um `<Canvas>` absoluto cobrindo a
+   janela, `alpha: true`, `dpr [1,1.5]`, `powerPreference: low-power`, z-index 45
+   acima do overlay, `pointer-events: none` inline — senão o canvas engole os
+   cliques dos cards), e cada card é um `<View>` do drei (`@react-three/drei/web`)
+   que usa a caixa `.beast-model` como retângulo de rastreamento: o drei recorta
+   scissor/viewport daquele card no canvas do palco. O que isso exigiu:
+   - **limpeza manual** (`ClearBuffer`, `useFrame` prioridade `-1`, roda antes dos
+     containers do View que têm `index >= 1`): o container do drei só liga o
+     scissor e renderiza, nunca limpa a própria janela → sem `setScissorTest(false)`
+     + `gl.clear()` no começo do quadro os cards herdam cor **e o z-buffer** uns
+     dos outros (o gelo saiu "fantasma" na primeira versão: profundidade
+     envelhecida esconde partes do modelo);
+   - **uma câmera só** para todos os cards (`[0, 1.1, 4.6]`, fov 38, `lookAt` na
+     origem; o drei só troca o `aspect` por card) → quem se enquadra é o MODELO:
+     `fit = min(1.96 / top^0,72; 2.7 / top)` e `frameY = -top*fit/2` (o centro da
+     caixa delimitadora na origem);
+   - **sem OrbitControls no card**: a vitrola é `bodyRef.rotation.y` (auto-giro
+     0,34 rad/s) + arrasto do usuário nos pointer events da caixa
+     `.beast-card-model` (`touch-action: pan-y` continua deixando o toque rolar a
+     página);
+   - **DOM que não pode ser coberto**: o palco pinta ACIMA do overlay, e o
+     recorte é exatamente a caixa do card (o modelo nunca vaza dela). Então
+     `.beast-top` deixou de ser sticky (rola com o painel), o fechar virou
+     `.beast-close-float` (fixo, z-index 46, acima do palco) e os chips de forma,
+     o rótulo da forma e a dica de clique saíram da caixa 3D para a linha
+     `.beast-model-foot` embaixo dela — dentro da caixa o modelo os cobriria.
+3. **WebGL2 é obrigatório** (three r169 não fala mais WebGL1): `hasWebGL2()` em
+   `scene/webgl.ts` (**cacheada** — é chamada em todo render de card, e sem cache
+   cada card pediria um contexto novo ao Safari) + `app/GLBoundary.tsx` em volta
+   do `<Canvas>` da batalha: iPhone com iOS < 15 e WebViews de aplicativo veem o
+   painel `.gl-missing` ("3D indisponível … atualize para o iOS 15 ou mais novo")
+   em vez de tela preta. Sem WebGL2 os viewers do bestiário também não montam
+   (ficam com o aviso `.beast-model-hint`).
 
 ---
 
