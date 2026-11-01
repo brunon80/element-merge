@@ -414,11 +414,69 @@
 > - Total: **197 testes** verdes; tsc/build OK; 4 rodadas de QA (console
 >   limpo; viewer/arena/macro/b-frames + sonda de cena p/ o bug do vento).
 >
+> ### 🌩️ ATUALIZAÇÃO 6 — Tempestade virou MURALHA DE SUPERCÉLULA (+ mina do jitter do arco)
+>
+> Primeira espécie Nv.7 revisada (fogo+água+ar). O laço de print achou uma
+> **mina que também atingia o Raio** (esta jamais passou pelo QA visual):
+>
+> - **🐛 `uJitter` do `ARC_VERT` é em UNIDADES DE MUNDO** (desloca o tubo pela
+>   normal): jitter 0.85-1.6 num toro de tubo 0.03 = ouriço de estilhaços
+>   brancos (o blowout dos prints 2-3 da muralha). A regra nova ficou: **jitter
+>   ≤ raio do tubo** — oFX de impacto sempre usou ~0,15-0,2 (bolta r 0,16), o
+>   bug era só nos rigs/pools. Corrigido: arcos do TempestadeRig (0,03/0,05),
+>   dardo da tempestade (0,07) e **pool do Raio em `ProjectileField` (1,2 →
+>   0,08 — o próprio comentário pedia "±8cm")**. ⚠️ `LightningRig` (corpo do
+>   Raio) segue com anéis jitter 0,9-1,6 em tubos 0,035 — mesma mina, fica
+>   para a passada de revisão do Raio.
+> - **Tempestade = muralha de supercélula PLANTADA** (forma única Nv.7, sem
+>   float): laje de nuvem esmagada (muro de ~4,3 de largura — a criatura mais
+>   larga da árvore), rolo da frente de tempestade (tambor deitado em X,
+>   20×5) + bumps de célula gêmea nas pontas, torre central empilhada,
+>   **bigornas** de cumulonimbus (placas 1,5×0,34 a y 3,42 abraçando a
+>   crista), **4 mastros para-raios** (±0,55/±1,5, tag arm) que o rig flexiona
+>   como UM corpo com **pivô na base** (cilindro orbita a base e o globo vai
+>   na ponta — idle = identidade, sem offset), curto-circuito fixo na crista
+>   (3 toros de arco entre os mastros + laço de plasma — a assinatura do
+>   `chain 3×` escrita na silhueta), anel de corrente orbital, **cortinas de
+>   chuva plantadas** (role `veil` = casca aberta do shader do vendaval),
+>   granizo pendurado na beirada do rolo (`trans` = gelo) e brasa lilás presa
+>   DENTRO do muro (`glow`), olhos por trás da cortina.
+> - **A nuvem da muralha é ESCURA** (steamShaders sem tocar): albedo ardósia
+>   (`#222b42`/`#161d31`) e **uHot lilás escuro `#8a63c9`** — a lição do print
+>   1: o `mix(col, uHot, charge…)` do frag acontece ANTES da luz da arena
+>   (×~2,4) e as ~13 cascas se empilham; uHot claro estoura em bola branca.
+>   amplitudes 0,03-0,05 (em ico sub 2 = 540 verts, amp alta vira ESPÍCULOS/
+>   "pelo" no contorno, não lombada de nuvem).
+> - **Cortinas: a lição do fade** — o frag do vento usa cor CRUA (sem luz) e
+>   alfa base 0,3; escura, ela sumia no fundo escuro da arena. Sonda de
+>   geometria vermelha provou que a cortina está plantada certa e larga o muro
+>   → o problema era só alfa/contraste: `alphaMul 1,6` + ardósia média
+>   (`#7688a8`, hot perolado `#c6d2ea`) + amp 0,09 (borda cisalha) + gotas de
+>   chuva com piso de 26 (o `embers` dos outros rigs é pool de faísca).
+> - **Projétil-assinatura**: dardo de relâmpago LILÁS (o MESMO arco dos
+>   mastros, `coolAmt 0,85` — a paleta #d0b6ff é ÚNICA entre motor/rig/proj)
+>   + núcleo de plasma lilás na cabeça + **grodo de granizo** escoltando
+>   (iceShaders com envPlug da arena). FX de impacto (Effects branch
+>   `tempestade`): **raio vertical do teto caindo no alvo** (a assinatura),
+>   arcos lilásses (gold 0,2), estilhaço de gelo, gotas ESCURAS com peso,
+>   poça lilás no piso + bruma fria (`heat 0`); `chain` aceita
+>   `raio || tempestade` (salto lilás + granizo no destino).
+> - **Testes**: `tempestadeProgression.test.ts` com 10 pinos — silhueta do
+>   muro (rolo tombado ≥3,5 de envergadura, bigornas achatadas, 4 mastros,
+>   ≥3 aros de curto na crista, brasa dentro 1,2<y<2,3, cortinas plantadas),
+>   anti low-poly, invólucro (halfX < 2,6; maxY ≤ formTop+0,25 = 4,75), nuvem
+>   e cortina SEM tint e SEM aditivo, paleta lilás única do motor ao granizo,
+>   coreografia (inspira com mastros para trás → estala para frente → esfria;
+>   `attackPose`/janela exportados p/ teste), motor: impacto + chain 3 saltos
+>   com espécie/nível no FX. Total: **207 testes** verdes; tsc/build OK;
+>   ~10 rodadas de QA (console limpo; idle/viewer/windup/release/macro/
+>   b-frames; blowout cortado em todos os prints).
+>
 > ### 🗺️ PRÓXIMO PLANO (combinado com o usuário) — revisar o bestiário inteiro
 >
 > Rodar o ciclo `qa/inspect-species.mjs` em **cada** espécie restante, **um
 > commit + push por monstro**, sem pressa: ~~vapor~~ ✅ → ~~areia~~ ✅ →
-> tempestade,
+> ~~tempestade~~ ✅ →
 > obsidiana, pântano, plasma, névoa, cristal (Nv.7) → cósmico, geodo, abissal,
 > vulcânico (Nv.8) → astral, colosso (Nv.9) → **primordial (Nv.10)**.
 > Pedido especial para o último: **buraco negro com disco de acreção**, grande,

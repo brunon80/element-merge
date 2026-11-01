@@ -10,6 +10,7 @@ import { MagmaRig } from './MagmaRig';
 import { IceRig } from './IceRig';
 import { VaporRig } from './VaporRig';
 import { SandRig } from './SandRig';
+import { TempestadeRig } from './TempestadeRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -31,8 +32,10 @@ export interface SpeciesRigProps {
  * própria (fogo, ar, terra e água); da árvore elemental, Raio (rig elétrico),
  * Madeira (rig de tronco/esmeralda no padrão do golem), Magma (vulcão de
  * basalto no mesmo padrão), Gelo (golem de cristal branco translúcido),
- * Vapor (caldeira de ferro viva com cabeça de nuvem) e Areia (gênio do
- * deserto com cauda-funil de areia em turbilhão) já
+ * Vapor (caldeira de ferro viva com cabeça de nuvem), Areia (gênio do
+ * deserto com cauda-funil de areia em turbilhão) e Tempestade (muralha de
+ * supercélula com
+ * mastros para-raios e cortinas de chuva) já
  * têm figurino próprio; as demais espécies da árvore ainda usam o rig padrão:
  * a busca é por espécie e o fallback é o rig padrão.
  */
@@ -47,4 +50,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   gelo: IceRig,
   vapor: VaporRig,
   areia: SandRig,
+  tempestade: TempestadeRig,
 };

@@ -810,30 +810,77 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     groups: { 0: 0.6 },
   },
 
-  // Raio+Gelo — muralha de raios: o muro de nuvem que vira frente de tempestade
+  // Fogo+Água+Ar — MURALHA DE RAIOS (Nv.7): a supercélula que anda. MALHA
+  // DENSE (regra anti low-poly): nuvens em ico sub 2 (a muralha não pode
+  // facetear), rolo de frente em tambor 20×5, cortinas de chuva em casca
+  // 24-28 radiais × 6-7 anéis, toros de arco 10×36+. Silhueta: MURO LARGO
+  // de nuvem (a base achatada cobre ~4.5 de largura — a única criatura que
+  // atravessa visualmente o próprio slot, é a frente de tempestade), rolo
+  // rolando na frente embaixo (shelf cloud), bigorna de cumulonimbus no
+  // topo (placas planas a y 3.3 espalhando para os lados), MASTROS PARA-RAIOS
+  // na crista (tag arm — o rig inclina os mastros quando a trovoada dispara)
+  // com curto-circuito em arco ENTRE eles (a cadeia de 3 saltos escrita na
+  // crista), anel de corrente orbitando o muro, cortinas de chuva PLANTADAS
+  // no chão (role veil — o shader do vendaval em cinza-ardósia), granizo
+  // pendurado na beirada do rolo (trans= gelo) e brasa lilás presa DENTRO da
+  // nuvem (glow= núcleo, o relâmpago que está nascendo).
   tempestade: {
-    floatY: 0.25,
-    bob: 0.1,
+    bob: 0.08,
     parts: [
-      { g: 'sphere', a: [0.5, 10, 8], p: [0, 1.5, 0], m: 'body' },
-      { g: 'sphere', a: [0.4, 10, 8], p: [0.62, 1.32, 0.16], m: 'body' },
-      { g: 'sphere', a: [0.38, 10, 8], p: [-0.58, 1.38, -0.12], m: 'body' },
-      { g: 'sphere', a: [0.32, 10, 8], p: [0.18, 1.7, -0.34], m: 'body' },
-      { g: 'sphere', a: [0.26, 10, 8], p: [-0.16, 1.82, 0.28], m: 'body' },
-      { g: 'sphere', a: [0.62, 10, 8], p: [0, 1.16, 0], s: [1.5, 0.5, 1.2], m: 'dark' },
-      ...mm(EYE(0.2, 1.52, 0.44)),
-      ...mm(PUPIL(0.2, 1.52, 0.44)),
-      { g: 'cone', a: [0.18, 0.7, 4], p: [-0.08, 0.5, 0.14], m: 'glow', flick: 0.35 },
-      { g: 'cone', a: [0.12, 0.42, 4], p: [0.18, 0.16, 0.2], r: [0, 0, 2.4], m: 'glow', flick: 0.45 },
-      { g: 'cone', a: [0.09, 0.34, 4], p: [-0.42, 0.4, -0.1], r: [0, 0, -0.5], m: 'glow', flick: 0.4 },
-      { g: 'torus', a: [0.92, 0.035, 6, 30], p: [0, 1.42, 0], r: [1.57, 0, 0], m: 'accent', group: 0 },
-      { g: 'torus', a: [0.78, 0.03, 6, 28], p: [0, 1.05, 0], r: [1.4, 0.3, 0], m: 'glow', group: 1 },
-      ...mm({ g: 'octa', a: [0.1, 0], p: [0.66, 0.85, 0.3], s: [0.7, 1.5, 0.7], r: [0, 0, -0.4], m: 'accent' }),
-      { g: 'capsule', a: [0.03, 0.16], p: [0.36, 0.8, 0.24], m: 'trans', rise: [1.6, 0.6] },
-      { g: 'capsule', a: [0.03, 0.16], p: [-0.38, 0.75, 0.06], m: 'trans', rise: [1.3, 0.6] },
-      { g: 'capsule', a: [0.03, 0.16], p: [-0.02, 0.86, 0.4], m: 'trans', rise: [1.8, 0.6] },
+      // ---- base do muro: laje de nuvem esmagada + rolo da frente de
+      // tempestade rolando na frente (shelf cloud) — é o que faz a criatura
+      // ler "frente de tempestade" e não "bolota de nuvem" ----
+      { g: 'ico', a: [1.05, 2], p: [0, 1.3, -0.05], s: [2.12, 0.72, 1.08], m: 'body', amp: 0.045 },
+      { g: 'cyl', a: [0.6, 0.66, 4.3, 20, 5], p: [0, 1.02, 0.58], r: [0, 0, 1.5708], m: 'dark', amp: 0.04 }, // rolo no eixo X
+      // rolo em TRÊS COLUNAS (a supercélula é um complexo de células): bumps
+      // de célula gêmea saltam da beirada do rolo principal (translúcidos na
+      // mesma fumaça — o muro respira em três focos)
+      ...mm({ g: 'cyl', a: [0.4, 0.47, 0.95, 16, 4], p: [1.95, 1.1, 0.55], r: [0, 0, 1.5708], m: 'dark', amp: 0.035 }), // bump da extremidade
+      // ---- torre central (cumulonimbus empilhado) ----
+      { g: 'ico', a: [0.95, 2], p: [0, 2.15, -0.05], s: [1.04, 0.92, 0.96], m: 'body', amp: 0.05 },
+      { g: 'ico', a: [0.75, 2], p: [-0.14, 2.95, 0.04], s: [1.0, 0.86, 0.92], m: 'body', amp: 0.045 },
+      { g: 'ico', a: [0.56, 2], p: [0.08, 3.58, -0.02], s: [1.0, 0.82, 1.0], m: 'dark', amp: 0.04 },
+      // ---- torres laterais + BIGORNAS (a placa do supercélula espalhando
+      // para os lados — a silhueta que nenhuma outra espécie tem) ----
+      ...mm({ g: 'ico', a: [0.8, 2], p: [1.32, 1.92, 0], s: [1.0, 0.88, 0.94], m: 'body', amp: 0.045 }),
+      ...mm({ g: 'ico', a: [0.55, 1], p: [1.42, 2.5, 0.02], s: [1.0, 0.8, 1.0], m: 'dark', amp: 0.035 }),
+      ...mm({ g: 'ico', a: [0.6, 2], p: [1.58, 3.42, -0.05], s: [1.5, 0.34, 0.95], m: 'dark', amp: 0.03 }), // asa da bigorna
+      // ---- olhos na frente da torre central (o rosto no meio do muro) ----
+      ...mm({ g: 'sphere', a: [0.13, 14, 10], p: [0.34, 2.5, 0.92], m: 'white' }),
+      ...mm({ g: 'sphere', a: [0.07, 10, 8], p: [0.34, 2.5, 1.04], m: 'black' }),
+      // ---- mastros para-raios NA CRESTA (tag arm: o rig os flexiona no
+      // disparo) — em PARES simétricos (x = ±0.55 e ±1.5): o rig trata o par
+      // mastro+globo como UM corpo com pivô na base (a corrente sobe pelo
+      // mastro e o globo acompanha o estalo). Corpo em arco: corrente
+      // correndo pelo para-raios ----
+      ...mm({ g: 'cyl', a: [0.075, 0.1, 0.62, 12, 3], p: [0.55, 4.12, 0], m: 'accent', tag: 'arm' }),
+      ...mm({ g: 'sphere', a: [0.095, 14, 10], p: [0.55, 4.505, 0], m: 'white', tag: 'arm' }),
+      ...mm({ g: 'cyl', a: [0.062, 0.085, 0.5, 12, 3], p: [1.5, 3.95, -0.05], m: 'accent', tag: 'arm' }),
+      ...mm({ g: 'sphere', a: [0.08, 12, 10], p: [1.5, 4.265, -0.05], m: 'white', tag: 'arm' }),
+      // ---- curto-circuito fixo na crista (a assinatura do chain 3× saltos
+      // escrita em arco ENTRE os mastros): aros ligando os pares vizinhos e
+      // um laço de plasma livre acima da bigorna central ----
+      { g: 'torus', a: [0.55, 0.035, 10, 36], p: [0, 4.1, 0], m: 'accent' }, // entre os mastros internos
+      ...mm({ g: 'torus', a: [0.5, 0.032, 10, 36], p: [1.03, 3.85, -0.03], r: [0, 0, 0.12], m: 'accent' }), // interno ↔ externo
+      { g: 'torus', a: [0.34, 0.03, 10, 32], p: [-0.05, 4.42, 0.05], r: [1.25, 0, 0.3], m: 'accent' }, // laço de plasma
+      // ---- anel de corrente varrendo o muro inteiro (grupo orbital) ----
+      { g: 'torus', a: [1.7, 0.034, 10, 44], p: [0, 2.35, 0], r: [1.45, 0, 0.18], m: 'accent', group: 0 },
+      // ---- cortinas de chuva plantadas no chão (veil: casca aberta com o
+      // shader do vendaval em cinza-ardósia — SEM tint, regra da nuvem).
+      // amp alto: a beirada cisalha (cortina ao vento, não tambor liso) ----
+      { g: 'cyl', a: [1.12, 1.3, 1.14, 28, 7, 1], p: [0, 0.6, 0], m: 'veil', amp: 0.09 },
+      ...mm({ g: 'cyl', a: [0.8, 0.94, 1.02, 24, 6, 1], p: [1.45, 0.53, 0], m: 'veil', amp: 0.08 }),
+      // ---- brasa lilás presa DENTRO da nuvem (o relâmpago prestes a
+      // nascer — aparece embaço através do vapor escuro da muralha) ----
+      { g: 'ico', a: [0.42, 1], p: [0.05, 1.85, 0], m: 'glow' },
+      ...mm({ g: 'ico', a: [0.3, 1], p: [1.35, 1.62, 0], m: 'glow' }),
+      // ---- granizo pendurado na beirada do rolo frontal (gelo translúcido) ----
+      ...mm({ g: 'octa', a: [0.17, 1], p: [0.5, 0.78, 1.1], s: [0.8, 1.5, 0.8], m: 'trans' }),
+      ...mm({ g: 'octa', a: [0.14, 1], p: [1.45, 0.82, 0.95], s: [0.8, 1.4, 0.8], m: 'trans' }),
+      // ---- anel elétrico no chão rente à base (frente de rajada) ----
+      { g: 'torus', a: [2.05, 0.04, 10, 44], p: [0, 0.05, 0], r: [1.5708, 0, 0], m: 'accent' },
     ],
-    groups: { 0: 1.3, 1: -1.9 },
+    groups: { 0: 0.75 },
   },
 
   // Fogo+Água — caldeiro vivo (Nv.6): jatos de vapor escaldante ----------

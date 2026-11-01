@@ -752,6 +752,41 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 1.1,
               speed: 1.3,
             });
+          } else if (ev.species === 'tempestade') {
+            // a MURALHA bate: o dardo chega com o rastro em arco LILÁS, o
+            // impacto PUXA um raio do teto (o vertical é a assinatura da chuva
+            // — raio que cai NA cabeça do alvo), estilhaça o granizo do dardo
+            // em cacos de gelo, e fecha em poça d'água no piso + bruma fria
+            // (o alvo encharcado: slow 0.35 escrito no FX)
+            const lv = Math.max(7, Math.min(10, ev.level ?? 7));
+            const k = 1 + (lv - 7) * 0.12;
+            if (ev.pos2) {
+              const ix = ev.pos2[0] - x;
+              const iy = ev.pos2[1] - y;
+              const iz = ev.pos2[2] - z;
+              const il = Math.hypot(ix, iy, iz);
+              if (il > 0.4) {
+                spawnArc([ev.pos2[0], ev.pos2[1], ev.pos2[2]], -ix, -iy, -iz, Math.min(il, 1.6), 0.16, 0.13, 0.9, 0.2);
+              }
+            }
+            // RAIO do teto caindo no alvo (o único aditivo do impacto)
+            spawnArc([x, y, z], 0.08, 1, -0.06, 2.4 + 0.12 * lv, 0.17, 0.18, 1, 0.2);
+            // corrente rala pro lado (o campo da muralha descarregando)
+            spawnArc([x, y + 0.35, z], 1, 0.12, 0.35, 1.0 * k, 0.13, 0.15, 1, 0.2);
+            spawnArc([x, y + 0.35, z], -0.9, 0.2, -0.5, 0.9 * k, 0.13, 0.15, 1, 0.2);
+            // granizo estilhaçado (os cacos do dardo, do MESMO gelo do muro)
+            for (let i = 0; i < 3; i++) spawnBurst(x, y, z, 0.34 + 0.05 * (lv - 7), 'iceShard', 0.95);
+            spawnParticles(x, y, z, '#d0b6ff', 10 + (lv - 7) * 2, 2.9, 0.45, -1.4, 0.9); // faíscas lilases subindo
+            spawnParticles(x, y, z, '#eaf6ff', 8, 2.4, 0.45, 2.3, 0.7); // estilhaços de gelo caindo
+            spawnParticles(x, y, z, '#5a6a8a', 9, 2.6, 0.5, 2.6, 0.6); // gotas ESCURAS d'água (a chuva tem peso)
+            spawnRing(x, 0.1, z, '#b48aff', 1.8 + 0.12 * (lv - 7)); // poça d'água energizada
+            spawnRing(x, y * 0.5, z, '#eaf6ff', 0.95); // anel de choque no ar
+            spawnSmoke(x, y, z, 5, {
+              size: 0.1,
+              heat: 0, // bruma FRIOA (nunca fuligem)
+              life: 1.15,
+              speed: 1.1,
+            });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e
@@ -910,17 +945,33 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         }
         case 'chain': {
           if (ev.pos2) {
-            if (ev.species === 'raio') {
-              // respingo da corrente: salto em ARCO JAGADO azul-elétrico com
-              // osso dourado (o fio duro de relâmpago), não o cilindro claro
-              // das outras trovoadas
+            if (ev.species === 'raio' || ev.species === 'tempestade') {
+              // respingo da corrente: salto em ARCO JAGADO — no Raio, azul
+              // elétrico com osso DOURADO (o fio duro de relâmpago); na
+              // TEMPESTADE o mesmo traje mas LILÁS (gold baixo) e o salto
+              // chega ESCOLTADO de granizo: cacos de gelo no destino (a
+              // cadeia de 3 saltos da muralha é relâmpago + pedra de gelo)
               const ax = ev.pos2[0] - x;
               const ay = ev.pos2[1] + 0.7 - (y + 0.7);
               const az = ev.pos2[2] - z;
               const al = Math.hypot(ax, ay, az);
-              spawnArc([x, y + 0.6, z], ax, ay, az, Math.max(0.5, Math.min(al, 6)), 0.2, 0.16, 0.95);
-              spawnScatter(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 3, 0.4, 0.12, 0.13, 0.9);
-              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], '#bfe4ff', 6, 1.6, 0.35, -1);
+              const lilac = ev.species === 'tempestade';
+              spawnArc([x, y + 0.6, z], ax, ay, az, Math.max(0.5, Math.min(al, 6)), 0.2, 0.16, 0.95, lilac ? 0.2 : 1);
+              spawnScatter(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 3, 0.4, 0.12, 0.13, lilac ? 0.3 : 0.9);
+              spawnParticles(
+                ev.pos2[0],
+                ev.pos2[1] + 0.7,
+                ev.pos2[2],
+                lilac ? '#d0b6ff' : '#bfe4ff',
+                6,
+                1.6,
+                0.35,
+                -1,
+              );
+              if (lilac) {
+                spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], '#eaf6ff', 5, 2.0, 0.4, 2.2, 0.6); // granizo miúdo caindo
+                spawnBurst(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 0.3, 'iceShard', 0.9);
+              }
             } else {
               spawnBolt(ev.pos, ev.pos2, glowColor(ev.element) || '#aef2ff');
               spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], glowColor(ev.element), 6, 1.4, 0.4, 1);

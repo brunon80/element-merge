@@ -92,6 +92,10 @@ const dir = new THREE.Vector3();
  *  - Gelo (Nv.6, árvore): a ESTACA — icicle comprido do MESMO cristal da
  *    criatura (branco translúcido/reflexivo, trincas internas acesas), com a
  *    ponta encarando o voo e girando no próprio eixo.
+ *  - Tempestade (Nv.7, árvore): o DARDO de relâmpago — casca de arco LILÁS
+ *    (o MESMO material dos mastros da muralha) com o núcleo de plasma aceso
+ *    na cabeça e um GRODO de granizo congelado colado nela: o dardo chega
+ *    escoltado por gelo (a marca fogo+água+ar).
  * Híbridos e o resto usam as silhuetas básicas instanciadas por elemento,
  * com cor por espécie (instanceColor). Todo projétil ganha um halo billboard
  * que cresce com o nível.
@@ -112,6 +116,9 @@ export function ProjectileField() {
   const jetCoreRef = useRef<THREE.InstancedMesh | null>(null);
   const blastRef = useRef<THREE.InstancedMesh | null>(null);
   const blastCoreRef = useRef<THREE.InstancedMesh | null>(null);
+  const stormRef = useRef<THREE.InstancedMesh | null>(null);
+  const stormCoreRef = useRef<THREE.InstancedMesh | null>(null);
+  const hailRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -213,7 +220,8 @@ export function ProjectileField() {
       white: '#dff2ff',
       cool: '#2fa4ff', // o traço principal é o azul elétrico da referência
       coolAmt: 0.78,
-      jitter: 1.2, // zigue-zague de ±~8cm no fio de 14cm de diâmetro
+      jitter: 0.08, // zigue-zague de ±8cm no fio de 14cm de diâmetro (1.2 era
+                    // o ouriço de estilhaços — jitter é em unidades de mundo)
       dash: 26, // traços curtos correndo ao longo da corrente
       flow: 9,
       seed: 6.2,
@@ -406,14 +414,81 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const stormBolt = useMemo(() => {
+    // dardo da Tempestade: o MESMO arco dos mastros da muralha (material de
+    // relâmpago) na paleta LILÁS da espécie (= a cor do projétil no motor,
+    // #d0b6ff) — fio zigue-zague com traços correndo, o ouro é só a ponta
+    const geo = new THREE.CylinderGeometry(0.07, 0.05, 0.8, 6, 1, true);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeArcMaterial({
+      gold: '#ffe9c4', // faísca quente na cabeça (quase branca: o dardo é lilás)
+      white: '#f6f1ff',
+      cool: '#d0b6ff', // o lilás-relâmpago da tempestade (mesma cor do motor)
+      coolAmt: 0.85,
+      jitter: 0.07, // jitter em unidades de mundo: tem que couber no corpo do
+                    // fio (r 0.05-0.07) — 1.0 estouraria em ouriço (a lição
+                    // do print da muralha)
+      dash: 30, // traço miúdo correndo ao longo do fio
+      flow: 11,
+      seed: 4.6,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const stormCore = useMemo(() => {
+    // plasma lilás na cabeça do dardo (o MESMO core dos arcos internos do
+    // muro — paleta trovoada, não-aditivo por natureza)
+    const geo = new THREE.IcosahedronGeometry(0.14, 2); // denso (anti low-poly)
+    geo.translate(0, 0.3, 0);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: '#d8b2ff', // o lilás da trovoada (mesma paleta da brasa do muro)
+      white: '#f6f0ff',
+      cool: '#8f9cff', // orla azul-noturna no plasma
+      amp: 0.05,
+      seed: 6.9,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const stormHail = useMemo(() => {
+    // grodo de granizo colado na cabeça do dardo: o MESMO gelo do granizo
+    // da muralha (cristal translúcido com veios lilás acesos) — a marca de
+    // que a tempestade é também ÁGUA congelada caindo
+    const geo = new THREE.OctahedronGeometry(0.17, 1); // denso (anti low-poly)
+    geo.scale(0.8, 1.6, 0.8); // grodo longo: a quina encara o voo
+    geo.translate(0, 0.44, 0);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeIceMaterial({
+      iceA: '#e2ecff',
+      iceB: '#93aed6',
+      crack: '#d0b6ff', // veio lilás (o granizo da muralha é da mesma fornada)
+      amp: 0.02,
+      crackGlow: 1.3,
+      crackScale: 2.6, // facetas pequenas: trincas curtas e densas
+      crackWidth: 0.05,
+      alpha: 0.78,
+      bump: 1.2,
+      reflPow: 130,
+      envMix: 0.55, // o reflexo real da arena dançando em pleno voo
+      sparkle: 1.2,
+      seed: 8.4,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -431,6 +506,8 @@ export function ProjectileField() {
     let spikeN = 0;
     let jetN = 0;
     let blastN = 0;
+    let stormN = 0;
+    let hailN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -455,9 +532,18 @@ export function ProjectileField() {
     // a lufa voa a pleno vendaval (uFlare acelera as fitas de grão)
     sandBlast.mat.uniforms.uFlare.value = 0.55 + 0.2 * Math.sin(time * 5.1);
     sandCore.mat.uniforms.uTime.value = time;
+    stormBolt.mat.uniforms.uTime.value = time;
+    // o dardo voa a plena carga: traço grosso e fluxo nervoso (é um estalo
+    // em voo, não um fio morto)
+    stormBolt.mat.uniforms.uCharge.value = 0.7 + 0.25 * Math.sin(time * 6.2);
+    stormCore.mat.uniforms.uTime.value = time;
+    stormCore.mat.uniforms.uCharge.value = 0.75 + 0.2 * Math.sin(time * 4.8);
+    stormHail.mat.uniforms.uTime.value = time;
+    // o granizo voa trincado de frio: veios acesos por dentro
+    stormHail.mat.uniforms.uCharge.value = 0.5 + 0.2 * Math.sin(time * 3.6);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
-    plugArenaEnv(state.gl, [iceSpike.mat]);
+    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat]);
     // a estaca voa "carregada": as trincas internas ficam acesas
     iceSpike.mat.uniforms.uCharge.value = 0.55 + 0.25 * Math.sin(time * 4.2);
 
@@ -483,6 +569,7 @@ export function ProjectileField() {
         const isSpike = p.species === 'gelo';
         const isJet = p.species === 'vapor';
         const isBlast = p.species === 'areia';
+        const isStorm = p.species === 'tempestade';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -695,6 +782,44 @@ export function ProjectileField() {
             haloScale = scale * 1.7; // o vendaval em torno da lufa
             signature = true;
           }
+        } else if (isStorm) {
+          // dardo da muralha: o fio de arco LILÁS esticado na velocidade (o
+          // mesmo traje dos mastros) — e o grodo de granizo girando na cabeça
+          // (o gelo escoltando o relâmpago: a marca água+ar da espécie)
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            rollQuat.setFromAxisAngle(up, time * 3.2 + p.id * 2.4);
+            tmpQuat.multiply(rollQuat);
+            dummy.quaternion.copy(tmpQuat);
+          }
+          if (stormN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.3 + p.age / 0.09); // o estalo infla ao sair
+            const scale = (0.85 + 0.12 * (lv - 7)) * launch;
+            dummy.scale.set(scale, scale * (1.15 + Math.min(1, p.age * 3) * 0.55), scale);
+            dummy.updateMatrix();
+            stormRef.current?.setMatrixAt(stormN, dummy.matrix);
+            stormBolt.seeds.setX(stormN, ((p.id * 67) % 83) / 7.3);
+            // núcleo de plasma lilás na cabeça (esfera: sem rotação)
+            dummy.quaternion.identity();
+            dummy.scale.setScalar(scale * (0.9 + 0.1 * (lv - 7)));
+            dummy.updateMatrix();
+            stormCoreRef.current?.setMatrixAt(stormN, dummy.matrix);
+            stormCore.seeds.setX(stormN, ((p.id * 19) % 71) / 6.1);
+            stormN++;
+            haloScale = scale * 1.5;
+            signature = true;
+          }
+          if (hailN < MAX_PER_ELEMENT) {
+            // grodo tombando no eixo do voo: o reflexo quebra nas facetas
+            dummy.rotation.set(time * 4.1 + p.id, time * 2.7 + p.id * 1.3, time * 1.9);
+            dummy.scale.setScalar(0.9 + 0.1 * (lv - 7));
+            dummy.updateMatrix();
+            hailRef.current?.setMatrixAt(hailN, dummy.matrix);
+            stormHail.seeds.setX(hailN, ((p.id * 53) % 73) / 6.3);
+            hailN++;
+          }
         }
 
         if (!signature) {
@@ -759,6 +884,9 @@ export function ProjectileField() {
       [jetCoreRef.current, jetN, jetCore.seeds],
       [blastRef.current, blastN, sandBlast.seeds],
       [blastCoreRef.current, blastN, sandCore.seeds],
+      [stormRef.current, stormN, stormBolt.seeds],
+      [stormCoreRef.current, stormN, stormCore.seeds],
+      [hailRef.current, hailN, stormHail.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -911,6 +1039,32 @@ export function ProjectileField() {
           blastCoreRef.current = m;
         }}
         args={[sandCore.geo, sandCore.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Tempestade: o MESMO arco lilás dos mastros da muralha — o dardo de
+          relâmpago em voo (aditivo: é a descarga, a regra do raio) */}
+      <instancedMesh
+        ref={(m) => {
+          stormRef.current = m;
+        }}
+        args={[stormBolt.geo, stormBolt.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Tempestade: plasma lilás na cabeça do dardo (não-aditivo) */}
+      <instancedMesh
+        ref={(m) => {
+          stormCoreRef.current = m;
+        }}
+        args={[stormCore.geo, stormCore.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Tempestade: grodo de granizo na cabeça — o MESMO gelo do granizo
+          do muro, com o reflexo real da arena (NUNCA aditivo) */}
+      <instancedMesh
+        ref={(m) => {
+          hailRef.current = m;
+        }}
+        args={[stormHail.geo, stormHail.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>
