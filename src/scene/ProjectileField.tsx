@@ -110,6 +110,8 @@ export function ProjectileField() {
   const spikeRef = useRef<THREE.InstancedMesh | null>(null);
   const jetRef = useRef<THREE.InstancedMesh | null>(null);
   const jetCoreRef = useRef<THREE.InstancedMesh | null>(null);
+  const blastRef = useRef<THREE.InstancedMesh | null>(null);
+  const blastCoreRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -355,14 +357,63 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const sandBlast = useMemo(() => {
+    // rajada da Areia: LUFA de grão em turbilhão (casca de cone com o MESMO
+    // shader de vento do véu do gênio, paleta do deserto) — o topo largo é o
+    // choque de proa no alvo e o fiapo fino é o rastro de grão
+    const geo = new THREE.CylinderGeometry(0.3, 0.06, 0.85, 14, 4, true);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeWindMaterial({
+      cold: '#573d18',
+      mid: '#a3783a',
+      hot: '#d9b26a', // teto creme (a regra anti-branco-toalha do véu vale
+      // p/ a lufa em voo: fita clara é creme-ocre, nunca #ffe*)
+      amp: 0.045, // pequeno p/ não rasgar a casca do cone
+      twist: 0.4,
+      spin: 7.5, // o grão gira frenético (é a LÂMINA de grãos cortantes)
+      bend: 0,
+      alphaMul: 1.25, // projétil denso: legível atravessando a arena
+      soft: 0,
+      seed: 6.3,
+      phase: 2.2,
+      yOff: 0,
+      modelH: 0.85,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const sandCore = useMemo(() => {
+    // o núcleo compactado no miolo da lufa: pedra-areia ocre com trincas
+    // âmbar (o MESMO shader de pedra do corpo, paleta arenito) — o disparo
+    // tem um punho SÓLIDO de areia compacta envolta pelo vendaval
+    const geo = new THREE.DodecahedronGeometry(0.14, 1); // denso (anti low-poly)
+    geo.translate(0, 0.3, 0);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: '#e0bd78',
+      rockB: '#6e4a16',
+      crack: '#ffbe55',
+      amp: 0.035,
+      crackGlow: 1.4,
+      crackScale: 1.6,
+      crackWidth: 0.03,
+      speck: 0.8,
+      seed: 5.9,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -379,6 +430,7 @@ export function ProjectileField() {
     let boulderN = 0;
     let spikeN = 0;
     let jetN = 0;
+    let blastN = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -399,6 +451,10 @@ export function ProjectileField() {
     steamJet.mat.uniforms.uCharge.value = 0.45 + 0.15 * Math.sin(time * 4.4);
     jetCore.mat.uniforms.uTime.value = time;
     jetCore.mat.uniforms.uCharge.value = 0.7 + 0.2 * Math.sin(time * 3.2);
+    sandBlast.mat.uniforms.uTime.value = time;
+    // a lufa voa a pleno vendaval (uFlare acelera as fitas de grão)
+    sandBlast.mat.uniforms.uFlare.value = 0.55 + 0.2 * Math.sin(time * 5.1);
+    sandCore.mat.uniforms.uTime.value = time;
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
     plugArenaEnv(state.gl, [iceSpike.mat]);
@@ -426,6 +482,7 @@ export function ProjectileField() {
         const isBoulder = p.species === 'magma';
         const isSpike = p.species === 'gelo';
         const isJet = p.species === 'vapor';
+        const isBlast = p.species === 'areia';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -613,6 +670,31 @@ export function ProjectileField() {
             haloScale = scale * 1.9; // a nuvem é larga — halo de vapor
             signature = true;
           }
+        } else if (isBlast) {
+          // rajada da Areia: a lufa de grão encara o alvo com o choque de
+          // proa largo e gira no eixo do voo (é uma FRESA de grãos cortantes
+          // — o spin do projétil é a lâmina); o núcleo compactado gira junto
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            rollQuat.setFromAxisAngle(up, time * 6.5 + p.id * 2.3);
+            tmpQuat.multiply(rollQuat);
+            dummy.quaternion.copy(tmpQuat);
+          }
+          if (blastN < MAX_PER_ELEMENT) {
+            const launch = Math.min(1, 0.35 + p.age / 0.07); // a lufa infla ao sair
+            const scale = (0.9 + 0.12 * (lv - 6)) * launch;
+            dummy.scale.set(scale, scale * (1 + Math.min(1, p.age * 2.2) * 0.5), scale);
+            dummy.updateMatrix();
+            blastRef.current?.setMatrixAt(blastN, dummy.matrix);
+            sandBlast.seeds.setX(blastN, ((p.id * 51) % 79) / 6.7);
+            blastCoreRef.current?.setMatrixAt(blastN, dummy.matrix);
+            sandCore.seeds.setX(blastN, ((p.id * 47) % 71) / 5.9);
+            blastN++;
+            haloScale = scale * 1.7; // o vendaval em torno da lufa
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -675,6 +757,8 @@ export function ProjectileField() {
       [spikeRef.current, spikeN, iceSpike.seeds],
       [jetRef.current, jetN, steamJet.seeds],
       [jetCoreRef.current, jetN, jetCore.seeds],
+      [blastRef.current, blastN, sandBlast.seeds],
+      [blastCoreRef.current, blastN, sandCore.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -810,6 +894,23 @@ export function ProjectileField() {
           jetCoreRef.current = m;
         }}
         args={[jetCore.geo, jetCore.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Areia: a MESMA turbilhão do véu do gênio — lufa de grão com a proa
+          no alvo, girando como uma fresa cortante (NUNCA aditivo) */}
+      <instancedMesh
+        ref={(m) => {
+          blastRef.current = m;
+        }}
+        args={[sandBlast.geo, sandBlast.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Areia: punho de arenito compactado no miolo da lufa */}
+      <instancedMesh
+        ref={(m) => {
+          blastCoreRef.current = m;
+        }}
+        args={[sandCore.geo, sandCore.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

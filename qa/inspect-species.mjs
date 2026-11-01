@@ -23,6 +23,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1180, height: 950 } });
 page.on('console', (m) => {
   if (['error', 'warning'].includes(m.type())) msgs.push(`${m.type()}: ${m.text()}`);
+  else if (process.env.QA_LOG && m.text().includes(process.env.QA_LOG)) console.log(m.text());
 });
 page.on('pageerror', (e) => msgs.push(`pageerror: ${e.message}`));
 

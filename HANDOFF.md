@@ -356,10 +356,68 @@
 >   de QA (console limpo = GLSL compila; viewer macro + b-frames + zoom de
 >   partículas).
 >
+> ### 🏜️ ATUALIZAÇÃO 5 — Areia virado GÊNIO DO DESERTO (+ bug histórico do vento)
+>
+> Sexta espécie da árvore com figurino próprio (Nv.6, terra+ar). Caça ao
+> visual durou 4 rodadas de print e achou um **bug de shader que estava no
+> projeto desde o zéfiro**:
+>
+> - **🐛 O bug do flash invertido (`windShaders.ts`)**: `col = mix(vec3(1.0),
+>   col, uHurt * 0.45)` — em GLSL, `mix(a,b,0)` devolve `a`, então com o monstro
+>   SÃO (`uHurt=0`) todo vento do jogo desenhava **branco puro**; o flash de
+>   dano é que tingia de cor. No zéfiro a paleta cinza-tempestade disfarçava
+>   (ventos sempre pareceram "claros"); na areia virava cortina de chuveiro.
+>   Corrigido para `1.0 - uHurt * 0.45` (mesma forma dos outros 7 shaders, que
+>   já estavam certos). Zéfiro re-confirmado no laço: agora funil azul de
+>   tempestade legível, sem branco estourado — melhor que o aprovado antigo.
+>   Ferramenta nova no ciclo: **`qa/probe-veil.mjs` / `probe-veil2.mjs`**
+>   (esconde/seleciona materiais na cena via registro `__THREE_DEVTOOLS__` +
+>   prints por variante de shader) e `QA_LOG=<filtro>` no inspect-species.
+> - **Areia = gênio do deserto** (forma única Nv.6): **cauda-funil plantada**
+>   (lathe `vortex` 44×40 como casca em véu + coluna sólida `glow` âmbar
+>   dentro), cintura estreita → **peito colossal** (truque de escala do gênio
+>   da lâmpada; teste amarra o salto ≥0.4 entre tambor da cintura e do peito),
+>   cabeça ALTA a y 3.06 com fez inclinado + joias acesas + penacho de energia
+>   (o print engolia o rosto atrás do peito — subiu-se tudo ~0.44), barba de
+>   areia escorrendo sobre o peito, garras (tag arm) com pulseira de ouro,
+>   esteira de grão em cada garra, halo orbital de grãos + anel de areia
+>   rente ao chão.
+> - **`sandShaders.ts`** (novo): areia compactada OPACA (duna viva) — lombadas
+>   fbm + grão miúdo deslocando a casca, ruído rolando em +y = **grão
+>   escorregando**, veios de avalanche (o análogo das trincas, cume estreito
+>   dobrado) escuros/âmbar conforme `uCharge`, mica `uSpeckle` seca pegando
+>   sol, SEM tint de equipe (regra do vapor/geada). Paleta: areia CLARA e SECA
+>   (`#e3c691`) — a primeira tentativa lia "toffee/molhado".
+> - **Véus de grão = 3 níveis** (`VEIL_LOOK`): cauda-funil cortina densa
+>   (alphaMul 1.25, ocre fundo #93692c no miolo), esteira da garra punho de
+>   areia (0.95), halo rareado (0.45) — hot sempre **creme (#d9b26a), nunca
+>   #ffe\*** (regra do blowout cortado; sem o branco do bug, o ocre finalmente
+>   aparece).
+> - **SandRig.tsx**: janela 0.6s, garra recua reunindo o grão (uFlare acelera
+>   turbilhão da cauda E das esteiras), varre para frente, e **doubleKick às
+>   0,3s** honra o doubleShot do motor; poeira ocre contínua vazando da cauda
+>   (smoke `heat 0.16`, rise +0.35 = o turbilhão suspende o grão), grãos em
+>   points com clamp de 90px, morte = gênio **desmonta em areia** (crumble →
+>   amp).
+> - **Projétil-assinatura**: LUFA-fresa de grão (cone-casca wind-ocre girando
+>   no eixo do voo, spin 7.5) + punho de arenito compactado no miolo (dodeca
+>   sub 1, shader de pedra paleta arenito, trincas âmbar). FX de impacto
+>   (Effects branch `areia`): poeira ocre subindo + grão cortante espalhado +
+>   torrões caindo + cacos de arenito + anel de abrasão.
+> - **Motor**: `pendingShots` (fila do doubleShot) virou `readonly` público —
+>   a camada visual/testes leem sem mutar. doubleShot é indemonstrável por
+>   impactos (o motor descarta o tiro pending se o atirante morre) — o teste
+>   conta tiros **nascendo**: projectile novo + fila casada por instante de
+>   nascimento (`sandProgression.test.ts`, 8 pinos: silhueta do gênio, anti
+>   low-poly (lathe ≥1700 verts, toros ≥10×30, tambores ≥16×4), invólucro,
+>   materiais sem tint, disparo duplo 2×attacks exato).
+> - Total: **197 testes** verdes; tsc/build OK; 4 rodadas de QA (console
+>   limpo; viewer/arena/macro/b-frames + sonda de cena p/ o bug do vento).
+>
 > ### 🗺️ PRÓXIMO PLANO (combinado com o usuário) — revisar o bestiário inteiro
 >
 > Rodar o ciclo `qa/inspect-species.mjs` em **cada** espécie restante, **um
-> commit + push por monstro**, sem pressa: ~~vapor~~ ✅ → areia (Nv.6) →
+> commit + push por monstro**, sem pressa: ~~vapor~~ ✅ → ~~areia~~ ✅ →
 > tempestade,
 > obsidiana, pântano, plasma, névoa, cristal (Nv.7) → cósmico, geodo, abissal,
 > vulcânico (Nv.8) → astral, colosso (Nv.9) → **primordial (Nv.10)**.

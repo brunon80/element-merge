@@ -123,7 +123,11 @@ void main() {
   vec3 col = mix(uCold, uMid, smoothstep(0.08, 0.55, heat));
   col = mix(col, uHot, smoothstep(0.74, 1.0, heat) * 0.85);
   col += uHot * rim * 0.35;
-  col = mix(vec3(1.0), col, uHurt * 0.45); // flash de dano
+  // flash de dano (o avesso do mix é o avesso do flash: com uHurt=0 o t tem
+  // que ser 1 = col puro. Sem o 1.0- aqui, o vento TODO desenhava 45%+ de
+  // branco o tempo todo — no zéfiro a paleta cinza disfarçava; na areia o
+  // véu virava cortina de chuveiro)
+  col = mix(vec3(1.0), col, 1.0 - uHurt * 0.45);
 
   // massa translúcida (mesclagem normal, não aditiva: nada estoura), base mais
   // densa que o topo; a face de dentro do funil é mais fraca

@@ -97,7 +97,9 @@ export class GameEngine {
   private readonly rng: () => number;
   private readonly teamRules: TeamDifficultyParams;
   private readonly generateTeamOnStart: boolean;
-  private readonly pendingShots: PendingShot[] = [];
+  /** fila de tiros do doubleShot (adiados) — leitura pública p/ QA/testes:
+   *  é como a camada visual lê o mundo; o motor continua o único dono */
+  readonly pendingShots: PendingShot[] = [];
   private readonly everHadUnits: Record<Side, boolean> = {
     player: false,
     ai: false,

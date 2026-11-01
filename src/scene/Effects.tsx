@@ -734,6 +734,24 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 1.3,
               speed: 1.2,
             });
+          } else if (ev.species === 'areia') {
+            // rajada de grãos no alvo: a lufa se ABRE em explosão de areia
+            // (poeira ocre sobe em nuvem — a assinatura do deserto), estilhaça
+            // arenito compactado pelo chão (cacos quicando) e espirra grão
+            // cortante para os lados; o anel é a marca da abrasão
+            const lv = Math.max(6, Math.min(10, ev.level ?? 6));
+            spawnBurst(x, y, z, 0.45 + 0.05 * (lv - 6), 'lavaShard'); // cacos de arenito (paleta quente do shard lava)
+            spawnParticles(x, y, z, '#e6c181', 12 + (lv - 6) * 2, 2.4, 0.5, 0.35, 0.6); // poeira ocre subindo
+            spawnParticles(x, y, z, '#c99a4e', 9, 3.1, 0.55, -1.6, 0.5); // grão cortante espalhado
+            spawnParticles(x, y, z, '#8a6534', 6, 2.0, 0.5, -2.1, 0.7); // torrões caindo
+            spawnRing(x, 0.1, z, '#d8ae6a', 1.7 + 0.12 * (lv - 6)); // anel de abrasão
+            spawnRing(x, 0.16, z, '#ffe2ad', 0.9); // núcleo claro do impacto
+            spawnSmoke(x, y, z, 5, {
+              size: 0.12,
+              heat: 0.16, // poeira OCRE (nunca cinza queimada)
+              life: 1.1,
+              speed: 1.3,
+            });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e

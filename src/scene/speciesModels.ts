@@ -16,7 +16,8 @@ export type MatRole =
   | 'black'
   | 'accent'
   | 'trans'
-  | 'steam';
+  | 'steam'
+  | 'veil';
 
 export interface Part {
   g: GeoKind;
@@ -86,7 +87,7 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   magma: { body: '#5a4038', dark: '#281e1c', glow: '#ff5a1f', accent: '#ff8a2a', roughness: 0.9 },
   gelo: { body: '#eaf6ff', dark: '#5f7f96', glow: '#ffffff', accent: '#bfe4ff', bodyOpacity: 0.88, roughness: 0.1, metalness: 0.15 },
   vapor: { body: '#7f8794', dark: '#39414d', glow: '#ff9a4d', accent: '#c98a4b', roughness: 0.5, metalness: 0.6 },
-  areia: { body: '#d9b87a', dark: '#9c7c42', glow: '#ffe9a8', accent: '#bfe9ff', roughness: 0.75 },
+  areia: { body: '#e0bd78', dark: '#8a6534', glow: '#ffcf7a', accent: '#d9a441', roughness: 0.8, metalness: 0.05 },
   // Nv.7 — compostos
   tempestade: { body: '#7186a8', dark: '#333f58', glow: '#ffe066', accent: '#cfe9ff', roughness: 0.65 },
   obsidiana: { body: '#241d33', dark: '#120e1b', glow: '#8f5cff', accent: '#b9a6d9', roughness: 0.2, metalness: 0.55 },
@@ -919,25 +920,66 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     groups: { 0: 0.9, 1: -1.2 },
   },
 
-  // Terra+Ar — gênio do deserto (Nv.6): rajadas de grãos em disparo duplo
+  // Terra+Ar — GÊNIO DO DESERTO (Nv.6): duna que ganha vontade. MALHA DENSE
+  // (regra anti low-poly): funil de areia em lathe 44×40, tambores 16-20
+  // radiais × 4-6 anéis, toros 12×36, poliedros deslocados subdivididos.
+  // Silhueta: CAUDA em funil de areia varrida por véu de grão em turbilhão
+  // (role veil = shader de vento na paleta areia — SEM tint de equipe),
+  // CINTURA estreita e PEITO COLOSSAL (o truque de escala do gênio da Lâmpada),
+  // CABEÇA ALTA (o print engolia o rosto atrás do peito — cabeça/fez/penacho
+  // sobem para ler em qualquer câmera), barba de areia escorrendo na frente
+  // do peito, fez com broches e penacho de energia, braços de garra (tag arm)
+  // com pulseira de ouro e HALO ORBITAL de grãos compactos.
   areia: {
     bob: 0.07,
     parts: [
-      { g: 'cone', a: [0.58, 1.25, 9], p: [0, 0.62, 0], m: 'body' },
-      { g: 'sphere', a: [0.4, 12, 10], p: [0, 1.32, 0], m: 'body' },
-      { g: 'sphere', a: [0.29, 12, 10], p: [0, 1.74, 0], m: 'body' },
-      { g: 'torus', a: [0.31, 0.07, 8, 20], p: [0, 1.86, 0], r: [1.57, 0, 0.12], m: 'accent' },
-      { g: 'cone', a: [0.05, 0.22, 5], p: [0.1, 2.08, 0], r: [0, 0, -0.4], m: 'glow' },
-      { g: 'box', a: [0.3, 0.14, 0.12], p: [0, 1.63, 0.24], m: 'dark' },
-      ...mm(EYE(0.1, 1.8, 0.26)),
-      ...mm(PUPIL(0.1, 1.8, 0.26)),
-      { g: 'torus', a: [0.42, 0.05, 6, 22], p: [0, 1.12, 0], r: [1.4, 0.25, 0], m: 'accent' },
-      { g: 'torus', a: [0.5, 0.045, 6, 24], p: [0, 0.12, 0], r: [1.57, 0, 0], m: 'accent', group: 0 },
-      ...mm({ g: 'box', a: [0.06, 0.06, 0.06], p: [0.72, 0.5, 0.1], m: 'glow', group: 1 }),
-      { g: 'box', a: [0.05, 0.05, 0.05], p: [-0.66, 0.9, -0.3], m: 'glow', group: 1 },
-      { g: 'box', a: [0.045, 0.045, 0.045], p: [0.4, 1.4, 0.6], m: 'glow', group: 1 },
+      // ---- cauda: coluna de areia em funil (tornado plantado) + véu em
+      // turbilhão (o lathe é a CASCA translúcida; dentro, a coluna sólida).
+      // MALHA BEM DENSA (44×40): a casca translúcida é onde o "low poly"
+      // delata primeiro — a silhueta do funil não pode facetear ----
+      { g: 'vortex', a: [0.85, 0.2, 1.62, 44, 40, 1.7, 0.07], p: [0, 0.03, 0], m: 'veil', amp: 0.05 },
+      { g: 'cyl', a: [0.22, 0.3, 1.15, 16, 4], p: [0, 0.72, 0], m: 'glow', amp: 0.035 }, // núcleo aceso na duna
+      { g: 'torus', a: [0.5, 0.09, 12, 36], p: [0, 1.5, 0], r: [1.57, 0, 0], m: 'dark' }, // barra do manto de areia
+      // ---- cintura estreita → quadril → PEITO COLOSSAL (gênio da lâmpada) ----
+      { g: 'cyl', a: [0.46, 0.58, 0.52, 16, 4], p: [0, 1.76, 0], m: 'body', amp: 0.03 },
+      { g: 'cyl', a: [0.58, 0.76, 0.5, 18, 4], p: [0, 2.02, 0], m: 'body', amp: 0.032 },
+      { g: 'cyl', a: [1.12, 0.88, 0.62, 20, 5], p: [0, 2.49, 0], m: 'body', amp: 0.038 }, // peito: 2.24 de largura
+      // peitorais e tanques de areia compactada (placas de duna na frente)
+      ...mm({ g: 'box', a: [0.5, 0.28, 0.16], p: [0.34, 2.66, 1.02], m: 'body', amp: 0.02 }),
+      ...mm({ g: 'box', a: [0.26, 0.15, 0.1], p: [0.17, 2.32, 0.97], m: 'dark', amp: 0.015 }),
+      { g: 'box', a: [0.3, 0.14, 0.1], p: [0, 2.06, 0.86], m: 'dark', amp: 0.015 },
+      // ombreiras de duna (cume deslocado do shader de areia)
+      ...mm({ g: 'ico', a: [0.3, 1], p: [0.94, 2.66, 0], m: 'body', amp: 0.05 }),
+      // colarinho/charut de areia na base do pescoço (transição ombro→cabeça)
+      { g: 'torus', a: [0.42, 0.11, 12, 36], p: [0, 2.84, 0], r: [1.57, 0, 0], m: 'dark' },
+      { g: 'cyl', a: [0.22, 0.26, 0.34, 14, 3], p: [0, 2.88, 0], m: 'dark' }, // pescoço grosso
+      // ---- cabeça ALTA (y 3.06: lê ACIMA do peito colossal — a macro do
+      // print cobrou rosto visível), fez cônico + broches + penacho ----
+      { g: 'sphere', a: [0.44, 20, 16], p: [0, 3.06, 0], s: [1.06, 1, 1.02], m: 'body', amp: 0.02 },
+      ...mm({ g: 'sphere', a: [0.09, 12, 10], p: [0.17, 3.12, 0.44], m: 'white' }),
+      ...mm({ g: 'sphere', a: [0.048, 8, 6], p: [0.17, 3.12, 0.505], m: 'black' }),
+      // barba de areia escorrendo do queixo sobre o peito (PONTA embaixo)
+      { g: 'cone', a: [0.24, 0.62, 12, 5], p: [0, 2.72, 0.36], r: [3.14, 0, 0.1], m: 'dark', amp: 0.03 },
+      // fez (a pontinha do gorro do gênio) inclinado para trás + joias acesas
+      { g: 'cyl', a: [0.24, 0.4, 0.38, 16, 4], p: [0, 3.49, -0.04], r: [-0.16, 0, 0], m: 'accent', amp: 0.02 },
+      ...mm({ g: 'cone', a: [0.08, 0.18, 8, 3], p: [0.14, 3.36, 0.42], r: [1.57, 0, 0], m: 'glow' }),
+      { g: 'cone', a: [0.09, 0.46, 10, 4], p: [0, 3.86, -0.07], m: 'glow', amp: 0.05, flick: 0.12 }, // penacho
+      // ---- braços de garra (tag arm: o rig recua e varre na rajada dupla) ----
+      ...mm({ g: 'cyl', a: [0.14, 0.16, 0.62, 14, 4], p: [1.21, 2.62, 0], r: [0, 0, 1.57], m: 'body', amp: 0.025, tag: 'arm' }),
+      ...mm({ g: 'cyl', a: [0.12, 0.14, 0.5, 14, 4], p: [1.54, 2.47, 0.26], r: [0.92, 0, 1.57], m: 'body', amp: 0.025, tag: 'arm' }),
+      ...mm({ g: 'torus', a: [0.19, 0.05, 10, 36], p: [1.2, 2.62, 0], r: [0, 1.57, 0], m: 'accent' }), // pulseira de ouro
+      ...mm({ g: 'cone', a: [0.1, 0.34, 8, 3], p: [1.62, 2.32, 0.5], r: [1.45, 0, 0.1], m: 'dark', tag: 'arm' }),
+      ...mm({ g: 'cone', a: [0.08, 0.28, 8, 3], p: [1.58, 2.3, 0.52], r: [1.45, 0, 0.42], m: 'dark', tag: 'arm' }),
+      ...mm({ g: 'cone', a: [0.08, 0.28, 8, 3], p: [1.62, 2.3, 0.52], r: [1.45, 0, -0.32], m: 'dark', tag: 'arm' }),
+      // esteira de grão na garra (role veil: a rajada SENDO reunida na mão)
+      ...mm({ g: 'cone', a: [0.22, 0.6, 12, 4], p: [1.56, 2.5, 0.34], r: [1.3, 0, 0.15], m: 'veil', amp: 0.05, tag: 'arm' }),
+      // ---- halo orbital de grãos (a dune que gira ao redor do gênio) ----
+      { g: 'torus', a: [1.34, 0.06, 10, 40], p: [0, 2.0, 0], r: [1.42, 0, 0.12], m: 'veil', amp: 0.03, group: 0 },
+      ...mm({ g: 'ico', a: [0.12, 1], p: [1.32, 2.12, 0.3], m: 'glow', amp: 0.02, group: 1, flick: 0.12 }),
+      // ---- anel de areia rente ao chão (a dune rasteira que o gênio arrasta) ----
+      { g: 'ring', a: [0.78, 1.86, 48], p: [0, 0.04, 0], r: [-1.57, 0, 0], m: 'trans', amp: 0.03 },
     ],
-    groups: { 0: 2.0, 1: -2.6 },
+    groups: { 0: 1.5, 1: -1.9 },
   },
 
   // Magma+Areia — fortaleza de vidro negro, quase impenetrável -----------
