@@ -28,7 +28,12 @@ mkdirSync(OUT, { recursive: true });
 const W = 340; // recorte (CSS px) em volta da previsao do alvo
 const H = 280;
 const ZOOM = 3;
-const SHOT_LATENCY = 0.07; // s: do poll ate o pixel do print chegar no recorte
+// Latência do poll até o pixel do print. O print NÃO é instantâneo: entre a
+// sonda e os pixels existêm ~150 ms (evaluate + screenshot). O tiro do astral
+// voa ~19 u/s (range 11,5 => voo < 1 s), entao com 0,07 s o recorte chega
+// DEPOIS do impacto (o print mostra a fagulha do FX, nao a silhueta em voo).
+// Para silhuetas rapidas, passe SHOT_LATENCY=0.16 (compensa o custo do print).
+const SHOT_LATENCY = Number(process.env.SHOT_LATENCY ?? 0.07); // s: do poll ate o pixel do print chegar no recorte
 
 const browser = await chromium.launch({
   args: ['--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader'],
@@ -68,9 +73,11 @@ await page.waitForTimeout(1600);
 const canvas = page.locator('canvas').first();
 const box = await canvas.boundingBox();
 
-const poll = () =>
+const poll = (env) =>
   page.evaluate(
-    (hex) => {
+    ([hex, box, clip, dims]) => {
+      const W = dims.w;
+      const H = dims.h;
       const scene = (window.__threeRs || []).find((s) => s && s.isScene);
       if (!scene) return { err: 'sem scene' };
       // o estado do canvas pela alcà `__r3f.root` do fiber: camera, gl, tamanho
@@ -104,6 +111,52 @@ const poll = () =>
       };
       const hits = [];
       const pools = [];
+      // CENSO da janela do print: qualquer Mesh/Sprite/Instância cuja caixa
+      // (esfera aproximada) caia no retângulo do recorte — responde "o que é
+      // esse vulto branco no print" sem chute de cor
+      const near = [];
+      const CLIPX = clip ? clip.x : -1;
+      const CLIPY = clip ? clip.y : -1;
+      const bb = (o) => {
+        if (!o.geometry) return null;
+        if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+        const bs = o.geometry.boundingSphere;
+        const wp = o.getWorldPosition(new (o.position.constructor)(bs.center.x, bs.center.y, bs.center.z));
+        const sc = o.getWorldScale(new (o.position.constructor)(1, 1, 1));
+        const r = bs.radius * Math.max(sc.x, sc.y, sc.z);
+        return { c: [wp.x, wp.y, wp.z], r };
+      };
+      const pushNear = (label, c, r) => {
+        if (CLIPX < 0) return;
+        const q = proj(c[0], c[1], c[2]);
+        if (!q) return;
+        const sx = ((q.cx + 1) / 2) * box.width;
+        const sy = ((1 - q.cy) / 2) * box.height;
+        if (sx < CLIPX - r || sx > CLIPX + W + r || sy < CLIPY - r || sy > CLIPY + H + r) return;
+        const p2 = proj(c[0] + r, c[1], c[2]);
+        const spanPx = p2 ? Math.abs(((p2.cx + 1) / 2) * box.width - sx) * 2 : 0;
+        near.push(`${label} tela=(${Math.round(sx)},${Math.round(sy)}) ~${Math.round(spanPx)}px`);
+      };
+      scene.traverse((o) => {
+        const ms0 = Array.isArray(o.material) ? o.material : [o.material];
+        const matName = ms0[0]?.type ?? '?';
+        if (o.isInstancedMesh) {
+          const b = bb(o);
+          if (b) pushNear(`INST ${o.geometry?.type} x${o.count} ${matName}`, b.c, b.r + 1);
+        } else if (o.isSprite) {
+          const p = o.getWorldPosition(new (o.position.constructor)());
+          pushNear(`SPRITE ${matName} s=${o.scale.x.toFixed(2)}`, [p.x, p.y, p.z], o.scale.x);
+        } else if (o.isMesh && !o.isInstancedMesh && o.geometry) {
+          const p0 = ms0[0];
+          const emis = p0?.uniforms?.uGold?.value?.getHexString?.() ?? null;
+          const p = o.getWorldPosition(new (o.position.constructor)());
+          pushNear(
+            `MESH ${o.geometry?.type} ${matName}${emis ? ' G' + emis : ''}${p0?.transparent ? ' T' : ''}`,
+            [p.x, p.y, p.z],
+            (o.geometry.boundingSphere?.radius ?? 0.3) * 2,
+          );
+        }
+      });
       scene.traverse((o) => {
         if (!o.isInstancedMesh || o.count <= 0) return;
         const ms = Array.isArray(o.material) ? o.material : [o.material];
@@ -142,9 +195,9 @@ const poll = () =>
           });
         }
       });
-      return { hits, pools, pv, t: performance.now(), camPos: [...cam.position] };
+      return { hits, pools, near, pv, t: performance.now(), camPos: [...cam.position] };
     },
-    HEX || null,
+    [HEX || null, box, env ?? null, { w: W, h: H }],
   );
 
 const decorate = async (buf, cx, cy, r03) => {
@@ -199,8 +252,9 @@ await page.click('[data-testid="start-battle"]');
 let shots = 0;
 let prevMap = null; // instancia (pool+indice) vista na sonda anterior
 let prevT = 0;
+let lastClip = null; // recorte do ultimo print: a sonda seguinte faz o censo dele
 for (let i = 0; i < 900 && shots < 6; i++) {
-  const s = await poll();
+  const s = await poll(lastClip);
   if (s.err) {
     if (i % 60 === 0) console.log(`t${i} ${s.err}`);
     await page.waitForTimeout(45);
@@ -208,29 +262,63 @@ for (let i = 0; i < 900 && shots < 6; i++) {
   }
   // identidade por INSTANCIA (pool+indice): o pool recicla slots, entao a
   // velocidade so e confiavel entre duas sondas que viram o MESMO slot. So
-  // interessa o que esta VOANDO (mais de 3 u/s): o resto e slot parado do pool
+  // interessa o que esta VOANDO (mais de 3 u/s): o resto e slot parado do pool.
+  // Guard anti-reciclagem: um slot verdadeiro nao pode teleportar — a mais
+  // rapida da arvore (astral, 15*1,12~17 u/s) anda <0,25u num poll de 45-100ms,
+  // entao >1,2u de salto entre sondas e slot reusado por OUTRA volida e a
+  // velocidade e mentira (isso poluia a eleicao com motes da cauda).
   const cur = new Map(s.hits.map((h) => [`${h.key}#${h.idx}`, h]));
-  let best = null;
-  let bestSpeed = 0;
+  const pairs = [];
   const dt = prevMap ? (s.t - prevT) / 1000 : 0;
   if (prevMap && dt > 0.001 && dt < 0.5) {
     for (const [k, h] of cur) {
       const before = prevMap.get(k);
       if (!before) continue;
+      const jump = Math.hypot(h.at[0] - before.at[0], h.at[1] - before.at[1], h.at[2] - before.at[2]);
+      if (jump > 1.2) continue;
       const v = [
         (h.at[0] - before.at[0]) / dt,
         (h.at[1] - before.at[1]) / dt,
         (h.at[2] - before.at[2]) / dt,
       ];
       const sp = Math.hypot(...v);
-      if (sp > 3 && (sp > bestSpeed || (Math.abs(sp - bestSpeed) < 2 && h.rad > (best?.h.rad ?? 0)))) {
-        best = { h, v };
-        bestSpeed = sp;
-      }
+      if (sp > 3) pairs.push({ h, v, sp });
     }
   }
   prevMap = cur;
   prevT = s.t;
+  let best = null;
+  let bestSpeed = 0;
+  if (pairs.length) {
+    // direcao consensual do voo: a media das velozidades (peso pela velocidade).
+    // O CORPO do tiro e o acerto MAIS AVANCADO nessa direcao — as pontas de
+    // cauda/rasto atrasam dele (a cauda do cometa, a pedraria da bomba), e foi
+    // assim que a sonda parou de eleger o mote errado so porque a cor bate
+    const w = [0, 0, 0];
+    for (const p of pairs) {
+      w[0] += p.v[0] * p.sp;
+      w[1] += p.v[1] * p.sp;
+      w[2] += p.v[2] * p.sp;
+    }
+    const wl = Math.hypot(...w) || 1;
+    const dirc = [w[0] / wl, w[1] / wl, w[2] / wl];
+    let bestAdv = -Infinity;
+    for (const p of pairs) {
+      const adv = p.h.at[0] * dirc[0] + p.h.at[1] * dirc[1] + p.h.at[2] * dirc[2];
+      // empate (~3u de velozidade): escolhe o MAIOR raio (o corpo da silhueta,
+      // nao a farpa miuda do rasto), e na sequencia o mais rapido
+      const better =
+        adv > bestAdv + 0.05 ||
+        (adv > bestAdv - 0.05 &&
+          (p.h.rad > (best?.h.rad ?? 0) + 1e-9 ||
+            (Math.abs(p.h.rad - (best?.h.rad ?? 0)) < 1e-9 && p.sp > bestSpeed)));
+      if (better) {
+        best = p;
+        bestAdv = adv;
+        bestSpeed = p.sp;
+      }
+    }
+  }
   if (best) {
     const f = SHOT_LATENCY;
     const at = [best.h.at[0] + best.v[0] * f, best.h.at[1] + best.v[1] * f, best.h.at[2] + best.v[2] * f];
@@ -241,8 +329,10 @@ for (let i = 0; i < 900 && shots < 6; i++) {
       if (sx > box.x + 10 && sx < box.x + box.width - 10 && sy > box.y + 10 && sy < box.y + box.height - 10) {
         const clipX = Math.max(0, Math.min(box.x + box.width - W, sx - W / 2));
         const clipY = Math.max(0, Math.min(box.y + box.height - H, sy - H / 2));
+        lastClip = { x: clipX, y: clipY }; // a proxima sonda faz o censo desta janela
         const name = String(shots).padStart(2, '0');
         const raw = await page.screenshot({ clip: { x: clipX, y: clipY, width: W, height: H } });
+        const census = await poll(lastClip); // o censo da JANELA DESTE print (1 frame depois)
         writeFileSync(`${OUT}\\crop-${name}.png`, raw);
         writeFileSync(
           `${OUT}\\big-${name}.png`,
@@ -251,6 +341,7 @@ for (let i = 0; i < 900 && shots < 6; i++) {
         console.log(
           `shot ${shots} ${best.h.geo}@${JSON.stringify(best.h.at.map((n) => +n.toFixed(2)))} vel=${bestSpeed.toFixed(1)}u/s R${best.h.rock ?? '-'} G${best.h.gold ?? '-'} C${best.h.crack ?? '-'} 0,3u=${(best.h.span * box.width).toFixed(0)}px tela=(${Math.round(sx)},${Math.round(sy)})`,
         );
+        console.log(`  censo: ${JSON.stringify(census.near ?? census.err)}`);
         shots++;
       }
     }

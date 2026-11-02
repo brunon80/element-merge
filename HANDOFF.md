@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
 > Estado verificado em **02/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **313 testes / 30 arquivos, todos
+> `npx tsc --noEmit` OK · `npx vitest run` **326 testes / 31 arquivos, todos
 > verdes** · `npm run build` OK · git limpo em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -23,10 +23,55 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | **geodo** | 8 | ✅ figurino próprio + testes |
 | **abissal** | 8 | ✅ figurino próprio + testes |
 | **vulcânico** | 8 | ✅ figurino próprio + testes |
-| astral, colosso | 9 | ⬜ pendente — ruling do usuário: leitura **CÓSMICA** (galáxias/estrelas), escalando acima e DIFERENTE do DNA de constelação do Cósmico |
+| **astral** | 9 | ✅ figurino próprio + testes (espiral barrada de ONZE braços, plantado por onze raízes de gravidade) |
+| colosso | 9 | ⬜ pendente — ruling do usuário: leitura **CÓSMICA** (galáxias/estrelas), escalando acima e DIFERENTE do DNA de constelação do Cósmico e da espiral do Astral |
+| **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **quasar supermassivo com disco de acreção, grande, ataque em rajada de energia** |
 | **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **quasar supermassivo com disco de acreção, grande, ataque em rajada de energia** |
 
-**Último monstro melhorado: VULCANICO (Nv.8 — plasma+obsidiana: o VULCÃO DE
+**Último monstro melhorado: ASTRAL (Nv.9 — cósmico+abissal: o TITÃO DE ESPIRAL
+BARRADA, a galáxia PLANTADA por onze raízes de gravidade: caça `farthest`,
+`pierce 2` + `chain 3·f0,55` + `doubleShot 0,5`, o projétil MAIS RÁPIDO da árvore
+(15) no MAIOR alcance (11,5) com a cadência mais rápida (1,2); DNA DE ONZE EM
+TUDO — todo `cyl`/`cone` do figurino tem ONZE faces (`rod11`/`spike11`/`spiralArm`;
+nenhum outro figurino usa onze: Geodo CINCO, Cristal SEIS, Abissal SETE, Cósmico
+OITO, Vulcânico NOVE) e o onze manda nas CONTAGENS: onze braços em log-espiral
+ρ = 1,4·e^(0,2θ) varrida até θ = 1,7 (nós afinando 0,15→0,09, varas
+0,09→0,066 SOLDADAS nó a nó e emendando na TANGENTE da própria espiral, punho
+enterrado em ρ 0,6 no núcleo), ONZE peças na BARRA da espiral barrada (seis nós em
+x ±0,24/±0,66/±1,02 cavaletados ACIMA do equador da lente + cinco varas no meio
+exato de cada par), ONZE peças na cara, ONZE raios de coroa INTERCALADOS aos ONZE
+jatos polares (meio passo de 11 = π/11) com ONZE contas de geada na boca do eixo
+de cada jato, ONZE varas de gravidade + ONZE almofadas-âncora a 0,04 do piso, ONZE
+nós de cauda de maré (ρ 1,98→2,98 subindo de y 2,86 a 4,24: é a cauda que estica
+a pegada para o FUNDO do tabuleiro) e TRÊS cintas de ONZE girando em QUATRO
+velocidades (cinta externa 0, halo globular 1, chuva de matéria 2 e o disco
+rígido 3 — a rotação diferencial é o motor visual da espécie); ASSINATURA = o
+DISCO INCLINADO (`ASTRAL_TILT` 0,3 — a câmera da arena olha a ~18° e um disco
+deitado leria uma fatia) com a CABEÇA LEVANTADA num pescoço de gravidade para os
+braços varrerem POR BAIXO dela e a BOCA DE BURACO NEGRO: aro âmbar ABERTO
+(`openEnded`) com o poço de BREU dentro, MENOR que o aro; FACE ONZE-face em
+máscara CLARA com sobrolho e queixo ESCUROS, olhos de BREU com faísca de geada NA
+FRENTE (branco sobre máscara branca não lê); PALETA = o Cósmico do avesso — motor
+âmbar `#ffb347` (`ASTRAL_STARLIGHT` = `projectileColor` = `VISUALS.glow` =
+`uCrack` de TODA a pedra, inclusive a pedra BRONZE dos traços) com ACENTO geada
+quase branca `#cfe4ff` (`ASTRAL_FROST` = máscara, pontas, bocas dos jatos,
+`uCool` do plasma) sobre corpo grafite-violetu de vazio (`#4a3c60`/`#241d30`,
+breu `#141019`); os TRAÇOS DE LUZ são pedra OPACA com o veio aceso (plasma em
+vara fina vira tábua) e o relevo vem do TAMANHO da peça (≤ ¼ da menor
+meia-dimensão dela); coreografia 0,74 s com 70% de afinação (a MAIOR fração da
+árvore: o disco ENCURCA sobre o bojo e destora no estouro) e todos os canais
+assentam no zero ANTES do último frame do coice; projétil = COMETA de breu com
+veio âmbar, miolo de plasma e rastro PONTILHADO de geada; impacto = três lascas
+de ONZE faces + anel âmbar com a geada POR FORA (o inverso exato do pai Cósmico)
++ chuva de breu + fagulhas de geada subindo + pó de disco (`heat` 0,25);
+invólucro medido halfX 2,534 / halfZ 2,899 / minY 0,040 / maxY 4,730 com formTop
+5,5; **228 peças / 33.966 vértices / 23.272 triângulos** e 13 pinos em
+`src/tests/astralProgression.test.ts`) — commit mais recente de `main`
+(`git log -1`). Anteriores: vulcânico `e4b4463`, abissal `e38d018`, geodo
+`8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
+`9d7a881`.
+
+**O VULCANICO (Nv.8 — plasma+obsidiana: o VULCÃO DE
 NOVE ESTRATOS plantado na própria cacta de escória, a `catástrofe andante`:
 `moveSpeed 0` (a montanha não anda — é a paisagem que ruge), caça `closest`,
 `heavy` + `splash 2,0` + `burn 0,4`; DNA DE NOVE EM TUDO — todo `cyl`/`cone` do
@@ -58,15 +103,16 @@ BOMBA de nove faces (0,84 de maior diâmetro, 0,66 de comprimento: o naco mais
 GORDO da árvore) com o plug de lava do lago entupindo a boca e nove escórias em
 três cintas; impacto = anel de queimadura 3,0·k (a mais LARGA da árvore) + chuva
 de basalto + brasa subindo + farpas de pedra-pomes; 183 peças / 12.380 vértices /
-10.308 triângulos)** — commit mais recente de `main` (`git log -1`). Anteriores:
+10.308 triângulos)** — commit `e4b4463`. Anteriores:
 abissal `e38d018`, geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
 `9d7a881`.
 
-**Próximo: ASTRAL e COLOSSO (Nv.9)** e depois o primordial
+**Próximo: COLOSSO (Nv.9)** e depois o primordial
 (Nv.10) na ordem da tabela. RULING DO USUÁRIO para o
-Nv.9/Nv.10: as espécies Nv.9 (astral, colosso) têm que ler **CÓSMICO —
-aparência de galáxia/estrelas** (escalar acima e diferir do Cósmico: pensar
-em galáxia espiral, enxames de estrelas, anéis orbitais); o primordial
+Nv.9/Nv.10: as espécies Nv.9 (o astral saiu primeiro, falta o colosso) têm que ler
+**CÓSMICO — aparência de galáxia/estrelas** (escalar acima e diferir do Cósmico e
+da espiral barrada do Astral: o colosso pensa em aglomerado/enxame massivo,
+anéis orbitais e pedra de fundo); o primordial
 Nv.10 tem que parecer um **QUASAR SUPERMASSIVO com disco de acreção**,
 grande, com ataque em rajada de energia.
 
@@ -334,6 +380,59 @@ grande, com ataque em rajada de energia.
   finito ≥0,03 (tabuleiro/anéis de FX são `PlaneGeometry` sem raio) + a matiz do
   núcleo, e a velocidade por IDENTIDADE DE INSTANCIA (pool+índice) — o pool
   recicla slots e "velocidade" sai 0.
+
+### Lições da Astral (galáxia plantada por gravidade — as oito que o print cobrou)
+
+- **Traço ESTRUTURAL aceso é PEDRA OPACA, nunca plasma**: `makeCoreMaterial` é
+  `transparent: true`, `depthWrite: false`, `DoubleSide` e SEM `blending` (logo
+  `material.blending === NormalBlending` — o pino que procurava
+  `AdditiveBlending` estava errado). Numa vara de 0,055 o plasma mostra a própria
+  face de trás e o traço ENGORDA até virar TÁBUA: os onze braços do astral
+  viraram onze pás e o disco inteiro sumia no print. Régua: structure =
+  `makeStoneMaterial` (opaco, escreve fundo, `FrontSide`) e aditivo só onde é
+  GOELA/OLHO/MIOLO (`core.rim`, a faísca do olho, o caroço do cometa).
+- **Com dezenas de traços acesos, a cor de identidade mora no VEIO, não na
+  pedra** (a leitura que o print da arena arrancou): 78 peças `m:'glow' com pedra
+  âmbar `#ffb347` somavam na câmera de longe e a galáxia lia LÂMPADA DE LAVA — e
+  baixar `crackGlow` de 1,3 para 0,85 NÃO mudou nada, porque a cor vinha do
+  `rockA`. Correto: pedra BRONZE escura (`rockA #a4611f` / `rockB #3f2410`) com o
+  âmbar do motor no `crack` (`crackGlow 1,5`, `crackBoost 1,3`, veio FINO 0,035)
+  e, para fechar o contraste, a casca do corpo CLAREADA (`#3a3048 → #4a3c60`) — o
+  bojo é que tem que ler de longe. Pino de luma: pedra do traço < 0,6·luma do
+  motor.
+- **Relevo vem do TAMANHO da peça, nunca do humor do artista**: o shader da
+  pedra desloca vértice AO LONGO DA NORMAL (`nrm*((n1-0,5)*1,6+(n2-0,5)*0,8)*amp`),
+  então `amp` da ordem do raio da peça INFLA/AFIA (braço de 0,09 com amp 0,04 já
+  era pá). A régua do rig: `amp = min(uAmp, rMin·0,25)` com `rMin` = menor
+  meia-dimensão da caixa ESCALADA da peça, e o valor arredondado entra NA CHAVE do
+  cache de materiais (senão duas peças de tamanhos diferentes dividem o mesmo
+  material).
+- **CONTINUIDADE DE POSE é pino, não sensação**: o `align` parava em 1 e o
+  `flare` em 0,5 no último frame do coice — a cabeça e os jatos cortavam num
+  frame só e o titã dava um SALTO a cada tiro. Agora `relax = 1 − r^2,2` multiplica
+  align/flare e os seis canais chegam a ~0 antes do fim da janela (0,999·janela:
+  align 0,007 / snap 0,001). Pine `attackPose(0.999·window)` e a continuidade no
+  frame do tiro (±0,001) para `flinch/align/charge`; só `snap/quake/flare` são
+  impulso DECLARADO (podem descontínuar).
+- **`MODELS.<sp>.bob` vale também para quem tem rig registrado** (o `UnitView`
+  aplica o `bob` no grupo inteiro): com bob 0,05 o Nv.9 plantado afundava as onze
+  almofadas e o pino `minY ≥ -0,01` ia abaixo. Titã plantado = `floatY 0` **e**
+  `bob ≤ 0,02`.
+- **Pine por FÓRMULA DE IDENTIDADE, nunca por "as duas peças mais próximas"**:
+  agrupar os nós pela azimute da log-espiral misturava braços vizinhos (só 0,571
+  rad de passo), a caixa do pino de jato é inflada pela vara INCLINADA (comparar
+  a conta de geada com o topo da caixa, não com o topo do EIXO `dir·half`), e a
+  azimute de coroa-vs-jato tem que medir no PÉ do jato (a vara é varrida para −z:
+  centro e topo mentem). Agrupe pelo φ do espichão e exija `angGap < 0,01` — cada
+  nó pertence MESMO a um braço.
+- **A cara ONZE-face não pode repetir a própria máscara**: olho CLARO em máscara
+  CLARA desaparecia no close. Olho = BREU (`#0d0a12`) com a faísca de geada na
+  FRENTE (z 0,38 → 0,47), e o par é Espelhado pelo `mm` do figurino (pine
+  `|x₀| == |x₁|` com 6 casas, não `x₀ + x₁ ≈ 0` entre peças de lados trocados).
+- **Flaky conhecido da suíte**: `src/tests/ui.test.tsx > Tempo persistido entre
+  partidas > sobreviventes voltam de graça` ("expected 0 to be greater than or
+  equal to 1") falhou uma vez na suíte inteira, não reproduziu nem sozinho nem na
+  segunda corrida completa — não é do figurino, não mexer nele.
 
 ### Ferramentas de QA
 

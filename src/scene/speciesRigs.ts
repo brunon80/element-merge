@@ -20,6 +20,7 @@ import { CosmicoRig } from './CosmicoRig';
 import { GeodoRig } from './GeodoRig';
 import { AbissalRig } from './AbissalRig';
 import { VulcanRig } from './VulcanRig';
+import { AstralRig } from './AstralRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -67,6 +68,11 @@ export interface SpeciesRigProps {
  * zigue-zague até a CALDEIRA ACESA no topo — soalho claro, poço de breu e nove
  * fumarolas com tampa de escória dobradiçada no aro — com a face no flanco em
  * placa clara sobre pedra escura e nove veias de lava descendo do ombro ao pé)
+ * e Astral (titão de espiral barrada: galáxia própria plantada por onze raízes
+ * de gravidade — bojo com barra cavalgada, onze braços em log-espiral num corpo
+ * rígido que gira em velocidade DIFERENTE das três cintas orbitais, cauda de
+ * maré plantada e cabeça levantada num pescoço de gravidade ACIMA do plano do
+ * disco, com a boca de buraco negro de onze faces cuspindo os cometas)
  * já têm figurino próprio; as demais espécies da árvore ainda usam o rig padrão:
  * a busca é por espécie e o fallback é o rig padrão.
  */
@@ -91,4 +97,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   geodo: GeodoRig,
   abissal: AbissalRig,
   vulcanico: VulcanRig,
+  astral: AstralRig,
 };

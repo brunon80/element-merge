@@ -634,7 +634,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
       moveSpeed: 0,
       targeting: 'farthest',
       damageElement: 'air',
-      projectileColor: '#8fd6ff',
+      projectileColor: '#ffb347',
       resist: { air: 0.35, fire: 0.2, water: -0.2, earth: 0.05 },
       abilities: [
         { kind: 'chain', jumps: 3, factor: 0.55 },

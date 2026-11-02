@@ -131,8 +131,15 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   // uGold do lago de lava, das veias e da bomba). A brasa #ff9d3d (= accent) é
   // SEMPRE acento: olhos, coração, fagulhas e anéis do FX
   vulcanico: { body: '#443c42', dark: '#1e1a20', glow: '#ff4d12', accent: '#ff9d3d', roughness: 0.9 },
-  // Nv.9 — lendários
-  astral: { body: '#39406e', dark: '#1a1f3a', glow: '#8fd6ff', accent: '#ffe9a8', roughness: 0.35 },
+  // Nv.9 — o TITÃO DE ESPIRAL BARRADA: o corpo é o GRAFITE-VIOLEU do vazio
+  // entre estrelas (nunca a pedra-lua azul do pai Cósmico) e a IDENTIDADE é o
+  // âmbar-de-bojo #ffb347 (= projectileColor do motor = glow daqui = uCrack de
+  // toda a pedra = uGold do fio dos onze braços, dos jatos e dos cometas). O
+  // ACENTO é a geada quase branca #cfe4ff (= a máscara da cara, os nós de
+  // estrelas jovens dos braços, as pontas dos jatos e o rastro dos cometas):
+  // o Cósmico é azul-estrela com acento ouro, este é ouro com acento geada —
+  // virado do avesso de propósito, para um print separar o pai do filho
+  astral: { body: '#2a2338', dark: '#141019', glow: '#ffb347', accent: '#cfe4ff', roughness: 0.5 },
   colosso: { body: '#6e5c50', dark: '#372c26', glow: '#ff7a3d', accent: '#c77dff', roughness: 0.8 },
   // Nv.10 — primordial
   primordial: { body: '#d8e4f2', dark: '#5c6c85', glow: '#fff3c4', accent: '#9ad0ff', roughness: 0.3, metalness: 0.25 },
@@ -482,6 +489,178 @@ const spike9 = (
     p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
     r: aim([ux, uy, uz]),
   };
+};
+
+/**
+ * As medidas do disco do ASTRAL (amarradas em teste — o rig e o figurino leem
+ * as MESMAS constantes): o plano do disco, o pé do braço (onde ele solda na
+ * borda do bojo) e a ponta da espiral. ONZE braços numa log-espiral
+ * r(θ) = 1,4·e^(0,2θ) varrida até θ = 1,7 rad (97° de aberta, ponta em ρ 1,97).
+ */
+export const ASTRAL_DISK_Y = 2.92;
+export const ASTRAL_ARM_FOOT = 1.4;
+export const ASTRAL_ARM_TIP = ASTRAL_ARM_FOOT * Math.exp(0.2 * 1.7);
+/** inclinação de descanso do disco (rad). A câmera da arena olha o tabuleiro a
+ *  ~18° da horizontal: um disco DEITADO lê como uma fatia (a galáxia some). O
+ *  disco do astral vem ao print inclinado sobre o próprio bojo — o eixo de
+ *  rotação diferencial é essa normal inclinada, e o rig aplica a MESMA
+ *  inclinação no corpo rígido do disco (grupo 3) e na cinta externa (grupo 0),
+ *  que vivem no MESMO plano; as outras duas cintas são halo globular e ficam
+ *  no plano horizontal (por isso nunca colidem com o disco inclinado) */
+export const ASTRAL_TILT = 0.3;
+
+/** VARA DE ESPIRAL / VARA DE GRAVIDADE do ASTRAL: um `cyl` de ONZE FACES (o
+ *  onze da galáxia de onze braços: nenhum outro figurino da árvore usa onze —
+ *  o Geodo é CINCO, o Cristal SEIS, o Abissal SETE, o Cósmico OITO, o Vulcânico
+ *  NOVE), com anéis ≥7 por unidade (o fiamento fino do braço e a vara comprida
+ *  da gravidade têm que aguentar o close sem virar low-poly) e afinando da raiz
+ *  para a ponta: `a` é o pé (gordo, soldado no bojo), `b` é a ponta. */
+const rod11 = (
+  a: [number, number, number],
+  b: [number, number, number],
+  thick: number,
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const dz = b[2] - a[2];
+  const len = Math.hypot(dx, dy, dz);
+  return {
+    ...part,
+    g: 'cyl',
+    a: [thick * 0.72, thick, len + 0.04, 11, Math.max(4, Math.round(len * 7))],
+    p: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2],
+    r: aim([dx, dy, dz]),
+  };
+};
+
+/** NÓ DE ESTRELA JOVEM do ASTRAL (ponta de braço, ponta de jato, ponta de
+ *  vara): cone de ONZE FACES com a base enterrada no nó (pino enterrado não é
+ *  ponta solta — a MESMA receita do `spike9`/do `fang7`). */
+const spike11 = (
+  c: [number, number, number],
+  nodeR: number,
+  len: number,
+  thick: number,
+  d: [number, number, number],
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const L = Math.hypot(d[0], d[1], d[2]) || 1;
+  const ux = d[0] / L;
+  const uy = d[1] / L;
+  const uz = d[2] / L;
+  const back = nodeR - 0.05; // base enterrada no nó
+  return {
+    ...part,
+    g: 'cone',
+    a: [thick, len, 11, 1],
+    p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
+    r: aim([ux, uy, uz]),
+  };
+};
+
+/**
+ * UM DOS ONZE BRAÇOS de espiral do ASTRAL (a assinatura da galáxia): quatro nós
+ * de estrelas jovens (pedra do VAZIO com o veio âmbar do motor aceso por dentro)
+ * ligados por três varas de onze faces (o fio de luz do braço), emendando no
+ * vazio numa PONTA DE GEADA que segue a própria log-espiral e ARRAIGADA no bojo
+ * por um ESPICHÃO de onze faces que vai do pé do braço (ρ 1,4) até ρ 0,6 —
+ * enterrado no núcleo redondo, em qualquer azimute (o pé em ρ 1,4 fica FORA da
+ * circunsfera da lente no plano, 1,196: sem o espichão o braço ficaria
+ * flutuando). Todas as NOVE peças do braço
+ * vão no grupo orbital 3 — o disco INTEIRO gira como corpo rígido (o rig trata
+ * o grupo como um wrapper só), e a rotação diferencial fica nas cintas.
+ */
+const spiralArm = (phi: number): Part[] => {
+  const th = [0, 0.57, 1.13, 1.7];
+  const knot = [0.15, 0.13, 0.11, 0.09];
+  const pts = th.map((t) => {
+    const rho = ASTRAL_ARM_FOOT * Math.exp(0.2 * t);
+    const a = phi + t;
+    return [
+      rho * Math.cos(a),
+      ASTRAL_DISK_Y + 0.02 + 0.06 * Math.sin(t * 1.45),
+      rho * Math.sin(a),
+    ] as [number, number, number];
+  });
+  const nodes: Part[] = pts.map((p, k) => ({
+    g: 'ico',
+    a: [knot[k], 1],
+    p,
+    m: 'body',
+    tag: 'arm.node',
+    flick: 0.14 + k * 0.05,
+    group: 3,
+  }));
+  const rods = [0, 1, 2].map((k) =>
+    rod11(pts[k], pts[k + 1], 0.09 - k * 0.012, {
+      m: 'glow',
+      tag: 'arm.rod',
+      group: 3,
+      flick: 0.05,
+    }),
+  );
+  // o espichão: pé do braço -> enterrado no núcleo (ρ 0,6 < raio do núcleo 0,8)
+  const foot = pts[0];
+  const spoke = rod11(
+    // o punho desce abaixo do equador (y 2,85) e entra pela BARRIGA do núcleo:
+    // assim o espichão passa POR BAIXO da barra (que cavalga em y 3,16 e vai de
+    // x -1,23 a 1,23 com raio 0,13) com folga de 0,31 vertical, e ainda assim
+    // some dentro do bojo — em ρ 0,6 ele está enterrado nos dois
+    [0.6 * Math.cos(phi), ASTRAL_DISK_Y - 0.07, 0.6 * Math.sin(phi)],
+    foot,
+    0.085,
+    { m: 'dark', tag: 'arm.spoke', group: 3, amp: 0.012 },
+  );
+  // a ponta emenda na direção da própria log-espiral: o tangente é
+  // r·eφ + (dr/dθ)·eρ com dr/dθ = 0,2·r (por isso ele só sai 20% para fora)
+  const a = phi + th[3];
+  const rad = 0.2 * ASTRAL_ARM_TIP;
+  const L = Math.hypot(rad, ASTRAL_ARM_TIP);
+  const wr = rad / L;
+  const wt = ASTRAL_ARM_TIP / L;
+  const tip = spike11(
+    pts[3],
+    knot[3],
+    0.3,
+    0.07,
+    [wr * Math.cos(a) - wt * Math.sin(a), 0.16, wr * Math.sin(a) + wt * Math.cos(a)],
+    { m: 'accent', tag: 'arm.tip', group: 3, flick: 0.24 },
+  );
+  return [spoke, ...nodes, ...rods, tip];
+};
+
+/**
+ * A CAUDA DE MARÉ do ASTRAL (o que a galáxia arrancou e deixou para trás):
+ * ONZE nós de geada descrevendo um arco que sai da borda do disco (ρ 1,98),
+ * curva para +X e sobe até ρ 2,98 — é o que estica a pegada do titã para o
+ * FUNDO do tabuleiro (meia-profundidade maior que a meia-largura). Diferente
+ * dos braços, a cauda NÃO gira com o disco: é esteira de maré plantada, e os
+ * braços varrem por baixo dela. As cinco varas ligam nós alternados (o fio
+ * emendado só nos nós mais firmes — os outros estrelam soltos na maré).
+ */
+const tidalTail = (): Part[] => {
+  const pts: [number, number, number][] = [];
+  for (let k = 0; k < 11; k++) {
+    const t = k / 10;
+    const rho = 1.98 + 1.0 * t;
+    const ang = -Math.PI / 2 + 0.34 * t;
+    // a cauda SAI do plano do disco e sobe (maré arrancada): o disco está
+    // DEITADO 0,3 rad no print e a borda de trás sobe até y ~3,6 — uma cauda
+    // rasteira seria atravessada pela cinta externa a cada volta
+    pts.push([rho * Math.cos(ang), ASTRAL_DISK_Y - 0.06 + 1.38 * t * t, rho * Math.sin(ang)]);
+  }
+  const parts: Part[] = pts.map((p, k) => ({
+    g: 'ico',
+    a: [0.16 - 0.07 * (k / 10), 1],
+    p,
+    m: 'accent',
+    tag: 'tail.node',
+    flick: 0.16 + (k % 3) * 0.05,
+  }));
+  for (let k = 0; k + 2 < pts.length; k += 2)
+    parts.push(rod11(pts[k], pts[k + 2], 0.055, { m: 'glow', tag: 'tail.rod', flick: 0.08 }));
+  return parts;
 };
 
 /** cinco direções de cacho (o geodo brota em CINCOS: cinco pontas por mamelon,
@@ -2470,25 +2649,199 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
 
   // Cósmico+Abissal — titão celestial que dobra céu e mar (Nv.9) ---------
   astral: {
-    floatY: 0.45,
-    bob: 0.12,
+    // PLANTADO PELAS ONZE RAÍZES DE GRAVIDADE (floatY 0, bob 0): o titã não
+    // boia — ele segura a própria galáxia no slot com onze varas de gravidade
+    // que descem do núcleo e pousam em onze âncoras rente ao piso (a régua
+    // contra o Abissal, pai que boia, e contra o Cósmico, pai plantado na nuvem).
+    // DNA DA ESPÉCIE = ONZE EM TUDO: todo `cyl`/`cone` do figurino tem ONZE
+    // FACES (o Geodo é CINCO, o Cristal SEIS, o Abissal SETE, o Cósmico OITO, o
+    // Vulcânico NOVE — o onze é deste titã) e as contagens seguem o onze: ONZE
+    // braços de espiral, ONZE peças na barra, ONZE peças na cara, ONZE raios de
+    // coroa, ONZE jatos + ONZE pontas de geada para cima, ONZE varas de
+    // gravidade + ONZE âncoras para baixo, ONZE nós de cauda de maré e TRÊS
+    // cintas orbitais de ONZE (mais o disco de ONZE braços girando na quarta
+    // velocidade — a rotação diferencial, o motor visual da espécie).
+    // A ASSINATURA é o DISCO DE ESPIRAL BARRADA visto de topo: a lente elíptica
+    // com a BARRA cavalgada no equador, onze braços em log-espiral
+    // r(θ)=1,4·e^(0,2θ) arrigados ao bojo por um espichão de onze faces (o pé
+    // em ρ 1,4 e o punho enterrado em ρ 0,6 no núcleo) e a COROA do bojo
+    // girando com eles. Nenhum braço encosta na cara: a meia-largura da cara é
+    // ρ 0,795 e o pé do braço mais fechado já nasce em ρ 1,4 (folga de 0,6), e a
+    // cabeça inteira fica ACIMA do plano — o topo dos nós do braço é y ~3,1 e a
+    // base da cara é y 3,62. A cara ONZE-face tem a boca de buraco negro (aro
+    // âmbar aberto com o breu do poço dentro) cuspindo os cometas.
+    // A PALETA vira o Cósmico do avesso: corpo GRAFITE-VIOLEU de vazio (nunca a
+    // pedra-lua azul da constelação), IDENTIDADE âmbar-de-bojo #ffb347 (= a cor
+    // do motor = o VEIO de toda a pedra, inclusive a pedra bronze dos traços) e
+    // ACENTO geada quase branca #cfe4ff (as pontas dos braços, as bocas dos
+    // jatos, a máscara).
+    floatY: 0,
+    // PLANTADO: o bob é miúdo de propósito (a régua do Geodo/Vulcânico, Nv.9
+    // plantados) — com bob de 0,05 o UnitView levantaria/soterraria as onze
+    // âncoras (a base das almofadas fica a só 0,04 do piso)
+    bob: 0.012,
     parts: [
-      { g: 'sphere', a: [0.5, 12, 10], p: [0, 1.7, 0], m: 'body' },
-      { g: 'sphere', a: [0.3, 10, 8], p: [0, 2.45, 0], m: 'body' },
-      { g: 'ico', a: [0.2], p: [0, 1.7, 0], m: 'glow', flick: 0.12 },
-      ...mm(WEYE(0.13, 2.5, 0.26)),
-      ...mm(WPUPIL(0.13, 2.5, 0.26)),
-      { g: 'torus', a: [0.85, 0.04, 8, 32], p: [0, 1.7, 0], r: [1.2, 0.3, 0], m: 'accent', group: 0 },
-      { g: 'torus', a: [0.7, 0.035, 8, 30], p: [0, 1.7, 0], r: [1.57, 0, 0.9], m: 'glow', group: 1 },
-      { g: 'torus', a: [0.55, 0.03, 8, 28], p: [0, 1.7, 0], r: [1.35, -0.4, 0], m: 'accent', group: 2 },
-      ...mm({ g: 'sphere', a: [0.08, 8, 6], p: [0.9, 1.85, 0.1], m: 'glow', group: 0, flick: 0.3 }),
-      { g: 'sphere', a: [0.07, 8, 6], p: [-0.75, 1.5, 0.45], m: 'accent', group: 1, flick: 0.3 },
-      { g: 'sphere', a: [0.06, 8, 6], p: [0.4, 2.3, -0.6], m: 'glow', group: 2, flick: 0.3 },
-      { g: 'drop', a: [0.3, 0.9, 18, 16], p: [0, 3.1, 0], m: 'glow', flick: 0.3, amp: 0.12 },
-      { g: 'drop', a: [0.14, 0.45, 14, 12], p: [0.2, 3.5, -0.1], m: 'accent', flick: 0.35, amp: 0.08 },
-      ...mm({ g: 'capsule', a: [0.06, 0.5], p: [0.45, 0.7, 0], r: [0, 0, -0.5], m: 'body' }),
+      // ===== O BOJO: lente achatada (o bojo de uma espiral vista de topo é uma
+      // lentícula grossa no plano) com o núcleo redondo por cima =====
+      { g: 'ico', a: [0.92, 1], p: [0, ASTRAL_DISK_Y, 0], s: [1.3, 0.44, 1.3], m: 'dark', amp: 0.022, tag: 'lens' },
+      { g: 'ico', a: [0.98, 2], p: [0, ASTRAL_DISK_Y, 0], m: 'body', amp: 0.016, tag: 'nucleo' },
+
+      // ===== A BARRA (a SB da espiral BARRADA): ONZE peças atravessando o
+      // núcleo — seis nós + cinco varas — CAVALETADAS acima do equador do bojo
+      // (y = plano do disco + 0,24), senão ela fica soterrada na barriga da
+      // lente e o print mostra só uma bola roxa lisa. Os dois nós de fora em
+      // x ±1,02 (raio alongado 1,25 ⇒ ponta em ρ 1,27) chegam no ombro da lente
+      // (ρ 1,196) e meio somem nela: a barra sai da barriga, atravessa o
+      // equador e morre enterrada no ombro. A barra vai no MESMO grupo rígido
+      // do disco (3): barra e braços giram juntos, como o padrão rígido de uma
+      // galáxia de verdade; o que gira em velocidade DIFERENTE são as cintas =====
+      ...mm({ g: 'ico', a: [0.26, 1], p: [0.24, ASTRAL_DISK_Y + 0.24, 0], s: [1.15, 0.8, 0.95], m: 'body', tag: 'bar.node', group: 3 }),
+      ...mm({ g: 'ico', a: [0.24, 1], p: [0.66, ASTRAL_DISK_Y + 0.24, 0], s: [1.2, 0.78, 0.9], m: 'body', tag: 'bar.node', group: 3 }),
+      ...mm({ g: 'ico', a: [0.22, 1], p: [1.02, ASTRAL_DISK_Y + 0.24, 0], s: [1.25, 0.75, 0.9], m: 'body', tag: 'bar.node', group: 3 }),
+      rod11([-0.24, ASTRAL_DISK_Y + 0.24, 0], [0.24, ASTRAL_DISK_Y + 0.24, 0], 0.13, { m: 'dark', tag: 'bar.rod', group: 3 }),
+      rod11([-0.24, ASTRAL_DISK_Y + 0.24, 0], [-0.66, ASTRAL_DISK_Y + 0.24, 0], 0.12, { m: 'dark', tag: 'bar.rod', group: 3 }),
+      rod11([0.24, ASTRAL_DISK_Y + 0.24, 0], [0.66, ASTRAL_DISK_Y + 0.24, 0], 0.12, { m: 'dark', tag: 'bar.rod', group: 3 }),
+      rod11([-0.66, ASTRAL_DISK_Y + 0.24, 0], [-1.02, ASTRAL_DISK_Y + 0.24, 0], 0.105, { m: 'dark', tag: 'bar.rod', group: 3 }),
+      rod11([0.66, ASTRAL_DISK_Y + 0.24, 0], [1.02, ASTRAL_DISK_Y + 0.24, 0], 0.105, { m: 'dark', tag: 'bar.rod', group: 3 }),
+
+      // ===== ONZE BRAÇOS DE ESPIRAL (a assinatura): cada um dos NOVE peças do
+      // braço é corpo rígido do disco. O PUNHO do espichão (ρ 0,6, y 2,85)
+      // morre enterrado no núcleo redondo (r 0,98) e na barriga da lente, o pé
+      // solda em ρ 1,4 e a ponta da log-espiral morre em ρ 1,97 — e nenhum dos
+      // nós de estrela passa a menos de ρ 1,24 do eixo, enquanto a cara e a
+      // coroa param em ρ 1,05 (folga radial) e a cabeça inteira fica ACIMA do
+      // plano do disco (topo do espichão inclinado y ~3,34 contra base da
+      // cabeça y 3,62), então os onze braços varrem POR BAIXO da cara =====
+      ...Array.from({ length: 11 }, (_, k) => spiralArm(Math.PI / 11 + (k / 11) * Math.PI * 2)).flat(),
+
+      // ===== A CAUDA DE MARÉ: onze nós varrendo para o fundo do tabuleiro =====
+      ...tidalTail(),
+
+      // ===== ONZE JATOS PARA CIMA + ONZE PONTAS DE GEADA: o jato que a galáxia
+      // cospe pelo eixo. FINOS de propósito (0,055 de raio): a casca desloca
+      // vértice pela normal e uma vara grossa com relevo largo vira CANUDO
+      // GORDO / PÁ. Eles vem VARRIDOS PARA TRÁS (o topo 0,45 em z negativo): a
+      // cara fica no frente (z +0,3) e o leque de onze varas abre ATRÁS da
+      // cabeça — no print anterior o leque passava na frente da cara e o rosto
+      // desaparecia atrás de onze palitos. Interlados aos onze raios da coroa
+      // (16,4° de deslocamento), então nenhum jato encosta num raio =====
+      ...Array.from({ length: 11 }, (_, k) => {
+        const a = (k / 11) * Math.PI * 2;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        return rod11([0.78 * c, 3.6, 0.78 * s], [0.9 * c, 4.6, 0.9 * s - 0.45], 0.055, {
+          m: 'glow',
+          tag: 'jet.rod',
+          flick: 0.06,
+        });
+      }),
+      ...Array.from({ length: 11 }, (_, k): Part => {
+        const a = (k / 11) * Math.PI * 2;
+        return {
+          g: 'ico',
+          a: [0.07, 1],
+          p: [0.94 * Math.cos(a), 4.66, 0.94 * Math.sin(a) - 0.45],
+          m: 'accent',
+          tag: 'jet.bead',
+          flick: 0.26,
+        };
+      }),
+
+      // ===== ONZE RAÍZES DE GRAVIDADE para baixo + ONZE ÂNCORAS no piso: é
+      // assim que o titã fica PLANTADO sem ser montanha (o pai Abissal boia, o
+      // outro pai Cósmico planta cascos de nuvem — este planta gravidade) =====
+      ...Array.from({ length: 11 }, (_, k) => {
+        const a = (k / 11) * Math.PI * 2;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        return rod11([0.35 * c, 2.3, 0.35 * s], [1.06 * c, 0.115, 1.06 * s], 0.08, {
+          m: 'body',
+          tag: 'root.rod',
+          amp: 0.014,
+        });
+      }),
+      ...Array.from({ length: 11 }, (_, k): Part => {
+        const a = (k / 11) * Math.PI * 2;
+        return {
+          g: 'cyl',
+          a: [0.17, 0.13, 0.07, 11, 1],
+          p: [1.14 * Math.cos(a), 0.075, 1.14 * Math.sin(a)],
+          m: 'dark',
+          tag: 'root.pad',
+          amp: 0.012,
+        };
+      }),
+
+      // ===== A CABEÇA LEVANTADA ACIMA DO DISCO: a coluna do pescoço desce do
+      // bojo (enterrada na lente) e segura a cara ACIMA do plano do disco — só
+      // assim os onze braços varrendo o plano (topo dos nós em y 3,17) passam
+      // POR BAIXO da cara em vez de atravessá-la. Com o disco DEITADO a 30° no
+      // print, o topo do espichão (ρ 1,4) sobe até y 3,34 + bola — a cara sobe
+      // 0,18 para manter a folga =====
+      rod11([0, 2.845, 0.26], [0, 4.175, 0.26], 0.31, { m: 'body', amp: 0.016, tag: 'head.column' }),
+
+      // ===== A CARA NO FRONTE DA CABEÇA — ONZE peças (placa, sobrolho, dois
+      // olhos, duas órbitas de breu, duas bochechas, queixo, aro âmbar da boca
+      // e o poço de breu). A boca é o próprio buraco central: tubo ABERTO de
+      // onze faces (aro âmbar, `core.rim`) com o disco de breu do poço DENTRO
+      // (`core.pit`), visto pela abertura — os cometas saem por aqui. A placa é
+      // CLARA e os olhos são BURACO de breu com a faísca de geada dentro:
+      // olho-branco-em-placa-branca desaparecia no print (foi o que custou a
+      // cara do primeiro QA) =====
+      { g: 'cyl', a: [0.5, 0.46, 0.12, 11, 2], p: [0, 4.13, 0.3], r: [1.5708, 0, 0], m: 'accent', amp: 0.006, tag: 'mask' },
+      { g: 'box', a: [0.72, 0.1, 0.09], p: [0, 4.46, 0.42], m: 'dark', tag: 'brow' },
+      ...mm({ g: 'sphere', a: [0.16, 12, 10], p: [0.25, 4.28, 0.38], m: 'black', tag: 'eye' }),
+      ...mm({ g: 'sphere', a: [0.075, 10, 8], p: [0.25, 4.28, 0.47], m: 'white', tag: 'eye.pupil' }),
+      ...mm({ g: 'octa', a: [0.11, 0], s: [0.6, 1.5, 0.6], p: [0.42, 4.04, 0.34], m: 'accent', amp: 0.006, tag: 'cheek' }),
+      { g: 'box', a: [0.4, 0.1, 0.08], p: [0, 3.78, 0.4], m: 'accent', amp: 0.006, tag: 'chin' },
+      { g: 'cyl', a: [0.3, 0.34, 0.16, 11, 2, 1], p: [0, 3.96, 0.44], r: [1.5708, 0, 0], m: 'glow', flick: 0.1, tag: 'core.rim' },
+      { g: 'cyl', a: [0.27, 0.27, 0.05, 11, 1], p: [0, 3.96, 0.36], r: [1.5708, 0, 0], m: 'black', tag: 'core.pit' },
+
+      // ===== ONZE RAIOS DE COROA no ombro do bojo: nascem enterrados na lente
+      // (ρ 0,62) e abrem para fora e um pouco para cima até ρ ~0,95 — a auréola
+      // do núcleo, o anel de luz que a galáxia tem no centro. CURTOS (0,24) e
+      // FINOS (0,055): no print anterior a coroa era onze lâminas de 0,3 que
+      // competiam com os braços e com os jatos e o centro virava matagal.
+      // Alternam âmbar/geada (o onze ímpar nunca fecha em par) e ficam
+      // INTERCALADOS aos jatos =====
+      ...Array.from({ length: 11 }, (_, k) => {
+        const a = Math.PI / 11 + (k / 11) * Math.PI * 2;
+        return spike11(
+          [0.62 * Math.cos(a), 3.28, 0.62 * Math.sin(a)],
+          0.1,
+          0.24,
+          0.055,
+          [Math.cos(a), 0.28, Math.sin(a)],
+          { m: k % 2 === 0 ? 'glow' : 'accent', tag: 'corona', flick: 0.2 + (k % 3) * 0.06 },
+        );
+      }),
+
+      // ===== A CINTA EXTERNA DO DISCO (0): o anel de onze pedras de luz
+      // fechando a borda da galáxia, no MESMO plano inclinado dos braços e
+      // girando mais DELEVADO que eles (0,48 contra 0,62 — a rotação
+      // diferencial da espécie). Ela fica a ρ 2,42, do lado de FORA da ponta
+      // dos braços (que morre em ρ 2,11 com a ponta de geada) — no mesmo plano,
+      // elas nunca se encostam porque o raio não se sobrepõe =====
+      ...ringAround(11, 2.42, ASTRAL_DISK_Y, 0, { g: 'octa', a: [0.085, 0], s: [1, 0.7, 1], m: 'glow', flick: 0.22, tag: 'swarm.rim', group: 0 }, 0),
+
+      // ===== O HALO GLOBULAR (1) E A CINTA DE QUEDA (2): estas duas NÃO vão no
+      // plano do disco — são o halo esférico que envolve a galáxia e por isso
+      // ficam no plano horizontal, acima e abaixo do bojo, girando ao CONTRÁRIO
+      // (uma a −0,44, outra a −0,95). É o que permite deitar o disco no print sem
+      // que as cintas cruzem os braços: elas nunca entram na faixa varrida. A de
+      // CIMA abre leque a ρ 1,9 (fora do leque dos jatos, que morre em ρ 0,95)
+      // e a de BAIXO é a matéria caindo: âmbar miúdo, o anel de acreção do titã
+      // — no print anterior ela era escura sobre escura e não existia =====
+      ...ringAround(11, 1.9, 4.05, -0.16, { g: 'dodeca', a: [0.07], m: 'accent', flick: 0.26, tag: 'swarm.halo', group: 1 }, 0.3),
+      ...ringAround(11, 2.05, 1.5, 0.22, { g: 'octa', a: [0.06, 0], s: [1, 0.75, 1], m: 'glow', flick: 0.3, tag: 'swarm.fall', group: 2 }, 0.6),
     ],
-    groups: { 0: 1.1, 1: -1.5, 2: 1.9 },
+    // QUATRO velocidades para quatro cintas (a rotação diferencial da galáxia,
+    // o motor visual da espécie): o disco 3 (os onze braços, corpo rígido) a
+    // 0,62; a cinta externa 0, que é o anel de fora do disco, mais LENTA a
+    // 0,48; o halo globular 1 ao CONTRÁRIO a −0,44 e a cinta de queda 2, a mais
+    // funda, ao CONTRÁRIO e depressa a −0,95. A cauda de maré fica FORA de
+    // qualquer grupo: é esteira plantada apontando para o fundo.
+    groups: { 0: 0.48, 1: -0.44, 2: -0.95, 3: 0.62 },
   },
 
   // Geodo+Vulcânico — a montanha que anda (Nv.9) -------------------------

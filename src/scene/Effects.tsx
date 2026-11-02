@@ -30,6 +30,10 @@ import { ABISSAL_LIFE, ABISSAL_TIDE, BONE_LOOK } from './AbissalRig';
 // breu de basalto da bomba/figurino com a trinca da lava da cor do motor —
 // identidade amarrada em teste; ver VulcanRig)
 import { SCORIA_VULC_LOOK, VULCAN_EMBER, VULCAN_LAVA } from './VulcanRig';
+// o ASTRAL cospe COMETA e o impacto dele é o MESMO breu grafite do bojo com a
+// trinca âmbar do MOTOR e a geada das fagulhas (identidade amarrada em teste do
+// motor ao impacto; ver AstralRig)
+import { ASTRAL_FROST, ASTRAL_STARLIGHT, VOID_ASTRAL_DEEP_LOOK } from './AstralRig';
 import type { SmokePool } from './smokePool';
 
 const PARTICLE_CAP = 400;
@@ -152,6 +156,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         seed: 0,
         hot: 1,
         gold: 1,
+        // o traço da corrente NÃO é sempre azul-elétrica: cada espécie pinta o
+        // seu próprio par de cores (o Cósmico azul-estrela com ouro, o Astral
+        // âmbar com geada — o INVERSO, que é como um print separa os dois Nv.9).
+        // Os padrões são os do Raio pai: cauda azul-elétrica, miolo azul-branco
+        tail: new THREE.Color(0.16, 0.44, 0.9),
+        core: new THREE.Color(0.8, 0.92, 1.0),
       })),
     [],
   );
@@ -456,6 +466,31 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e as FARPAS DE COMETA partidas do impacto do ASTRAL: o fuso de ONZE
+  // FACES do projétil (e a boca do titã, e tudo mais aqui) estilhaça em lasca
+  // bicuda de ONZE faces — o MESMO breu grafite do bojo com a trinca âmbar da
+  // cor do motor (#ffb347, identidade amarrada em teste). Lasca de cometa é
+  // GRAVIDADE partida: voa como osso (leve), mas sobe mais e demora a cair
+  // porque ainda está na órbita do titã que a cuspiu.
+  const shardComet = useMemo(() => {
+    const geo = new THREE.CylinderGeometry(0.014, 0.05, 0.28, 11, 1); // farpa bicuda de 11 faces
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeStoneMaterial({
+        rockA: VOID_ASTRAL_DEEP_LOOK.rockA, // O MESMO breu grafite do bojo
+        rockB: VOID_ASTRAL_DEEP_LOOK.rockB,
+        crack: ASTRAL_STARLIGHT, // = a cor do motor (identidade amarrada em teste)
+        amp: 0.007, // aresta viva: lasca de cometa não arredonda
+        crackGlow: 1.15, // lasca fresca: acabou de sair do caroço de estrela
+        crackScale: VOID_ASTRAL_DEEP_LOOK.crackScale,
+        crackWidth: VOID_ASTRAL_DEEP_LOOK.crackWidth,
+        crackBoost: VOID_ASTRAL_DEEP_LOOK.crackBoost,
+        speck: VOID_ASTRAL_DEEP_LOOK.speck,
+        seed: 14.1 + i * 2.4,
+        breath: 0.35,
+      }),
+    );
+    return { geo, mats };
+  }, []);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
@@ -473,7 +508,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           | 'star'
           | 'geode'
           | 'bone'
-          | 'cinder',
+          | 'cinder'
+          | 'comet',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -511,6 +547,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       shardBone.geo.dispose();
       for (const m of shardCinder.mats) m.dispose();
       shardCinder.geo.dispose();
+      for (const m of shardComet.mats) m.dispose();
+      shardComet.geo.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
@@ -527,6 +565,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     shardGeode,
     shardBone,
     shardCinder,
+    shardComet,
     arcGeo,
     arcMat,
   ]);
@@ -626,6 +665,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     life: number,
     hot = 1,
     gold = 1,
+    cores?: { tail?: string; core?: string },
   ) => {
     const idx = arcCursor.current;
     arcCursor.current = (arcCursor.current + 1) % ARC_CAP;
@@ -644,6 +684,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     d.seed = Math.random() * 100;
     d.hot = hot;
     d.gold = gold;
+    // a identidade da espécie pinta o traço (sem isto TODO salto é azul de
+    // relâmpago e o Astral fica com a cara do Raio pai)
+    if (cores?.tail) d.tail.set(cores.tail);
+    if (cores?.core) d.core.set(cores.core);
   };
 
   /** dispersão: N mini-arcos saltando em todas as direções de um ponto
@@ -691,7 +735,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       | 'starShard'
       | 'geodeShard'
       | 'boneShard'
-      | 'cinderShard' = 'flame',
+      | 'cinderShard'
+      | 'cometShard' = 'flame',
     life?: number,
   ) => {
     if (kind === 'flame') {
@@ -742,7 +787,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                           ? 'bone'
                           : kind === 'cinderShard'
                             ? 'cinder'
-                            : 'rock';
+                            : kind === 'cometShard'
+                              ? 'comet'
+                              : 'rock';
       const a = Math.random() * Math.PI * 2;
       // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
       // cambalhota que a pedra (que só desmorona). O VIDRO da Obsidiana é
@@ -772,14 +819,19 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       // atrito come o giro) e pousa sem quicar muito — a régua anti-bloco do
       // geodo (que gira/geada) e anti-farpa-nervosa do vidro
       const cinder = kind === 'cinderShard';
+      // a lasca do ASTRAL é GRAVIDADE PARTIDA (o fuso do cometa estilhaçado):
+      // leve como osso, mas SALTA como a estrela do Cósmico porque ainda está na
+      // órbita do titã que a cuspiu, e gira rápido como lasca fina que é. Não
+      // entra no `fast` (nervosa do gelo/vidro): ela tem inércia de breu
+      const comet = kind === 'cometShard';
       const fast = ice || glass || prism || star;
-      const s = (fast ? 2.2 : bone || cinder ? 1.9 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : bone ? 2.0 : cinder ? 1.9 : mud ? 1.2 : 1.8);
+      const s = (fast ? 2.2 : bone || cinder || comet ? 1.9 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : bone ? 2.0 : cinder || comet ? 1.9 : mud ? 1.2 : 1.8);
       d.vx = Math.cos(a) * s;
       d.vy =
-        (prism || star ? 2.6 : fast ? 2.1 : bone ? 1.8 : cinder ? 1.7 : mud ? 1.1 : 1.6) +
-        Math.random() * (ice ? 2.4 : prism || star ? 2.8 : bone ? 2.2 : cinder ? 2.0 : mud ? 1.1 : 1.8);
+        (prism || star || comet ? 2.6 : fast ? 2.1 : bone ? 1.8 : cinder ? 1.7 : mud ? 1.1 : 1.6) +
+        Math.random() * (ice ? 2.4 : prism || star || comet ? 2.8 : bone ? 2.2 : cinder ? 2.0 : mud ? 1.1 : 1.8);
       d.vz = Math.sin(a) * s;
-      const spin = prism ? 23 : star ? 21 : glass ? 19 : ice ? 16 : bone ? 15 : cinder ? 8 : mud ? 6 : geode ? 13 : 11;
+      const spin = prism ? 23 : star ? 21 : comet ? 18 : glass ? 19 : ice ? 16 : bone ? 15 : cinder ? 8 : mud ? 6 : geode ? 13 : 11;
       d.rx = (Math.random() - 0.5) * spin;
       d.ry = (Math.random() - 0.5) * spin;
       d.rz = (Math.random() - 0.5) * spin;
@@ -1321,6 +1373,34 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 1.3,
               speed: 1.5,
             });
+          } else if (ev.species === 'astral') {
+            // o COMETA de gravidade DETONA no alvo e o que arrebenta é o próprio
+            // breu do titã: lasca de ONZE FACES (pool `cometShard` — o MESMO breu
+            // grafite do bojo com a trinca âmbar do motor #ffb347, identidade
+            // amarrada em teste) voando como gravidade partida: leve e subindo
+            // como estrela. O ANEL é a órbita que o titã perdeu: âmbar por
+            // dentro, GEADA por fora — o INVERSO exato do Cósmico (azul-estrela
+            // com ouro), e é assim que um print separa os dois Nv.9 da árvore. A
+            // geada SOBE (estrela jovem, o acento), o breu DESCE (pesado), e a
+            // fumaça é PÓ DE DISCO: heat 0,25 — nem a cinza quente do vulcão
+            // (0,65) nem o breu frio do abissal (0,03); é grão ainda orbitando
+            const lv = Math.max(9, Math.min(10, ev.level ?? 9));
+            const k = 1 + (lv - 9) * 0.14;
+            // três das onze lascas do fuso estilhaçado (pool: 3)
+            for (let i = 0; i < 3; i++) spawnBurst(x, y, z, 0.3 + 0.05 * (lv - 9), 'cometShard', 0.85);
+            spawnParticles(x, y, z, ASTRAL_STARLIGHT, 12 + (lv - 9) * 2, 2.6, 0.55, 1.2, 0.5); // o MOTOR estourando (âmbar, cai arrastando)
+            spawnParticles(x, y, z, ASTRAL_FROST, 11, 2.2, 0.85, -1.1, 0.5); // ONZE fagulhas de GEADA subindo (o acento, leve)
+            spawnParticles(x, y, z, VOID_ASTRAL_DEEP_LOOK.rockB, 10, 3.0, 0.5, 3.2, 0.35); // chuva de breu grafite da carcaça (pesada, cai reto)
+            spawnParticles(x, y - 0.1, z, ASTRAL_STARLIGHT, 6, 1.1, 0.4, 0.7, 0.6); // o âmbar assentando no piso
+            spawnRing(x, 0.1, z, ASTRAL_STARLIGHT, 2.6 * k); // a órbita perdida, gravada no piso (o anel de fora é geada)
+            spawnRing(x, 0.16, z, ASTRAL_FROST, 1.35); // geada POR FORA do âmbar: o inverso do pai Cósmico
+            spawnRing(x, 0.28, z, '#fff3da', 0.75); // flash do caroço de estrela jovem (miúdo, nunca bola de fogo)
+            spawnSmoke(x, y, z, 11, {
+              size: 0.12,
+              heat: 0.25, // PÓ DE DISCO: o grão do anel do titã, morno e orbitando
+              life: 1.15,
+              speed: 1.4,
+            });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e
@@ -1495,6 +1575,36 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], COSMICO_STARLIGHT, 7, 1.8, 0.35, 0.8, 0.5);
               spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], COSMICO_HEAT, 5, 2.0, 0.4, 2.2, 0.6); // ouro CAINDO (o plasma da mãe pesa)
               spawnRing(ev.pos2[0], 0.12, ev.pos2[2], COSMICO_STARLIGHT, 1.0);
+            } else if (ev.species === 'astral') {
+              // a cadeia do astral NÃO é relâmpago: é a linha de gravidade que o
+              // cometa traça entre os alvos. O ARCO vem com as cores da espécie
+              // (traço âmbar #ffb347 com miolo de GEADA — o INVERSO do Cósmico
+              // azul com ouro, que é como um print separa os dois Nv.9). No
+              // destino arrebenta outra lasca de cometa (pool `cometShard`: o
+              // MESMO breu do bojo, onze faces) e acende a órbita nova: âmbar
+              // por dentro, geada por fora, igual ao impacto — a assinatura
+              // repetida em cada elo da cadeia
+              const ax = ev.pos2[0] - x;
+              const ay = ev.pos2[1] + 0.7 - (y + 0.7);
+              const az = ev.pos2[2] - z;
+              const al = Math.hypot(ax, ay, az);
+              spawnArc(
+                [x, y + 0.6, z],
+                ax,
+                ay,
+                az,
+                Math.max(0.5, Math.min(al, 6)),
+                0.14, // traço mais RETO que o do relâmpago: gravidade não ferve
+                0.18,
+                0.95,
+                0.2,
+                { tail: ASTRAL_STARLIGHT, core: '#eaf3ff' }, // âmbar com geada
+              );
+              spawnBurst(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 0.28, 'cometShard', 0.9);
+              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], ASTRAL_STARLIGHT, 7, 1.8, 0.35, 0.8, 0.5); // o motor espalhando (âmbar, cai arrastando)
+              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], ASTRAL_FROST, 5, 2.0, 0.5, -1.2, 0.5); // geada SUBINDO no elo (o acento leve)
+              spawnRing(ev.pos2[0], 0.12, ev.pos2[2], ASTRAL_STARLIGHT, 1.15); // a órbita do elo
+              spawnRing(ev.pos2[0], 0.18, ev.pos2[2], ASTRAL_FROST, 0.62); // geada por fora (o inverso do Cósmico)
             } else if (ev.species === 'raio' || ev.species === 'tempestade') {
               // respingo da corrente: salto em ARCO JAGADO — no Raio, azul
               // elétrico com osso DOURADO (o fio duro de relâmpago); na
@@ -1627,9 +1737,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       const fade = 1 - t * t;
       const flick = 0.55 + 0.45 * Math.sin(clockT * 73 + d.seed * 13 + i * 2.1);
       const k = fade * (0.55 + 0.45 * flick);
-      arcScratch.a.setRGB(0.16, 0.44, 0.9); // cauda azul-elétrica
-      arcScratch.b.setRGB(0.8, 0.92, 1.0); // miolo azul-branco
-      arcScratch.b.multiplyScalar(d.hot);
+      // as cores do traço vêm do PRÓPRIO arco (cada espécie pinta a sua
+      // corrente: o Raio é azul-elétrica com miolo azul-branco, o Cósmico azul-
+      // estrela com ouro, o Astral âmbar com geada — sem isto todo salto seria
+      // relâmpago do pai)
+      arcScratch.a.copy(d.tail);
+      arcScratch.b.copy(d.core).multiplyScalar(d.hot);
       arcTmp.d.set(d.dx, d.dy, d.dz);
       // base perpendicular estável no tempo de vida (o traço não "dança" a
       // direção inteira, só ferve em cima dela)
@@ -1727,7 +1840,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                           ? shardBone
                           : d.kind === 'cinder'
                             ? shardCinder
-                            : shardRock;
+                            : d.kind === 'comet'
+                              ? shardComet
+                              : shardRock;
       const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {

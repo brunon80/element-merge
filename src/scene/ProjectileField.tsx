@@ -31,6 +31,9 @@ import { ABISSAL_LIFE, ABISSAL_TIDE, BONE_LOOK, WATER_TIDE_LOOK } from './Abissa
 // cratera e a MESMA escória das fumarolas — identidade amarrada em teste do
 // motor ao impacto; ver VulcanRig)
 import { BASALT_VULC_DEEP_LOOK, BASALT_VULC_LOOK, VULCAN_EMBER, VULCAN_LAVA } from './VulcanRig';
+// o ASTRAL cospe COMETA: o breu grafite, a geada e o âmbar do motor vêm todos do
+// figurino (ver AstralRig) — a identidade amarrada em teste ao impacto
+import { ASTRAL_FROST, ASTRAL_STARLIGHT, FROST_ASTRAL_LOOK, VOID_ASTRAL_DEEP_LOOK } from './AstralRig';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -143,6 +146,37 @@ export const VULCAN_SCORIA_LOOK = {
   crack: VULCAN_EMBER,
 };
 
+/** ASTRAL: o COMETA de gravidade que sai da boca de buraco negro do titã — fuso
+ *  de ONZE FACES (o DNA da espécie: o Geodo arranca matacões de cinco, o Abissal
+ *  ganchos de sete, o Vulcânico bombas de nove) de breu grafite com a trinca
+ *  âmbar do MOTOR. É a silhueta OPOSTA à dos primos: nada de bloco redondo nem
+ *  de bomba gorda — o cometa é uma LASCA AFIADA caindo em linha reta na órbita
+ *  do alvo (o `pierce 2` do motor já nasce desenhado na pontaria) */
+export const ASTRAL_COMET_LOOK = {
+  ...VOID_ASTRAL_DEEP_LOOK,
+  crackGlow: 1.05, // cometa fresco: acabou de sair da boca do poço aceso
+};
+
+/** ASTRAL: o CORAÇÃO de estrela jovem dentro do cometa (a cabeça do cometa é um
+ *  caroço de luz que se reparte em cadeia nos alvos — o `chain 3` do motor
+ *  escrito em silhueta) — o MESMO âmbar do motor do rig, nunca o azul do tio
+ *  Cósmico nem a bola de fogo do Ignis */
+export const ASTRAL_COMET_CORE_LOOK = {
+  gold: ASTRAL_STARLIGHT, // = a cor do motor (identidade boca→cometa→anel do FX)
+  white: '#fff3da',
+  cool: ASTRAL_FROST, // geada no fresnel: o gelo do titã contorna o fogo
+  amp: 0.03,
+};
+
+/** ASTRAL: as ONZE FAGULHAS de geada que o cometa arrasta atrás de si (a cauda
+ *  iônica; o `pierce` e o `doubleShot` do motor voam escritas no rasto) — a
+ *  GEADA #cfe4ff da espécie (o acento), nunca o âmbar do motor */
+export const ASTRAL_SPARK_LOOK = {
+  rockA: FROST_ASTRAL_LOOK.rockA,
+  rockB: FROST_ASTRAL_LOOK.rockB,
+  crack: ASTRAL_STARLIGHT, // faísca com o veio âmbar: o motor puxa a geada
+};
+
 /** Névoa: a pluma de bruma do bafo (hot = a GEADA do motor, a mesma cor do
  *  rig/veios/FX) e a semente de geada que vai na cabeça dela. O crack da
  *  semente é a VARIAÇÃO MIÚDA #d2e9f4: visualmente a mesma geada, mas a sonda
@@ -193,7 +227,7 @@ function speciesColor(species: SpeciesId): THREE.Color {
       abissal: '#3f6f8f',
       vulcanico: '#ff4d12',
       // Nv.9 — lendários
-      astral: '#8fd6ff',
+      astral: '#ffb347', // = ASTRAL_STARLIGHT, o âmbar do motor (geada é o acento)
       colosso: '#d98c4a',
       // Nv.10 — primordial
       primordial: '#e8f6ff',
@@ -284,6 +318,9 @@ export function ProjectileField() {
   const vulcRef = useRef<THREE.InstancedMesh | null>(null);
   const vulcHRef = useRef<THREE.InstancedMesh | null>(null);
   const vulcCRef = useRef<THREE.InstancedMesh | null>(null);
+  const cometRef = useRef<THREE.InstancedMesh | null>(null);
+  const cometCRef = useRef<THREE.InstancedMesh | null>(null);
+  const cometTRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -1123,14 +1160,85 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const astralComet = useMemo(() => {
+    // o COMETA do titã (o `pierce 2` do motor em silhueta): cone de ONZE FACES
+    // (o DNA — o Geodo arranca matacões de CINCO, o Abissal ganchos de SETE, o
+    // Vulcânico bombas de NOVE) de breu grafite com a trinca âmbar do MOTOR.
+    // Afilado e COMPRIDO (0,42 de diâmetro por 0,62 de corpo): o astral é a
+    // espécie mais RÁPIDA da árvore (15 u/s), o tiro tem que ler lasca caindo na
+    // órbita do alvo, não pedra girando. heightSegs 2 para o close não virar
+    // low-poly; amp baixo porque pontia aguda não arredonda
+    const geo = new THREE.ConeGeometry(0.21, 0.62, 11, 2);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: ASTRAL_COMET_LOOK.rockA,
+      rockB: ASTRAL_COMET_LOOK.rockB,
+      crack: ASTRAL_COMET_LOOK.crack, // = a cor do motor (identidade boca→cometa→FX)
+      amp: 0.016,
+      crackGlow: ASTRAL_COMET_LOOK.crackGlow,
+      crackScale: ASTRAL_COMET_LOOK.crackScale,
+      crackWidth: ASTRAL_COMET_LOOK.crackWidth,
+      crackBoost: ASTRAL_COMET_LOOK.crackBoost,
+      speck: ASTRAL_COMET_LOOK.speck,
+      seed: 5.9,
+      breath: 0.45,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const astralCometCore = useMemo(() => {
+    // o CORAÇÃO de estrela jovem enterrado na base do fuso e saltando pela boca
+    // (a casca é breu, o miolo é luz âmbar — o `chain 3` do motor: a cabeça
+    // acesa é o que se reparte em três alvos). Âmbar do MESMO motor do rig, com
+    // a geada no fresnel: é o inverso exato do Cósmico (estrela azul com fio
+    // de ouro) — a regra de família da árvore
+    const geo = new THREE.IcosahedronGeometry(0.16, 1);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: ASTRAL_COMET_CORE_LOOK.gold, // = a cor do motor
+      white: ASTRAL_COMET_CORE_LOOK.white,
+      cool: ASTRAL_COMET_CORE_LOOK.cool,
+      amp: ASTRAL_COMET_CORE_LOOK.amp,
+      seed: 8.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const astralTail = useMemo(() => {
+    // as ONZE FAGULHAS que o cometa arrasta (a cauda iônica — o `pierce` e o
+    // `doubleShot` escritos no rasto): pedrinhas de geada de oitaedro, a ACENTO
+    // da espécie (#cfe4ff), com o veio âmbar por dentro porque é o motor que
+    // puxa a geada. Miúdas (0,075): o rasto tem que ler poeira de estrela, não
+    // pedreira
+    const geo = new THREE.OctahedronGeometry(0.075, 0);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: ASTRAL_SPARK_LOOK.rockA,
+      rockB: ASTRAL_SPARK_LOOK.rockB,
+      crack: ASTRAL_SPARK_LOOK.crack,
+      amp: 0.008,
+      crackGlow: 0.8,
+      crackScale: 1.9,
+      crackWidth: 0.05,
+      crackBoost: 1.1,
+      speck: 0.9, // geada é cristalina: salpicada alta
+      seed: 3.7,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -1167,6 +1275,9 @@ export function ProjectileField() {
     let vulcB = 0;
     let vulcH = 0;
     let vulcC = 0;
+    let cometN = 0;
+    let cometC = 0;
+    let cometT = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -1256,11 +1367,21 @@ export function ProjectileField() {
     abyssalCore.mat.uniforms.uCharge.value = 0.8 + 0.2 * Math.sin(time * 3.8);
     abyssalHook.mat.uniforms.uTime.value = time;
     abyssalHook.mat.uniforms.uCharge.value = 0.5 + 0.15 * Math.sin(time * 5.0);
+    astralComet.mat.uniforms.uTime.value = time;
+    // cometa recém-cuspidido do poço: a trinca âmbar vai no talo (a boca do
+    // buraco ainda quente) e o uHurt nunca sobe — cometa não sangra, risca
+    astralComet.mat.uniforms.uCharge.value = 0.85 + 0.15 * Math.sin(time * 5.6);
+    astralCometCore.mat.uniforms.uTime.value = time;
+    // o caroço de estrela jovem dentro do fuso: carga alta e nervosa, é ele que
+    // se reparte em cadeia (o `chain 3` do motor)
+    astralCometCore.mat.uniforms.uCharge.value = 0.9 + 0.1 * Math.sin(time * 7.4);
+    astralTail.mat.uniforms.uTime.value = time;
+    astralTail.mat.uniforms.uCharge.value = 0.6 + 0.2 * Math.sin(time * 9.3);
     cosmicoFlare.mat.uniforms.uTime.value = time;
     cosmicoFlare.mat.uniforms.uCharge.value = 0.8 + 0.12 * Math.sin(time * 8.1);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
-    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat, cristalPrism.mat, cristalSliver.mat, geodoChip.mat, abyssalHook.mat]);
+    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat, cristalPrism.mat, cristalSliver.mat, geodoChip.mat, abyssalHook.mat, astralTail.mat]);
     // a estaca voa "carregada": as trincas internas ficam acesas
     iceSpike.mat.uniforms.uCharge.value = 0.55 + 0.25 * Math.sin(time * 4.2);
 
@@ -1296,6 +1417,7 @@ export function ProjectileField() {
         const isGeob = p.species === 'geodo';
         const isAbyss = p.species === 'abissal';
         const isVulc = p.species === 'vulcanico';
+        const isAstral = p.species === 'astral';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -1886,6 +2008,75 @@ export function ProjectileField() {
             haloScale = scale * 1.5; // halo da bomba inteira (fuso gordo + plug + escórias)
             signature = true;
           }
+        } else if (isAstral) {
+          // o ASTRAL cospe um COMETA de gravidade pela boca de buraco negro (o
+          // `pierce 2` + `chain 3` + `doubleShot` do motor): fuso de ONZE FACES
+          // de breu grafite com a trinca âmbar do MOTOR voando PONTA-FRIA. Ao
+          // contrário do naco do Vulcânico e do matacão do Geodo, o cometa NÃO
+          // tomba cambalhota: ele RISCA em linha reta na órbita do alvo e só dá
+          // rolo no próprio eixo (é assim que as onze faces reluzem no voo). O
+          // coração de estrela jovem pulsa enterrado na base do fuso e as ONZE
+          // FAGULHAS de geada saem atrás em ESPIRAL — a cauda iônica, o rasto
+          // que o `pierce` deixa escrito no ar
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            dummy.quaternion.copy(tmpQuat);
+            // rolo no eixo PRÓPRIO (o +Y local já é o rumo): o cometa não cai
+            // cambalhota, ele gira como broca — é isso que faz as onze faces
+            // piscarem no voo sem desandar a pontaria
+            dummy.rotateOnAxis(up, time * 2.6 + p.id * 0.8);
+          }
+          const launch = Math.min(1, 0.3 + p.age / 0.14); // o cometa já sai quase a 19 u/s
+          if (cometN < MAX_PER_ELEMENT) {
+            const scale = (0.95 + 0.1 * (lv - 9)) * launch;
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            cometRef.current?.setMatrixAt(cometN, dummy.matrix);
+            astralComet.seeds.setX(cometN, ((p.id * 61) % 79) / 6.1);
+            cometN++;
+            if (cometC < MAX_PER_ELEMENT) {
+              // o caroço de estrela jovem Na BOCA do fuso (a base do cone fica em
+              // y local −0,31; o plug vai a −0,30, encostado na boca): a cabeça
+              // do cometa tem que ser o ponto MAIS aceso do print — breu atrás,
+              // âmbar na frente, é assim que se lê "cabeça pesada cuspida pelo
+              // poço" e não "seta de papel". É ele que se reparte em três alvos
+              // (o `chain 3`)
+              dir.set(0, -0.3, 0).applyQuaternion(dummy.quaternion).multiplyScalar(scale);
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              dummy.scale.setScalar(scale * (1 + 0.12 * Math.sin(time * 7.4 + p.id * 1.7)));
+              dummy.updateMatrix();
+              cometCRef.current?.setMatrixAt(cometC, dummy.matrix);
+              astralCometCore.seeds.setX(cometC, ((p.id * 23) % 71) / 5.3);
+              cometC++;
+              dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
+            }
+            // ONZE fagulhas de geada em CAUDA (2π/11 = 32,7° por fagulha): a
+            // cauda é PONTILHADA — o passo (0,32) é maior que o diâmetro das
+            // pedrinhas (0,15). Com passo apertado as onze viram um CONE
+            // BRANCO CONTÍNUO na cara do print (seta de papel) e o cometa lê
+            // ao contrário: o rastro tem que ser grão de geada desenhando a
+            // órbita, não envelope cheio. O raio abre com o atraso e a ponta
+            // afina (escala 1→0,55)
+            for (let k = 0; k < 11; k++) {
+              if (cometT >= MAX_PER_ELEMENT) break;
+              const th = k * 0.5712 + time * 3.1 + p.id * 1.4; // 32,7°: o onze
+              const atras = 0.5 + k * 0.32;
+              const abertura = 0.06 + k * 0.028;
+              dir.set(Math.cos(th) * abertura, -atras, Math.sin(th) * abertura).applyQuaternion(dummy.quaternion);
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              dummy.scale.setScalar(scale * (1 - k / 22)); // a cauda afina na ponta
+              dummy.updateMatrix();
+              cometTRef.current?.setMatrixAt(cometT, dummy.matrix);
+              astralTail.seeds.setX(cometT, ((p.id * 31 + k * 17) % 77) / 5.6 + k * 0.6);
+              cometT++;
+            }
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]); // devolve o centro p/ o halo
+            haloScale = scale * 1.4; // halo do cometa inteiro (fuso + coração + cauda)
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -1973,6 +2164,9 @@ export function ProjectileField() {
       [vulcRef.current, vulcB, vulcanBomb.seeds],
       [vulcHRef.current, vulcH, vulcanHeart.seeds],
       [vulcCRef.current, vulcC, vulcanCinder.seeds],
+      [cometRef.current, cometN, astralComet.seeds],
+      [cometCRef.current, cometC, astralCometCore.seeds],
+      [cometTRef.current, cometT, astralTail.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -2339,6 +2533,37 @@ export function ProjectileField() {
           vulcCRef.current = m;
         }}
         args={[vulcanCinder.geo, vulcanCinder.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Astral: o COMETA de gravidade cuspidado pela boca de buraco negro —
+          fuso de ONZE FACES de breu grafite com a trinca âmbar do motor (o
+          `pierce 2` do tiro desenhado na silhueta: lasca afiada voando ponta
+          fria, nunca mais um matacão redondo) */}
+      <instancedMesh
+        ref={(m) => {
+          cometRef.current = m;
+        }}
+        args={[astralComet.geo, astralComet.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Astral: o coração de estrela jovem pulsando na boca do fuso (o `chain
+          3` do motor mora aqui — é o caroço aceso que se reparte em três alvos)
+          — âmbar do motor com a geada no fresnel, o inverso do Cósmico */}
+      <instancedMesh
+        ref={(m) => {
+          cometCRef.current = m;
+        }}
+        args={[astralCometCore.geo, astralCometCore.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Astral: as ONZE fagulhas de geada em cauda espiralada (a cauda iônica
+          do cometa — o rasto do `pierce` e do `doubleShot`), sempre no acento
+          da espécie */}
+      <instancedMesh
+        ref={(m) => {
+          cometTRef.current = m;
+        }}
+        args={[astralTail.geo, astralTail.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>
