@@ -25,15 +25,28 @@ if (!SP) {
 }
 mkdirSync(OUT, { recursive: true });
 
-const W = 340; // recorte (CSS px) em volta da previsao do alvo
-const H = 280;
-const ZOOM = 3;
+const W = Number(process.env.SHOT_W ?? 340); // recorte (CSS px) em volta da previsao do alvo
+const H = Number(process.env.SHOT_H ?? 280);
+const ZOOM = Number(process.env.SHOT_ZOOM ?? 3);
+// SHOT_BURST=N: alem do print do voo, imprime a MESMA janela N vezes em
+// rajada (170 ms entre eles) para pegar o IMPACTO e o FX assentando
+const BURST = Number(process.env.SHOT_BURST ?? 0);
 // Latência do poll até o pixel do print. O print NÃO é instantâneo: entre a
 // sonda e os pixels existêm ~150 ms (evaluate + screenshot). O tiro do astral
 // voa ~19 u/s (range 11,5 => voo < 1 s), entao com 0,07 s o recorte chega
 // DEPOIS do impacto (o print mostra a fagulha do FX, nao a silhueta em voo).
 // Para silhuetas rapidas, passe SHOT_LATENCY=0.16 (compensa o custo do print).
 const SHOT_LATENCY = Number(process.env.SHOT_LATENCY ?? 0.07); // s: do poll ate o pixel do print chegar no recorte
+// SHOT_HIDE: paletas (hex) cujas UNIDADES sao ESCONDIDAS antes do print. Sem
+// isso o recorte do colosso era sempre uma parede das proprias pecas do figurino
+// (o anel dele e grande e o tiro nasce dentro da saia) e o print nao respondia
+// "o que o JOGADOR ve do tiro". Esconder e so visibilidade: o rig continua
+// tocando e o motor continua atirando, entao o print mostra o tiro SOBRE O PISO
+// (identidade do tiro isolada) e o frame aberto continua validando o contexto.
+const HIDE = (process.env.SHOT_HIDE ?? '')
+  .split(',')
+  .map((h) => h.trim().replace('#', '').toLowerCase())
+  .filter(Boolean);
 
 const browser = await chromium.launch({
   args: ['--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader'],
@@ -149,9 +162,13 @@ const poll = (env) =>
         } else if (o.isMesh && !o.isInstancedMesh && o.geometry) {
           const p0 = ms0[0];
           const emis = p0?.uniforms?.uGold?.value?.getHexString?.() ?? null;
+          const rk = p0?.uniforms?.uRockA?.value?.getHexString?.() ?? null;
+          const ck = p0?.uniforms?.uCrack?.value?.getHexString?.() ?? null;
           const p = o.getWorldPosition(new (o.position.constructor)());
           pushNear(
-            `MESH ${o.geometry?.type} ${matName}${emis ? ' G' + emis : ''}${p0?.transparent ? ' T' : ''}`,
+            `MESH ${o.geometry?.type} ${matName}${emis ? ' G' + emis : ''}${rk ? ' R' + rk : ''}${
+              ck ? ' C' + ck : ''
+            }${p0?.transparent ? ' T' : ''}`,
             [p.x, p.y, p.z],
             (o.geometry.boundingSphere?.radius ?? 0.3) * 2,
           );
@@ -199,6 +216,47 @@ const poll = (env) =>
     },
     [HEX || null, box, env ?? null, { w: W, h: H }],
   );
+
+/** Esconde (so para o print) toda PECAS SOLTA cujo material carrega uma das
+ *  paletas dadas. NUNCA toca nos InstancedMesh (os pools do projetil), entao o
+ *  que sobra no recorte e o piso da arena + o tiro. A visibilidade e so do
+ *  print: o rig continua animado e o motor continua atirando. */
+const hidePieces = async (hexes) => {
+  const r = await page.evaluate((list) => {
+    const scene = (window.__threeRs || []).find((s) => s && s.isScene);
+    if (!scene) return { err: 'sem scene' };
+    const hit = (o) => {
+      const ms = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of ms) {
+        const u = m?.uniforms;
+        if (!u) continue;
+        for (const k of ['uRockA', 'uRockB', 'uGold', 'uCrack']) {
+          const hx = u[k]?.value?.getHexString?.();
+          if (hx && list.includes(hx)) return true;
+        }
+      }
+      return false;
+    };
+    const hidden = [];
+    scene.traverse((o) => {
+      if (o.isInstancedMesh) return; // pools do projetil ficam SEMPRE na cena
+      if (!o.isMesh && !o.isSprite) return;
+      if (!hit(o)) return;
+      o.visible = false;
+      hidden.push(o);
+    });
+    window.__hiddenPieces = hidden;
+    return { n: hidden.length };
+  }, hexes);
+  return r;
+};
+
+const showPieces = async () =>
+  page.evaluate(() => {
+    for (const o of window.__hiddenPieces || []) o.visible = true;
+    window.__hiddenPieces = [];
+    return true;
+  });
 
 const decorate = async (buf, cx, cy, r03) => {
   const b64 = buf.toString('base64');
@@ -331,15 +389,27 @@ for (let i = 0; i < 900 && shots < 6; i++) {
         const clipY = Math.max(0, Math.min(box.y + box.height - H, sy - H / 2));
         lastClip = { x: clipX, y: clipY }; // a proxima sonda faz o censo desta janela
         const name = String(shots).padStart(2, '0');
+        const hid = HIDE.length ? await hidePieces(HIDE) : null;
         const raw = await page.screenshot({ clip: { x: clipX, y: clipY, width: W, height: H } });
         const census = await poll(lastClip); // o censo da JANELA DESTE print (1 frame depois)
+        if (hid) await showPieces();
         writeFileSync(`${OUT}\\crop-${name}.png`, raw);
         writeFileSync(
           `${OUT}\\big-${name}.png`,
           await decorate(raw, sx - clipX, sy - clipY, best.h.span * box.width, W),
         );
+        // MODO RAJADA (SHOT_BURST=N): a mesma janela impressa N vezes em
+        // sequencia. O print nao e instantaneo (o recorte chega ~0,2 s depois
+        // da sonda) e o tempo de voo ate o IMPACTO nao cabe numa foto so — com
+        // a rajada de prints na MESMA janela a gente pega o voo, a detonacao e
+        // a poeira assentando, sem depender de acertar o instante
+        for (let b = 0; b < BURST; b++) {
+          await page.waitForTimeout(170);
+          const extra = await page.screenshot({ clip: { x: clipX, y: clipY, width: W, height: H } });
+          writeFileSync(`${OUT}\\burst-${name}-${String(b).padStart(2, '0')}.png`, extra);
+        }
         console.log(
-          `shot ${shots} ${best.h.geo}@${JSON.stringify(best.h.at.map((n) => +n.toFixed(2)))} vel=${bestSpeed.toFixed(1)}u/s R${best.h.rock ?? '-'} G${best.h.gold ?? '-'} C${best.h.crack ?? '-'} 0,3u=${(best.h.span * box.width).toFixed(0)}px tela=(${Math.round(sx)},${Math.round(sy)})`,
+          `shot ${shots} ${best.h.geo}@${JSON.stringify(best.h.at.map((n) => +n.toFixed(2)))} vel=${bestSpeed.toFixed(1)}u/s R${best.h.rock ?? '-'} G${best.h.gold ?? '-'} C${best.h.crack ?? '-'} 0,3u=${(best.h.span * box.width).toFixed(0)}px tela=(${Math.round(sx)},${Math.round(sy)})${hid ? ` escondidas=${hid.n ?? hid.err}` : ''}`,
         );
         console.log(`  censo: ${JSON.stringify(census.near ?? census.err)}`);
         shots++;

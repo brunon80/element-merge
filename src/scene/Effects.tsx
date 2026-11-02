@@ -34,6 +34,15 @@ import { SCORIA_VULC_LOOK, VULCAN_EMBER, VULCAN_LAVA } from './VulcanRig';
 // trinca âmbar do MOTOR e a geada das fagulhas (identidade amarrada em teste do
 // motor ao impacto; ver AstralRig)
 import { ASTRAL_FROST, ASTRAL_STARLIGHT, VOID_ASTRAL_DEEP_LOOK } from './AstralRig';
+// paleta do COLOSSO (a lasca de talco que estilhaça no impacto é o MESMO talco
+// claro do anel/figurino com a trinca de magma da cor do motor — identidade
+// amarrada em teste; ver ColossoRig)
+import {
+  COLOSSO_AMETHYST,
+  COLOSSO_DEEP,
+  COLOSSO_MAGMA,
+  COLOSSO_TALC,
+} from './ColossoRig';
 import type { SmokePool } from './smokePool';
 
 const PARTICLE_CAP = 400;
@@ -491,6 +500,33 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e as LASCAS DE TALCO do impacto do COLOSSO: o matacão de TREZE FACES
+  // ARREBENTA em farpa bicuda de TREZE FACES (o DNA da árvore escrito em cada
+  // caco: o Geodo é CINCO, o Abissal SETE, o Vulcânico NOVE, o Astral ONZE). O
+  // caco é o MESMO talco claro do anel e dos olhos do figurino com a trinca de
+  // magma da cor do motor (#d98c4a, identidade boca→bloco→FX amarrada em teste).
+  // Física própria: é o caco mais PESADO da árvore — o bloco ARREBENTA (sai
+  // devagar, sobe pouco, gira pouco e não quica quase nada), o oposto exato da
+  // lasca de cometa do Astral, que flutua
+  const shardMoon = useMemo(() => {
+    const geo = new THREE.CylinderGeometry(0.016, 0.05, 0.3, 13, 1); // farpa bicuda de 13 faces
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeStoneMaterial({
+        rockA: COLOSSO_TALC, // O MESMO talco claro do anel/projétil
+        rockB: '#7d7889',
+        crack: COLOSSO_MAGMA, // = a cor do motor (identidade amarrada em teste)
+        amp: 0.008, // aresta viva: lasca de lua não arredonda
+        crackGlow: 1.0, // lasca fresca: acabou de sair da cratera acesa do bloco
+        crackScale: 3.0, // lasca miúda: o ruído é lido no espaço LOCAL
+        crackWidth: 0.05,
+        crackBoost: 0.9,
+        speck: 1, // regolito salpicado
+        seed: 15.2 + i * 2.3,
+        breath: 0.35,
+      }),
+    );
+    return { geo, mats };
+  }, []);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
@@ -509,7 +545,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           | 'geode'
           | 'bone'
           | 'cinder'
-          | 'comet',
+          | 'comet'
+          | 'moon',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -549,6 +586,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       shardCinder.geo.dispose();
       for (const m of shardComet.mats) m.dispose();
       shardComet.geo.dispose();
+      for (const m of shardMoon.mats) m.dispose();
+      shardMoon.geo.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
@@ -566,6 +605,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     shardBone,
     shardCinder,
     shardComet,
+    shardMoon,
     arcGeo,
     arcMat,
   ]);
@@ -736,7 +776,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       | 'geodeShard'
       | 'boneShard'
       | 'cinderShard'
-      | 'cometShard' = 'flame',
+      | 'cometShard'
+      | 'moonShard' = 'flame',
     life?: number,
   ) => {
     if (kind === 'flame') {
@@ -789,7 +830,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                             ? 'cinder'
                             : kind === 'cometShard'
                               ? 'comet'
-                              : 'rock';
+                              : kind === 'moonShard'
+                                ? 'moon'
+                                : 'rock';
       const a = Math.random() * Math.PI * 2;
       // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
       // cambalhota que a pedra (que só desmorona). O VIDRO da Obsidiana é
@@ -824,14 +867,23 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       // órbita do titã que a cuspiu, e gira rápido como lasca fina que é. Não
       // entra no `fast` (nervosa do gelo/vidro): ela tem inércia de breu
       const comet = kind === 'cometShard';
+      // a lasca do COLOSSO é o caco mais PESADO da árvore: o matacão não
+      // ESTOURA nervoso, ele ARREBENTA — sai devagar para os lados, sobe pouco,
+      // gira quase nada (bloco grande tem inércia de pilar) e no piso quase não
+      // quica. É o espelho exato da lasca de cometa do Astral (leve, saltando,
+      // girando), e por isso os dois Nv.9/10 se separam na física do caco
+      const moon = kind === 'moonShard';
       const fast = ice || glass || prism || star;
-      const s = (fast ? 2.2 : bone || cinder || comet ? 1.9 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : bone ? 2.0 : cinder || comet ? 1.9 : mud ? 1.2 : 1.8);
+      const s =
+        (fast ? 2.2 : bone || cinder || comet ? 1.9 : mud ? 1.15 : moon ? 1.0 : 1.6) +
+        Math.random() * (fast ? 2.4 : bone ? 2.0 : cinder || comet ? 1.9 : mud ? 1.2 : moon ? 1.4 : 1.8);
       d.vx = Math.cos(a) * s;
       d.vy =
-        (prism || star || comet ? 2.6 : fast ? 2.1 : bone ? 1.8 : cinder ? 1.7 : mud ? 1.1 : 1.6) +
-        Math.random() * (ice ? 2.4 : prism || star || comet ? 2.8 : bone ? 2.2 : cinder ? 2.0 : mud ? 1.1 : 1.8);
+        (prism || star || comet ? 2.6 : fast ? 2.1 : bone ? 1.8 : cinder ? 1.7 : mud ? 1.1 : moon ? 1.0 : 1.6) +
+        Math.random() * (ice ? 2.4 : prism || star || comet ? 2.8 : bone ? 2.2 : cinder ? 2.0 : mud ? 1.1 : moon ? 1.5 : 1.8);
       d.vz = Math.sin(a) * s;
-      const spin = prism ? 23 : star ? 21 : comet ? 18 : glass ? 19 : ice ? 16 : bone ? 15 : cinder ? 8 : mud ? 6 : geode ? 13 : 11;
+      const spin =
+        prism ? 23 : star ? 21 : comet ? 18 : glass ? 19 : ice ? 16 : bone ? 15 : cinder ? 8 : mud ? 6 : geode ? 13 : moon ? 5 : 11;
       d.rx = (Math.random() - 0.5) * spin;
       d.ry = (Math.random() - 0.5) * spin;
       d.rz = (Math.random() - 0.5) * spin;
@@ -1401,6 +1453,41 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 1.15,
               speed: 1.4,
             });
+          } else if (ev.species === 'colosso') {
+            // a montanha-eterna ARREMESSA o próprio bloco e o que chega no alvo é
+            // QUAKE: o matacão de TREZE FACES ARREBENTA em lascas de talco claro
+            // (pool `moonShard`: o MESMO talco do anel/projétil com a trinca de
+            // magma da cor do motor #d98c4a — identidade boca→bloco→FX amarrada em
+            // teste, de TREZE faces como tudo aqui) com a física do caco mais
+            // PESADO da árvore (sai devagar, sobe pouco, gira pouco, mal quica: o
+            // oposto da lasca de cometa do Astral). A onda de choque é a mais
+            // LARGA da árvore (`splash 2,2` — o geodo é 1,8 e o vulcão 2,0) e vem
+            // em DUAS, a memória do anel do figurino gravada no piso: cratera de
+            // magma POR DENTRO e talco assentando POR FORA. A chuva é breu de
+            // cratera (pesada, cai reto) + os TREZE grãos de talco suspensos + o
+            // acento de ametista das gemas SUBINDO, e a fumaça é PÓ DE LUA: claro
+            // e frio (heat 0,12 — nem a cinza quente do vulcão 0,65, nem o breu
+            // frio do geodo 0, nem o grão morno do astral 0,25)
+            const lv = Math.max(9, Math.min(10, ev.level ?? 9));
+            const k = 1 + (lv - 9) * 0.14;
+            // três das treze lascas do tambor estourado (pool: 3)
+            for (let i = 0; i < 3; i++)
+              spawnBurst(x, y, z, 0.34 + 0.05 * (lv - 9), 'moonShard', 0.95);
+            spawnParticles(x, y, z, COLOSSO_MAGMA, 12 + (lv - 9) * 2, 2.4, 0.6, 1.4, 0.4); // o MOTOR da cratera acesa estourando (cai arrastando)
+            spawnParticles(x, y, z, COLOSSO_TALC, 13, 2.0, 0.85, 0.35, 0.25); // TREZE grãos de TALCO suspensos (a montanha esmagada — o DNA em partícula)
+            spawnParticles(x, y, z, COLOSSO_DEEP, 10, 3.0, 0.5, 3.4, 0.35); // chuva de breu das crateras do bloco (pesada, cai reto)
+            spawnParticles(x, y, z, COLOSSO_AMETHYST, 6 + (lv - 9) * 2, 1.4, 0.7, -1.0, 0.4); // as GEMAS das crateras sobem (o acento frio da espécie)
+            spawnParticles(x, y - 0.1, z, COLOSSO_TALC, 7, 1.1, 0.5, 0.5, 0.15); // o talco assentando no piso (poeira de lua que fica)
+            spawnParticles(x, y - 0.1, z, COLOSSO_MAGMA, 5, 0.9, 0.45, 0.7, 0.1); // o magma da cratera escorrendo no piso
+            spawnRing(x, 0.1, z, COLOSSO_MAGMA, 3.4 * k); // a mais LARGA da árvore (splash 2,2): a cratera aberta
+            spawnRing(x, 0.18, z, COLOSSO_TALC, 2.1 * k); // talco POR FORA do magma: o anel do titã no piso
+            spawnRing(x, 0.26, z, COLOSSO_AMETHYST, 0.7); // flash MIÚDO da gema da cratera (nunca bola de fogo)
+            spawnSmoke(x, y, z, 13, {
+              size: 0.16, // puff GRANDE: poeira de montanha é grão grosso e lento
+              heat: 0.12, // PÓ DE LUA: claro e frio (a cinza quente é do vulcão)
+              life: 1.5,
+              speed: 1.7,
+            });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e
@@ -1842,7 +1929,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                             ? shardCinder
                             : d.kind === 'comet'
                               ? shardComet
-                              : shardRock;
+                              : d.kind === 'moon'
+                                ? shardMoon
+                                : shardRock;
       const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {
@@ -1869,9 +1958,14 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           // e espalha devagar, pousando acesa
           const wet = d.kind === 'mud';
           const pumice = d.kind === 'cinder';
-          d.vy = Math.abs(d.vy) * (wet ? 0.08 : pumice ? 0.2 : 0.38);
-          d.vx *= wet ? 0.45 : pumice ? 0.55 : 0.72;
-          d.vz *= wet ? 0.45 : pumice ? 0.55 : 0.72;
+          // o TALCO DO COLOSSO é seco e PESADO: quase não quica (o bloco absorve
+          // o próprio impacto) e espalha pouco — a poeira da montanha assenta no
+          // lugar onde caiu, não escorrega pelo piso como o lodo nem quica como
+          // a pedra seca do golem
+          const moonrock = d.kind === 'moon';
+          d.vy = Math.abs(d.vy) * (wet ? 0.08 : pumice ? 0.2 : moonrock ? 0.15 : 0.38);
+          d.vx *= wet ? 0.45 : pumice ? 0.55 : moonrock ? 0.5 : 0.72;
+          d.vz *= wet ? 0.45 : pumice ? 0.55 : moonrock ? 0.5 : 0.72;
         }
         mesh.rotation.x += d.rx * dt;
         mesh.rotation.y += d.ry * dt;

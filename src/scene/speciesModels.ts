@@ -140,7 +140,20 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   // o Cósmico é azul-estrela com acento ouro, este é ouro com acento geada —
   // virado do avesso de propósito, para um print separar o pai do filho
   astral: { body: '#2a2338', dark: '#141019', glow: '#ffb347', accent: '#cfe4ff', roughness: 0.5 },
-  colosso: { body: '#6e5c50', dark: '#372c26', glow: '#ff7a3d', accent: '#c77dff', roughness: 0.8 },
+  // Nv.9 — A MONTANHA ETERNA QUE VIROU LUA (Geodo+Vulcânico): o corpo é o
+  // REGOLITO PÁLIDO de um planetóide morto #9a95a3, a poeira de pedra que nunca
+  // teve atmosfera (nunca o barro cozido do Vulcânico Nv.8 nem o basalto ameixa
+  // do Geodo — é cinza-azulado CLARO, o mais claro da família das montanhas, e o
+  // print da arena lê a LUA, não a fogueira). A IDENTIDADE é o magma-que-esfria
+  // #d98c4a (= projectileColor do motor = glow daqui = uCrack de toda a pedra =
+  // uGold da goela, das lâmpadas de cratera e do bloco arremessado): mora só no
+  // VEIO, porque são treze fissuras + treze lâmpadas + treze brasas acesas ao
+  // mesmo tempo — pedra laranja seria lâmpada de lava (a lição do print do
+  // Astral). O ACENTO é a ametista orquídea #c77dff herdada do pai Geodo: brota
+  // dentro de cada um dos treze ferimentos, na coroa polar e nas lascas do anel
+  // (o Vulcânico tem brasa laranja como acento e o Geodo tem a catedral roxa —
+  // aqui é pedra cinza com ferimento âmbar e cristal orquídea)
+  colosso: { body: '#9a95a3', dark: '#2b2636', glow: '#d98c4a', accent: '#c77dff', roughness: 0.95 },
   // Nv.10 — primordial
   primordial: { body: '#d8e4f2', dark: '#5c6c85', glow: '#fff3c4', accent: '#9ad0ff', roughness: 0.3, metalness: 0.25 },
 };
@@ -661,6 +674,179 @@ const tidalTail = (): Part[] => {
   for (let k = 0; k + 2 < pts.length; k += 2)
     parts.push(rod11(pts[k], pts[k + 2], 0.055, { m: 'glow', tag: 'tail.rod', flick: 0.08 }));
   return parts;
+};
+
+/**
+ * As medidas do COLOSSO (amarradas em teste — o rig e o figurino leem as MESMAS
+ * constantes): o centro e o raio do planetoida que é o corpo, o plano/raio/
+ * inclinação do anel de matacões e o pivô do braço que arremessa. O corpo é o
+ * próprio slot — a cara do colosso É a cara da lua (o homem da lua): a caloura
+ * chata de basalto no flanco +Z é onde a cara vive, porque uma placa chata
+ * montada na circunsfera NÃO pode ser engolida pelo relevo do corpo.
+ */
+export const COLOSSO_BODY_Y = 2.62;
+export const COLOSSO_BODY_R = 1.3;
+/** anel de matacões: o planeta usa saia. O anel é o MESMO plano inclinado para
+ *  os três corpos (matacões, placas e lascas). A INCLINAÇÃO (0,5) é ditada pela
+ *  CARA: com a caloura em y 2,04-3,52 e z 1,31, o arco da frente do anel tem que
+ *  passar ABAIXO do queixo (y 1,72 no ponto mais baixo, 0,6 de folga para a
+ *  goela) e o arco de trás tem que aparecer POR CIMA do ombro do planetóide (y
+ *  3,72, o topo do disco projetado é 3,9) — inclinação curta (0,26) punha o arco
+ *  da frente na altura da boca e a corrente escura atravessava a cara, o print
+ *  lia CESTA por cima da lua, não saia de Saturno */
+export const COLOSSO_RING_Y = 2.72;
+/** ρ 2,08 e NÃO mais: a régua do tabuleiro (`halfX < TILE_SPACING_X − 0,6` = 2,6)
+ *  é apertada pelo próprio anel — matacão (raio 0,23) + lasca já chegam a 2,4. O
+ *  furo do anel fica em ρ 1,85 e os braços de arremesso moram todos DENTRO do
+ *  furo (ρ ≤ 1,65) */
+export const COLOSSO_RING_R = 2.08;
+export const COLOSSO_RING_TILT = 0.5;
+export const COLOSSO_RING_PIVOT: [number, number, number] = [0, COLOSSO_RING_Y, 0];
+/** pivô do arremesso: a cova do ombro — o braço INTEIRO (ombro, úmero, punho e
+ *  o matacão segurado) orbita esse ponto, uma quaternión só (a receita do
+ *  pescoço do Astral e das tampas do Vulcânico). A cova fica no FLANCO, BAIXO
+ *  (1,0; 3,0, ρ 1,0): o braço PENDURA até o quadril e todas as suas peças ficam
+ *  dentro do furo do anel (ρ 1,82) sem passar de ρ 1,65, então o balanceio e o
+ *  arremesso não têm com o que varar as pedras do anel. Cova alta (y 3,45) punha
+ *  o punho e o matacão na altura do arco da frente do anel, e o print lia só um
+ *  nó de pedra no ventre (round 4) */
+export const COLOSSO_ARM_PIVOT: [number, number, number] = [1.0, COLOSSO_BODY_Y + 0.38, 0.02];
+/** a goela acesa na caloura (de onde o bloco sai cospe poeira de regolito): no
+ *  eixo da boca, DENTRO do aro — a boca abre para a frente */
+export const COLOSSO_CORE_POS: [number, number, number] = [0, 2.36, 1.44];
+
+/** VARA DO COLOSSO (contraforte, úmero, matacão, menir): um `cyl` de TREZE FACES
+ *  (o treze da montanha-eterna-que-virou-lua: nenhum outro figurino da árvore
+ *  usa treze — o Geodo é CINCO, o Cristal SEIS, o Abissal SETE, o Cósmico OITO,
+ *  o Vulcânico NOVE, o Astral ONZE), com anéis ≥7 por unidade e afinando no rumo
+ *  da ponta: `a` é o pé (gordo, enterrado no maciço), `b` a ponta. A espessura
+ *  deste figurino é o TRIPLO da do Astral (0,20-0,24 contra 0,085): a montanha
+ *  tem pernas de pilar, não fios de luz. */
+const rod13 = (
+  a: [number, number, number],
+  b: [number, number, number],
+  thick: number,
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const dz = b[2] - a[2];
+  const len = Math.hypot(dx, dy, dz);
+  return {
+    ...part,
+    g: 'cyl',
+    a: [thick * 0.72, thick, len + 0.04, 13, Math.max(4, Math.round(len * 7))],
+    p: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2],
+    r: aim([dx, dy, dz]),
+  };
+};
+
+/** PONTA DO COLOSSO (lasca do anel, espinho de ametista da coroa, fissura
+ *  rasgada na casca): cone de TREZE FACES com a base enterrada no nó (pino
+ *  enterrado não é ponta solta — a MESMA receita do `spike11`/`spike9`). */
+const spike13 = (
+  c: [number, number, number],
+  nodeR: number,
+  len: number,
+  thick: number,
+  d: [number, number, number],
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const L = Math.hypot(d[0], d[1], d[2]) || 1;
+  const ux = d[0] / L;
+  const uy = d[1] / L;
+  const uz = d[2] / L;
+  const back = nodeR - 0.05; // base enterrada no nó
+  return {
+    ...part,
+    g: 'cone',
+    a: [thick, len, 13, 1],
+    p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
+    r: aim([ux, uy, uz]),
+  };
+};
+
+/** As TREZE bocas de cratera do COLOSSO (o planetoida APANOU muito e mostra as
+ *  cicatrizes): oito escalando o CÉU (elevações 29° a 62°, azimutes girados 22°
+ *  para nenhuma cair sobre a caloura da cara), quatro só no QUADRANTE DE TRÁS
+ *  (110° a 245° — a barriga acesa das fissuras e a cara ficam limpas) e uma
+ *  quase no polo, aberta dentro da coroa de ametista. São PEQUENAS de propósito:
+ *  cratera grande sobre corpo pequeno vira MANTA DE DISCOS (o print do primeiro
+ *  colosso lia ouriço, não lua) — cada boca tem que sobrar como sinal. */
+const CRATER13: { d: [number, number, number]; r: number }[] = (() => {
+  const out: { d: [number, number, number]; r: number }[] = [];
+  const put = (azDeg: number, elRad: number, r: number) => {
+    const az = (azDeg * Math.PI) / 180;
+    out.push({ d: [Math.sin(az) * Math.cos(elRad), Math.sin(elRad), Math.cos(az) * Math.cos(elRad)], r });
+  };
+  // oito escalando o céu (nenhuma na faixa da cara, que vive a ~0° de elevação
+  // no +Z; nenhuma repetida em listel, senão as crateras viram faixa)
+  for (let k = 0; k < 8; k++) put(k * 45 + 22, 0.5 + (k % 3) * 0.22, 0.17 + (k % 3) * 0.03);
+  // quatro só no QUADRANTE DE TRÁS e miúdas: a barriga fica livre para as
+  // fissuras de magma e a cara fica limpa de cratera
+  for (let k = 0; k < 4; k++) put(110 + k * 45, 0.34, 0.15 + (k % 2) * 0.03);
+  // uma quase no polo, aberta dentro da coroa de ametista (o ferimento de onde
+  // a herança do Geodo brota)
+  put(20, 1.36, 0.2);
+  return out;
+})();
+
+/** UMA cratera do colosso (quatro peças, sempre de TREZE FACES onde há faces):
+ *  aro de TREZE lados da MESMA pedra clara do corpo, POÇO de breu (aqui o
+ *  contraste é o inverso da maioria da árvore: BREU aberto sobre regolito CLARO,
+ *  a marca de quem apanhou), ametista brotando do poço (o filho do Geodo: o
+ *  cristal herdado do pai cresce no ferimento) e uma lâmpada de magma no fundo
+ *  (o veio do Vulcânico, o outro pai). */
+const crater13 = (dir: [number, number, number], r: number, k: number): Part[] => {
+  const [dx, dy, dz] = dir;
+  // perpendicular ao eixo da cratera para gemer/lampada nao ficarem no centro
+  const up: [number, number, number] = Math.abs(dy) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  let px = dy * up[2] - dz * up[1];
+  let py = dz * up[0] - dx * up[2];
+  let pz = dx * up[1] - dy * up[0];
+  const pl = Math.hypot(px, py, pz) || 1;
+  px /= pl;
+  py /= pl;
+  pz /= pl;
+  // tudo sai do CENTRO DO PLANETÓIDE (0, COLOSSO_BODY_Y, 0): quem esquece o
+  // centro e só multiplica pela circunsfera enterra a cratera no mascon do sopé
+  // (e o aro aparece boiando em y ~0,5, furando o envelope). `off` é o deslocamento
+  // LATERAL em unidades do mundo (a gema e a lâmpada nunca ficam no centro do poço)
+  const at = (rad: number, off = 0): [number, number, number] => [
+    dx * rad + off * px,
+    COLOSSO_BODY_Y + dy * rad + off * py,
+    dz * rad + off * pz,
+  ];
+  const a = aim(dir);
+  return [
+    // aro: tambor de treze faces quase enterrado no bojo, só a borda livre para
+    // fora — pedra empurrada pelo impacto, CLARA como o corpo (aro escuro eram
+    // treze pratos pretos colados na bola: o print lia ouriço, não lua)
+    { g: 'cyl', a: [r + 0.07, r + 0.03, 0.12, 13, 3], p: at(COLOSSO_BODY_R - 0.05), r: a, m: 'body', tag: 'crater.rim' },
+    // o poço: breu puro sobre a pedra clara — o único escuro da boca, e é ele
+    // que lê no card miúdo (a marca de quem apanhou)
+    { g: 'cyl', a: [r * 0.72, r * 0.62, 0.07, 13, 2], p: at(COLOSSO_BODY_R + 0.015), r: a, m: 'black', tag: 'crater.pit' },
+    // ametista do pai Geodo crescendo dentro do poço, meio de lado
+    {
+      g: 'octa',
+      a: [r * 0.26, 1],
+      p: at(COLOSSO_BODY_R + 0.01, r * 0.26),
+      r: [a[0] + 0.3, a[1], a[2] + 0.2 * (k % 2 ? 1 : -1)],
+      s: [0.8, 1.5, 0.8],
+      m: 'accent',
+      tag: 'crater.gem',
+    },
+    // a lampada do outro pai (Vulcanico): magma aceso no fundo do buraco — MIUDA,
+    // porque treze lampadas grandes fariam a lua ler guirlanda
+    {
+      g: 'ico',
+      a: [0.028 + r * 0.045, 2],
+      p: at(COLOSSO_BODY_R - 0.02, -r * 0.3),
+      m: 'glow',
+      tag: 'crater.lamp',
+      flick: 0.22 + (k % 3) * 0.06,
+    },
+  ];
 };
 
 /** cinco direções de cacho (o geodo brota em CINCOS: cinco pontas por mamelon,
@@ -2844,24 +3030,295 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
     groups: { 0: 0.48, 1: -0.44, 2: -0.95, 3: 0.62 },
   },
 
-  // Geodo+Vulcânico — a montanha que anda (Nv.9) -------------------------
+  // Geodo+Vulcânico — a montanha eterna que virou LUA (Nv.9) --------------
   colosso: {
-    bob: 0.02,
+    // PLANTADO NOS TREZE CONTRAFORTES (floatY 0, bob 0,016): o planetóide não
+    // boia nem anda — treze pilares grossos (0,24 de diâmetro, o TRIPLO da vara
+    // do Astral) descem do bojo para treze almofadas a 0,04 do piso e o corpo
+    // ainda assenta num mascon denso rente ao chão. É a montanha do pai
+    // Vulcânico com os pés do avô Gólem, e a régua contra o Astral (plantado
+    // por varas de gravidade de 0,085) e contra o Geodo (três degraus).
+    // DNA DA ESPÉCIE = TREZE EM TUDO: todo `cyl`/`cone` do figurino tem TREZE
+    // FACES (`rod13`/`spike13`; nenhum outro figurino usa treze — Geodo CINCO,
+    // Cristal SEIS, Abissal SETE, Cósmico OITO, Vulcânico NOVE, Astral ONZE) e
+    // o treze manda nas CONTAGENS: treze contrafortes + treze almofadas, treze
+    // menires com treze lages (o cercado megalítico), treze crateras (aro +
+    // poço + ametista + lâmpada), treze matacões no anel + treze placas + treze
+    // lascas, treze brasas do enxame alto, treze seixos do entulho rasteiro,
+    // treze fissuras de magma na barriga, treze espinhos de ametista na coroa
+    // polar e TREZE peças na cara.
+    // A ASSINATURA é o planetóide craterado com ANEL DE MATACÕES INCLINADO
+    // (0,34) e a cara DELE — o homem da lua: a caloura chata de basalto
+    // (maria!) montada na circunsfera segura a cara, porque placa chata colada
+    // na bola seria engolida pelo relevo deslocado do corpo. A caloura é ESCURA
+    // sobre o regolito CLARO: a cara lê de longe como mancha (a lição das
+    // manchas brutas da árvore). Coroa de ametista no polo (herança do Geodo),
+    // magma na barriga (herança do Vulcânico), anel + enxame orbitando (o
+    // Cósmico dos tios) — Nv.9 que NÃO é galáxia nem constelação.
+    floatY: 0,
+    bob: 0.016,
     parts: [
-      ...mm({ g: 'box', a: [0.5, 0.55, 0.56], p: [-0.45, 0.28, 0], m: 'dark' }),
-      { g: 'box', a: [1.4, 1.1, 1.1], p: [0, 1.1, 0], m: 'body' },
-      { g: 'cone', a: [0.85, 1.0, 7], p: [0, 2.1, 0], m: 'body' },
-      { g: 'cone', a: [0.5, 0.7, 7], p: [0, 2.75, 0], m: 'dark' },
-      ...mm({ g: 'dodeca', a: [0.34], p: [0.9, 1.6, 0], m: 'dark' }),
-      { g: 'octa', a: [0.2, 0], p: [0.3, 3.1, 0.1], s: [0.8, 1.4, 0.8], m: 'accent' },
-      { g: 'octa', a: [0.15, 0], p: [-0.35, 2.9, -0.15], s: [0.8, 1.3, 0.8], m: 'accent' },
-      { g: 'box', a: [0.1, 0.7, 0.03], p: [-0.35, 1.15, 0.56], m: 'glow', flick: 0.08 },
-      { g: 'box', a: [0.07, 0.5, 0.03], p: [0.3, 1.0, 0.56], r: [0, 0, 0.35], m: 'glow', flick: 0.1 },
-      { g: 'sphere', a: [0.12, 10, 8], p: [0, 1.6, 0.5], m: 'glow', flick: 0.06 },
-      ...mm(SEYE(0.18, 1.55, 0.52)),
-      ...mm(SPUPIL(0.18, 1.55, 0.52)),
-      { g: 'drop', a: [0.2, 0.6, 16, 14], p: [0, 3.3, 0], m: 'glow', flick: 0.3, amp: 0.1 },
+      // ---- os TREZE contrafortes + as TREZE almofadas de pouso: o SOPÉ da
+      // montanha. Eles sobem QUASE PIUROS (ρ 1,02 no piso → ρ 0,62 no bojo),
+      // são GROSSOS (0,30 de diâmetro) e se SOBREPÕEM (espaço entre vizinhos é
+      // 0,49 contra 0,60 de diâmetro), mergulhando no mascon: assim a base lê
+      // MACIÇO CANELURADO plantado no chão. No print anterior as treze varas
+      // escanhoadas a ρ 1,52 liam PATAS DE ARANHA saindo de uma bola. ----
+      ...Array.from({ length: 13 }, (_, k): Part[] => {
+        const phi = (k / 13) * Math.PI * 2;
+        const c = Math.cos(phi);
+        const s = Math.sin(phi);
+        return [
+          // pé a 0,16 do chão: o tambor da raiz é GROSSO (0,30) e quase piro, e
+          // a base enterrada desceria abaixo do piso se o pé ficasse rente ao
+          // chão — a régua do envelope (minY ≥ −0,01)
+          rod13([1.02 * c, 0.16, 1.02 * s], [0.62 * c, 2.05, 0.62 * s], 0.3, { m: 'body', tag: 'root' }),
+          { g: 'cyl', a: [0.32, 0.36, 0.08, 13, 2], p: [1.02 * c, 0.05, 1.02 * s], m: 'dark', tag: 'root.pad' },
+        ];
+      }).flat(),
+      // ---- o cercado megalítico: treze MENIRES no anel de fora (ρ 2,0), BAIXOS
+      // (0,62) e ligados entre si pela sua lage assentada no ombro de dois em
+      // dois — o cromlech da montanha-eterna (o vão entre vizinhos é 0,96, a
+      // lage tem 0,90: ela fecha o círculo em vez de boiar como tampa solta, que
+      // no print anterior lia CAIXAS ESPALHADAS no escuro). BAIXOS de propósito:
+      // cercado alto (0,95) punha a lage em y 1,05, encostada no arco de baixo do
+      // anel (1,96), e o print lia duas cestas escuras uma sobre a outra ----
+      ...Array.from({ length: 13 }, (_, k): Part[] => {
+        const phi = ((k + 0.5) / 13) * Math.PI * 2;
+        const c = Math.cos(phi);
+        const s = Math.sin(phi);
+        return [
+          {
+            g: 'cyl',
+            a: [0.15, 0.22, 0.62, 13, 4],
+            p: [2.0 * c, 0.34, 2.0 * s],
+            r: [0.06 * Math.sin(phi), 0, -0.06 * Math.cos(phi)],
+            m: 'dark',
+            tag: 'menhir',
+          },
+          // a lage fica DEITADA NA TANGENTE (θ = −π/2 − φ: o +X do `box`, que é o
+          // comprimento, vai para a tangente (−sinφ, 0, cosφ)) e encosta no
+          // ombro dos dois menires vizinhos (o topo deles é y 0,65)
+          { g: 'box', a: [0.9, 0.08, 0.24], p: [2.0 * c, 0.67, 2.0 * s], r: [0, -Math.PI / 2 - phi, 0], m: 'dark', tag: 'menhir.cap' },
+        ];
+      }).flat(),
+      // ---- o corpo-planetóide: ico SUB 2 (relevo denso, nada de low-poly) +
+      // mascon denso no sopé + três mamelons meio enterrados (lua é bola
+      // irregular, nunca bola de basquete) ----
+      // o mascon do sopé: esfera de r 1,18 PLANTADA a y 1,2 — o fundo da esfera
+      // encosta no piso (a régua do envelope não o empurra para debaixo da arena)
+      { g: 'ico', a: [1.18, 2], p: [0, 1.2, 0], m: 'body', tag: 'mascon' },
+      { g: 'ico', a: [COLOSSO_BODY_R, 2], p: [0, COLOSSO_BODY_Y, 0], m: 'body', tag: 'body' },
+      { g: 'ico', a: [0.5, 2], p: [1.02, 2.05, -0.52], m: 'body', tag: 'lobe' },
+      { g: 'ico', a: [0.46, 2], p: [-0.95, 2.35, -0.66], m: 'body', tag: 'lobe' },
+      { g: 'ico', a: [0.42, 2], p: [-0.25, 1.87, 0.92], m: 'body', tag: 'lobe' },
+      // ---- as TREZE crateras: aro de treze faces, poço de breu, ametista do
+      // pai Geodo no ferimento e a lâmpada de magma do pai Vulcânico no fundo ----
+      ...CRATER13.flatMap(({ d, r }, k) => crater13(d, r, k)),
+      // ---- o ANEL (a assinatura): treze matacões DEITADOS NA TANGENTE (o eixo
+      // do tambor vai para a tangente, não para o radial — matacão de eixo em pé
+      // para fora eram treze ESPINHOS e o print lia ouriço/bomba, não anel),
+      // treze placas chatas de lastro nos VAZIOS entre os matacões (o vão é 1,0,
+      // o matacão tem 0,8 de comprimento e o disco 0,4 de diâmetro: a corrente
+      // FECHA, o anel tem piso) e treze lascas curtas deITADAS NA TANGENTE
+      // (espinho radial era farpa de ouriço de novo). PEDRA ESCURA: o anel
+      // atravessa o disco CLARO do planetóide e, se for da mesma pedra clara do
+      // corpo, ele desaparece dentro da silhueta (a falta do print do round 3)
+      // ----
+      ...Array.from({ length: 13 }, (_, k): Part[] => {
+        const phi = (k / 13) * Math.PI * 2;
+        const c = Math.cos(phi);
+        const s = Math.sin(phi);
+        const y = COLOSSO_RING_Y + (k % 2 ? 0.06 : -0.06);
+        // o meio do vão entre dois matacões vizinhos
+        const mid = phi + Math.PI / 13;
+        const mc = Math.cos(mid);
+        const ms = Math.sin(mid);
+        return [
+          {
+            g: 'cyl',
+            a: [0.2, 0.23, 0.8, 13, 3],
+            p: [COLOSSO_RING_R * c, y, COLOSSO_RING_R * s],
+            r: aim([-s, 0, c]),
+            m: 'dark',
+            tag: 'ring.rock',
+            group: 3,
+          },
+          // o lastro: disco chato de treze faces no vão, meio enterrado no ombro
+          // dos dois matacões vizinhos
+          {
+            g: 'cyl',
+            a: [0.2, 0.19, 0.09, 13, 2],
+            p: [COLOSSO_RING_R * mc, COLOSSO_RING_Y - 0.15 + (k % 2) * 0.07, COLOSSO_RING_R * ms],
+            r: [0, mid, 0],
+            m: 'dark',
+            tag: 'ring.plate',
+            group: 3,
+          },
+          // lasca CLARA deITADA NA TANGENTE, quase rasteira (0,35 de elevação):
+          // é o único claro do anel, o reflexo do regolito no ombro do matacão.
+          // CURTA (0,14) e sem projeção radial para fora — farpa radial era
+          // ouriço (a falta do print do round 2)
+          spike13([COLOSSO_RING_R * c, y, COLOSSO_RING_R * s], 0.14, 0.14, 0.06, [-s, 0.35, c], {
+            m: 'body',
+            tag: 'ring.chip',
+            group: 3,
+            flick: 0.12,
+          }),
+        ];
+      }).flat(),
+      // ---- o ENXAME ALTO: treze brasas miúdas orbitando a COROA do planetóide
+      // (o cacho de estrelas dos tios Cósmico/Astral — aqui são pedras acesas
+      // pelo veio, nunca plasmão: pedra OPACA com o veio do motor, a lição do
+      // print do Astral). Miúdas e COLADAS na coroa: no print anterior as treze
+      // bolas grandes a y 4,28 e ρ 1,3-1,7 liam lua-de-pote flutuando solta no
+      // céu. Giram no grupo 0, ao contrário do anel ----
+      ...Array.from({ length: 13 }, (_, k) => {
+        const phi = ((k + 0.5) / 13) * Math.PI * 2;
+        const rho = 0.95 + (k % 4) * 0.14;
+        return {
+          g: 'ico',
+          a: [0.1 - (k % 3) * 0.015, 2],
+          p: [rho * Math.cos(phi), 3.98 + ((k % 3) - 1) * 0.2, rho * Math.sin(phi)],
+          m: 'glow',
+          tag: 'swarm.ember',
+          group: 0,
+          flick: 0.18 + (k % 4) * 0.05,
+        } as Part;
+      }),
+      // ---- o ENTULHO RASTEIRO: treze seixos que a montanha arrasta no joelho,
+      // no chão, no vão ENTRE as almofadas do sopé (ρ 1,02) e o cercado megalítico
+      // (ρ 2,15). Rente ao piso porque entulho que boia a 0,5 de altura vira
+      // moreno de pontos flutuando no escuro (o print anterior). Eles são
+      // ACHATADOS (`s` y 0,62) e só giram no YAW: a caixa da peça é rasa, então a
+      // régua do envelope (minY ≥ −0,01) não os denuncia como "abaixo do piso" ----
+      ...Array.from({ length: 13 }, (_, k) => {
+        const phi = ((k + 0.25) / 13) * Math.PI * 2;
+        const rho = 1.5 + (k % 4) * 0.1;
+        const rr = 0.1 + (k % 3) * 0.045;
+        return {
+          g: 'ico',
+          a: [rr, k % 2 ? 2 : 1],
+          p: [rho * Math.cos(phi), 0.05 + rr * 0.66, rho * Math.sin(phi)],
+          r: [0, phi * 1.7, 0.1 * (k % 2 ? 1 : -1)],
+          s: [1.15, 0.62, 1.05],
+          m: 'dark',
+          tag: 'debris',
+          group: 1,
+        } as Part;
+      }),
+      // ---- as TREZE fissuras de magma na BARRIGA (o Vulcânico dentro da
+      // montanha): barbatanas finas tangentes à circunsfera, o veio do motor
+      // aceso na pedra escura. As treze se espalham pelos 265° que NÃO olham
+      // para a cara (o setor frontal de ±47° fica limpo: nada atravessando a
+      // caloura nem a goela) e nenhuma sobe da barriga para a caloura ----
+      ...Array.from({ length: 13 }, (_, k) => {
+        const az = 0.82 + (k / 12) * (Math.PI * 2 - 1.64);
+        const el = -0.28 - 0.28 * Math.sin(k * 2.4 + 0.7);
+        const dx = Math.sin(az) * Math.cos(el);
+        const dy = Math.sin(el);
+        const dz = Math.cos(az) * Math.cos(el);
+        const hl = Math.hypot(dx, dz) || 1;
+        const ex = dz / hl; // tangente leste-oeste (latitude), não meridiano
+        const ez = -dx / hl;
+        return spike13([dx * 1.28, COLOSSO_BODY_Y + dy * 1.28, dz * 1.28], 0.08, 0.3 + (k % 3) * 0.08, 0.032, [ex, 0, ez], {
+          m: 'glow',
+          tag: 'crack',
+          flick: 0.16 + (k % 3) * 0.06,
+        });
+      }),
+      // ---- a COROA POLAR: treze espinhos de ametista na calota (o Geodo do
+      // pai, coroando a lua). CURTOS E GROSSOS (0,34 de comprido, 0,13 de base):
+      // espinho longo e fino de 0,11 era VASSOUGA ROXA espetada na bola, o print
+      // lia buquê, não coroa ----
+      ...Array.from({ length: 13 }, (_, k) => {
+        const az = ((k + 0.5) / 13) * Math.PI * 2;
+        const psi = 0.42;
+        const dx = Math.sin(az) * Math.cos(psi);
+        const dy = Math.cos(psi);
+        const dz = Math.sin(az) * Math.sin(psi);
+        return spike13(
+          [dx * 1.15, COLOSSO_BODY_Y + dy * 1.15, dz * 1.15],
+          0.22,
+          0.34,
+          0.13,
+          [dx, dy, dz],
+          { m: 'accent', tag: 'corona' },
+        );
+      }),
+      // ---- A CARA (treze peças): a CALOURA chata de basalto é o aro da cara e
+      // avança sobre a circunsfera (regra da face da árvore: placa embutida no
+      // corpo vira buraco no card). Sobre a caloura escura, barra CLARA de
+      // sobrancelha/queixo/bochechas e dois OLHOS CLAROS — claro-sobre-escuro é o
+      // contraste que lê no card miúdo (a lição das manchas brutas da árvore). A
+      // goela de treze faces cospe os blocos e fica no eixo da boca, dentro do
+      // aro. Todas as peças chatas da cara usam a MESMA rotação de +Y para +Z
+      // (1,5108 = π/2): chata sem rotação é moeda deitada e vira uma LINHA na
+      // câmera da arena. ----
+      { g: 'cyl', a: [0.6, 0.64, 0.16, 13, 1], p: [0, 2.78, 1.31], r: [1.5108, 0, 0], m: 'dark', tag: 'mask', amp: 0.012 },
+      // a moldura da caloura: aro de ametista (herança do pai Geodo) fechando o
+      // retrato — é a TREZEª peça da cara e o que separa a mancha escura do
+      // regolito claro em vez de deixá-la boiar na bola
+      { g: 'cyl', a: [0.72, 0.74, 0.06, 13, 1], p: [0, 2.78, 1.28], r: [1.5108, 0, 0], m: 'accent', tag: 'mask.rim', amp: 0.008 },
+      // O OLHO DA LUA (lição do print do round 2): o olho era disco de BREU sobre
+      // a caloura de breu — sumia no card. Aqui é o CONTRÁRIO: esclera CLARA de
+      // regolito talco, oval e larga, com a pupila de breu por cima. O par de
+      // discos claros sobre a máscara escura é o que faz a cara ler de longe.
+      ...mm({
+        g: 'cyl',
+        a: [0.17, 0.16, 0.05, 13, 1],
+        p: [0.27, 2.95, 1.44],
+        r: [1.5108, 0, 0],
+        s: [1.3, 1, 0.72], // elipse LARGA (o eixo curto da elipse vira o +Y do mundo)
+        m: 'body',
+        amp: 0.008,
+        tag: 'eye',
+      }),
+      ...mm({ g: 'sphere', a: [0.075, 10, 8], p: [0.27, 2.94, 1.5], m: 'black', tag: 'eye.pupil' }),
+      { g: 'box', a: [0.86, 0.1, 0.09], p: [0, 3.24, 1.4], m: 'body', tag: 'brow' },
+      { g: 'box', a: [0.62, 0.11, 0.09], p: [0, 2.34, 1.4], m: 'body', tag: 'chin' },
+      ...mm({ g: 'box', a: [0.2, 0.16, 0.06], p: [0.42, 2.66, 1.38], m: 'body', tag: 'cheek' }),
+      spike13([0, 2.8, 1.3], 0.09, 0.2, 0.1, [0, -0.15, 1], { m: 'body', tag: 'nose' }),
+      { g: 'cyl', a: [0.24, 0.22, 0.08, 13, 1], p: [0, 2.36, 1.44], r: [1.5108, 0, 0], m: 'glow', tag: 'core.rim' },
+      { g: 'cyl', a: [0.19, 0.17, 0.1, 13, 1], p: [0, 2.36, 1.36], r: [1.5108, 0, 0], m: 'black', tag: 'core.pit' },
+      // ---- OS BRAÇOS DE ARREMESSO (8 peças): ombro de mamelon, úmero grosso de
+      // treze faces, punho e o MATECÃO SEGURADO na mão (o bloco que vai voar já
+      // está na mão do colosso — o `heavy` do motor em silhueta antes do tiro).
+      // Ombro BAIXO (y 3,0, no flanco) e braço PENDURADO até o QUADRIL: o ombro é
+      // a PRÓPRIA cova do pivô (1,0; 3,0), o punho fica em y 1,75 e o matacão em
+      // y 1,3. Camadas na tela, cada uma no seu andar: coroa de ametista em 4,2,
+      // arco de trás do anel em 3,3, cara em 2,0-3,5, arco da frente do anel em
+      // 2,4, matacões segurados em 1,0-1,6, cercado megalítico em 0-0,7. No print
+      // do round 4 o braço todo escuro na frente do corpo era um NÓ DE BREU e o
+      // matacão claro some no meio das pedras escuras do anel ----
+      // LIMB ESCURO, MATECÃO CLARO E GROSSO (0,34 de raio): a pedra clara rompe a
+      // silhueta do planetóide e fica contra o céu escuro, o sinal mais forte que
+      // existe a 60 pixels. Tudo dentro do furo do anel (ρ 1,82): nenhuma peça do
+      // braço passa de ρ 1,65. `mm` espelha; o rig gira cada lado no SEU pivô
+      // (COLOSSO_ARM_PIVOT ±x), e girar sobre +X leva o punho pendurado para
+      // TRÁS (a afinação) e para FRENTE no arremesso ----
+      ...([
+        { g: 'ico', a: [0.46, 2], p: [1.0, 3.0, 0.02], m: 'dark', tag: 'arm.shoulder' },
+        rod13([1.1, 2.95, 0.06], [1.35, 2.1, 0.16], 0.32, { m: 'dark', tag: 'arm.upper' }),
+        { g: 'ico', a: [0.3, 2], p: [1.4, 1.75, 0.22], m: 'dark', tag: 'arm.fist' },
+        {
+          g: 'cyl',
+          a: [0.32, 0.34, 0.52, 13, 3],
+          p: [1.45, 1.3, 0.28],
+          r: [0.18, 0.25, 0],
+          m: 'body',
+          amp: 0.055,
+          tag: 'arm.block',
+        },
+      ] as Part[]).flatMap(mm),
     ],
+    // TRÊS corpos orbitais (menos que o Astral de quatro — o colosso é pesado):
+    // o anel 3 gira a 0,70, o enxame alto 0 ao CONTRÁRIO a −0,30 (os dois
+    // planos do céu nunca se encostam: o anel é inclinado 0,34 e o enxame fica
+    // no plano horizontal acima dele) e o entulho rasteiro 1 a 0,52.
+    // Contrafortes, menires, crateras, fissuras, coroa e a cara ficam FORA de
+    // grupo: a montanha gira o ANEL, não a si mesma.
+    groups: { 0: -0.3, 1: 0.52, 3: 0.7 },
   },
 
   // Astral+Colosso — a entidade que precede os quatro elementos (Nv.10) --

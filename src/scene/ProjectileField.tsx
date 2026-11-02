@@ -34,6 +34,15 @@ import { BASALT_VULC_DEEP_LOOK, BASALT_VULC_LOOK, VULCAN_EMBER, VULCAN_LAVA } fr
 // o ASTRAL cospe COMETA: o breu grafite, a geada e o âmbar do motor vêm todos do
 // figurino (ver AstralRig) — a identidade amarrada em teste ao impacto
 import { ASTRAL_FROST, ASTRAL_STARLIGHT, FROST_ASTRAL_LOOK, VOID_ASTRAL_DEEP_LOOK } from './AstralRig';
+// o COLOSSO ARREMESSA a própria montanha: o regolito pálido, o breu da cantaria
+// e a lâmpada de magma da cratera vêm todos do figurino (ver ColossoRig) — a
+// identidade amarrada em teste do corpo ao projétil ao impacto
+import {
+  COLOSSO_MAGMA,
+  COLOSSO_TALC,
+  HEARTH_COLOSSO_LOOK,
+  REGOLITO_COLOSSO_LOOK,
+} from './ColossoRig';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -177,6 +186,69 @@ export const ASTRAL_SPARK_LOOK = {
   crack: ASTRAL_STARLIGHT, // faísca com o veio âmbar: o motor puxa a geada
 };
 
+/** COLOSSO: o MATECÃO arrancado da goela (o `heavy` + `splash 2,2` do motor):
+ *  tambor de TREZE FACES (o DNA da árvore em silhueta — o Geodo arranca matacões
+ *  de CINCO, o Abissal ganchos de SETE, o Vulcânico bombas de NOVE, o Astral
+ *  cometas de ONZE, o Colosso arremessa TUDO em TREZE) de regolito pálido com a
+ *  MESMA trinca de magma do MOTOR (#d98c4a). O veio sobe de glow/boost em
+ *  relação ao figurino porque a pedra acabou de sair da goela acesa, mas fica
+ *  CONTIDO (0,6 × 0,9 = 0,54): pedra CLARA com veio largo vira LANTERNA, não lua
+ *  — a lição de legibilidade do figurino paga de novo no voo */
+export const COLOSSO_BLOCK_LOOK = {
+  ...REGOLITO_COLOSSO_LOOK,
+  rockA: COLOSSO_TALC, // TALCO claro do figurino (os olhos e as pedras do chip)
+  rockB: '#8b8695',
+  speck: 1, // regolito salpicado
+  // no print do primeiro probe o tambor lia BUCHA DE BRASA: veio largo (0,042
+  // num ombro de 0,72 de diâmetro) + uCharge do voo (o pulo do `pulse` chega a
+  // 1,5) somavam +1,9 de laranja sobre uma pedra de 0,7 — a lua do matiz
+  // regolito desaparecia. A identidade do colosso é PEDRA CLARA com veia FINA
+  // e CONTIDA (a mesma lição do figurino, paga de novo no ar)
+  crackGlow: 0.3,
+  crackBoost: 0.45,
+  crackWidth: 0.026,
+  crackScale: 2.4, // 0,84 de diâmetro: veio FINO de lua, não rio de lava
+  // LUA CHEIA NO AR: o mesmo regolito do figurino fica ESCURO no voo porque o
+  // tambor mostra ao jogador a FACE LATERAL, e a luz da arena é lateral-
+  // superior (`keyDir` 7,13,5) — nas pedras do figurino o olho lê as faces do
+  // TOPO, iluminadas. No print com o dono escondido o tambor 9a95a3 apareceu
+  // como pedra escura veiada de laranja (o MESMO ler do boulder do Geodo) e a
+  // lua se perdia. Aqui o sky/amb do material sobe só no tiro: a pedra mais
+  // clara da arena é o matacão, é isso que faz o tiro ler LUA e não BRASA
+  moon: 1.5,
+};
+
+/** COLOSSO: a LÂMPADA de magma sentada na boca de cratera do topo do matacão (a
+ *  MESMA boca das treze crateras do figurino: aro de pedra clara, poço escuro e
+ *  âmbar no fundo) — é o ponto mais aceso do tiro e a MESMA cor do motor. O
+ *  `cool` escuro é o que separa o Colosso do Vulcânico: aqui é POÇO aceso DENTRO
+ *  da pedra, não sol transbordando */
+export const COLOSSO_LAMP_LOOK = {
+  gold: COLOSSO_MAGMA, // = a cor do motor (identidade boca→bloco→FX amarrada em teste)
+  white: HEARTH_COLOSSO_LOOK.white,
+  cool: HEARTH_COLOSSO_LOOK.cool, // poço, não sol
+  amp: 0.03,
+};
+
+/** COLOSSO: as TREZE LASCAS DE TALCO que o matacão arrasta (a poeira da montanha
+ *  esmagada — o `splash 2,2` escrito no ar): pedrinhas de regolito CLARO
+ *  (#cfc9d6, o talco do figurino) com o veio de magma do motor.
+ *  O QUE NÃO FUNCIONOU: um COLAR de treze seixos ESCUROS abraçado na cinta do
+ *  tambor. No print do probe as pedras engoliam a silhueta do bloco (sobrava só
+ *  um caroço escuro de 0,5u) e eram a MESMA peça do anel do dono, só que miúda —
+ *  o olho não sabia onde terminava o colosso e começava o tiro. Cauda solta
+ *  ATRÁS, em talco claro: o bloco fica limpo e a trilha desenha o rumo */
+export const COLOSSO_CHIP_LOOK = {
+  rockA: COLOSSO_TALC, // o talco do anel do figurino (o acento claro da espécie)
+  rockB: '#6f6a7a',
+  crack: COLOSSO_MAGMA, // o âmbar do motor correndo na lasca
+  crackGlow: 0.3,
+  crackScale: 3.4, // lasca miúda: o ruído é lido no espaço LOCAL
+  crackWidth: 0.06,
+  crackBoost: 0.6,
+  speck: 0.9,
+};
+
 /** Névoa: a pluma de bruma do bafo (hot = a GEADA do motor, a mesma cor do
  *  rig/veios/FX) e a semente de geada que vai na cabeça dela. O crack da
  *  semente é a VARIAÇÃO MIÚDA #d2e9f4: visualmente a mesma geada, mas a sonda
@@ -242,6 +314,9 @@ speciesColor.cache = new Map<string, THREE.Color>();
 const dummy = new THREE.Object3D();
 const tmpQuat = new THREE.Quaternion();
 const rollQuat = new THREE.Quaternion();
+/** rotação do matacão guardada por um frame: o colar de treze pedras e a
+ *  lâmpada da cratera precisam COLAR no bloco (o bloco é o corpo deles) */
+const blkQ = new THREE.Quaternion();
 const up = new THREE.Vector3(0, 1, 0);
 const zAxis = new THREE.Vector3(0, 0, 1);
 const dir = new THREE.Vector3();
@@ -321,6 +396,9 @@ export function ProjectileField() {
   const cometRef = useRef<THREE.InstancedMesh | null>(null);
   const cometCRef = useRef<THREE.InstancedMesh | null>(null);
   const cometTRef = useRef<THREE.InstancedMesh | null>(null);
+  const blkRef = useRef<THREE.InstancedMesh | null>(null);
+  const blkLRef = useRef<THREE.InstancedMesh | null>(null);
+  const blkRRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -1231,14 +1309,86 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const colossoBlock = useMemo(() => {
+    // o MATECÃO da goela (o `heavy` + `splash 2,2` do motor): tambor de TREZE
+    // FACES gordo (0,38 de raio no pé, 0,34 na boca) e BAIXO (0,62). É o tiro
+    // mais PESADO da árvore: não é lasca afiada nem bomba oca, é um pedaço da
+    // própria montanha-eterna. heightSegs 3 para o close não virar low-poly e o
+    // relevo do shader ter vértice para trabalhar (a régua anti low-poly)
+    const geo = new THREE.CylinderGeometry(0.4, 0.44, 0.66, 13, 3);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: COLOSSO_BLOCK_LOOK.rockA,
+      rockB: COLOSSO_BLOCK_LOOK.rockB,
+      crack: COLOSSO_BLOCK_LOOK.crack, // = a cor do motor (identidade boca→bloco→FX)
+      amp: 0.03, // régua do relevo: amp ≤ rMin·0,25 (0,4·0,25 = 0,1) — tambor liso de lua
+      crackGlow: COLOSSO_BLOCK_LOOK.crackGlow,
+      crackScale: COLOSSO_BLOCK_LOOK.crackScale,
+      crackWidth: COLOSSO_BLOCK_LOOK.crackWidth,
+      crackBoost: COLOSSO_BLOCK_LOOK.crackBoost,
+      speck: COLOSSO_BLOCK_LOOK.speck, // regolito é salpicado: o talco da montanha esmagada
+      seed: 7.3,
+      breath: 0.4,
+    });
+    // LUA CHEIA NO AR (ver COLOSSO_BLOCK_LOOK.moon): só os uniforms deste
+    // material — o figurino continua na luz padrão da arena
+    mat.uniforms.uSkyColor.value.multiplyScalar(COLOSSO_BLOCK_LOOK.moon);
+    mat.uniforms.uAmbColor.value.multiplyScalar(COLOSSO_BLOCK_LOOK.moon);
+    return { geo, mat, seeds };
+  }, []);
+
+  const colossoLamp = useMemo(() => {
+    // a LÂMPADA sentada na boca de cratera do topo do matacão (a MESMA receita
+    // das treze crateras do figurino: aro claro, poço escuro, âmbar no fundo).
+    // É o único plasma do tiro e o ponto mais aceso do print: o `heavy` com o
+    // fogo do motor dentro — o bloco não vem frio, vem da goela
+    const geo = new THREE.IcosahedronGeometry(0.135, 1); // denso (anti low-poly)
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: COLOSSO_LAMP_LOOK.gold, // = a cor do motor
+      white: COLOSSO_LAMP_LOOK.white,
+      cool: COLOSSO_LAMP_LOOK.cool, // poço, não sol: buraco aceso dentro da pedra
+      amp: COLOSSO_LAMP_LOOK.amp,
+      seed: 4.6,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const colossoChip = useMemo(() => {
+    // as TREZE lascas de talco na CAUDA do matacão (a poeira da montanha
+    // esmagada — o `splash 2,2` no ar): tamborinhos de TREZE FACES miúdos
+    // (0,13 de comprimento) de regolito CLARO com o veio âmbar do motor. Miúdas
+    // de propósito: a cauda tem que ler grão de talco desenhando o rumo, não
+    // pedreira (a régua da cauda pontilhada do cometa do Astral)
+    const geo = new THREE.CylinderGeometry(0.05, 0.065, 0.13, 13, 2);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: COLOSSO_CHIP_LOOK.rockA,
+      rockB: COLOSSO_CHIP_LOOK.rockB,
+      crack: COLOSSO_CHIP_LOOK.crack, // o âmbar do motor na lasca clara
+      amp: 0.008, // régua: lasca de 0,05 de raio pede relevo raso
+      crackGlow: COLOSSO_CHIP_LOOK.crackGlow,
+      crackScale: COLOSSO_CHIP_LOOK.crackScale,
+      crackWidth: COLOSSO_CHIP_LOOK.crackWidth,
+      crackBoost: COLOSSO_CHIP_LOOK.crackBoost,
+      speck: COLOSSO_CHIP_LOOK.speck,
+      seed: 2.9,
+      breath: 0.4,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail, colossoBlock, colossoLamp, colossoChip]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail, colossoBlock, colossoLamp, colossoChip]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -1278,6 +1428,9 @@ export function ProjectileField() {
     let cometN = 0;
     let cometC = 0;
     let cometT = 0;
+    let blkN = 0;
+    let blkL = 0;
+    let blkR = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -1377,6 +1530,17 @@ export function ProjectileField() {
     astralCometCore.mat.uniforms.uCharge.value = 0.9 + 0.1 * Math.sin(time * 7.4);
     astralTail.mat.uniforms.uTime.value = time;
     astralTail.mat.uniforms.uCharge.value = 0.6 + 0.2 * Math.sin(time * 9.3);
+    // o MATECÃO voa com o veio da goela ainda aceso (a pedra saiu agora do forno
+    // da montanha), mas o uCharge do colosso fica ABAIXO do do Geodo/Vulcânico:
+    // pedra clara com veio aceso demais vira lanterna (a lição da lua)
+    colossoBlock.mat.uniforms.uTime.value = time;
+    colossoBlock.mat.uniforms.uCharge.value = 0.4 + 0.12 * Math.sin(time * 2.4);
+    // a lâmpada da cratera pulsa funda e lenta (0,6 Hz): é fogo dentro de pedra,
+    // não brasa nervosa — o bloco pesa e o fogo pesa junto
+    colossoLamp.mat.uniforms.uTime.value = time;
+    colossoLamp.mat.uniforms.uCharge.value = 0.85 + 0.15 * Math.sin(time * 3.7);
+    colossoChip.mat.uniforms.uTime.value = time;
+    colossoChip.mat.uniforms.uCharge.value = 0.45 + 0.15 * Math.sin(time * 4.6);
     cosmicoFlare.mat.uniforms.uTime.value = time;
     cosmicoFlare.mat.uniforms.uCharge.value = 0.8 + 0.12 * Math.sin(time * 8.1);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
@@ -1418,6 +1582,7 @@ export function ProjectileField() {
         const isAbyss = p.species === 'abissal';
         const isVulc = p.species === 'vulcanico';
         const isAstral = p.species === 'astral';
+        const isColosso = p.species === 'colosso';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -2077,6 +2242,83 @@ export function ProjectileField() {
             haloScale = scale * 1.4; // halo do cometa inteiro (fuso + coração + cauda)
             signature = true;
           }
+        } else if (isColosso) {
+          // o COLOSSO ARREMESSA a própria MONTANHA (o `heavy` + `splash 2,2` do
+          // motor): tambor de TREZE FACES de regolito pálido tombando DEVAGAR —
+          // é o tiro mais lento e mais pesado da árvore (7 u/s de montanha) e a
+          // cambalhota é de pilar, não de lasca (o cometa do Astral risca, a
+          // pedra do Colosso pesa). No topo do tambor, a LÂMPADA de magma sentada
+          // na boca de cratera (a MESMA receita das treze crateras do figurino:
+          // aro claro, poço escuro, âmbar no fundo — o veio do motor) e atrás, as
+          // TREZE LASCAS DE TALCO em cauda: o rasto da montanha esmagada desenha
+          // o rumo do arremesso. O tambor é a pedra CLARA mais gorda da árvore e
+          // o veio é CONTIDO — pedra clara com veio largo vira lanterna (a lição
+          // da legibilidade do figurino, paga de novo no print do probe)
+          dummy.rotation.set(
+            0.4 + time * 1.0 + p.id * 0.9, // tumbo lento (o do Vulcânico é 1,5: este é o bloco mais pesado da árvore)
+            time * 0.62 + p.id * 1.7,
+            time * 0.45,
+          );
+          const launch = Math.min(1, 0.26 + p.age / 0.26); // o bloco pega embalo (montanha não arranca do lugar num décimo)
+          if (blkN < MAX_PER_ELEMENT) {
+            const scale = (1 + 0.07 * (lv - 9)) * launch;
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            blkRef.current?.setMatrixAt(blkN, dummy.matrix);
+            colossoBlock.seeds.setX(blkN, ((p.id * 47) % 83) / 6.9);
+            blkN++;
+            // a rotação do bloco guardada: a lâmpada cola no topo dele (cratera
+            // do topo), nada solto voando ao lado da pedra
+            blkQ.copy(dummy.quaternion);
+            if (blkL < MAX_PER_ELEMENT) {
+              // a lâmpada na cratera do TOPO: com raio 0,135 e a face de topo em
+              // 0,33, o centro a 0,22 põe a bola SENTADA NO POÇO (0,085 dentro da
+              // pedra, 0,025 de fora): bola solta em cima de pedra lia capacete,
+              // não cratera acesa
+              dir.set(0, 0.22, 0).applyQuaternion(blkQ).multiplyScalar(scale);
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              dummy.scale.setScalar(scale * (1 + 0.1 * Math.sin(time * 3.7 + p.id * 2.2)));
+              dummy.updateMatrix();
+              blkLRef.current?.setMatrixAt(blkL, dummy.matrix);
+              colossoLamp.seeds.setX(blkL, ((p.id * 13) % 59) / 5.1);
+              blkL++;
+            }
+            // TREZE lascas de talco em CAUDA (2π/13 = 27,7° por lasca). A cauda
+            // segue o RUMO do tiro, não o tumbo do bloco: a pedra cambalhota e o
+            // talco fica atrás riscando a órbita (a régua da cauda do cometa).
+            // PONTILHADA: o passo (0,22) é maior que a lasca (0,13) — passo
+            // apertado costura um CONE BRANCO contínuo e o tiro lê seta de
+            // papel. O cone abre (0,05 → 0,29) e a ponta afina (escala 1 → 0,5)
+            dir.set(p.vel[0], p.vel[1], p.vel[2]);
+            if (dir.lengthSq() < 1e-6) dir.set(0, 1, 0);
+            tmpQuat.setFromUnitVectors(up, dir.normalize()); // +Y local = o rumo; a cauda vai no −Y
+            for (let k = 0; k < 13; k++) {
+              if (blkR >= MAX_PER_ELEMENT) break;
+              const th = k * 0.48332 + time * 1.6 + p.id * 1.1; // 27,7°: o treze
+              const atras = 0.34 + k * 0.22;
+              const abertura = 0.05 + k * 0.02;
+              dir
+                .set(Math.cos(th) * abertura, -atras, Math.sin(th) * abertura)
+                .applyQuaternion(tmpQuat);
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              dummy.quaternion.copy(tmpQuat);
+              dummy.rotateOnAxis(up, th + time * 2.2); // cada lasca gira no próprio eixo
+              dummy.scale.setScalar(scale * (1 - k / 26));
+              dummy.updateMatrix();
+              blkRRef.current?.setMatrixAt(blkR, dummy.matrix);
+              colossoChip.seeds.setX(blkR, ((p.id * 37 + k * 19) % 79) / 5.8 + k * 0.7);
+              blkR++;
+            }
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]); // devolve o centro p/ o halo
+            // halo CONTIDO (os outros titãs usam 1,3-1,5): o halo do earth é a
+            // cor da espécie (magma #d98c4a) e o tambor tem 0,84 de diâmetro —
+            // disco maior que a pedra comia a silhueta e o print lia BRASA
+            // voadora, não matacão de lua (a lição do veio contido, no shader e
+            // no billboard)
+            haloScale = scale * 0.9;
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -2167,6 +2409,9 @@ export function ProjectileField() {
       [cometRef.current, cometN, astralComet.seeds],
       [cometCRef.current, cometC, astralCometCore.seeds],
       [cometTRef.current, cometT, astralTail.seeds],
+      [blkRef.current, blkN, colossoBlock.seeds],
+      [blkLRef.current, blkL, colossoLamp.seeds],
+      [blkRRef.current, blkR, colossoChip.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -2564,6 +2809,37 @@ export function ProjectileField() {
           cometTRef.current = m;
         }}
         args={[astralTail.geo, astralTail.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Colosso: o MATECÃO arrancado da goela — tambor de TREZE FACES de
+          regolito pálido com a trinca de magma do motor (o `heavy` do tiro em
+          silhueta: o bloco mais pesado e mais lento da árvore, um pedaço da
+          própria montanha-eterna tombando devagar) */}
+      <instancedMesh
+        ref={(m) => {
+          blkRef.current = m;
+        }}
+        args={[colossoBlock.geo, colossoBlock.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Colosso: a lâmpada de magma sentada na cratera do topo do matacão (a
+          mesma boca das treze crateras do figurino) — o ponto mais aceso do tiro
+          e a MESMA cor do motor, poço aceso dentro da pedra */}
+      <instancedMesh
+        ref={(m) => {
+          blkLRef.current = m;
+        }}
+        args={[colossoLamp.geo, colossoLamp.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Colosso: as TREZE lascas de talco claro em cauda (o rasto da montanha
+          esmagada desenhando o rumo do arremesso — o `splash 2,2` escrito no ar),
+          sempre no talco do anel do figurino com o veio âmbar do motor */}
+      <instancedMesh
+        ref={(m) => {
+          blkRRef.current = m;
+        }}
+        args={[colossoChip.geo, colossoChip.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

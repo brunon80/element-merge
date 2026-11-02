@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
 > Estado verificado em **02/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **326 testes / 31 arquivos, todos
+> `npx tsc --noEmit` OK · `npx vitest run` **333 testes / 32 arquivos, todos
 > verdes** · `npm run build` OK · git limpo em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -24,51 +24,58 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | **abissal** | 8 | ✅ figurino próprio + testes |
 | **vulcânico** | 8 | ✅ figurino próprio + testes |
 | **astral** | 9 | ✅ figurino próprio + testes (espiral barrada de ONZE braços, plantado por onze raízes de gravidade) |
-| colosso | 9 | ⬜ pendente — ruling do usuário: leitura **CÓSMICA** (galáxias/estrelas), escalando acima e DIFERENTE do DNA de constelação do Cósmico e da espiral do Astral |
-| **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **quasar supermassivo com disco de acreção, grande, ataque em rajada de energia** |
-| **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **quasar supermassivo com disco de acreção, grande, ataque em rajada de energia** |
+| **colosso** | 9 | ✅ figurino próprio + testes (montanha eterna que virou LUA: planetóide de regolito claro com anel inclinado de treze matacões) |
+| **primordial** | 10 | ⬜ pendente (ÚNICO que falta) — quasar supermassivo com disco de acreção com **BLOOM** (decisão do usuário: usar bloom no disco, via postprocessing do three, gateado quando houver um primordial em cena), grande, ataque em rajada de energia. **O usuário mandou PARAR no colosso — não iniciar o primordial sem novo sinal verde.** |
 
-**Último monstro melhorado: ASTRAL (Nv.9 — cósmico+abissal: o TITÃO DE ESPIRAL
-BARRADA, a galáxia PLANTADA por onze raízes de gravidade: caça `farthest`,
-`pierce 2` + `chain 3·f0,55` + `doubleShot 0,5`, o projétil MAIS RÁPIDO da árvore
-(15) no MAIOR alcance (11,5) com a cadência mais rápida (1,2); DNA DE ONZE EM
-TUDO — todo `cyl`/`cone` do figurino tem ONZE faces (`rod11`/`spike11`/`spiralArm`;
-nenhum outro figurino usa onze: Geodo CINCO, Cristal SEIS, Abissal SETE, Cósmico
-OITO, Vulcânico NOVE) e o onze manda nas CONTAGENS: onze braços em log-espiral
-ρ = 1,4·e^(0,2θ) varrida até θ = 1,7 (nós afinando 0,15→0,09, varas
-0,09→0,066 SOLDADAS nó a nó e emendando na TANGENTE da própria espiral, punho
-enterrado em ρ 0,6 no núcleo), ONZE peças na BARRA da espiral barrada (seis nós em
-x ±0,24/±0,66/±1,02 cavaletados ACIMA do equador da lente + cinco varas no meio
-exato de cada par), ONZE peças na cara, ONZE raios de coroa INTERCALADOS aos ONZE
-jatos polares (meio passo de 11 = π/11) com ONZE contas de geada na boca do eixo
-de cada jato, ONZE varas de gravidade + ONZE almofadas-âncora a 0,04 do piso, ONZE
-nós de cauda de maré (ρ 1,98→2,98 subindo de y 2,86 a 4,24: é a cauda que estica
-a pegada para o FUNDO do tabuleiro) e TRÊS cintas de ONZE girando em QUATRO
-velocidades (cinta externa 0, halo globular 1, chuva de matéria 2 e o disco
-rígido 3 — a rotação diferencial é o motor visual da espécie); ASSINATURA = o
-DISCO INCLINADO (`ASTRAL_TILT` 0,3 — a câmera da arena olha a ~18° e um disco
-deitado leria uma fatia) com a CABEÇA LEVANTADA num pescoço de gravidade para os
-braços varrerem POR BAIXO dela e a BOCA DE BURACO NEGRO: aro âmbar ABERTO
-(`openEnded`) com o poço de BREU dentro, MENOR que o aro; FACE ONZE-face em
-máscara CLARA com sobrolho e queixo ESCUROS, olhos de BREU com faísca de geada NA
-FRENTE (branco sobre máscara branca não lê); PALETA = o Cósmico do avesso — motor
-âmbar `#ffb347` (`ASTRAL_STARLIGHT` = `projectileColor` = `VISUALS.glow` =
-`uCrack` de TODA a pedra, inclusive a pedra BRONZE dos traços) com ACENTO geada
-quase branca `#cfe4ff` (`ASTRAL_FROST` = máscara, pontas, bocas dos jatos,
-`uCool` do plasma) sobre corpo grafite-violetu de vazio (`#4a3c60`/`#241d30`,
-breu `#141019`); os TRAÇOS DE LUZ são pedra OPACA com o veio aceso (plasma em
-vara fina vira tábua) e o relevo vem do TAMANHO da peça (≤ ¼ da menor
-meia-dimensão dela); coreografia 0,74 s com 70% de afinação (a MAIOR fração da
-árvore: o disco ENCURCA sobre o bojo e destora no estouro) e todos os canais
-assentam no zero ANTES do último frame do coice; projétil = COMETA de breu com
-veio âmbar, miolo de plasma e rastro PONTILHADO de geada; impacto = três lascas
-de ONZE faces + anel âmbar com a geada POR FORA (o inverso exato do pai Cósmico)
-+ chuva de breu + fagulhas de geada subindo + pó de disco (`heat` 0,25);
-invólucro medido halfX 2,534 / halfZ 2,899 / minY 0,040 / maxY 4,730 com formTop
-5,5; **228 peças / 33.966 vértices / 23.272 triângulos** e 13 pinos em
-`src/tests/astralProgression.test.ts`) — commit mais recente de `main`
-(`git log -1`). Anteriores: vulcânico `e4b4463`, abissal `e38d018`, geodo
-`8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
+**Último monstro melhorado: COLOSSO (Nv.9 — geodo+vulcânico: a MONTANHA ETERNA
+QUE VIROU LUA, o planetóide de regolito claro com ANEL INCLINADO de treze
+matacões, plantado por treze contrafortes: caça `closest`, o projétil MAIS LENTO
+da árvore (7), o `splash` MAIS LARGO (2,2), `heavy` + `regen 0,04`, hp 132 /
+dmg 27; DNA DE TREZE EM TUDO — todo `cyl`/`cone` do figurino tem TREZE faces
+(`rod13`/`spike13`/`CRATER13`; nenhum outro figurino usa treze: Geodo CINCO,
+Cristal SEIS, Abissal SETE, Cósmico OITO, Vulcânico NOVE, Astral ONZE) e o treze
+manda nas CONTAGENS: treze contrafortes + treze almofadas, treze menires com
+lages (cerca miúda: pilar y 0,34 + lage y 0,67, senão funde com a faixa do
+anel), treze crateras-cicatriz (aro CLARO + poço de BREU + gema de ametista +
+LÂMPADA de magma), anel com treze matacões deitados NA TANGENTE (ρ 2,08,
+`m:'dark'` — anel claro sobre planetóide claro some) + treze placas no vão +
+treze lascas de talco CLARAS, treze entulhos no chão, treze brasas altas
+orbitando a coroa, treze fissuras na barriga, treze espigões de coroa polar;
+FACE TREZE-face (13 peças) com caloura ESCURA deitada, aro âmbar da goela no
+eixo exato (`COLOSSO_CORE_POS` = centro do aro) e olhos de DISCO CLARO com
+pupila de breu (receita invertida: aqui a máscara é escura); os DOIS BRAÇOS de
+arremesso penduram na cova do ombro BAIXA (`COLOSSO_ARM_PIVOT` y 3,0, o ombro
+do figurino É a constante exportada) e moram todos DENTRO do furo do anel
+(ρ ≤ 1,65 vs furo 1,85 — o arremesso não vara as pedras); ASSINATURA = o ANEL
+INCLINADO (`COLOSSO_RING_TILT` 0,5, rodando em `COLOSSO_RING_PIVOT` com os três
+corpos — matacões, placas, lascas — no MESMO plano inclinado): a inclinação é
+DITADA PELA CARA — o arco da frente passa ABAIXO do queixo (y 1,72, com folga
+para a goela) e o de trás aparece por cima do ombro (y 3,72); com tilt curto
+(0,26) a corrente escura atravessava a cara e o print lia "cesta por cima da
+lua"; PALETA = LUA MORTA: regolito claro `#9a95a3` (a pedra mais clara da
+família das montanhas — é o que faz a arena ler LUA, não fogueira) + breu
+`#2b2636` + veio de magma `#d98c4a` CONTIDO (glow 0,34 × boost 0,62 = 0,21:
+com 13 lâmpadas + 13 fissuras + 13 brasas acesas, veio solto lia "lâmpada de
+lava") + ametista `#c77dff` HERANÇA do pai Geodo (com veio âmbar na fratura — é
+como o print separa filho do pai) + talco `#cfc9d6` (olhos, lascas do anel e o
+tambor do tiro); projétil = TAMBOR de treze faces em talco claro com veia FINA
+(0,026) e a LÂMPADA de poço sentada na cratera do topo + rastro PONTILHADO de
+treze lascas de talco espaçadas 0,22 (COLAR de seixos escuros abraçado no
+tambor foi REJEITADO: engolia a silhueta e copiava o anel do dono); pedra clara
+no voo exige boost de sky/amb só no material do tiro (`moon: 1,5`) — a key
+light da arena é lateral-superior e a face lateral do tambor ficava ESCURA
+(mesma lição do boulder do Geodo; `rockA` `#9a95a3` no tiro lia igual ao
+matacão do Geodo); impacto = cacos de lua com os física mais PESADA da árvore
+(quique 0,15) + anel duplo o mais largo da árvore (magma 3,4·k por dentro +
+talco 2,1·k por fora) + PÓ DE LUA (`heat` 0,12: entre a cinza incandescente do
+pai Vulcânico 0,65 e o pó morto do pai Geodo 0); coreografia: a janela de
+arremesso MAIS LONGA da árvore (1,25 s; windup 0,66 = 0,825 s só com o braço
+indo atrás) e TODOS os canais assentam no zero antes do fim da janela;
+invólucro medido halfX 2,545 / halfZ 2,315 / minY 0,010 / maxY 4,249 com
+formTop 5,6; **221 peças / 40.538 vértices / 23.270 triângulos** e 7 testes em
+`src/tests/colossoProgression.test.ts`) — commit mais recente de `main`
+(`git log -1`). Anteriores: astral `488fc40`, vulcânico `e4b4463`, abissal
+`e38d018`, geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
 `9d7a881`.
 
 **O VULCANICO (Nv.8 — plasma+obsidiana: o VULCÃO DE
@@ -107,14 +114,18 @@ de basalto + brasa subindo + farpas de pedra-pomes; 183 peças / 12.380 vértice
 abissal `e38d018`, geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
 `9d7a881`.
 
-**Próximo: COLOSSO (Nv.9)** e depois o primordial
-(Nv.10) na ordem da tabela. RULING DO USUÁRIO para o
-Nv.9/Nv.10: as espécies Nv.9 (o astral saiu primeiro, falta o colosso) têm que ler
-**CÓSMICO — aparência de galáxia/estrelas** (escalar acima e diferir do Cósmico e
-da espiral barrada do Astral: o colosso pensa em aglomerado/enxame massivo,
-anéis orbitais e pedra de fundo); o primordial
-Nv.10 tem que parecer um **QUASAR SUPERMASSIVO com disco de acreção**,
-grande, com ataque em rajada de energia.
+**PARADA ATUAL (decisão do usuário): o loop PARA no colosso — NÃO iniciar o
+primordial sem novo sinal verde.** Só falta ele: **PRIMORDIAL (Nv.10)** na ordem
+da tabela, ainda o placeholder `primordial:` em `speciesModels.ts` (~L3290) com
+rig genérico. RULING DO USUÁRIO: tem que parecer um **QUASAR SUPERMASSIVO com
+disco de acreção**, grande, ataque em rajada de energia — e desta vez o disco
+de acreção deve usar **BLOOM** (o usuário autorizou pós-processamento para o
+brilho do disco, em vez de só polígonos): `EffectComposer` + `RenderPass` +
+`UnrealBloomPass` + `OutputPass` de `three/examples/jsm/postprocessing`,
+**gateado** — o composer só entra em ação quando houver um primordial em cena
+(a arena inteira não pode trocar de pipeline por causa de uma unidade; cuidado
+com o `outputColorSpace`/tone mapping ao plugar o `OutputPass`). `projectileColor`
+da spec no motor: `#e8f6ff`.
 
 ### Regras do loop (valem para cada monstro)
 
@@ -434,6 +445,57 @@ grande, com ataque em rajada de energia.
   equal to 1") falhou uma vez na suíte inteira, não reproduziu nem sozinho nem na
   segunda corrida completa — não é do figurino, não mexer nele.
 
+### Lições do Colosso (montanha eterna que virou lua — as sete que os prints cobraram)
+
+- **Anel/planeta: as pedras do anel vivem NA TANGENTE, nunca radiais.** O
+matacão é um `cyl` deitado com o eixo ⊥ ao raio (`aim([-s,0,c])`) e azimutes
+exatos `k·2π/13`; farpa radial virava ouriço. O ρ do anel é APERTADO pela régua
+do tabuleiro: ρ 2,08 porque matacão (0,23) + lasca já chegam a 2,4 do halfX 2,6.
+As três cintas do anel (matacões, placas no vão, lascas) vivem no MESMO plano
+inclinado e giram juntas no pivô exportado (`q = qTilt·qSpin` e o filho vai
+para `q(p − pv) + pv` — com pivô ≠ origem, sem isso o tilt jogava o anel para o
+lado).
+- **A inclinação do anel é DITADA PELA CARA, não pelo gosto**: tilt 0,5 é
+medido de trás para frente — o arco da frente tem que passar ABAIXO do queixo
+(y 1,72, folga para a goela) e o de trás aparecer POR CIMA do ombro (3,72).
+Tilt curto (0,26) punha a corrente escura atravessando a boca: o print lia
+"cesta por cima da lua". O print quebrou a corrente ANTES do teste.
+- **Anel CLARO sobre planetóide CLARO desaparece; anel ESCURO sobre corpo
+ESCURO vira só mancha.** A leitura de Saturno pede matacões `m:'dark'`
+contrastando com a pedra clara e a ÚNICA lasca clara (`m:'body'`, talco) deitada
+rasteira no ombro do matacão. E **nunca colar de seixos em volta de um tambor
+claro no projétil**: no probe a cinta de pedras engolia a silhueta do bloco
+(sobrava um caroço de 0,5u) e era a MESMA peça do anel do dono — o olho não
+sabia onde acabava o monstro e começava o tiro. Cauda solta ATRÁS em talco
+claro, espaçada 0,22 (pontilhada), desenha o rumo sem sujar o tambor.
+- **Olhos: o contraste inverte conforme a máscara.** No Astral a máscara era
+clara e o olho precisou ser BREU; no Colosso a caloura é ESCURA e o olho é
+DISCO CLARO (`m:'body'` + escala achatada) com pupila de breu na frente. Peça
+de face CHATA deitada: `r: [1.5108, 0, 0]` (eixo do `cyl` apontando +z) senão
+ela fica em pé atravessando a cara.
+- **Pedra CLARA some no voo**: o tambor de regolito `#9a95a3` ficou ESCURO no
+probe porque a key light da arena é lateral-superior (`keyDir` 7,13,5) e o
+tambor mostra ao jogador a FACE LATERAL (nos figurinos o olho lê as faces do
+TOPO). Não clarear o `rockA` no figurino nem trocar a pedra do tiro por uma
+escura (lia como o boulder do Geodo): `moon: 1,5` multiplica sky/ambient SÓ no
+material do bloco. A pedra mais clara da arena É o tiro — é isso que faz o voo
+ler lua.
+- **O print honesto de um projétil que NASCE DENTRO do corpo** (a goela do
+Colosso está em ρ 1,44, dentro do anel em ρ 2,08): o recorte do probe sempre
+aparecia atravessado pelas pedras do próprio dono. Ferramenta: `SHOT_HIDE` em
+`qa/probe-projectile.mjs` esconde as peças não-instanciadas do dono cuja cor
+casa com a lista de hexes dada (os pools `InstancedMesh` nunca são escondidos) e
+o frame passa a mostrar SÓ o tiro. `SHOT_BURST=N` repete a janela N vezes (170ms
+de passo) para tentar pegar a detonação — mas a extrapolação de velocidade do
+probe (~10-15 u/s medidos) erra o tempo de impacto; decisão do usuário: print do
+projétil isolado + console limpo BASTAM, não caçar frame de impacto.
+- **Identidade em pedra clara = veio CONTIDO e FINO**: com treze lâmpadas +
+treze fissuras + treze brasas + goela acesas ao mesmo tempo, glow/boost soltos
+lia "lâmpada de lava" (fogueira riscada de laranja). No corpo:
+`glow 0,34 × boost 0,62 = 0,21`; no tambor em voo (que ainda recebe o `uCharge`
+do motor somando até +1,5 no `pulse`): `0,3 × 0,45 = 0,135` e `crackWidth`
+0,026 num tambor de 0,7 de diâmetro. Veio largo serra a pedra; veio fino a veiá.
+
 ### Ferramentas de QA
 
 `qa/inspect-species.mjs <especie> [aliada]` · `qa/find-particles.ps1 <especie>
@@ -458,7 +520,14 @@ câmera achada em `obj.__r3f.root.getState()` e salva o recorte cru + o mesmo
 recorte 3× ampliado sem suavizar, com mira ciano na posição EXTRAPOLADA
 (velocidade medida por identidade de instância: pool+índice) e um anel de raio
 0,3 u para medir o projétil em pixels — é assim que se julga "o tiro lê na arena?"
-e se compara com o tiro de uma espécie já aprovada) ·
+e se compara com o tiro de uma espécie já aprovada; alças por variável de
+ambiente: `SHOT_W`/`SHOT_H`/`SHOT_ZOOM` (recorte), `SHOT_LATENCY` (instante do
+disparo), `SHOT_HIDE="hex,hex,..."` (esconde as peças do DONO daquelas cores —
+os pools instanciados nunca são escondidos; é o único jeito de imprimir
+honestamente um tiro que NASCE DENTRO do corpo, caso do Colosso e de sua goela
+dentro do anel) e `SHOT_BURST=N` (repisa a mesma janela N×, 170 ms de passo,
+para tentar pegar a detonação — a extrapolação do probe não dá o tempo certo de
+impacto) ·
 `qa/probe-veil*.mjs` / `probe-quad.mjs` (sondas de material/cena). Prints em
 `%LOCALAPPDATA%\Temp\opencode\shots`. ⚠️ sonda: só roda o `wheel` de zoom no
 centro do canvas — `page.mouse.click` no tabuleiro ANTES do `start-battle`
@@ -574,7 +643,7 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
 - **Arena**: ilha flutuante, plataformas derivadas de `game/board.ts`
   (`TILE_SPACING_X 3,2 · ROW_DEPTH 2,3 · FRONT_ROW_Z 2,5 · UNIT_BASE_Y 0,28 ·
   12 slots/lado`), câmera orbital 360° (dist 3–34, polar 0,35–1,32).
-- **QA visual automatizado** (laço Playwright descrito acima), 237 testes/24.
+- **QA visual automatizado** (laço Playwright descrito acima), 333 testes/32.
 
 ## Arquitetura (regras de sempre)
 
@@ -601,7 +670,7 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
 
 ```
 npx tsc --noEmit          # tipos
-npx vitest run            # 237 testes, 24 arquivos
+npx vitest run            # 333 testes, 32 arquivos
 npm run build             # tsc + build de produção
 npm run dev               # http://localhost:5173 (HMR; hard refresh ao mexer shaders)
 node qa/inspect-species.mjs <especie> [aliada]

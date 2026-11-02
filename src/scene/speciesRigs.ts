@@ -21,6 +21,7 @@ import { GeodoRig } from './GeodoRig';
 import { AbissalRig } from './AbissalRig';
 import { VulcanRig } from './VulcanRig';
 import { AstralRig } from './AstralRig';
+import { ColossoRig } from './ColossoRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -72,9 +73,16 @@ export interface SpeciesRigProps {
  * de gravidade — bojo com barra cavalgada, onze braços em log-espiral num corpo
  * rígido que gira em velocidade DIFERENTE das três cintas orbitais, cauda de
  * maré plantada e cabeça levantada num pescoço de gravidade ACIMA do plano do
- * disco, com a boca de buraco negro de onze faces cuspindo os cometas)
- * já têm figurino próprio; as demais espécies da árvore ainda usam o rig padrão:
- * a busca é por espécie e o fallback é o rig padrão.
+ * disco, com a boca de buraco negro de onze faces cuspindo os cometas) e
+ * Colosso (a montanha eterna que virou LUA: planetóide de regolito pálido
+ * plantado por treze contrafortes grossos com treze almofadas no piso, treze
+ * crateras com poço de breu e ametista crescendo dentro, treze fissuras de
+ * magma na barriga, anel de matacões INCLINADO girando mais depressa que o
+ * entulho rasteiro e as brasas do chapéu, coroa de treze espinhos de ametista no
+ * polo e a cara do homem-da-lua numa caloura escura com a goela de treze faces
+ * cospidando os matacões que os dois braços arremessam)
+ * já têm figurino próprio; só a Nv.10 (Primordial) ainda usa o rig padrão: a
+ * busca é por espécie e o fallback é o rig padrão.
  */
 export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigProps>>> = {
   ignis: FlameRig,
@@ -98,4 +106,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   abissal: AbissalRig,
   vulcanico: VulcanRig,
   astral: AstralRig,
+  colosso: ColossoRig,
 };
