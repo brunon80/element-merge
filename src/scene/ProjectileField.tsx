@@ -26,6 +26,11 @@ import { BASALT_LOOK, GEODO_AMETHYST, GEODO_LILAC, QUARTZ_LOOK } from './GeodoRi
 // corpo com a MESMA vida roubada da lanterna e os MESMOS ganchos de osso da
 // armadilha — identidade amarrada em teste do motor ao impacto; ver AbissalRig)
 import { ABISSAL_LIFE, ABISSAL_TIDE, BONE_LOOK, WATER_TIDE_LOOK } from './AbissalRig';
+// paleta do VULCANICO (a bomba de lava arremessada é o MESMO basalto de tinta do
+// corpo com a MESMA trinca de lava da cor do motor, o MESMO coração do lago da
+// cratera e a MESMA escória das fumarolas — identidade amarrada em teste do
+// motor ao impacto; ver VulcanRig)
+import { BASALT_VULC_DEEP_LOOK, BASALT_VULC_LOOK, VULCAN_EMBER, VULCAN_LAVA } from './VulcanRig';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -106,6 +111,36 @@ export const ABISSAL_HOOK_LOOK = {
   crack: ABISSAL_TIDE,
   alpha: 0.94,
   sparkle: BONE_LOOK.sparkle,
+};
+
+/** Vulcânico: a BOMBA DE LAVA arrancada da caldeira (o `heavy` + `splash 2,0` +
+ *  `burn 0,4` do motor) — o MESMO basalto de tinta do corpo com a MESMA trinca
+ *  de lava da cor do motor (#ff4d12 = uCrack = projectileColor). É um fuso de
+ *  NOVE faces (o DNA da espécie — o Geodo é dodecaedro pentagonal, o Abissal é
+ *  gota com ganchos de sete): o naco tem a silhueta do pescoço da montanha e
+ *  NÃO é mais um bloco redondo como o do tio Magma (a régua anti-"mesma espécie") */
+export const VULCAN_BOMB_LOOK = {
+  ...BASALT_VULC_LOOK,
+  crackGlow: 0.9, // naco fresco: a trinca sai escaldada do lago aceso
+};
+
+/** Vulcânico: o CORAÇÃO do lago lá dentro da bomba (o `burn 0,4` escrito em
+ *  silhueta: o tiro é um naco do lago de lava, aceso por dentro) — o MESMO ouro
+ *  do lago do rig, nunca bola de fogo genérica de ignis/magma */
+export const VULCAN_HEART_LOOK = {
+  gold: VULCAN_LAVA, // = a cor do motor (identidade lago→bomba→anel do FX)
+  white: '#ffd9a8',
+  cool: '#83280f',
+  amp: 0.03,
+};
+
+/** Vulcânico: as NOVE ESCÓRIAS coladas na bomba (o `splash 2,0` do tiro: a
+ *  pedraria da própria montanha vem junto) — o MESMO breu de basalto com a
+ *  trinca de BRASA #ff9d3d (o acento da espécie, nunca o corpo nem o motor) */
+export const VULCAN_SCORIA_LOOK = {
+  rockA: BASALT_VULC_DEEP_LOOK.rockA,
+  rockB: '#141116',
+  crack: VULCAN_EMBER,
 };
 
 /** Névoa: a pluma de bruma do bafo (hot = a GEADA do motor, a mesma cor do
@@ -246,6 +281,9 @@ export function ProjectileField() {
   const abyssRef = useRef<THREE.InstancedMesh | null>(null);
   const abyssCRef = useRef<THREE.InstancedMesh | null>(null);
   const abyssHRef = useRef<THREE.InstancedMesh | null>(null);
+  const vulcRef = useRef<THREE.InstancedMesh | null>(null);
+  const vulcHRef = useRef<THREE.InstancedMesh | null>(null);
+  const vulcCRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -1015,14 +1053,84 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const vulcanBomb = useMemo(() => {
+    // a BOMBA arrancada da caldeira (o `heavy` + `splash 2,0` + `burn 0,4` do
+    // motor): fuso de NOVE FACES (o pescoço da montanha em miniatura — o DNA da
+    // espécie) de basalto de tinta com a trinca de lava do MOTOR aceso. GORDA:
+    // 0,84 de maior diâmetro, 0,66 de comprimento — o naco mais rechonchudo da
+    // árvore (o matacão do Geodo é 0,6, a estrela do Cósmico 1,0 de ponta a
+    // ponta), porque a catástrofe Nv.8 não cospe pedrinha. Naco denso
+    // (heightSegs 2: o fuso aguenta o close sem virar low-poly)
+    const geo = new THREE.CylinderGeometry(0.24, 0.42, 0.66, 9, 2);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: VULCAN_BOMB_LOOK.rockA,
+      rockB: VULCAN_BOMB_LOOK.rockB,
+      crack: VULCAN_BOMB_LOOK.crack, // = a cor do motor (identidade pedra→impacto)
+      amp: 0.028,
+      crackGlow: VULCAN_BOMB_LOOK.crackGlow, // trinca escaldada: acabou de sair do lago
+      crackScale: VULCAN_BOMB_LOOK.crackScale,
+      crackWidth: VULCAN_BOMB_LOOK.crackWidth,
+      crackBoost: VULCAN_BOMB_LOOK.crackBoost,
+      speck: VULCAN_BOMB_LOOK.speck,
+      seed: 6.7,
+      breath: 0.6,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const vulcanHeart = useMemo(() => {
+    // o coração do LAGO de lava ESTOURANDO pela boca do fuso (o `burn 0,4` em
+    // silhueta: o naco vem aceso por dentro — a pedra é casca, o miolo é lava) —
+    // o MESMO ouro do lago do rig. Maior que a boca do fuso (raio 0,24) para
+    // saltar para fora da casca e ler a ~20 px na arena
+    const geo = new THREE.IcosahedronGeometry(0.22, 1);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: VULCAN_HEART_LOOK.gold, // = a cor do motor (lago→bomba→anel)
+      white: VULCAN_HEART_LOOK.white,
+      cool: VULCAN_HEART_LOOK.cool,
+      amp: VULCAN_HEART_LOOK.amp,
+      seed: 9.2,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const vulcanCinder = useMemo(() => {
+    // as NOVE ESCÓRIAS da montanha coladas na bomba (o `splash` escrito no ar):
+    // farpas de escória de NOVE faces (o DNA — o Geodo arranca espadas de CINCO
+    // faces, o Abissal ganchos de SETE) no MESMO breu de basalto com a trinca
+    // de brasa #ff9d3d (o acento da espécie, sempre). Compridas o bastante para
+    // sair da barriga gorda do fuso (raio 0,42) e ficarem farpadas no print
+    const geo = new THREE.ConeGeometry(0.07, 0.3, 9, 1);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: VULCAN_SCORIA_LOOK.rockA,
+      rockB: VULCAN_SCORIA_LOOK.rockB,
+      crack: VULCAN_SCORIA_LOOK.crack, // o BRASA da espécie (sempre acento)
+      amp: 0.012, // aresta dura: escória furada não arredonda
+      crackGlow: 0.6,
+      crackScale: 1.5,
+      crackWidth: 0.05,
+      crackBoost: 0.9,
+      speck: 0.8, // escória é furada: salpicada alta
+      seed: 11.9,
+      breath: 0.5,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -1056,6 +1164,9 @@ export function ProjectileField() {
     let abyssN = 0;
     let abyssC = 0;
     let abyssH = 0;
+    let vulcB = 0;
+    let vulcH = 0;
+    let vulcC = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -1183,7 +1294,8 @@ export function ProjectileField() {
         const isPrism = p.species === 'cristal';
         const isStar = p.species === 'cosmico';
         const isGeob = p.species === 'geodo';
-      const isAbyss = p.species === 'abissal';
+        const isAbyss = p.species === 'abissal';
+        const isVulc = p.species === 'vulcanico';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -1716,6 +1828,64 @@ export function ProjectileField() {
             haloScale = scale * 1.3; // halo da gota inteira (casca + vida + farpas)
             signature = true;
           }
+        } else if (isVulc) {
+          // o vulcão cospe um NACO do próprio lago: fuso de NOVE faces de basalto
+          // de tinta que tomba cambalhota no ar (inércia de pedra um degrau
+          // abaixo do bloco do Geodo — bomba de escória, mais leve) com o
+          // coração de lava do lago pulsando DENTRO do fuso (o `burn 0,4`
+          // escrito na silhueta: o tiro vem aceso por dentro, nunca pedra fria)
+          // e as NOVE ESCÓRIAS da montanha coladas em três cintas do fuso — o
+          // `splash 2,0` escrito no ar: a pedraria da montanha voa junto da bomba
+          dummy.rotation.set(time * 1.5 + p.id, time * 0.9 + p.id * 0.6, 0.4 + time * 0.5);
+          const launch = Math.min(1, 0.26 + p.age / 0.2); // a bomba pega embalo
+          if (vulcB < MAX_PER_ELEMENT) {
+            const scale = (0.95 + 0.1 * (lv - 8)) * launch;
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            vulcRef.current?.setMatrixAt(vulcB, dummy.matrix);
+            vulcanBomb.seeds.setX(vulcB, ((p.id * 53) % 81) / 6.4);
+            vulcB++;
+            if (vulcH < MAX_PER_ELEMENT) {
+              // o coração do lago ENTUPINDO a boca do fuso e saltando para fora
+              // (a pedra é casca, o miolo é lava — o contrario do boulder do
+              // Geodo, que e pedra fria com lasca de pedra por fora): o plug fica
+              // no eixo +Y local do fuso cambalhota, pulsando quente
+              const cph = time * 2.4 + p.id * 1.9;
+              dir
+                .set(0, 1, 0)
+                .applyQuaternion(dummy.quaternion)
+                .multiplyScalar(0.3 * scale);
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              dummy.scale.setScalar(scale * (1 + 0.11 * Math.sin(cph * 2.3)));
+              dummy.updateMatrix();
+              vulcHRef.current?.setMatrixAt(vulcH, dummy.matrix);
+              vulcanHeart.seeds.setX(vulcH, ((p.id * 19) % 67) / 5.5);
+              vulcH++;
+            }
+            // NOVE escórias em três cintas do fuso (2π/9 = 40° por escória): a
+            // ponta encosta na casca para fora, girando COLADA com o fuso (a
+            // rocha veio junto com a rocha — não é enfeite solto no ar)
+            for (let k = 0; k < 9; k++) {
+              if (vulcC >= MAX_PER_ELEMENT) break;
+              const th = k * 0.6981 + time * 0.9 + p.id * 1.2; // 40°: o nove
+              const ph = 0.5 - (k % 3) * 0.5; // cintos superior/médio/inferior
+              dir
+                .set(Math.cos(th) * Math.cos(ph), Math.sin(ph), Math.sin(th) * Math.cos(ph))
+                .applyQuaternion(dummy.quaternion)
+                .multiplyScalar(0.36 * scale); // a base enterra na barriga do fuso (raio 0,42)
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              rollQuat.setFromUnitVectors(up, dir.normalize()); // a ponta encosta para fora
+              dummy.quaternion.copy(rollQuat);
+              dummy.scale.setScalar(scale);
+              dummy.updateMatrix();
+              vulcCRef.current?.setMatrixAt(vulcC, dummy.matrix);
+              vulcanCinder.seeds.setX(vulcC, ((p.id * 29 + k * 13) % 73) / 5.8 + k * 0.8);
+              vulcC++;
+            }
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]); // devolve o centro p/ o halo
+            haloScale = scale * 1.5; // halo da bomba inteira (fuso gordo + plug + escórias)
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -1800,6 +1970,9 @@ export function ProjectileField() {
       [abyssRef.current, abyssN, abyssalGlob.seeds],
       [abyssCRef.current, abyssC, abyssalCore.seeds],
       [abyssHRef.current, abyssH, abyssalHook.seeds],
+      [vulcRef.current, vulcB, vulcanBomb.seeds],
+      [vulcHRef.current, vulcH, vulcanHeart.seeds],
+      [vulcCRef.current, vulcC, vulcanCinder.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -2136,6 +2309,36 @@ export function ProjectileField() {
           abyssHRef.current = m;
         }}
         args={[abyssalHook.geo, abyssalHook.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Vulcânico: o NACO arrancado do lago da caldeira (o `heavy` + `splash
+          2,0` + `burn 0,4` do motor) — fuso de nove faces de basalto de tinta
+          com a trinca de lava do motor acesa. A silhueta do tiro é a silhueta
+          do pescoço da montanha, nunca mais um matacão redondo como o do Magma */}
+      <instancedMesh
+        ref={(m) => {
+          vulcRef.current = m;
+        }}
+        args={[vulcanBomb.geo, vulcanBomb.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Vulcânico: o coração do lago de lava pulsando dentro do fuso (o tiro
+          vem aceso por dentro — o `burn` desenhado na silhueta) */}
+      <instancedMesh
+        ref={(m) => {
+          vulcHRef.current = m;
+        }}
+        args={[vulcanHeart.geo, vulcanHeart.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Vulcânico: as nove escórias da montanha coladas em três cintas do fuso
+          (o splash começa no ar: a pedraria voa junto da bomba), na mesma
+          trinca de brasa do figurino — sempre acento */}
+      <instancedMesh
+        ref={(m) => {
+          vulcCRef.current = m;
+        }}
+        args={[vulcanCinder.geo, vulcanCinder.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

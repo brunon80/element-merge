@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
 > Estado verificado em **02/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **299 testes / 29 arquivos, todos
+> `npx tsc --noEmit` OK · `npx vitest run` **313 testes / 30 arquivos, todos
 > verdes** · `npm run build` OK · git limpo em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -22,36 +22,48 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | **cósmico** | 8 | ✅ figurino próprio + testes |
 | **geodo** | 8 | ✅ figurino próprio + testes |
 | **abissal** | 8 | ✅ figurino próprio + testes |
-| vulcânico | 8 | ⬜ pendente |
+| **vulcânico** | 8 | ✅ figurino próprio + testes |
 | astral, colosso | 9 | ⬜ pendente — ruling do usuário: leitura **CÓSMICA** (galáxias/estrelas), escalando acima e DIFERENTE do DNA de constelação do Cósmico |
 | **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **quasar supermassivo com disco de acreção, grande, ataque em rajada de energia** |
 
-**Último monstro melhorado: ABISSAL (Nv.8 — pântano+névoa: o TAMBORIL DAS
-MARÉS MORTAS flotando na própria maré, o ladrão de vida: `drain 0,4` + `slow`
-+ `poison`, caça `lowestHp`; DNA DE SETE FACES EM TUDO — todo `cyl`/`cone`
-tem SETE faces (`rod7`/`fang7`/`hookRing`; nenhum outro figurino usa sete:
-Geodo CINCO, Cristal SEIS, Cósmico OITO), sete presas por fila, sete gotas,
-sete ganchos na jaula, sete vidas cativas em órbita (4+3); ASSINATURA = a
-ESCA: vara de osso arqueada na testa com a lanterna de VIDA ROUBADA pendendo
-SOBRE a goela — a lanterna é a peça mais PARA FRENTE da cabeça e a jaula de
-sete ganchos FECHA para dentro do aro (a presa entra, não sai); goela é
-DOBRADIÇA no osso da bochecha (mandíbula `jaw.*` rocks no pivô exportado,
-maxila `fang.up` fixa, presas ENTRELAÇAM ao fechar); jaula de costelas de
-afogado no peito emoldura o núcleo de vida; água é o `makeWaterMaterial` da
-Nereia lido em AZUL DO FUNDO com pouca onda (maré MORTA: foamAmt 0,24 — a
-régua contra a Nereia que cavalga), osso molhado é `makeIceMaterial` denso;
-identidade do motor ao anel: maré #3f6f8f = `projectileColor` = corpo = uMid
-= trinca do osso = globo = FX, vida #5fe0c8 é SEMPRE acento (lanterna,
-núcleo, fotoóforos, miolo do projétil); boia (floatY 0,2) mas PESCA: os
-tentáculos roçam o piso a 0,015; coreografia 0,92 s com 60% de sucção
-silenciosa (0,552 s absolutos de afinação > Cósmico) e a MORDIDA é
-instantânea com pose zerando no fim; arremesso mais RÁPIDO dos Nv.8 (base
-8,5 ≈ 18,8 un/s escalado); 213 peças / ~13,3 mil vértices / ~14,9 mil
-triângulos)** — commit mais recente de `main` (`git log -1`). Anteriores:
-geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma `9d7a881`.
+**Último monstro melhorado: VULCANICO (Nv.8 — plasma+obsidiana: o VULCÃO DE
+NOVE ESTRATOS plantado na própria cacta de escória, a `catástrofe andante`:
+`moveSpeed 0` (a montanha não anda — é a paisagem que ruge), caça `closest`,
+`heavy` + `splash 2,0` + `burn 0,4`; DNA DE NOVE EM TUDO — todo `cyl`/`cone` do
+figurino tem NOVE faces (`rod9`/`spike9`; nenhum outro figurino usa nove: Geodo
+CINCO, Cristal SEIS, Abissal SETE, Cósmico OITO) e o nove manda nas CONTAGENS:
+nove estratos empilhados em zigue-zague (cada degrau girado 20° = estrela de
+dezoito pontas na silhueta), nove veias de lava descendo do ombro ao sopé, nove
+pingos, nove fumarolas, nove merlões, nove esporões por anel, nove raízes, nove
+em cada uma das três órbitas; ASSINATURA = a CALDEIRA ACESA no topo — soalho
+CLARO de tufo, poço de BREU (preto) menor que o soalho, saia ABERTA (`openEnded`:
+a boca da montanha fica aberta para o céu) e NOVE FUMAROLAS TAMPADAS por um
+TAMPÃO de escória dobradiçado no aro (`VULCAN_VENT_RIM`/`VULCAN_VENT_Y`
+exportados do rig: a tampa BASCULA PARA FORA, a ponta ganha raio e abandona o
+prumo da brasa — não ergue para cima); o LAGO do rig mora no poço
+(`VULCAN_CORE_POS`) e é a silhueta do projétil; FACE no flanco em placa CLARA
+avançando ≥0,08 sobre o estrato ESCURO (a máscara do Geodo INVERTIDA): sobrolho e
+boca ESCUROS por cima da placa, órbitas de breu com pinprick de brasa NA FRENTE,
+boca vazando lava; braços = CONES PARASITAS plantados no ombro (o `arm.plinth` é
+fundação no pivô exportado `VULCAN_ARM_PIVOT`, o resto rocks); identidade da
+caldeira ao anel de queimadura: lava #ff4d12 = `projectileColor` = `VISUALS.glow`
+= `uCrack` de TODA a pedra (basalto E tufo) = `uGold` do lago/veias/bomba, brasa
+#ff9d3d é SEMPRE acento (olhos, coração da face, escórias, anéis do FX); pedra
+CRUA (roughness 0,9, zero metal) e tinta de basalto FRIO (b > g) — a régua contra
+o tio MAGMA (barro cozido, g > b) e a mãe OBSIDIANA (vidro roxo espelhado, metal
+0,55); coreografia 0,98 s com 64% de erupção enchendo (0,627 s absolutos: a
+segunda afinação mais lenta da árvore atrás do Geodo 0,714) e a montanha NÃO
+VERGA — o `lean` nem existe na pose, o que treme é o chão (`quake`); projétil =
+BOMBA de nove faces (0,84 de maior diâmetro, 0,66 de comprimento: o naco mais
+GORDO da árvore) com o plug de lava do lago entupindo a boca e nove escórias em
+três cintas; impacto = anel de queimadura 3,0·k (a mais LARGA da árvore) + chuva
+de basalto + brasa subindo + farpas de pedra-pomes; 183 peças / 12.380 vértices /
+10.308 triângulos)** — commit mais recente de `main` (`git log -1`). Anteriores:
+abissal `e38d018`, geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
+`9d7a881`.
 
-**Próximo: VULCANICO (Nv.8)** e depois astral e colosso
-(Nv.9), primordial (Nv.10) na ordem da tabela. RULING DO USUÁRIO para o
+**Próximo: ASTRAL e COLOSSO (Nv.9)** e depois o primordial
+(Nv.10) na ordem da tabela. RULING DO USUÁRIO para o
 Nv.9/Nv.10: as espécies Nv.9 (astral, colosso) têm que ler **CÓSMICO —
 aparência de galáxia/estrelas** (escalar acima e diferir do Cósmico: pensar
 em galáxia espiral, enxames de estrelas, anéis orbitais); o primordial
@@ -281,6 +293,48 @@ grande, com ataque em rajada de energia.
   `aim` do `speciesModels` aponta o +Y local (eixo do cyl/cone) — pino de
   eixo usa `(0,1,0).applyEuler(r)` e fecha as juntas do `rod7` a <0,05.
 
+### Lições do Vulcânico (montanha plantada — as seis que o print cobrou)
+
+- **O dev server velho serve o TRANSFORM OBSOLETO silenciosamente**: enquanto
+  houver um `npm run dev` antigo em 5173 (base `/element-merge/`), cada sonda QA
+  pode rodar contra o código ANTERIOR sem nenhum erro. Antes de qualquer sonda,
+  tocar os fontes alterados: `foreach ($f in 'src\scene\X.ts',...) {
+  (Get-Item $f).LastWriteTime = Get-Date }`.
+- **Tampa de fumarola é DOBRADIÇA PARA FORA, não elevação**: "a tampa ergue" é
+  a física errada (a tampa sai voando por cima da cratera e some do print). A
+  tampa é TAMPÃO entupindo a boca do tambor (base da tampa ≈ topo do tambor) e
+  bascula na TANGENTE do aro: com `-capOpen` a ponta ganha RAIO (0,58→0,63) e
+  abandona o prumo da brasa, expondo a luz. Pinar por raio/pino, não por Y:
+  `rAfter > rBefore`, distância ao eixo do tambor cresce, e a base quase não se
+  move (<0,04 do pino exportado).
+- **O ápice do `ConeGeometry` fica em +Y** (a base em −Y): pinos de "ponta" e
+  "umbigo" de pingo/escória dependem disso — `tipY = p.p[1] + u.y*half` com
+  `u = (0,1,0).applyEuler(r)`, e `spike9`/`rod9` plantam a base no maciço por
+  esse mesmo motivo.
+- **Matiz se pinar parseando o HEX, não o `THREE.Color`**: `new THREE.Color(hex)`
+  converte sRGB→linear e APLANA as diferenças (o barro do Magma deu `r-b = 16`
+  em vez de 34 e o pino "tio magma é barro cozido" quebrou). `rgb()` =
+  `parseInt(hex.slice(1,3),16)`; `luma()` continua em espaço LINEAR (é a régua do
+  "a placa clara lê sobre a rocha escura?").
+- **A câmera do r3f NÃO está na cena nem no `__THREE_DEVTOOLS__`** (só a Scene é
+  registrada — `rend.projectionMatrix` é `undefined`): a alça é `obj.__r3f.root`
+  (todo Object3D criado por JSX carrega) → `.getState()` dá `camera/gl/size`.
+  Com `projectionMatrix × matrixWorldInverse` projeta-se a INSTANCIA do pool na
+  tela e o recorte nasce em cima do alvo. Ferramenta nova:
+  `qa/probe-projectile.mjs <especie> [aliada] [outDir] [hexDoNúcleo]` (recorte
+  cru + 3× ampliado sem suavizar, mira ciano na posição EXTRAPOLADA e anel de
+  raio 0,3 u para medir o tiro em pixels).
+- **Silhueta de projétil se mede comparando com os irmãos**: o fuso de 0,44 de
+  comprimento lia como LASCAS a 20 px no zoom do jogo (o golém Nv.1 cospe um
+  bloco de 0,95). Bomba gorda = 0,84 de maior diâmetro / 0,66 de comprimento e o
+  plug de lava do lago ENTUPINDO a boca do fuso (maior que a boca: salta para
+  fora da casca opaca — o miolo dentro de pedra opaca é INVISÍVEL, o `uCrack`
+  sozinho não resolve). Varredura por COR nunca acha o tiro: o próprio monstro
+  brilha igual; achar por `isInstancedMesh` (figurino são meshes comuns) + raio
+  finito ≥0,03 (tabuleiro/anéis de FX são `PlaneGeometry` sem raio) + a matiz do
+  núcleo, e a velocidade por IDENTIDADE DE INSTANCIA (pool+índice) — o pool
+  recicla slots e "velocidade" sai 0.
+
 ### Ferramentas de QA
 
 `qa/inspect-species.mjs <especie> [aliada]` · `qa/find-particles.ps1 <especie>
@@ -299,6 +353,13 @@ fora do enquadre padrão e o FX de impacto é invisível nos b-frames normais) �
 150 JPEGs do viewport a ~2-3 frames/s cobrem o voo + a explosão que duram ~1 s
 — exige ALIADA TANQUE, espécie que só atira com alvo ao alcance fica em idle
 sem ela; `madera` não tem `debug-spawn-` próprio, use golem/obsidiana) ·
+`qa/probe-projectile.mjs <especie> [aliada] [outDir] [hexDoNúcleo]` (fecha o zoom
+EM CIMA do tiro em voo: acha a instância do pool na cena, projeta na tela pela
+câmera achada em `obj.__r3f.root.getState()` e salva o recorte cru + o mesmo
+recorte 3× ampliado sem suavizar, com mira ciano na posição EXTRAPOLADA
+(velocidade medida por identidade de instância: pool+índice) e um anel de raio
+0,3 u para medir o projétil em pixels — é assim que se julga "o tiro lê na arena?"
+e se compara com o tiro de uma espécie já aprovada) ·
 `qa/probe-veil*.mjs` / `probe-quad.mjs` (sondas de material/cena). Prints em
 `%LOCALAPPDATA%\Temp\opencode\shots`. ⚠️ sonda: só roda o `wheel` de zoom no
 centro do canvas — `page.mouse.click` no tabuleiro ANTES do `start-battle`

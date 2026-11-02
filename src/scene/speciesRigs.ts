@@ -19,6 +19,7 @@ import { CrystalRig } from './CrystalRig';
 import { CosmicoRig } from './CosmicoRig';
 import { GeodoRig } from './GeodoRig';
 import { AbissalRig } from './AbissalRig';
+import { VulcanRig } from './VulcanRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -61,8 +62,12 @@ export interface SpeciesRigProps {
  * própria maré, goela de balde com presas entrelaçadas, jaula de costelas de
  * afogado com a vida roubada fervendo no peito e a ASSINATURA — a esca de osso
  * arqueada sobre a cabeça com a lanterna de vida pendurada na ponta, cercada
- * por sete ganchos virados para dentro) já
- * têm figurino próprio; as demais espécies da árvore ainda usam o rig padrão:
+ * por sete ganchos virados para dentro) e Vulcânico (vulcão de nove estratos
+ * plantado na própria catarata de escória: nove tambores de nove faces em
+ * zigue-zague até a CALDEIRA ACESA no topo — soalho claro, poço de breu e nove
+ * fumarolas com tampa de escória dobradiçada no aro — com a face no flanco em
+ * placa clara sobre pedra escura e nove veias de lava descendo do ombro ao pé)
+ * já têm figurino próprio; as demais espécies da árvore ainda usam o rig padrão:
  * a busca é por espécie e o fallback é o rig padrão.
  */
 export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigProps>>> = {
@@ -85,4 +90,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   cosmico: CosmicoRig,
   geodo: GeodoRig,
   abissal: AbissalRig,
+  vulcanico: VulcanRig,
 };

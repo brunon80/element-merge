@@ -123,7 +123,14 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   // teste). O glow #e0b3ff é sempre o hot (nunca a cor principal)
   geodo: { body: '#5c4e74', dark: '#282040', glow: '#e0b3ff', accent: '#c77dff', roughness: 0.9, metalness: 0.06 },
   abissal: { body: '#3f6f8f', dark: '#142b38', glow: '#5fe0c8', accent: '#bfe9ff', roughness: 0.35 },
-  vulcanico: { body: '#4a3f3a', dark: '#221b18', glow: '#ff3d10', accent: '#ff9d3d', roughness: 0.85 },
+  // Nv.8 — a CATÁSTROFE ANDANTE (plasma+obsidiana reacendendo o vulcão
+  // primordial): o corpo é basalto DE TINTA — cru, fosco e FRIOR (berço da tinta
+  // dos pais; o tio Magma Nv.6 é barro cozido #5a4038 com r >> g — aqui b ≥ r,
+  // zero risco de ler "a mesma espécie"). A identidade vai do motor ao FX: a
+  // LAVA #ff4d12 (= projectileColor = glow daqui = uCrack do basalto/tuff =
+  // uGold do lago de lava, das veias e da bomba). A brasa #ff9d3d (= accent) é
+  // SEMPRE acento: olhos, coração, fagulhas e anéis do FX
+  vulcanico: { body: '#443c42', dark: '#1e1a20', glow: '#ff4d12', accent: '#ff9d3d', roughness: 0.9 },
   // Nv.9 — lendários
   astral: { body: '#39406e', dark: '#1a1f3a', glow: '#8fd6ff', accent: '#ffe9a8', roughness: 0.35 },
   colosso: { body: '#6e5c50', dark: '#372c26', glow: '#ff7a3d', accent: '#c77dff', roughness: 0.8 },
@@ -426,6 +433,56 @@ const hookRing = (
       r: aim([ux, uy, uz]),
     } as Part;
   });
+
+/** FIO DE LAVA entre dois pontos — as VEIAS do VULCANICO: um `cyl` de NOVE FACES
+ *  (o nove do vulcão de nove estratos: nenhum outro figurino da árvore usa nove
+ *  — o Geodo é CINCO, o Cristal SEIS, o Abissal SETE, o Cósmico OITO), com
+ *  anéis ≥8 por unidade (a lava escorre pelos estratos e tem que aguentar o
+ *  close sem virar low-poly) e afinando no rumo do fluxo (a frente da corrente
+ *  esfria e engrossa: `a` é a boca da veia, `b` a frente — `b` é mais grossa). */
+const rod9 = (
+  a: [number, number, number],
+  b: [number, number, number],
+  thick: number,
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const dz = b[2] - a[2];
+  const len = Math.hypot(dx, dy, dz);
+  return {
+    ...part,
+    g: 'cyl',
+    a: [thick * 0.78, thick, len + 0.03, 9, Math.max(4, Math.round(len * 8))],
+    p: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2],
+    r: aim([dx, dy, dz]),
+  };
+};
+
+/** ESPÍCULA DE ESCÓRIA do vulcão (esporões dos estratos, raízes do sopé, pingos
+ *  na frente das veias): cone de NOVE FACES com a base enterrada no estrato
+ *  (pino enterrado não é ponta solta — a MESMA receita do `fang7`/do Geodo). */
+const spike9 = (
+  c: [number, number, number],
+  nodeR: number,
+  len: number,
+  thick: number,
+  d: [number, number, number],
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const L = Math.hypot(d[0], d[1], d[2]) || 1;
+  const ux = d[0] / L;
+  const uy = d[1] / L;
+  const uz = d[2] / L;
+  const back = nodeR - 0.05; // base enterrada no maciço
+  return {
+    ...part,
+    g: 'cone',
+    a: [thick, len, 9, 1],
+    p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
+    r: aim([ux, uy, uz]),
+  };
+};
 
 /** cinco direções de cacho (o geodo brota em CINCOS: cinco pontas por mamelon,
  *  sempre uma mais em pé) — a espécie é 5-em-tudo, como o Cristal é 6-em-tudo */
@@ -2280,24 +2337,135 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
 
   // Plasma+Obsidiana — catástrofe andante: o vulcão primordial a Nv.8 ----
   vulcanico: {
-    bob: 0.02,
+    // PLANTADO NA PRÓPRIA CATACTA DE ESCÓRIA (floatY 0, bob 0,012): a catástrofe
+    // andante não anda — é a paisagem que ruge. Nove estratos de troncos de
+    // NOVE FACES empilhados em zigue-zague (cada degrau girado 20° = estrela de
+    // dezoito pontas na silhueta) afunilando até a CALDEIRA no topo, onde a lava
+    // do motor ferve à vista.
+    // DNA DA ESPÉCIE = NOVE EM TUDO: todo `cyl`/`cone` do figurino tem NOVE
+    // faces (o Geodo é CINCO, o Cristal SEIS, o Abissal SETE, o Cósmico OITO —
+    // o nove é deste vulcão) e as contagens seguem o nove: nove estratos, nove
+    // veias de lava, nove fumarolas, nove merlões na caldeira, nove esporões de
+    // escória, nove pingos de lava, nove brasas em cada uma das três órbitas.
+    // A ASSINATURA é a CALDEIRA ACESA no topo (o `heavy`+`splash`+`burn` do
+    // motor nasce DA BOCA da montanha): piso claro da cratera com o breu do
+    // poço, a saia aberta da borda, nove merlões e nove fumarolas TAMPADAS
+    // (tampa de escória que o rig ergue na erupção); por fora, as NOVE VEIAS de
+    // lava (#ff4d12 = a cor do MOTOR, escrita no stone uCrack de toda a pedra)
+    // descem dos ombros até as pontas dos pés. A face mora no FLANCO (a
+    // cobrança do print: placa clara avançando sobre o estrato escuro, barra
+    // escura de sobrolho/boca SOBRE a placa clara, pinprick de brasa NA FRENTE
+    // da órbita de breu).
+    // Diferença dura: os pais OBSIDIANA/PLASMA são vidro roxo espelhado e ferro
+    // com centelha rosa; aqui a pedra é CRUA fosca sem metal e a luz é LAVA
+    // encarnada. E contra o tio MAGMA (Nv.6, o golem de lava): magma é barro
+    // cozido (r >> g) e corpo de mamelões; aqui é tinta de basalto (b ≥ r), é
+    // GEOMETRIA de estratos e a lava é VEIA reta de nove faces, não mancha.
+    bob: 0.012,
     parts: [
-      ...mm({ g: 'box', a: [0.42, 0.5, 0.48], p: [-0.38, 0.25, 0], m: 'dark' }),
-      { g: 'box', a: [1.2, 1.0, 0.95], p: [0, 1.0, 0], m: 'body' },
-      ...mm({ g: 'dodeca', a: [0.3], p: [0.78, 1.45, 0], m: 'dark' }),
-      { g: 'box', a: [0.09, 0.62, 0.03], p: [-0.3, 1.05, 0.49], m: 'glow', flick: 0.08 },
-      { g: 'box', a: [0.07, 0.45, 0.03], p: [0.22, 0.9, 0.49], r: [0, 0, 0.4], m: 'glow', flick: 0.1 },
-      { g: 'box', a: [0.06, 0.35, 0.03], p: [0.05, 1.2, -0.48], m: 'glow', flick: 0.12 },
-      { g: 'dodeca', a: [0.42], p: [0, 1.72, 0], m: 'dark' },
-      { g: 'cone', a: [0.22, 0.4, 7], p: [0, 2.15, 0], m: 'dark' },
-      { g: 'drop', a: [0.24, 0.7, 18, 16], p: [0, 2.35, 0], m: 'glow', flick: 0.35, amp: 0.12 },
-      { g: 'sphere', a: [0.1, 10, 8], p: [0, 1.78, 0.36], m: 'glow', flick: 0.06 },
-      ...mm(SEYE(0.18, 1.74, 0.34)),
-      ...mm(SPUPIL(0.18, 1.74, 0.34)),
-      ...mm({ g: 'cone', a: [0.24, 0.6, 6], p: [-0.78, 0.9, -0.2], r: [0, 0, 0.4], m: 'body' }),
-      { g: 'sphere', a: [0.13, 8, 6], p: [0.3, 2.9, -0.1], m: 'steam', rise: [0.7, 0.9] },
-      { g: 'sphere', a: [0.11, 8, 6], p: [-0.25, 2.75, 0.15], m: 'steam', rise: [0.9, 0.9] },
+      // ===== OS NOVE ESTRATOS: troncos de nove faces escalonados 20° (o zig
+      // desenha a estrela de dezoito pontas na silhueta da montanha) =====
+      { g: 'cyl', a: [1.98, 2.22, 0.52, 9, 4], p: [0, 0.26, 0], m: 'body', amp: 0.03, tag: 'strata' },
+      { g: 'cyl', a: [1.72, 1.96, 0.46, 9, 4], p: [0, 0.75, 0], r: [0, 0.3491, 0], m: 'dark', amp: 0.028, tag: 'strata' },
+      { g: 'cyl', a: [1.5, 1.72, 0.44, 9, 4], p: [0, 1.2, 0], m: 'body', amp: 0.03, tag: 'strata' },
+      { g: 'cyl', a: [1.3, 1.5, 0.4, 9, 4], p: [0, 1.62, 0], r: [0, 0.3491, 0], m: 'dark', amp: 0.028, tag: 'strata' },
+      { g: 'cyl', a: [1.12, 1.3, 0.38, 9, 4], p: [0, 2.01, 0], m: 'body', amp: 0.03, tag: 'strata' },
+      { g: 'cyl', a: [0.96, 1.12, 0.36, 9, 4], p: [0, 2.38, 0], r: [0, 0.3491, 0], m: 'dark', amp: 0.028, tag: 'strata' },
+      { g: 'cyl', a: [0.82, 0.96, 0.34, 9, 3], p: [0, 2.73, 0], m: 'body', amp: 0.028, tag: 'strata' },
+      { g: 'cyl', a: [0.68, 0.82, 0.32, 9, 3], p: [0, 3.06, 0], r: [0, 0.3491, 0], m: 'dark', amp: 0.026, tag: 'strata' },
+      { g: 'cyl', a: [0.54, 0.68, 0.3, 9, 3], p: [0, 3.37, 0], m: 'body', amp: 0.026, tag: 'strata' },
+      // pescoço da chaminé + o poço da caldeira (a assinatura, no topo): piso
+      // CLARO da cratera, breu do poço (a lava do rig ferve em cima) e a saia
+      // ABERTA da borda (tubo de nove faces sem tampas = a boca da montanha)
+      { g: 'cyl', a: [0.54, 0.7, 0.34, 9, 3], p: [0, 3.6, 0], m: 'body', amp: 0.024, tag: 'throat' },
+      { g: 'cyl', a: [0.6, 0.52, 0.09, 9, 1], p: [0, 3.87, 0], m: 'accent', amp: 0.008, tag: 'caldera' },
+      { g: 'cyl', a: [0.38, 0.38, 0.05, 9, 1], p: [0, 3.93, 0], m: 'black', tag: 'pit' },
+      { g: 'cyl', a: [0.66, 0.58, 0.22, 9, 2, 1], p: [0, 4.0, 0], r: [0, 0.3491, 0], m: 'accent', amp: 0.01, tag: 'rim' },
+      // nove merlões na borda (nove na quina) + nove esporões de escória
+      // apontando para fora e para baixo sob a caldeira (o colarinho do poço)
+      ...ringAround(9, 0.63, 4.12, 0.06, { g: 'box', a: [0.15, 0.2, 0.1], m: 'accent', amp: 0.008, tag: 'merlon' }, 0.3491),
+      ...ringAround(9, 0.7, 3.86, 1.75, { g: 'cone', a: [0.045, 0.26, 9], m: 'dark', amp: 0.016, tag: 'crag' }, 0.3491),
+      // NOVE FUMAROLAS na borda, cada uma TAMPADA por uma tampa de escória (o
+      // rig ergue as tampas na erupção; a brasa por baixo acende no tremor)
+      ...ringAround(9, 0.58, 4.06, 0, { g: 'cyl', a: [0.06, 0.075, 0.2, 9, 2], m: 'dark', amp: 0.014, tag: 'vent' }, 0),
+      ...ringAround(9, 0.58, 4.21, 0.04, { g: 'cone', a: [0.075, 0.13, 9], m: 'dark', amp: 0.016, tag: 'vent.cap' }, 0),
+      ...ringAround(9, 0.58, 4.14, 0, { g: 'sphere', a: [0.05, 12, 9], m: 'glow', flick: 0.22, tag: 'vent.ember' }, 0),
+
+      // ===== AS NOVE VEIAS DO MOTOR: lava #ff4d12 escorre dos ombros da
+      // caldeira até o sopé (nove veias, nove pingos na frente de cada uma — o
+      // nove em contagem e em forma) =====
+      ...Array.from({ length: 9 }, (_, k) => {
+        const phi = 0.3491 + (k / 9) * Math.PI * 2;
+        const c = Math.cos(phi);
+        const s = Math.sin(phi);
+        return rod9([0.56 * c, 3.72, 0.56 * s], [1.5 * c, 1.32, 1.5 * s], 0.05, {
+          m: 'glow', flick: 0.05, tag: 'vein', s: [1.5, 1, 0.55],
+        });
+      }),
+      ...Array.from({ length: 9 }, (_, k) => {
+        const phi = 0.3491 + (k / 9) * Math.PI * 2;
+        const c = Math.cos(phi);
+        const s = Math.sin(phi);
+        return spike9([1.5 * c, 1.32, 1.5 * s], 0.06, 0.2, 0.045, [0.94 * c, -2.4, 0.94 * s], {
+          m: 'glow', flick: 0.07, tag: 'drip',
+        });
+      }),
+
+      // ===== ESPORÕES E SOTÉ: dois anéis de esporões de escória apontando para
+      // fora e para baixo pelos degraus + o entulho que a montanha já cuspiu +
+      // as nove raízes do sopé (nove em cada anel — a montanha NÃO pisa liso) =====
+      ...ringAround(9, 1.3, 1.5, 1.95, { g: 'cone', a: [0.065, 0.3, 9], m: 'dark', amp: 0.018, tag: 'scree' }, 0.3491),
+      ...ringAround(9, 1.02, 2.62, 1.8, { g: 'cone', a: [0.055, 0.26, 9], m: 'dark', amp: 0.016, tag: 'scree' }, 0),
+      ...ringAround(9, 2.3, 0.16, 0.12, { g: 'dodeca', a: [0.17], s: [1.25, 0.75, 1.15], m: 'dark', amp: 0.03, tag: 'rubble' }, 0),
+      ...ringAround(9, 2.04, 0.42, 0, { g: 'box', a: [0.3, 0.26, 0.26], m: 'body', amp: 0.03, tag: 'rubble' }, 0.3491),
+      ...ringAround(9, 2.18, 0.3, 2.1, { g: 'cone', a: [0.09, 0.34, 9], m: 'dark', amp: 0.026, tag: 'toe' }, 0.1745),
+      ...mm({ g: 'dodeca', a: [0.3], p: [1.44, 0.4, 1.0], s: [1.1, 0.9, 1], m: 'dark', amp: 0.03, tag: 'rubble' }),
+      ...mm({ g: 'dodeca', a: [0.2], p: [-1.7, 0.28, -0.7], s: [1.15, 0.75, 1.05], m: 'body', amp: 0.028, tag: 'rubble' }),
+
+      // ===== A FACE NO FLANCO (a cobrança do print da catedral, virada ao
+      // contrário do Geodo: aqui o CORPO é escuro e a MÁSCARA é clara): placa de
+      // nove faces avançando sobre o estrato, sobrolho/boca ESCURSOS sobre a
+      // placa clara, órbitas de breu com pinprick de brasa NA FRENTE e a boca
+      // vazando lava (a montanha range com o fogo na garganta) =====
+      { g: 'cyl', a: [0.46, 0.5, 0.12, 9, 3], p: [0, 1.78, 1.38], r: [1.5708, 0, 0], m: 'accent', amp: 0.006, tag: 'mask' },
+      { g: 'box', a: [0.66, 0.09, 0.07], p: [0, 2.08, 1.46], m: 'dark', tag: 'brow' },
+      ...mm({ g: 'cone', a: [0.045, 0.18, 9], p: [0.24, 2.2, 1.36], r: [0.12, 0, 0.22], m: 'accent', amp: 0.008, tag: 'crest' }),
+      ...mm({ g: 'box', a: [0.16, 0.13, 0.06], p: [0.21, 1.92, 1.46], m: 'black', tag: 'socket' }),
+      ...mm({ g: 'octa', a: [0.07, 0], s: [0.75, 1.5, 0.75], p: [0.21, 1.92, 1.5], m: 'white', flick: 0.12, tag: 'eye' }),
+      { g: 'box', a: [0.42, 0.07, 0.06], p: [0, 1.5, 1.44], m: 'dark', tag: 'mouth' },
+      { g: 'box', a: [0.26, 0.035, 0.05], p: [0, 1.455, 1.46], m: 'glow', flick: 0.08, tag: 'mouth.lava' },
+      ...mm({ g: 'cone', a: [0.03, 0.14, 9], p: [0.09, 1.36, 1.44], m: 'glow', tag: 'mouth.drip' }),
+      ...mm({ g: 'box', a: [0.07, 0.3, 0.26], p: [0.44, 1.76, 1.26], r: [0, 0.5, 0], m: 'accent', amp: 0.006, tag: 'cheek' }),
+      { g: 'cyl', a: [0.11, 0.12, 0.07, 9, 1], p: [0, 1.78, 1.47], r: [1.5708, 0, 0], m: 'accent', amp: 0.006, tag: 'boss' },
+      { g: 'octa', a: [0.085, 0], s: [0.85, 1.4, 0.85], p: [0, 1.78, 1.55], m: 'white', flick: 0.1, tag: 'heart' },
+      { g: 'box', a: [0.3, 0.1, 0.09], p: [0, 1.32, 1.4], m: 'accent', amp: 0.006, tag: 'chin' },
+
+      // ===== BRAÇOS = CONES PARASITAS nos flancos do sopé (a montanha ferve
+      // pelos lados também): cone de nove faces com cratera acesa no topo e
+      // plantado num plinto — o conjunto INTEIRO rocks no ombro (pivô exportado
+      // pelo rig); o plinto fica plantado, é fundação =====
+      ...mm({ g: 'cyl', a: [0.3, 0.42, 0.26, 9, 2], p: [1.14, 0.72, 0.46], r: [0, 0, -0.52], m: 'dark', amp: 0.026, tag: 'arm.plinth' }),
+      ...mm({ g: 'cone', a: [0.36, 0.7, 9, 1], p: [1.32, 1.02, 0.5], r: [-0.28, 0, -0.52], m: 'body', amp: 0.03, tag: 'arm.cone' }),
+      ...mm({ g: 'sphere', a: [0.11, 14, 10], p: [1.62, 1.42, 0.62], m: 'glow', flick: 0.07, tag: 'arm.crater' }),
+      ...mm({ g: 'dodeca', a: [0.16], s: [1.1, 0.8, 1], p: [1.78, 0.72, 0.86], m: 'dark', amp: 0.03, tag: 'arm.block' }),
+
+      // ===== CINZAS QUENTES POR TRÁS: três barbatanas de lava fria escorridas
+      // na costa de trás da caldeira (o ímpar do meio em x=0, as laterais num
+      // só mm — a regra anti-z-fighting da catedral) =====
+      rod9([0, 3.98, -0.52], [-0.02, 4.74, -0.66], 0.07, { m: 'body', amp: 0.014, tag: 'crest' }),
+      { g: 'dodeca', a: [0.09], p: [-0.02, 4.82, -0.67], m: 'accent', amp: 0.02, tag: 'crest' },
+      ...mm(rod9([0.42, 3.9, -0.34], [0.5, 4.5, -0.46], 0.06, { m: 'body', amp: 0.012, tag: 'crest' })),
+      ...mm({ g: 'dodeca', a: [0.08], p: [0.51, 4.58, -0.47], m: 'accent', amp: 0.02, tag: 'crest' }),
+
+      // ===== TRÊS ÓRBITAS DE NOVE em três faixas de altura que nunca se tocam:
+      // brasas altas acima da caldeira (0), escórias raspando o meio do cone no
+      // SENTIDO CONTRÁRIO (1) e vaga-lumes de lava rente ao sopé (2) — nove em
+      // cada cinta, o nove fechando a contagem da montanha =====
+      ...ringAround(9, 1.0, 4.62, 0, { g: 'octa', a: [0.055, 0], s: [0.8, 1.3, 0.8], m: 'glow', flick: 0.28, tag: 'ember', group: 0 }, 0),
+      ...ringAround(9, 1.62, 2.52, 0, { g: 'dodeca', a: [0.09, 0], s: [1.15, 0.8, 1.05], m: 'dark', flick: 0.14, tag: 'cinder', group: 1 }, 0),
+      ...ringAround(9, 2.44, 0.5, 0, { g: 'octa', a: [0.07, 0], m: 'glow', flick: 0.3, tag: 'wisp', group: 2 }, 0),
     ],
+    groups: { 0: 0.62, 1: -0.8, 2: 0.45 },
   },
 
   // Cósmico+Abissal — titão celestial que dobra céu e mar (Nv.9) ---------

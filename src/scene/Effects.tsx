@@ -26,6 +26,10 @@ import { GEODO_AMETHYST, GEODO_LILAC, QUARTZ_LOOK } from './GeodoRig';
 // pálido com a trinca da cor do motor do figurino/projétil — identidade
 // amarrada em teste; ver AbissalRig)
 import { ABISSAL_LIFE, ABISSAL_TIDE, BONE_LOOK } from './AbissalRig';
+// paleta do VULCANICO (a farpa de pedra-pomes que estilhaça no impacto é o MESMO
+// breu de basalto da bomba/figurino com a trinca da lava da cor do motor —
+// identidade amarrada em teste; ver VulcanRig)
+import { SCORIA_VULC_LOOK, VULCAN_EMBER, VULCAN_LAVA } from './VulcanRig';
 import type { SmokePool } from './smokePool';
 
 const PARTICLE_CAP = 400;
@@ -427,6 +431,31 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e as FARPAS DE PEDRA-POMES do impacto do VULCANICO: as nove escórias da
+  // bomba (a do figurino E a do projétil) estouram em farpa — o MESMO breu de
+  // basalto com a trinca da lava da cor do motor (#ff4d12, identidade amarrada
+  // em teste) e NOVE faces (o DNA do vulcão: o Geodo é CINCO, o Abissal SETE).
+  // Pedra-pomes é FURADA e quente: voa longe como osso, mas cambaleia devagar
+  // (toca de rolha) e pousa acesa — a física própria do caco do vulcão.
+  const shardCinder = useMemo(() => {
+    const geo = new THREE.CylinderGeometry(0.018, 0.045, 0.3, 9, 1); // farpa bicuda de 9 faces
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeStoneMaterial({
+        rockA: SCORIA_VULC_LOOK.rockA, // O MESMO breu de basalto da bomba
+        rockB: SCORIA_VULC_LOOK.rockB,
+        crack: VULCAN_LAVA, // = a cor do motor (identidade amarrada em teste)
+        amp: 0.008, // aresta viva mesmo furada: pedra-pomes é pedra, não balão
+        crackGlow: 1.1, // pomes fresca: a trinca ainda escaldada da erupção
+        crackScale: 1.3,
+        crackWidth: 0.05,
+        crackBoost: 1.0,
+        speck: 0.9, // pomes = buraco em pedra: salpicado alto
+        seed: 13.3 + i * 2.1,
+        breath: 0.4,
+      }),
+    );
+    return { geo, mats };
+  }, []);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
@@ -443,7 +472,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           | 'prism'
           | 'star'
           | 'geode'
-          | 'bone',
+          | 'bone'
+          | 'cinder',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -479,6 +509,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       shardGeode.geo.dispose();
       for (const m of shardBone.mats) m.dispose();
       shardBone.geo.dispose();
+      for (const m of shardCinder.mats) m.dispose();
+      shardCinder.geo.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
@@ -494,6 +526,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     shardStar,
     shardGeode,
     shardBone,
+    shardCinder,
     arcGeo,
     arcMat,
   ]);
@@ -657,7 +690,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       | 'prismShard'
       | 'starShard'
       | 'geodeShard'
-      | 'boneShard' = 'flame',
+      | 'boneShard'
+      | 'cinderShard' = 'flame',
     life?: number,
   ) => {
     if (kind === 'flame') {
@@ -706,7 +740,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                         ? 'geode'
                         : kind === 'boneShard'
                           ? 'bone'
-                          : 'rock';
+                          : kind === 'cinderShard'
+                            ? 'cinder'
+                            : 'rock';
       const a = Math.random() * Math.PI * 2;
       // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
       // cambalhota que a pedra (que só desmorona). O VIDRO da Obsidiana é
@@ -731,14 +767,19 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       // gira um degrau acima do caco pesado do geodo (o osso pega o ar como
       // farpa, não como bloco) — mas sem o salto nervoso do gelo/vidro
       const bone = kind === 'boneShard';
+      // a farpa do VULCANICO é PEDRA-POMES: leve e FURADA (toca de rolha), voa
+      // longe como osso mas cambaleia DEVAGAR no ar (a densidade é baixa e o
+      // atrito come o giro) e pousa sem quicar muito — a régua anti-bloco do
+      // geodo (que gira/geada) e anti-farpa-nervosa do vidro
+      const cinder = kind === 'cinderShard';
       const fast = ice || glass || prism || star;
-      const s = (fast ? 2.2 : bone ? 1.9 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : bone ? 2.0 : mud ? 1.2 : 1.8);
+      const s = (fast ? 2.2 : bone || cinder ? 1.9 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : bone ? 2.0 : cinder ? 1.9 : mud ? 1.2 : 1.8);
       d.vx = Math.cos(a) * s;
       d.vy =
-        (prism || star ? 2.6 : fast ? 2.1 : bone ? 1.8 : mud ? 1.1 : 1.6) +
-        Math.random() * (ice ? 2.4 : prism || star ? 2.8 : bone ? 2.2 : mud ? 1.1 : 1.8);
+        (prism || star ? 2.6 : fast ? 2.1 : bone ? 1.8 : cinder ? 1.7 : mud ? 1.1 : 1.6) +
+        Math.random() * (ice ? 2.4 : prism || star ? 2.8 : bone ? 2.2 : cinder ? 2.0 : mud ? 1.1 : 1.8);
       d.vz = Math.sin(a) * s;
-      const spin = prism ? 23 : star ? 21 : glass ? 19 : ice ? 16 : bone ? 15 : mud ? 6 : geode ? 13 : 11;
+      const spin = prism ? 23 : star ? 21 : glass ? 19 : ice ? 16 : bone ? 15 : cinder ? 8 : mud ? 6 : geode ? 13 : 11;
       d.rx = (Math.random() - 0.5) * spin;
       d.ry = (Math.random() - 0.5) * spin;
       d.rz = (Math.random() - 0.5) * spin;
@@ -1250,6 +1291,36 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 1.0,
               speed: 1.2,
             });
+          } else if (ev.species === 'vulcanico') {
+            // a montanha erupTA no alvo: o naco do lago ARREBENTA em farpas de
+            // pedra-pomes (pool `cinderShard`: o MESMO breu de basalto da bomba
+            // com a trinca de lava da cor do motor — identidade amarrada em
+            // teste, de nove faces como tudo aqui), chove basalto de tinta no
+            // piso, a chuva de LAVA do lago cai pesada (o `splash 2,0` em
+            // física: a onda de choque é a mais LARGA da árvore — o geodo e o
+            // abissal deixaram as sobras de heat para cá) e a marca de QUEIMADURA
+            // alarga no chão (o `burn 0,4` escrito em FX), com a brasa #ff9d3d
+            // subindo como acento e a fumaça de CINZA QUENTE (heat 0,65 — o
+            // calor que o Geodo (0) e o Abissal (0,03) negaram é deste vulcão)
+            const lv = Math.max(8, Math.min(10, ev.level ?? 8));
+            const k = 1 + (lv - 8) * 0.12;
+            // as nove escórias da bomba estouram em pomes (pool: 3)
+            for (let i = 0; i < 3; i++)
+              spawnBurst(x, y, z, 0.32 + 0.05 * (lv - 8), 'cinderShard', 0.85);
+            spawnParticles(x, y, z, VULCAN_LAVA, 12 + (lv - 8) * 2, 2.8, 0.6, 1.8, 0.9); // respingo do LAGO DE LAVA (a cor do motor, cai e arrasta brasa)
+            spawnParticles(x, y, z, VULCAN_EMBER, 8 + (lv - 8) * 2, 1.5, 0.9, -1.2, 0.5); // fagulhas de BRASA sobem (o acento, sempre)
+            spawnParticles(x, y, z, '#1e1a20', 10, 3.2, 0.55, 3.4, 0.35); // chuva de basalto de tinta da carcaça da bomba (pesada, cai reto)
+            spawnParticles(x, y - 0.1, z, VULCAN_LAVA, 6, 1.2, 0.4, 0.8, 0.7); // a lava assentando e QUEIMANDO no piso (o burn)
+            spawnParticles(x, y - 0.1, z, VULCAN_EMBER, 4, 0.8, 0.5, -0.6, 0.3); // brasa miúda levantando do piso quente
+            spawnRing(x, 0.1, z, VULCAN_LAVA, 3.0 * k); // marca de QUEIMADURA no piso (splash 2,0 + burn: a mais LARGA da árvore)
+            spawnRing(x, 0.16, z, VULCAN_EMBER, 1.5); // anel = a seção da bomba estourada (acento)
+            spawnRing(x, 0.28, z, '#ffd9a8', 0.7); // flash do lago que vazou (miúdo, nunca bola de fogo do Ignis)
+            spawnSmoke(x, y, z, 6, {
+              size: 0.13,
+              heat: 0.65, // CINZA QUENTE: o calor que os irmãos guardaram, aqui é assinado
+              life: 1.3,
+              speed: 1.5,
+            });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e
@@ -1654,7 +1725,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                         ? shardGeode
                         : d.kind === 'bone'
                           ? shardBone
-                          : shardRock;
+                          : d.kind === 'cinder'
+                            ? shardCinder
+                            : shardRock;
       const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {
@@ -1676,11 +1749,14 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         if (mesh.position.y < floor) {
           mesh.position.y = floor;
           // lodo molhado NÃO quica: o torrão esborracha no chão (splat morto),
-          // enquanto a pedra seca salta — é isso que vende "lama" na física
+          // enquanto a pedra seca salta — é isso que vende "lama" na física.
+          // A POMES do vulcão quica POUCO (oca como rolha: absorve o impacto)
+          // e espalha devagar, pousando acesa
           const wet = d.kind === 'mud';
-          d.vy = Math.abs(d.vy) * (wet ? 0.08 : 0.38);
-          d.vx *= wet ? 0.45 : 0.72;
-          d.vz *= wet ? 0.45 : 0.72;
+          const pumice = d.kind === 'cinder';
+          d.vy = Math.abs(d.vy) * (wet ? 0.08 : pumice ? 0.2 : 0.38);
+          d.vx *= wet ? 0.45 : pumice ? 0.55 : 0.72;
+          d.vz *= wet ? 0.45 : pumice ? 0.55 : 0.72;
         }
         mesh.rotation.x += d.rx * dt;
         mesh.rotation.y += d.ry * dt;
