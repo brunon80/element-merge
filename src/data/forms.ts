@@ -18,11 +18,13 @@ export const BASE_FORM_TOP = 1.93;
 export const AIM_FALLBACK_Y = 0.6;
 
 /** índice da forma no catálogo, relativo ao nível inicial da espécie (formStartLevel) */
-const idx = (def: SpeciesDef, level: number): number => {
+export function formIndex(def: SpeciesDef, level: number): number {
   const start = def.formStartLevel ?? 1;
   const count = def.formTops?.length ?? def.formNames?.length ?? 1;
   return Math.max(0, Math.min(count - 1, Math.round(level) - start));
-};
+}
+
+const idx = formIndex;
 
 /** A espécie muda de silhueta ao fundir unidades do mesmo elemento? (puros) */
 export function hasForms(def: SpeciesDef): boolean {

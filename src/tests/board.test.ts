@@ -1,6 +1,7 @@
-import { BOARD_COLS, TILES_PER_SIDE, type MonsterLevel } from '../game/types';
+import { BOARD_COLS, BOARD_ROWS, TILES_PER_SIDE, MAX_LEVEL, type MonsterLevel } from '../game/types';
 import {
   FRONT_ROW_Z,
+  MONSTER_FOOT_R,
   PLATFORM,
   ROW_DEPTH,
   TILE_SPACING_X,
@@ -8,6 +9,7 @@ import {
   boardSlotPositions,
   tileFromWorld,
 } from '../game/board';
+import { footprintRadius, slotFit, worldFootprintRadius } from '../data/footprints';
 import { MUZZLE_HEIGHT, scaledStats } from '../data/balance';
 import { formAimY, formMuzzleY, formTop, hasForms } from '../data/forms';
 import { ALL_SPECIES_IDS, TREE_SPECIES_IDS, getSpecies } from '../data/monsters';
@@ -91,11 +93,71 @@ describe('Tabuleiro dimensionado para as formas que crescem', () => {
     }
   });
 
-  test('crescer o tabuleiro mantém as linhas frontais ao alcance', () => {
-    const gap = 2 * FRONT_ROW_Z;
+  test('o vão fundo-a-fundo passa de qualquer alcance — por isso não há porteira', () => {
+    // o pior par do tabuleiro: as duas linhas de fundo, frente a frente
+    const backGap = 2 * (FRONT_ROW_Z + (BOARD_ROWS - 1) * ROW_DEPTH);
+    const maxRange = Math.max(
+      ...ALL_SPECIES_IDS.map((id) => scaledStats(getSpecies(id).base, MAX_LEVEL).range),
+    );
+    // se o alcance voltasse a ser porteira de engajamento, este par travaria a
+    // partida (ninguém atira e o relógio decide) — é justamente o que
+    // `pickTarget` evita ao ignorar o alcance na escolha de alvo
+    expect(backGap).toBeGreaterThan(maxRange);
+    // a linha frontal continua se batendo de perto: até o menor alcance do jogo
+    // cobre o corredor entre as duas linhas frontais
+    const minRange = Math.min(
+      ...ALL_SPECIES_IDS.map((id) => scaledStats(getSpecies(id).base, 1).range),
+    );
+    expect(2 * FRONT_ROW_Z).toBeLessThan(minRange);
+  });
+
+  test('todo figurino cabe no próprio buraco — e nunca encosta no vizinho', () => {
+    // A regra do tabuleiro: o invólucro em mundo real (maior eixo, já com o
+    // encaixe aplicado) fica dentro de MONSTER_FOOT_R. Como o vão entre buracos
+    // é maior que 2 × MONSTER_FOOT_R, dois monstros vizinhos jamais se tocam —
+    // era isso que o Colosso Nv.10 violava (7,3 × 7,0 de mundo num buraco de 3,2).
     for (const id of ALL_SPECIES_IDS) {
-      const stats = scaledStats(getSpecies(id).base, 1);
-      expect(stats.range).toBeGreaterThanOrEqual(gap + 3);
+      const def = getSpecies(id);
+      for (let l = def.levelMin; l <= def.levelMax; l++) {
+        const level = l as MonsterLevel;
+        expect(worldFootprintRadius(id, level)).toBeLessThanOrEqual(MONSTER_FOOT_R + 1e-9);
+      }
+      // nenhum figurino é esmagado até virar um brinquedo no meio do buraco
+      expect(slotFit(id)).toBeGreaterThanOrEqual(0.55);
+    }
+    // folga entre buracos vizinhos: horizontal, profundidade e diagonal
+    expect(2 * MONSTER_FOOT_R).toBeLessThan(TILE_SPACING_X);
+    expect(2 * MONSTER_FOOT_R).toBeLessThan(ROW_DEPTH);
+  });
+
+  test('o encaixe não inverte a escada 2→1 (o filho sempre é maior que os pais)', () => {
+    // Tolerância de 0,1: as medições autorais têm vaivéns de ~2cm entre formas
+    // vizinhas (o Nv.2 do fogo espreguiça mais para frente que o Nv.3, o Nv.3 do
+    // vento é mais largo que o Nv.4) — invisível em jogo. O que este pino pega é
+    // inversão DE GRAU, como o antigo `1 + 0,07 × nível`, que encolhia um Nv.6 em
+    // relação ao Nv.5 meio de mundo.
+    for (const id of ['ignis', 'nereia', 'golem', 'zephyr'] as const) {
+      for (let l = 2; l <= 5; l++) {
+        expect(worldFootprintRadius(id, l as MonsterLevel)).toBeGreaterThanOrEqual(
+          worldFootprintRadius(id, (l - 1) as MonsterLevel) - 0.1,
+        );
+      }
+    }
+  });
+
+  test('a tabela de invólucros não envelheceu: casa com o invólucro analítico', () => {
+    // tripé grosseiro: se alguém mexer num rig/parts e esquecer `MEDIDO`, os dois
+    // números se afastam. O analítico (AABB das parts) é mais conservador que a
+    // medição ao vivo, então a tolerância é larga de propósito.
+    for (const id of ALL_SPECIES_IDS) {
+      const parts = MODELS[id];
+      if (!parts) continue; // rig autoral: sem parts para comparar
+      for (let l = 1; l <= 5; l++) {
+        const level = l as MonsterLevel;
+        const e = partsEnvelope(partsForLevel(parts, level));
+        const analytic = Math.max(e.maxX, -e.minX, e.maxZ, -e.minZ);
+        expect(Math.abs(footprintRadius(id, level) - analytic)).toBeLessThan(1.2);
+      }
     }
   });
 

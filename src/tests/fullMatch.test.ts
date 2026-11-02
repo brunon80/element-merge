@@ -100,3 +100,50 @@ describe('Partida completa contra a IA', () => {
     expect(ledger.coins).toBe(s2.balanceAfter);
   });
 });
+
+describe('Time que volta para a próxima partida (regra da vitória)', () => {
+  test('quem morreu em combate volta; fundidos e vendidos não', () => {
+    const eng = makeEngine({ playerCoins: 1000, aiCoins: 500, seed: 71 });
+    const a = mustSummon(eng, 'ignis', 'player', 0);
+    const b = mustSummon(eng, 'ignis', 'player', 1);
+    const sold = mustSummon(eng, 'nereia', 'player', 2);
+    const kid = mustMerge(eng, a, b)[0]; // a e b foram CONSUMIDOS pela fusão
+    expect(eng.sellUnit(sold).ok).toBe(true); // o valor dela virou moeda
+
+    // um zephyr vai ao tabuleiro para ser abatido durante o combate
+    const victim = mustSummon(eng, 'zephyr', 'player', 3);
+    const algoz = mustSummon(eng, 'golem', 'ai', 0);
+    eng.getUnit(algoz)!.damage = 999_999; // mata em um acerto
+    eng.startBattle();
+    for (let i = 0; i < 60 * 25 && eng.getUnit(victim)?.alive; i++) eng.update(1 / 60);
+    expect(eng.getUnit(victim)!.alive).toBe(false);
+
+    const roster = eng.restoredRoster('player');
+    // O zephyr caiu e mesmo assim volta: vencer paga o time inteiro, e evoluir
+    // deixa de ser uma aposta com a morte da unidade na partida vencida.
+    expect(roster).toContainEqual({ species: 'zephyr', level: 1 });
+    expect(roster).toContainEqual({ species: 'ignis', level: 2 }); // o filho do par fundido
+    expect(roster).not.toContainEqual({ species: 'nereia', level: 1 }); // vendida
+    // os dois ignis Nv.1 não reaparecem: quem carrega o valor deles é o Nv.2
+    expect(roster.filter((r) => r.species === 'ignis')).toHaveLength(1);
+    void kid;
+  });
+
+  test('nível mais alto primeiro (o teto de retorno são os 12 buracos do tabuleiro)', () => {
+    const eng = makeEngine({ playerCoins: 5000, aiCoins: 0, seed: 72 });
+    const l1: number[] = [];
+    for (let t = 0; t < 6; t++) l1.push(mustSummon(eng, 'golem', 'player', t));
+    const n2a = mustMerge(eng, l1[0], l1[1])[0];
+    const n2b = mustMerge(eng, l1[2], l1[3])[0];
+    const n3 = mustMerge(eng, n2a, n2b)[0]; // Nv.3: 4 Nv.1 consumidos em cadeia
+    void n3;
+    mustSummon(eng, 'zephyr', 'player', 6);
+
+    const roster = eng.restoredRoster('player');
+    // sobram o Nv.3 da cadeia, os dois Nv.1 que não entraram nela e o zephyr
+    expect(roster).toHaveLength(4);
+    const levels = roster.map((r) => r.level);
+    expect(levels).toEqual([...levels].sort((x, y) => y - x)); // decrescente por nível
+    expect(levels[0]).toBe(3);
+  });
+});

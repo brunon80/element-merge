@@ -1,3 +1,4 @@
+import { tileGroundPosition } from '../game/board';
 import type { GameEngine } from '../game/engine/engine';
 import { EVOLUTION_RECIPES, recipeOf } from '../data/fusionRecipes';
 import { TREE_SPECIES_IDS, getSpecies } from '../data/monsters';
@@ -52,6 +53,24 @@ describe('Regras de fusão vertical (puras, 2→1)', () => {
     expect(alive[0].species).toBe('ignis');
     expect(eng.getUnit(a)).toBeUndefined();
     expect(eng.getUnit(b)).toBeUndefined();
+  });
+
+  test('1b) o filho nasce no slot do ALVO (onde o arrasto foi solto)', () => {
+    // Convenção do arrasto: tryMerge(A, B) = "A foi carregado e largado SOBRE B".
+    // O resultado tem que aparecer no buraco de B, o ponto onde o dedo soltou —
+    // não no de onde A saiu (a criatura "pular de volta" desorienta o jogador).
+    const eng = makeEngine({ playerCoins: 1000 });
+    const a = mustSummon(eng, 'ignis', 'player', 0); // origem do arrasto
+    const b = mustSummon(eng, 'ignis', 'player', 2); // alvo, onde foi solto
+
+    const res = eng.tryMerge(a, b);
+    expect(res.ok).toBe(true);
+
+    const child = eng.getUnit(res.createdIds![0])!;
+    expect(child.tile).toBe(2); // slot de B
+    expect(child.pos).toEqual(tileGroundPosition('player', 2));
+    expect(eng.unitAt('player', 2)!.id).toBe(child.id);
+    expect(eng.unitAt('player', 0)).toBeUndefined(); // o buraco de A fica livre
   });
 
   test('2) dois monstros Nv.2 geram exatamente um monstro Nv.3', () => {

@@ -8,7 +8,7 @@ import {
   type MatchConfigInput,
   type TeamDifficultyParams,
 } from '../../data/balance';
-import { formAimY, formMuzzleY } from '../../data/forms';
+import { worldAimY, worldMuzzleY } from '../../data/footprints';
 import { getSpecies } from '../../data/monsters';
 import { computeDamage } from '../combat/damage';
 import { pickTarget } from '../combat/targeting';
@@ -63,7 +63,7 @@ export interface World {
 
 export interface SummonResult {
   ok: boolean;
-  reason?: 'NO_COINS' | 'BOARD_FULL' | 'NOT_SUMMONABLE' | 'MATCH_OVER';
+  reason?: 'NO_COINS' | 'BOARD_FULL' | 'NOT_SUMMONABLE' | 'COMBAT_STARTED' | 'MATCH_OVER';
   unitId?: number;
 }
 
@@ -85,6 +85,17 @@ export interface SellResult {
   refund?: number;
 }
 
+/** Como uma unidade saiu do tabuleiro — isso decide se ela volta na próxima partida. */
+export type UnitFate = 'alive' | 'dead' | 'merged' | 'sold';
+
+interface DeployedRecord {
+  unitId: number;
+  side: Side;
+  species: SpeciesId;
+  level: MonsterLevel;
+  fate: UnitFate;
+}
+
 /**
  * Motor de partidas — fonte única de verdade do gameplay.
  * Independente de React/Three.js: testa-se sem renderizar nada.
@@ -92,6 +103,14 @@ export interface SellResult {
 export class GameEngine {
   readonly world: World;
   private readonly byId = new Map<number, CombatUnit>();
+  /**
+   * Livro de bordo de TUDO que cada lado pôs em campo na partida, com o destino
+   * final de cada unidade (viva, morta em combate, consumida por fusão, vendida).
+   * É a base da regra de persistência entre partidas: na vitória, o time da
+   * próxima rodada é tudo o que o jogador plantou — inclusive o que morreu —, e
+   * só ficam de fora o que foi fundido (o filho já carrega o valor) ou vendido.
+   */
+  private readonly deployed: DeployedRecord[] = [];
   private nextUnitId = 1;
   private nextProjectileId = 1;
   private readonly rng: () => number;
@@ -183,8 +202,19 @@ export class GameEngine {
   // Convocação (custo fixo de 100 moedas, mesmo caminho para jogador e IA)
   // -------------------------------------------------------------------------
 
+  /**
+   * REGRA DE PREPARAÇÃO: todo exército é montado ANTES do combate. O jogador
+   * posiciona e paga seus 6 buracos na fase de preparação; quando a batalha
+   * começa, ninguém invoca reforços — nem de um lado nem do outro (o exército
+   * da IA já nasce inteiro no `startBattle`). Mover e fundir continuam livres
+   * durante o combate; é a leitura tática da partida, não a compra de força.
+   */
   summon(side: Side, species: SpeciesId, tile?: TileIndex): SummonResult {
     if (this.world.summary) return { ok: false, reason: 'MATCH_OVER' };
+    if (this.world.phase !== 'preparation') {
+      this.emit({ type: 'summonBlocked', side, species, reason: 'COMBAT_STARTED' });
+      return { ok: false, reason: 'COMBAT_STARTED' };
+    }
     const def = getSpecies(species);
     // Somente espécies puras podem ser convocadas diretamente;
     // criaturas da árvore (Nv.6+) só nascem de fusões (progressão real).
@@ -298,6 +328,7 @@ export class GameEngine {
     this.world.units.push(unit);
     this.byId.set(unit.id, unit);
     this.world.occupancy[side][tile] = unit.id;
+    this.deployed.push({ unitId: unit.id, side, species, level: safeLevel, fate: 'alive' });
     return unit;
   }
 
@@ -323,6 +354,12 @@ export class GameEngine {
   /**
    * Fusão atômica: valida TUDO antes de qualquer mutação. Em caso de
    * falha, nenhuma unidade é consumida e nenhum estado muda.
+   *
+   * Convenção do arrasto: `aId` é a criatura QUE FOI CARREGADA e `bId` é o ALVO
+   * sobre o qual ela foi solta. O resultado nasce NO SLOT DO ALVO (b), o ponto
+   * onde o jogador largou o monstro — é ali que o destaque de fusão estava
+   * aceso, e é ali que ele espera ver o filho. Manter o filho no slot de origem
+   * faria a criatura "pular de volta" para o buraco de onde ela saiu.
    */
   tryMerge(aId: number, bId: number): MergeResult {
     const a = this.byId.get(aId);
@@ -338,7 +375,8 @@ export class GameEngine {
     const side = a.side;
     const posA: [number, number, number] = [...a.pos];
     const posB: [number, number, number] = [...b.pos];
-    const tileA = a.tile;
+    const destTile = b.tile;
+    const destPos = tileGroundPosition(side, destTile);
 
     // ---- Remoção atômica das duas entradas ----
     this.removeUnit(a);
@@ -346,8 +384,8 @@ export class GameEngine {
 
     // ---- Criação atômica da saída (sempre exatamente 1 unidade — regra 2→1) ----
     const createdIds: number[] = [];
-    const createdA = this.createUnit(side, outcome.species, outcome.level, tileA);
-    createdIds.push(createdA.id);
+    const created = this.createUnit(side, outcome.species, outcome.level, destTile);
+    createdIds.push(created.id);
 
     this.emit({ type: 'mergeStart', side, aId, bId, outcome });
     this.emit({ type: 'mergeDone', side, createdIds, outcome });
@@ -361,7 +399,7 @@ export class GameEngine {
       },
       {
         type: 'mergeDone',
-        pos: tileGroundPosition(side, tileA),
+        pos: destPos,
         element: getSpecies(outcome.species).base.damageElement,
         species: outcome.species,
         level: outcome.level,
@@ -371,7 +409,7 @@ export class GameEngine {
     if (outcome.level >= MAX_LEVEL) {
       glow.push({
         type: 'primordial',
-        pos: tileGroundPosition(side, tileA),
+        pos: destPos,
         element: getSpecies(outcome.species).base.damageElement,
         species: outcome.species,
         level: outcome.level,
@@ -381,13 +419,36 @@ export class GameEngine {
     return { ok: true, outcome, createdIds };
   }
 
-  private removeUnit(unit: CombatUnit): void {
+  private removeUnit(unit: CombatUnit, fate: UnitFate = 'merged'): void {
+    this.setFate(unit.id, fate);
     const idx = this.world.units.indexOf(unit);
     if (idx >= 0) this.world.units.splice(idx, 1);
     this.byId.delete(unit.id);
     if (this.world.occupancy[unit.side][unit.tile] === unit.id) {
       this.world.occupancy[unit.side][unit.tile] = null;
     }
+  }
+
+  /** Registra o destino final de uma unidade no livro de bordo da partida. */
+  private setFate(unitId: number, fate: UnitFate): void {
+    const rec = this.deployed.find((d) => d.unitId === unitId);
+    if (rec) rec.fate = fate;
+  }
+
+  /**
+   * Time que volta para a próxima partida: todo mundo que este lado pôs em
+   * campo e chegou ao fim da rodada em jogo — vivas OU mortas em combate.
+   * Ficam de fora as unidades FUNDIDAS (o filho no nível seguinte já é a elas)
+   * e as VENDIDAS na lixeira (o jogador sacou o valor delas em moedas).
+   * Níveis altos primeiro: se o time passar dos 12 buracos do tabuleiro, o que
+   * sobra é o que custa mais caro recriar na loja.
+   */
+  restoredRoster(side: Side): { species: SpeciesId; level: MonsterLevel }[] {
+    return this.deployed
+      .filter((d) => d.side === side && (d.fate === 'alive' || d.fate === 'dead'))
+      .sort((a, b) => b.level - a.level)
+      .slice(0, TILES_PER_SIDE)
+      .map((d) => ({ species: d.species, level: d.level }));
   }
 
   /**
@@ -405,10 +466,10 @@ export class GameEngine {
     const refund = sellValue(unit.species, unit.level);
     const fxPos: [number, number, number] = [
       unit.pos[0],
-      unit.pos[1] + formAimY(getSpecies(unit.species), unit.level),
+      unit.pos[1] + worldAimY(unit.species, unit.level),
       unit.pos[2],
     ];
-    this.removeUnit(unit);
+    this.removeUnit(unit, 'sold'); // vendida: o valor virou moeda, não volta na próxima partida
     this.world.playerCoins += refund;
     this.world.fx.push({
       type: 'sell',
@@ -608,13 +669,12 @@ export class GameEngine {
     target: CombatUnit,
     damageFraction: number,
   ): void {
-    const tdef = getSpecies(target.species);
-    const adef = getSpecies(unit.species);
-    // altura do canhão sobe com a forma (o dragão Nv5 cospe do pescoço)
-    const aimY = formAimY(tdef, target.level);
+    // altura do canhão sobe com a forma (o dragão Nv5 cospe do pescoço) e segue
+    // a escala de encaixe do figurino (data/footprints.ts)
+    const aimY = worldAimY(target.species, target.level);
     const pos: [number, number, number] = [
       unit.pos[0],
-      unit.pos[1] + formMuzzleY(adef, unit.level),
+      unit.pos[1] + worldMuzzleY(unit.species, unit.level),
       unit.pos[2],
     ];
     // direção inicial preenchida (dado informativo p/ camada visual:
@@ -773,7 +833,7 @@ export class GameEngine {
           ...p,
           id: this.nextProjectileId++,
           targetId: best.id,
-          aimY: formAimY(getSpecies(best.species), best.level),
+          aimY: worldAimY(best.species, best.level),
           lastTargetPos: [...best.pos],
           pos: [...p.pos],
           damage: p.damage * (chainAb.factor ?? 0.5),
@@ -845,6 +905,7 @@ export class GameEngine {
   private killUnit(unit: CombatUnit): void {
     unit.alive = false;
     unit.diedAt = this.world.time;
+    this.setFate(unit.id, 'dead');
     if (this.world.occupancy[unit.side][unit.tile] === unit.id) {
       this.world.occupancy[unit.side][unit.tile] = null;
     }

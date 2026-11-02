@@ -3,22 +3,23 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ELEMENTS } from '../data/elements';
 import {
+  ARENA_R as ISLAND_R,
+  MONSTER_FOOT_R,
   PLATFORM,
-  TILE_SPACING_X,
   UNIT_BASE_Y,
   boardSlotPositions,
 } from '../game/board';
 import { useGameStore } from '../store/gameStore';
 import { circleTexture } from './assets';
 
-/** Raios interno/externo dos marcadores de slot (proporcionais ao espaçamento). */
-const SLOT_RING: [number, number] = [TILE_SPACING_X * 0.26, TILE_SPACING_X * 0.31];
+/** Marcadores de slot: o anel EXTERNO é a fronteira de encaixe (`MONSTER_FOOT_R`)
+ *  — o invólucro do figurino nunca passa dele, então o anel mostra ao jogador o
+ *  buraco real e os anéis de vizinhos nunca se encostam (2 × 2,5 < 5,2 do vão). */
+const SLOT_RING: [number, number] = [MONSTER_FOOT_R * 0.86, MONSTER_FOOT_R];
 
-/** Ilha e ornamentos acompanham o tamanho do tabuleiro. */
-const ISLAND_R = PLATFORM.backZ + 6.4;
-/** obeliscos elementais: do lado de fora das plataformas, na diagonal dos fundos */
-const OBELISK_X = PLATFORM.halfX + 2.7;
-const OBELISK_Z = PLATFORM.backZ + 1.7;
+/** obeliscos elementais: do lado de fora das plataformas, na altura do meio */
+const OBELISK_X = PLATFORM.halfX + 2.4;
+const OBELISK_Z = PLATFORM.centerZ;
 
 /** Arena: ilha flutuante com plataformas elementais e decorações.
  *  Toda a arte é derivada das constantes do tabuleiro (board.ts), então
@@ -31,13 +32,13 @@ export function Arena() {
   const slots = useMemo(() => boardSlotPositions(), []);
   const rockDefs = useMemo(
     () => [
-      { p: [-13.9, 1.2, -10.3] as const, s: 1.1, ph: 0.4 },
-      { p: [15.5, 2.4, -3.9] as const, s: 0.8, ph: 2.1 },
-      { p: [-16.0, 3.6, 5.4] as const, s: 0.9, ph: 1.2 },
-      { p: [12.7, -1.8, 9.1] as const, s: 1.4, ph: 3.4 },
-      { p: [-11.9, -2.6, -11.9] as const, s: 1.6, ph: 0.9 },
-      { p: [16.3, 0.5, 6.7] as const, s: 0.6, ph: 4.4 },
-      { p: [-7.9, 4.2, -14.5] as const, s: 0.7, ph: 2.7 },
+      { p: [-17.4, 1.2, -12.9] as const, s: 1.1, ph: 0.4 },
+      { p: [19.4, 2.4, -4.9] as const, s: 0.8, ph: 2.1 },
+      { p: [-20.0, 3.6, 6.8] as const, s: 0.9, ph: 1.2 },
+      { p: [15.9, -1.8, 11.4] as const, s: 1.4, ph: 3.4 },
+      { p: [-14.9, -2.6, -14.9] as const, s: 1.6, ph: 0.9 },
+      { p: [20.4, 0.5, 8.4] as const, s: 0.6, ph: 4.4 },
+      { p: [-9.9, 4.2, -18.1] as const, s: 0.7, ph: 2.7 },
     ],
     [],
   );
@@ -48,7 +49,7 @@ export function Arena() {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const b = (Math.random() - 0.5) * Math.PI;
-      const r = 56 + Math.random() * 30;
+      const r = 70 + Math.random() * 38;
       pos[i * 3] = Math.cos(a) * Math.cos(b) * r;
       pos[i * 3 + 1] = Math.sin(b) * r * 0.7 + 8;
       pos[i * 3 + 2] = Math.sin(a) * Math.cos(b) * r;
@@ -59,7 +60,7 @@ export function Arena() {
   }, []);
 
   const motes = useMemo(() => {
-    const n = 90;
+    const n = 150;
     const pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
@@ -262,7 +263,7 @@ export function Arena() {
           if (st.dragId !== null) st.hoverWorld(e.point.x, e.point.z);
         }}
       >
-        <planeGeometry args={[46, 40]} />
+        <planeGeometry args={[ISLAND_R * 2.15, ISLAND_R * 2.15]} />
         <meshBasicMaterial colorWrite={false} transparent opacity={0} />
       </mesh>
     </group>

@@ -260,6 +260,54 @@ describe('Migração de save v2 → v3 (árvore elemental)', () => {
   });
 });
 
+describe('Preparação fechada no combate (tudo é montado antes da luta)', () => {
+  test('ninguém invoca depois que o combate começa — nem o jogador, nem a IA', () => {
+    const eng = makeEngine({ playerCoins: 500, aiCoins: 500, seed: 31 });
+    const evs = collectEvents(eng); // escuta desde antes: o bloqueio é um evento
+    mustSummon(eng, 'ignis');
+    mustSummon(eng, 'golem', 'ai');
+    eng.startBattle();
+
+    const byPlayer = eng.summon('player', 'zephyr');
+    expect(byPlayer.ok).toBe(false);
+    expect(byPlayer.reason).toBe('COMBAT_STARTED');
+
+    // sem trapaça pelo lado da IA: o exército inimigo já nasceu no startBattle
+    const byAi = eng.summon('ai', 'nereia');
+    expect(byAi.ok).toBe(false);
+    expect(byAi.reason).toBe('COMBAT_STARTED');
+
+    // a tentativa não existe: nada de unidade nova, nada de moeda gasta
+    expect(eng.aliveCount('player')).toBe(1);
+    expect(eng.aliveCount('ai')).toBe(1);
+    expect(eng.world.playerCoins).toBe(400);
+    expect(eng.world.aiCoins).toBe(400);
+
+    // e o evento denuncia a tentativa bloqueada (a UI usa isso para avisar)
+    const blocked = evs.filter(
+      (e) => e.type === 'summonBlocked' && e.reason === 'COMBAT_STARTED',
+    );
+    expect(blocked.length).toBe(2);
+  });
+
+  test('mover, fundir e vender continuam liberados durante o combate', () => {
+    const eng = makeEngine({ playerCoins: 500, seed: 32 });
+    const a = mustSummon(eng, 'ignis', 'player', 0);
+    const b = mustSummon(eng, 'ignis', 'player', 1);
+    mustSummon(eng, 'golem', 'ai');
+    eng.startBattle();
+
+    // a leitura tática da partida segue viva: reposicionar e fundir é grátis
+    expect(eng.moveUnit('player', b, 5).ok).toBe(true);
+    const [kid] = mustMerge(eng, a, b);
+    expect(eng.getUnit(kid)!.level).toBe(2);
+    expect(eng.sellUnit(kid).ok).toBe(true);
+
+    // ...mas a loja permanece fechada
+    expect(eng.summon('player', 'ignis', 0).reason).toBe('COMBAT_STARTED');
+  });
+});
+
 describe('Economia da IA', () => {
   test('a IA não pode invocar sem possuir recursos suficientes', () => {
     const eng = makeEngine({ playerCoins: 500, aiCoins: 250, seed: 99, difficulty: 'hard' });

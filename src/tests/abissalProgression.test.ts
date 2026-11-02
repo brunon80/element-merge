@@ -5,7 +5,7 @@ import { makeWaterMaterial } from '../scene/waterShaders';
 import { makeIceMaterial } from '../scene/iceShaders';
 import { makeCoreMaterial } from '../scene/lightningShaders';
 import { ROW_DEPTH, TILE_SPACING_X } from '../game/board';
-import { LEVEL_PROJECTILE_MULT } from '../data/balance';
+import { BOARD_PROJECTILE_SCALE, LEVEL_PROJECTILE_MULT } from '../data/balance';
 import { formTop } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { SPECIES_RIGS } from '../scene/speciesRigs';
@@ -494,7 +494,8 @@ describe('Abissal: tamboril das marés mortas flotando na própria maré (Nv.8)'
     // varre o voo: a maré é guiada (vel = rumo × speed todo tick) e é a mais
     // RÁPIDA dos arremessos Nv.8 (base 8,5 × 1,12⁷ ≈ 18,8 — o tiro da água do
     // abismo chega antes da pedra do Geodo e da estrela do Cósmico)
-    const SPEED8 = ABISSAL.base.projectileSpeed * Math.pow(LEVEL_PROJECTILE_MULT, 7);
+    const SPEED8 =
+      ABISSAL.base.projectileSpeed * Math.pow(LEVEL_PROJECTILE_MULT, 7) * BOARD_PROJECTILE_SCALE;
     const inFlight: Projectile[] = [];
     for (let i = 0; i < 130; i++) {
       runSeconds(eng, 0.05);

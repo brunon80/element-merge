@@ -377,7 +377,7 @@ export type EngineEvent =
       type: 'summonBlocked';
       side: Side;
       species: SpeciesId;
-      reason: 'NO_COINS' | 'BOARD_FULL';
+      reason: 'NO_COINS' | 'BOARD_FULL' | 'COMBAT_STARTED';
     }
   | {
       type: 'mergeStart';

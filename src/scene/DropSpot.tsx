@@ -2,7 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
-  ROW_DEPTH,
+  MONSTER_FOOT_R,
   TILE_SPACING_X,
   boardSlotPositions,
   tileFromWorld,
@@ -37,13 +37,18 @@ const KIND_COLOR: Record<Kind, string> = {
   invalid: '#ff5470',
 };
 
-/** meia-dimensão do retângulo dos colchetes (proporção da célula do tabuleiro) */
-const BRACKET_HX = TILE_SPACING_X * 0.4;
-const BRACKET_HZ = ROW_DEPTH * 0.42;
+/** meia-dimensão do retângulo dos colchetes (proporção da célula do tabuleiro).
+ *  A célula é quadrada e o invólucro do bicho tem raio `MONSTER_FOOT_R`: os
+ *  colchetes se fecham justos ao invólucro e, como são cantos em L (só os
+ *  quatro cantos aparecem), nunca encostam no colchete do buraco ao lado. */
+const BRACKET_HX = MONSTER_FOOT_R + 0.25;
+const BRACKET_HZ = BRACKET_HX;
 
-/** disco/anel/X do destino na proporção da célula (a elipse do pai casa com o vão 3,2×2,3) */
+/** disco/anel/X do destino. O vão é igual nos dois eixos, então a elipse que
+ *  acertava a célula 3,2×2,3 de antes foi embora: tudo sai do passo da célula,
+ *  e o anel enquadra o invólucro real do bicho (raio `MONSTER_FOOT_R`). */
 const PAD_PLANE = TILE_SPACING_X * 0.91;
-const RING_R: [number, number] = [TILE_SPACING_X * 0.375, TILE_SPACING_X * 0.42];
+const RING_R: [number, number] = [MONSTER_FOOT_R * 0.86, MONSTER_FOOT_R * 1.08];
 const CROSS_ARM = TILE_SPACING_X * 0.83;
 
 // ---------------------------------------------------------------------------
@@ -429,20 +434,18 @@ export function DropSpot() {
 
       {/* destaque do destino */}
       <group ref={rootRef} visible={false}>
-        {/* o pai faz a elipse do disco na proporção da célula do tabuleiro */}
-        <group scale={[1.18, 1, 0.85]}>
-          <mesh ref={padRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-            <planeGeometry args={[PAD_PLANE, PAD_PLANE]} />
-            <meshBasicMaterial
-              map={padTexture()}
-              transparent
-              opacity={0.5}
-              depthWrite={false}
-              blending={THREE.AdditiveBlending}
-              toneMapped={false}
-            />
-          </mesh>
-        </group>
+        {/* o disco de destino segue a célula, que agora é quadrada: nada de elipse */}
+        <mesh ref={padRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+          <planeGeometry args={[PAD_PLANE, PAD_PLANE]} />
+          <meshBasicMaterial
+            map={padTexture()}
+            transparent
+            opacity={0.5}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
+        </mesh>
         <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <ringGeometry args={[RING_R[0], RING_R[1], 48, 1, 0, Math.PI * 1.4]} />
           <meshBasicMaterial

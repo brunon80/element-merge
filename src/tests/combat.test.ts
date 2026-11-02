@@ -171,8 +171,54 @@ describe('Seleção de alvos', () => {
       const shot = eng.world.projectiles.find((pr) => pr.ownerId === gelo);
       if (shot) targetId = shot.targetId;
     }
-    expect(targetId).toBe(back); // mira o inimigo do fundo, não o da frente
+    expect(targetId).toBe(back); // mira o inimigo do meio, não o da frente
     expect(eng.getUnit(gelo)!.species).toBe('gelo');
+  });
+
+  test('5d) não há restrição de alcance: bruto de alcance curto ataca do fundo ao fundo', () => {
+    // Gólem Nv.1 tem o menor alcance do catálogo (8) e os dois estão no buraco
+    // de FUNDO: o vão entre eles (27) passa de qualquer alcance do jogo. Com a
+    // antiga porteira de alcance os dois ficavam parados para sempre — a partida
+    // era decidida pelo relógio e quem plantasse atrás perdia a unidade.
+    const eng = makeEngine({ playerCoins: 500, aiCoins: 500, seed: 63 });
+    const me = mustSummon(eng, 'golem', 'player', playerTile(2, 0));
+    const foe = mustSummon(eng, 'golem', 'ai', playerTile(2, 0));
+    const foeHp0 = eng.getUnit(foe)!.hp;
+    eng.startBattle();
+
+    let sawShot = false;
+    for (let i = 0; i < 60 * 8 && !sawShot; i++) {
+      eng.update(1 / 60);
+      sawShot = eng.world.projectiles.some((p) => p.ownerId === me);
+    }
+    expect(sawShot).toBe(true); // ataca mesmo sem nenhum inimigo "ao alcance"
+
+    runSeconds(eng, 12); // o projétil do outro lado da arena chega
+    expect(eng.getUnit(foe)!.hp).toBeLessThan(foeHp0);
+  });
+
+  test('5e) alcance não atrapalha o targeting: o Gólem caça o mais fraco do outro canto', () => {
+    // O Gólem caça o inimigo MAIS FRACO (lowestHp). O mais ferido está no fundo
+    // inimigo, a ~17 de distância — o dobro do alcance dele. Como o alcance não
+    // entra na escolha de alvo (senão o "mais ao alcance" ganharia de um bicho
+    // cuja regra é caçar ferido), o alvo é o bicho magoado do outro lado.
+    const eng = makeEngine({ playerCoins: 500, aiCoins: 500, seed: 64 });
+    const me = mustSummon(eng, 'golem', 'player', playerTile(0, 0));
+    const near = mustSummon(eng, 'zephyr', 'ai', playerTile(0, 0)); // linha frontal
+    const far = mustSummon(eng, 'zephyr', 'ai', playerTile(2, 0)); // linha de fundo
+    eng.getUnit(me)!.hp = 999999; // aguenta as duas revidadas enquanto atira
+    eng.getUnit(near)!.hp = 999999;
+    eng.getUnit(far)!.hp = 1;
+    eng.startBattle();
+
+    let targetId = -1;
+    for (let i = 0; i < 60 * 6 && targetId < 0; i++) {
+      eng.update(1 / 60);
+      const shot = eng.world.projectiles.find((pr) => pr.ownerId === me);
+      if (shot) targetId = shot.targetId;
+    }
+    expect(targetId).toBe(far); // a regra da criatura manda, o vão não atrapalha
+    void near;
   });
 });
 

@@ -20,6 +20,8 @@ import { tileGroundPosition } from '../game/board';
 import { TREE_SPECIES_IDS, getSpecies } from '../data/monsters';
 import type { Side } from '../game/types';
 import { getEngine, useGameStore } from '../store/gameStore';
+import type { SummonResult } from '../game/engine/engine';
+import { mustSummon } from './helpers';
 
 function freshGame() {
   const st = useGameStore.getState();
@@ -107,6 +109,52 @@ describe('Loja e invocação', () => {
     fireEvent.click(card);
     expect(useGameStore.getState().coins).toBe(0);
   });
+
+  test('em combate a loja fecha: nenhuma invocação nova, e o aviso aparece', () => {
+    renderAll();
+    clickSummon('shop-ignis', 2);
+    expect(useGameStore.getState().phase).toBe('preparation');
+
+    // um inimigo para a luta ser de verdade (senão o combate resolveria na hora)
+    const eng = getEngine()!;
+    eng.world.aiCoins = 500;
+    mustSummon(eng, 'golem', 'ai');
+    act(() => {
+      eng.startBattle();
+      useGameStore.getState().syncUi();
+    });
+    expect(useGameStore.getState().phase).toBe('combat');
+
+    // os quatro cards ficam desabilitados (o click do jogador não passa nem
+    // chega ao motor: a loja fecha na UI, e o motor fecha de novo por dentro)
+    for (const id of ['ignis', 'nereia', 'golem', 'zephyr'] as const) {
+      const card = screen.getByTestId(`shop-${id}`) as HTMLButtonElement;
+      expect(card.disabled).toBe(true);
+      fireEvent.click(card);
+    }
+    expect(myUnits()).toHaveLength(2); // nenhuma criatura nova entrou
+    expect(useGameStore.getState().coins).toBe(300); // nada foi gasto
+  });
+
+  test('a tentativa chega ao motor (loja da UI é bônus): aviso na tela', () => {
+    renderAll();
+    clickSummon('shop-ignis');
+    const eng = getEngine()!;
+    eng.world.aiCoins = 500;
+    mustSummon(eng, 'golem', 'ai');
+    act(() => eng.startBattle());
+
+    let res: SummonResult | undefined;
+    act(() => {
+      res = eng.summon('player', 'zephyr');
+    });
+    expect(res?.ok).toBe(false);
+    expect(res?.reason).toBe('COMBAT_STARTED');
+    expect(myUnits()).toHaveLength(1);
+    expect(useGameStore.getState().coins).toBe(400);
+    // o evento do motor vira aviso na tela: o jogador entende por que a loja sumiu
+    expect(screen.getByTestId('toast').textContent).toContain('combate começou');
+  });
 });
 
 describe('Fusão arrastando na arena 3D (único caminho de fusão)', () => {
@@ -118,6 +166,21 @@ describe('Fusão arrastando na arena 3D (único caminho de fusão)', () => {
     expect(myUnits()).toHaveLength(1);
     expect(myLevels()).toEqual([2]);
     expect(useGameStore.getState().coins).toBe(300); // fundir não custa nada
+  });
+
+  test('o filho nasce no slot do ALVO, não no de onde a criatura saiu', () => {
+    renderAll();
+    clickSummon('shop-ignis', 2);
+    const [a, b] = myUnits();
+    const from = a.tile;
+    expect(b.tile).not.toBe(from);
+
+    dragOnto(a.id, b); // arrasto: A carregada, largada SOBRE B
+
+    const [kid] = myUnits();
+    expect(kid.level).toBe(2);
+    expect(kid.tile).toBe(b.tile); // onde o ponteiro largou
+    expect(getEngine()!.unitAt('player', from)).toBeUndefined(); // buraco de A livre
   });
 
   test('cadeia 2→1 em todos os níveis: 4×Nv.1 → 2×Nv.2 → 1×Nv.3', () => {
@@ -510,6 +573,40 @@ describe('Tempo persistido entre partidas', () => {
     expect(useGameStore.getState().retainedCount).toBe(retained);
     act(() => useGameStore.getState().startNewMatch());
     expect(myUnits()).toHaveLength(retained);
+  });
+
+  test('VITÓRIA devolve o time inteiro: quem morreu na partida vencida volta', () => {
+    renderAll();
+    useGameStore.getState().setDifficulty('easy');
+    clickSummon('shop-golem', 3);
+    const eng = getEngine()!;
+    const us = myUnits();
+    // vitória garantida (dois golens quase inextinguíveis) e um terceiro vai
+    // morrer no combate: é justamente o caso que a regra protege
+    eng.getUnit(us[0].id)!.hp = 999_999;
+    eng.getUnit(us[1].id)!.hp = 999_999;
+    const victim = eng.getUnit(us[2].id)!;
+    victim.hp = 1;
+    eng.world.aiCoins = 500;
+    const algozRes = eng.summon('ai', 'golem', 0);
+    expect(algozRes.ok).toBe(true);
+    const algoz = eng.getUnit(algozRes.unitId!)!;
+    algoz.damage = 50; // mata o Nv.1 ferido (vida 1) e não arranha os tanques de 1 milhão
+    act(() => {
+      eng.startBattle();
+      let guard = 0;
+      while (!eng.world.summary && guard++ < 30000) eng.update(1 / 60);
+      useGameStore.getState().syncUi();
+    });
+    const st = useGameStore.getState();
+    expect(st.lastSummary!.result).toBe('victory');
+    expect(victim.alive).toBe(false); // de fato caiu em combate
+    expect(st.retainedCount).toBe(3); // os três golens, incluindo o morto
+
+    act(() => useGameStore.getState().startNewMatch());
+    const restored = myUnits();
+    expect(restored).toHaveLength(3);
+    for (const u of restored) expect(u.species).toBe('golem');
   });
 
   test('derrota total zera o time persistido (recomeçar com moedas)', () => {

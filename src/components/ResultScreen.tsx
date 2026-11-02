@@ -49,9 +49,11 @@ export function ResultScreen() {
           </button>
         </div>
         <p className="result-note">
-          A recompensa desta partida já foi creditada e não se repete. Suas
-          criaturas vivas voltam para a próxima partida — o inimigo será
-          recalculado pelo tamanho do seu time.
+          A recompensa desta partida já foi creditada e não se repete.{' '}
+          {summary.result === 'victory'
+            ? 'Vitória: todo o time que você plantou volta para a próxima partida, inclusive quem caiu em combate — evoluir um monstro não é uma aposta. Ficam de fora só os fundidos (o filho carrega o valor deles) e os vendidos.'
+            : 'Suas criaturas vivas voltam para a próxima partida; o que morreu não volta — perder custa.'}{' '}
+          O inimigo será recalculado pelo tamanho do seu time.
         </p>
       </div>
     </div>

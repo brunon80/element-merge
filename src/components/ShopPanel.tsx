@@ -51,7 +51,9 @@ export function ShopPanel() {
 
   const alivePlayer = units.filter((u) => u.side === 'player' && !u.dying).length;
   const boardFull = alivePlayer >= TILES_PER_SIDE;
-  const active = phase === 'preparation' || phase === 'combat';
+  // REGRA DE PREPARAÇÃO: a loja só funciona antes do combate. Quando a batalha
+  // começa, o exército está fechado — nada de comprar reforço no calor da luta.
+  const active = phase === 'preparation';
 
   return (
     <div className="shop panel" data-testid="shop">
@@ -74,7 +76,9 @@ export function ShopPanel() {
                   ? 'Moedas insuficientes'
                   : boardFull
                     ? 'Arena cheia (12 slots)'
-                    : `Invocar ${def.name}`
+                    : active
+                      ? `Invocar ${def.name}`
+                      : 'O combate começou — o exército fecha na preparação'
               }
             >
               <span className="shop-icon" style={{ color: ELEMENTS[el].glow }}>
@@ -90,7 +94,7 @@ export function ShopPanel() {
                     ? 'sem saldo'
                     : boardFull
                       ? 'arena cheia'
-                      : ''
+                      : 'em combate'
                   : active
                     ? 'invocar'
                     : ''}
@@ -101,8 +105,8 @@ export function ShopPanel() {
       </div>
       <p className="shop-note">
         {phase === 'combat'
-          ? 'Reforços no combate custam 100 — só volta para a próxima partida quem sobreviver.'
-          : 'O exército inimigo será gerado no início do combate.'}
+          ? 'Loja fechada: o exército se fecha na preparação. Vitória devolve o time inteiro.'
+          : 'Monte todo o exército AQUI, antes de iniciar o combate.'}
       </p>
     </div>
   );

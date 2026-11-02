@@ -1,6 +1,7 @@
 import { MODELS, hasLevelVariants, partsForLevel, type Part } from '../scene/speciesModels';
 import { ROW_DEPTH, TILE_SPACING_X } from '../game/board';
-import { formAimY, formName, formTop, hasForms } from '../data/forms';
+import { formMuzzleY, formName, formTop, hasForms } from '../data/forms';
+import { slotFit, worldAimY } from '../data/footprints';
 import { getSpecies } from '../data/monsters';
 import { autoGrow, makeEngine, mustSummon, runSeconds } from './helpers';
 
@@ -189,9 +190,13 @@ describe('Projétil acompanha o nível do atirador', () => {
     }
     expect(small).not.toBeNull();
     expect(small!.level).toBe(1);
-    // Nv5 cospe do pescoço (~1,1 acima) e mira no meio do corpo do alvo
-    expect(shot!.y - small!.y).toBeGreaterThan(1);
-    expect(shot!.aimY).toBeCloseTo(formAimY(getSpecies('nereia'), 1), 5);
+    // Nv5 cospe do pescoço: a subida é a diferença autoral das formas vezes o
+    // encaixe da família. Amostra tolerante (5%): o projétil é amostrado já em
+    // voo (um tick de deslocamento na direção do alvo, e o canhão do Nv5 é alto)
+    const rise = (formMuzzleY(IGNIS, 5) - formMuzzleY(IGNIS, 1)) * slotFit('ignis');
+    expect(shot!.y - small!.y).toBeGreaterThan(rise * 0.9);
+    expect(shot!.y - small!.y).toBeLessThan(rise * 1.1);
+    expect(shot!.aimY).toBeCloseTo(worldAimY('nereia', 1), 5);
   });
 
   test('fusão de fogo emite evento de impacto com o novo nível (fuligem)', () => {

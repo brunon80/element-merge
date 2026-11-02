@@ -24,6 +24,20 @@ export const MERGE_ANIMATION_WINDOW = 0.5;
 export const LEVEL_STAT_MULT = 2.15;
 /** Bônus aditivo de alcance por nível acima do 1. */
 export const LEVEL_RANGE_BONUS = 0.4;
+/**
+ * Velocidade dos projéteis acompanha o TAMANHO DO TABULEIRO: os buracos e as
+ * linhas aprofundaram (vão entre colunas 3,2 → 5,2, corredor 5,0 → 6,2 e linha
+ * de fundo × linha de fundo ≈ 29), então sem este fator o projétil viraria
+ * cagara cruzando a arena. O tempo de voo entre buracos correspondentes fica
+ * parecido com o de antes.
+ *
+ * O ALCANCE (stat `range`) NÃO escala com a arena: ele deixou de ser porteira de
+ * engajamento — ver `pickTarget` em game/combat/targeting.ts. Hoje o alcance
+ * decide qual alvo a criatura PREFERE; se nenhum inimigo está ao alcance, ela
+ * ataca mesmo assim (senão duas linhas de fundo nunca trocam dano: softlock).
+ * Os `base.range` do catálogo continuam pinados nos testes de progressão.
+ */
+export const BOARD_PROJECTILE_SCALE = 1.5;
 /** Fator multiplicativo de intervalo por nível. */
 export const LEVEL_INTERVAL_MULT = 0.94;
 /** Fator multiplicativo de velocidade de projétil por nível. */
@@ -50,7 +64,8 @@ export function scaledStats(base: BaseStats, level: MonsterLevel): BaseStats {
     damage: Math.round(base.damage * Math.pow(LEVEL_STAT_MULT, p)),
     range: base.range + LEVEL_RANGE_BONUS * p,
     interval: base.interval * Math.pow(LEVEL_INTERVAL_MULT, p),
-    projectileSpeed: base.projectileSpeed * Math.pow(LEVEL_PROJECTILE_MULT, p),
+    projectileSpeed:
+      base.projectileSpeed * Math.pow(LEVEL_PROJECTILE_MULT, p) * BOARD_PROJECTILE_SCALE,
     reload: Math.max(MIN_RELOAD, base.reload * Math.pow(LEVEL_RELOAD_MULT, p)),
     moveSpeed: base.moveSpeed,
     attackCount: base.attackCount,

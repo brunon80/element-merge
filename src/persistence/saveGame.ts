@@ -17,7 +17,9 @@ const LEGACY_HYBRID_MAP: Record<string, SpeciesId> = {
   duna: 'areia', // terra + ar
 };
 
-/** Unidade sobrevivente que volta automaticamente para a próxima partida. */
+/** Unidade do time do jogador que volta automaticamente para a próxima partida.
+ *  Na vitória volta todo o time plantado (vivas e mortas em combate); na derrota
+ *  ou empate, só quem sobreviveu. Fusões e vendas ficam de fora. */
 export interface RetainedUnit {
   species: SpeciesId;
   level: MonsterLevel;

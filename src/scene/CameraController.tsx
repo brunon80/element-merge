@@ -1,4 +1,5 @@
 import { OrbitControls } from '@react-three/drei';
+import { ARENA_R, ORBIT_TARGET } from '../game/board';
 import { useGameStore } from '../store/gameStore';
 
 /**
@@ -15,7 +16,7 @@ export function CameraController({ menuMode }: { menuMode: boolean }) {
   return (
     <OrbitControls
       makeDefault
-      target={[0, 1.15, 0]}
+      target={ORBIT_TARGET}
       enablePan={false}
       enableDamping
       dampingFactor={0.08}
@@ -24,7 +25,7 @@ export function CameraController({ menuMode }: { menuMode: boolean }) {
       autoRotateSpeed={0.55}
       minDistance={3} // zoom colado p/ inspecionar o figurino (o clamp antigo
       // em 10 deixava a estaca e os cacos de gelo minúsculos na tela)
-      maxDistance={34}
+      maxDistance={ARENA_R * 2.76} // dá para ler a ilha inteira de uma vez
       minPolarAngle={0.35}
       maxPolarAngle={1.32}
     />

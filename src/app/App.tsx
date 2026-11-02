@@ -11,6 +11,7 @@ import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
 import { ToastLayer } from '../components/ToastLayer';
 import { useGameDriver } from '../hooks/useGameDriver';
+import { ARENA_R, CAMERA_POS } from '../game/board';
 import { BestiaryStage } from '../scene/BestiaryStage';
 import { BattleScene } from '../scene/BattleScene';
 import { useGameStore } from '../store/gameStore';
@@ -31,11 +32,13 @@ export function App() {
         <Canvas
           shadows
           dpr={[1, 2]}
-          camera={{ position: [0, 14.2, 19.5], fov: 42 }}
+          camera={{ position: CAMERA_POS, fov: 42 }}
           onPointerMissed={() => selectUnit(null)}
         >
           <color attach="background" args={['#0b1020']} />
-          <fog attach="fog" args={['#0b1020', 30, 80]} />
+          {/* o fog começa logo além da borda inimiga da ilha (o tabuleiro em si
+              fica limpo) e engole o vazio — as duas distâncias saem de ARENA_R */}
+          <fog attach="fog" args={['#0b1020', ARENA_R * 2.36, ARENA_R * 6.26]} />
           <BattleScene key={matchKey ?? `menu-${seed}`} menuMode={!inGame} />
         </Canvas>
       </GLBoundary>

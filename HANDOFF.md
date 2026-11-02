@@ -1,8 +1,8 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
 > Estado verificado em **02/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **333 testes / 32 arquivos, todos
-> verdes** · `npm run build` OK · git limpo em `main` (repo público
+> `npx tsc --noEmit` OK · `npx vitest run` **347 testes / 32 arquivos, todos
+> verdes** · `npm run build` OK · git em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
 ---
@@ -528,8 +528,30 @@ honestamente um tiro que NASCE DENTRO do corpo, caso do Colosso e de sua goela
 dentro do anel) e `SHOT_BURST=N` (repisa a mesma janela N×, 170 ms de passo,
 para tentar pegar a detonação — a extrapolação do probe não dá o tempo certo de
 impacto) ·
-`qa/probe-veil*.mjs` / `probe-quad.mjs` (sondas de material/cena). Prints em
-`%LOCALAPPDATA%\Temp\opencode\shots`. ⚠️ sonda: só roda o `wheel` de zoom no
+`qa/probe-veil*.mjs` / `probe-quad.mjs` (sondas de material/cena) ·
+**`qa/probe-footprint.mjs [especie[@nv] ...]`** — a sonda do ENCAIXE: entra no
+modo debug, cria as espécies no tabuleiro (default: as pesadas da árvore; aceite
+`especie@nv` para os puros) e mede a caixa de cada unidade NA CENA VIVA (só as
+malhas do figurino: `hud`/`selring`/`hitbox` ficam de fora). Imprime por unidade
+o invólucro **EM MUNDO REAL** (o que o jogador vê: trás/frente, esq/dir, topo, a
+partir do centro do slot) e ao lado a medida **AUTHORED** (autoral × escala da
+raiz — é essa que alimenta a tabela), com dois vereditos: "no buraco?" (cabe na
+célula `QA_SLOT_X_HALF`/`QA_SLOT_Z_HALF`, hoje 2,6 = meia célula de 5,2) e "no
+anel?" (cabe em `QA_FOOT_R` = `MONSTER_FOOT_R` 2,5, a regra de projeto). Meta:
+tudo SIM + `SOBREPOSIÇÕES de invólucro entre unidades: 0`. Uso padrão já certo:
+`node qa/probe-footprint.mjs`. O arquivo `data/footprints.ts` (`MEDIDO`) é a
+tabela que nasceu dessas medições — quando um rig muda, rode a sonda e atualize a
+linha correspondente. ·
+**`qa/probe-framing.mjs`** — a sonda do ENQUADRE e do arraste: (1) projeta o
+chão dos 24 buracos e checa com `document.elementFromPoint` se cai no CANVAS —
+painel DOM engole o `pointerdown` e o buraco fica sem conserto (meta: "buracos
+alcançáveis pelo ponteiro: 24/24"); (2) faz um ARRASTE REAL de fusão no canvas
+(mover → abaixar → arrastar → soltar) e confirma que o filho Nv.2 nasce no slot
+do ALVO e que o buraco de origem some; (3) entra em combate e verifica os quatro
+cards da loja `FECHADA/em combate`. Se o `QA_URL` vazar do shell, a sonda vai
+para o servidor morto — `Remove-Item Env:QA_URL` (erro inofensivo se não existir)
+e rode sem variável. Prints em `%LOCALAPPDATA%\Temp\opencode\*`. ⚠️ sonda: só
+roda o `wheel` de zoom no
 centro do canvas — `page.mouse.click` no tabuleiro ANTES do `start-battle`
 agarra unidade e hijacks a luta (a sonda dispara um tiro só). Pré-requisito:
 `npm run dev` + chromium do Playwright (já instalado). Para o iOS há três sondas
@@ -600,6 +622,101 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
 
 ---
 
+## 🏟️ Arena, encaixe e regras de partida (reescrito em 02/nov/2026 — NÃO reverter)
+
+Seis regras novas, todas com pino de teste (unitário ou sonda). Elas nasceram de
+dois defeitos reais: o Colosso Nv.9/10 cobria três buracos e derramava sobre a
+plataforma inimiga, e havia a possibilidade de ninguém conseguir atacar
+(softlock).
+
+**1. O monstro CABE no próprio buraco (e nunca encosta no vizinho).**
+`game/board.ts` é a única fonte de layout: `MONSTER_FOOT_R 2,5` (raio máximo do
+invólucro em mundo real), `TILE_SPACING_X 5,2 = ROW_DEPTH 5,2` (buraco quadrado),
+`FRONT_ROW_Z 3,1`, `SLOT_FIT_MAX 1,15`, `SLOT_SNAP = ROW_DEPTH × 0,5`, e
+`ARENA_R = hypot(PLATFORM.halfX, PLATFORM.backZ) + 2,3 ≈ 23` — ilha, luz, câmera
+e fog derivam de `ARENA_R` (`Arena.tsx`, `Lighting.tsx`, `app/App.tsx`,
+`CameraController.maxDistance = ARENA_R × 2,76`). Como `2 × MONSTER_FOOT_R
+(5,0) < 5,2`, dois invólucros vizinhos **jamais** se tocam — horizontal,
+profundidade ou diagonal.
+
+**2. A tabela de invólucros é medida, não chutada.** `data/footprints.ts` guarda
+`MEDIDO`: meia-envergadura (X) e meia-profundidade (Z) da silhueta REAL de cada
+forma, medidas na cena viva a partir do centro do slot pela sonda
+`qa/probe-footprint.mjs` (HUD/anel/hitbox fora). O antigo
+`scale = 1 + 0,07 × (nível−1)` era um chute CEGO: escalava por nível um rig que
+já nasce autoral no tamanho final, então as árvores Nv.6–10 renderizavam a
+1,35–1,63× (o Colosso tinha 7,3 × 7,0 de mundo num buraco de 3,2 × 2,3).
+Regra do encaixe: `slotFit(species) = min(MONSTER_FOOT_R / familyRadius,
+SLOT_FIT_MAX)` — **por família**, para a escada 2→1 nunca inverter (o filho é
+sempre maior que os pais). Só os deslocamentos de MUNDO (`worldAimY` /
+`worldMuzzleY` / `worldTopY`) recebem o fator; `formTop` / `formMuzzleY` /
+`formAimY` continuam autorais. Extremos que o teto de 2,5 realmente encolhe:
+astral X 2,56 / Z 2,94, abissal Z 3,11 (tentáculos de um lado só), ignis forma 5
+Z 2,80 (daí `fit(ignis) = 0,868`, `worldMuzzleY('ignis', 5) = 1,896`).
+Pinos em `tests/board.test.ts`: envelope ≤ `MONSTER_FOOT_R`, escada não inverte
+(toleração de 0,1 — as medições têm vaivém de ~2 cm entre formas puras vizinhas),
+`slotFit ≥ 0,55` (ninguém é esmagado até virar brinquedo) e a tabela confere com
+o invólucro analítico das `parts`.
+
+**3. Alcance NÃO é porteira: todo mundo ataca todo mundo de qualquer buraco.**
+`game/combat/targeting.ts` — `pickTarget` considera todo inimigo vivo e a regra
+de targeting da criatura manda sozinha. `inRange` e `BOARD_RANGE_SCALE` foram
+removidos; sobrou só `BOARD_PROJECTILE_SCALE = 1,5` (tempo de voo no tabuleiro
+fundo). Motivos: com vão fundo-a-fundo de ~27 e alcances de 8–13, duas unidades
+atrás ficariam paradas para sempre (softlock), e a CPU planta no fundo — travar
+o ataque daria a ela uma vantagem de posicionamento sem resposta. Também não
+existe "preferir alvo ao alcance": para um `farthest` (franco-atirador) isso
+inverteria a regra. Distâncias novas: frente-a-frente 6,2 · frente↔fundo inimigo
+16,6 · fundo-a-fundo 27,0. Pino: `combat.test.ts` 5d (gólem do fundo atira e
+machuca) e 5e (alcance nunca sobrepõe `lowestHp`).
+
+**4. A fusão nasce no slot do ALVO.** `tryMerge(aId, bId)` significa "A foi
+carregada e largada SOBRE B": o filho nasce em `b.tile` (`destTile = b.tile`), o
+fx `mergeDone`/`primordial` fica ancorado nesse ponto e o buraco de origem fica
+livre. Senão a criatura "pula de volta" para o buraco de onde saiu. Pino:
+`fusion.test.ts` 1b e `ui.test.tsx` ("o filho nasce no slot do ALVO").
+
+**5. Preparação fecha no combate; vitória devolve o time inteiro.**
+- **Tudo é montado antes da luta**: `engine.summon` só na fase `preparation` —
+  em combate devolve `reason: 'COMBAT_STARTED'` e emite `summonBlocked` (o
+  jogador vê o aviso). Nem jogador nem IA invocam reforços no combate (o
+  exército inimigo já nasce inteiro no `startBattle`, por `createUnit`, sem
+  passar pelo portão). Mover, fundir e VENDER continuam liberados durante o
+  combate; é a leitura tática da partida, não a compra de força. Na UI a loja
+  fica desabilitada com "em combate" no card (`ShopPanel`: `active =
+  phase === 'preparation'`). Pino: `economy.test.ts` (bloqueio dos dois lados,
+  sem unidade nova e sem moeda gasta + evento) e `ui.test.tsx` (cards
+  desabilitados e aviso na tela).
+- **Vitória = time inteiro de volta**: `engine.restoredRoster('player')` devolve
+  tudo o que o jogador pôs em campo com destino `alive` **ou `dead`** (ordem de
+  nível decrescente, teto `TILES_PER_SIDE` = 12). Ficam de fora os FUNDIDOS (o
+  filho de nível seguinte já carrega o valor deles) e os VENDIDOS na lixeira (o
+  valor virou moeda). Em derrota/empate voltam só os vivos, como antes. O motor
+  mantém o livro de bordo `deployed[]` com o `fate` de cada unidade
+  (`createUnit` / `killUnit` / `removeUnit(fate)` / `sellUnit('sold')`). Assim
+  evoluir um monstro deixa de ser aposta com a morte dele na partida vencida.
+  Format do save NÃO mudou (sem bump de `SAVE_VERSION`). Pino: `fullMatch.test.ts`
+  (morto volta, fundido e vendido não; nível decrescente) e `ui.test.tsx`
+  ("VITÓRIA devolve o time inteiro").
+
+**6. Enquadramento: os 24 buracos têm que estar alcançáveis pelo ponteiro.** O
+dock (loja/controles) é DOM e engole o `pointerdown`; se o chão de um buraco é
+projetado em cima do painel, a criatura daquele slot fica impossível de segurar,
+mover ou fundir — e com a arena ampliada a linha de fundo do jogador caía em
+cima da loja. A correção é geometry + CSS, travada em `board.ts`: `ORBIT_TARGET
+= [0, 1,4, PLATFORM.centerZ × 0,3]` (alvo da órbita deslocado para o lado do
+jogador) e `CAMERA_POS = [0, ARENA_R × 1,6, ORBIT_TARGET.z + ARENA_R × 1,7]`
+(dist ~53, inclinação ~43°), usados por `app/App.tsx` (`camera={{ position:
+CAMERA_POS, fov: 42 }}`) e `CameraController` (`target={ORBIT_TARGET}`). No CSS,
+`.shop` tem `min-width: 0` / `max-width: 400px` e `.shop-note` `max-width:
+290px` — antes, uma nota longa esticava o painel flex a ~608 px e tapava a
+coluna esquerda do tabuleiro. Sonda: `node qa/probe-framing.mjs` → "buracos
+alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
+`document.elementFromPoint` tem que cair no CANVAS) + o arraste real de fusão
+(filho nasce no slot do alvo) + a loja fechada em combate.
+
+---
+
 ## O que já está implementado (resumo — NÃO re-implementar)
 
 - **Partida completa**: menu → preparação → combate real-time → resultado
@@ -622,17 +739,22 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
 - **Combate**: projéteis homing, resistências, burn/slow/**poison**
   (`StatusTickDamage`), abilities splash/pierce/**chain** (`chainLeft`)/
   doubleShot/swift/heavy/**regen**/**drain**, mira por forma (`formAimY/
-  formMuzzleY`), morte/fusão animadas, fim por extermínio/160s (fração de HP).
+  formMuzzleY`, alturas de mundo via `worldAimY/worldMuzzleY`), morte/fusão
+  animadas, fim por extermínio/160s (fração de HP). **Alcance não trava ataque
+  nenhum** (`targeting.ts`); `BOARD_PROJECTILE_SCALE 1,5` só compensa o voo no
+  tabuleiro fundo.
 - **IA honesta** (`game/ai/teamComposer.ts` + `fusionPlan.ts`): exército no
   `startBattle`, orçamento `coeff × Σ sellValue`; `sellValue = 100·2^(nv-1)`
   vale p/ TODAS as espécies; `TEAM_RULES`: easy 0 / normal 7 / hard 10
   (`treeMaxLevel`), `hybridChance` 0/0.3/0.6, contra-escolha e tanques na
   frente (normal+), seed determinística.
 - **Economia fixa**: 100/invocação, +100 vit / +50 derrota-empate, fusões
-  grátis, venda devolve custo acumulado, saldo nunca negativo.
+  grátis, venda devolve custo acumulado, saldo nunca negativo. **Invocar só na
+  preparação** (`COMBAT_STARTED`): o exército fecha quando o combate começa.
 - **Persistência** (`persistence/saveGame.ts`, chave `elemental-merge-save-v1`,
-  `SAVE_VERSION 3`): moedas, descobertas, `retainedRoster` (sobreviventes
-  voltam de graça, ≤12), settings (dificuldade, saldo inicial, debugMode),
+  `SAVE_VERSION 3`): moedas, descobertas, `retainedRoster` (vitória: todo o time
+  plantado, vivas e mortas em combate; derrota/empate: só vivas — ≤12, fundidos e
+  vendidos ficam de fora), settings (dificuldade, saldo inicial, debugMode),
   estatísticas; load defensivo com migração.
 - **Modo debug**: Configurações → Depuração → botão "Criar no campo" em todo
   card do bestiário (`engine.addRetainedUnit`, só na preparação, sem descoberta);
@@ -641,9 +763,13 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
   (WindRig), golem (StoneRig — o padrão físico modelo), nereia (WaterRig) —
   5 formas visíveis cada, gateadas por `minLvl/maxLvl`.
 - **Arena**: ilha flutuante, plataformas derivadas de `game/board.ts`
-  (`TILE_SPACING_X 3,2 · ROW_DEPTH 2,3 · FRONT_ROW_Z 2,5 · UNIT_BASE_Y 0,28 ·
-  12 slots/lado`), câmera orbital 360° (dist 3–34, polar 0,35–1,32).
-- **QA visual automatizado** (laço Playwright descrito acima), 333 testes/32.
+  (`TILE_SPACING_X 5,2 · ROW_DEPTH 5,2 · FRONT_ROW_Z 3,1 · UNIT_BASE_Y 0,28 ·
+  MONSTER_FOOT_R 2,5 · ARENA_R ≈ 23 · 12 slots/lado`), enquadramento travado em
+  `ORBIT_TARGET`/`CAMERA_POS` do `board.ts` (dist ~53, inclinação ~43°, alvo
+  deslocado para o jogador — 24/24 buracos alcançáveis pelo ponteiro), câmera
+  orbital 360° (dist 3–`ARENA_R×2,76`, polar 0,35–1,32) e fog/luz derivados de
+  `ARENA_R`. Loja com `max-width: 400px` no CSS para o dock não cobrir o board.
+- **QA visual automatizado** (laço Playwright descrito acima), 347 testes/32.
 
 ## Arquitetura (regras de sempre)
 
@@ -670,14 +796,36 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
 
 ```
 npx tsc --noEmit          # tipos
-npx vitest run            # 333 testes, 32 arquivos
+npx vitest run            # 347 testes, 32 arquivos
 npm run build             # tsc + build de produção
-npm run dev               # http://localhost:5173 (HMR; hard refresh ao mexer shaders)
+npm run dev               # http://localhost:5173/element-merge/ (HMR; hard refresh ao mexer shaders)
 node qa/inspect-species.mjs <especie> [aliada]
+node qa/probe-footprint.mjs            # encaixe/no-overlap (veredito "no buraco?"/"no anel?" + SOBREPOSIÇÕES: 0)
+node qa/probe-framing.mjs              # enquadramento (24/24 buracos) + arraste real no slot do alvo + loja fechada
 ```
 
 ## Armadilhas (resumo)
 
+- **NUNCA reintroduzir `scale = 1 + 0,07 × (nível−1)` no `UnitView`**: os rigs da
+  árvore já nascem autorais no tamanho final e isso escalava 1,35–1,63× por cima
+  do figurino (foi o que fez o Colosso derramar sobre a plataforma inimiga). O
+  fator de escala é `slotFit(species)` (por família) e ele só se aplica aos
+  deslocamentos de mundo (`worldAimY/worldMuzzleY/worldTopY`). Mudou um rig →
+  rodar `qa/probe-footprint.mjs` e atualizar `MEDIDO` em `data/footprints.ts`.
+- **Não recriar gate de alcance** em `targeting.ts` nem "preferência por alvo ao
+  alcance": o vão fundo-a-fundo (27) passa de qualquer alcance (8–13) e isso é
+  justamente o pino anti-softlock; para `farthest` a preferência inverte a regra.
+- **A loja fecha no combate** (`COMBAT_STARTED`): se algum fluxo novo de spawn
+  aparecer, ele tem que passar pelo portão de `preparation` do motor (o modo
+  debug usa `addRetainedUnit`, que já checa a fase). Mover/fundir/vender seguem
+  liberados em combate.
+- **Vitória devolve até 12 unidades** (time cheio na próxima partida, e o
+  jogador pode vendê-las por moedas) — é o trade-off de snowball aceito pelo
+  usuário para "evoluir monstro não ser aposta". Fundidos/vendidos nunca voltam.
+- **Não apagar `ORBIT_TARGET`/`CAMERA_POS` do `board.ts` nem o `max-width: 400px`
+  de `.shop`**: o dock DOM engole `pointerdown` e, se o chão de um buraco cai em
+  cima do painel (ou a nota longa estica o flex), aquela criatura fica travada no
+  slot. Ao mexer câmera/CSS/layout, rodar `qa/probe-framing.mjs` e exigir 24/24.
 - HMR preserva `useMemo` de material three → reiniciar dev ou Ctrl+Shift+R ao
   editar shaders/cores.
 - GLSL silencioso: vírgula antes de `)` quebra compilação e a mesh SUMIA (hoje

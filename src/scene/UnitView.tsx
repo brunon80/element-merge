@@ -8,7 +8,8 @@ import { flameIconTexture, getGeometry, poisonIconTexture, slowIconTexture } fro
 import { MODELS, VISUALS, partsForLevel, type MatRole } from './speciesModels';
 import { SPECIES_RIGS } from './speciesRigs';
 import type { SmokePool } from './smokePool';
-import { formTop, hasForms } from '../data/forms';
+import { formTop } from '../data/forms';
+import { footprintOf, slotFit } from '../data/footprints';
 import { getSpecies } from '../data/monsters';
 import { PLATFORM } from '../game/board';
 
@@ -62,9 +63,18 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
   const visuals = species ? VISUALS[species] : VISUALS.ignis;
   const modelDef = species ? MODELS[species] : MODELS.ignis;
   const sdef = getSpecies(species ?? 'ignis');
-  /** A espécie muda de forma com a fusão? Nesse caso o próprio modelo já vem
-   *  com o tamanho de cada forma (nada de escalar de novo por cima). */
-  const growsByForm = hasForms(sdef);
+  /** Escala de ENCAIXE no buraco: o figurino já é autoral no tamanho da forma,
+   *  então em vez de escalar às cegas por nível (`1 + 0,07 × nível` — foi o que
+   *  fez o Colosso derramar por cima da plataforma inimiga) a espécie inteira é
+   *  escalada pelo INVÓLUCRO DA PIOR FORMA (data/footprints.ts). Mesma escala
+   *  para todas as formas da família = a progressão 2→1 nunca inverte. */
+  const fit = species ? slotFit(species) : 1;
+  /** invólucro AUTORAL da forma atual (a raiz ainda multiplica por `fit`) */
+  const foot = species ? footprintOf(species, level) : footprintOf('ignis', level);
+  /** raio do figurino no espaço autoral (anel de seleção e hitbox vivem aqui dentro) */
+  const footR = Math.max(foot.x, foot.z);
+  /** área de captura acompanha o invólucro (o cilindro base tem raio 0,65) */
+  const grabR = (footR + 0.3) / 0.65;
   /** topo da forma atual — barra de vida, ícones e área de toque acompanham */
   const topY = formTop(sdef, level);
   // rigs especiais por elemento (fogo usa shader de chama); demais seguem o rig padrão
@@ -176,9 +186,8 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
     root.position.y += (ty - root.position.y) * (1 - Math.pow(0.0001, dt));
     root.position.z += (tz - root.position.z) * followK;
 
-    // ---- escala: nível + punch de spawn + encolhimento na morte ----
-    // (formas que já crescem no modelo não recebem escala extra)
-    let scale = growsByForm ? 1 : 1 + 0.07 * (u.level - 1);
+    // ---- escala: encaixe no buraco + punch de spawn + encolhimento na morte ----
+    let scale = fit;
     const age = time - u.spawnedAt;
     if (age < 0.45)
       scale *= 0.4 + 0.6 * Math.min(1, age / 0.3) + 0.25 * Math.sin((age / 0.45) * Math.PI);
@@ -334,7 +343,13 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
   };
 
   return (
-    <group ref={rootRef} position={[unit.pos[0], unit.pos[1], unit.pos[2]]}>
+    <group
+      ref={rootRef}
+      position={[unit.pos[0], unit.pos[1], unit.pos[2]]}
+      // alcã para as sondas de QA medirem o invólucro REAL de cada unidade na
+      // cena (qa/probe-footprint.mjs): basta varrer a cena atrás de `unitId`
+      userData={{ unitId, species, level }}
+    >
       <group
         ref={modelRef}
         rotation-y={side === 'player' ? Math.PI : 0}
@@ -382,7 +397,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
 
       {/* HUD 3D: barra de vida, pips de nível, ícones de status (acima do topo
           do modelo no nível atual — o dragão Nv5 é bem mais alto que o imps) */}
-      <group ref={barGroupRef} position={[0, topY + 0.42, 0]}>
+      <group ref={barGroupRef} name="hud" position={[0, topY + 0.42, 0]}>
         <mesh geometry={getGeometry('plane', [BAR_W + 0.08, 0.17])} position={[0, 0, -0.005]}>
           <meshBasicMaterial color="#0a0e1a" transparent opacity={0.85} />
         </mesh>
@@ -406,7 +421,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       </group>
       <sprite
         ref={burnIconRef}
-        position={[0.55 + 0.14 * (Math.min(5, level) - 1), topY - 0.1, 0]}
+        position={[footR + 0.3, topY - 0.1, 0]}
         scale={0.42}
         visible={false}
       >
@@ -414,7 +429,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       </sprite>
       <sprite
         ref={slowIconRef}
-        position={[-0.55 - 0.14 * (Math.min(5, level) - 1), topY - 0.1, 0]}
+        position={[-(footR + 0.3), topY - 0.1, 0]}
         scale={0.4}
         visible={false}
       >
@@ -431,10 +446,11 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
 
       <mesh
         ref={selRingRef}
+        name="selring"
         geometry={getGeometry('torus', [0.72, 0.045, 6, 36])}
         rotation={[Math.PI / 2, 0, 0]}
         position={[0, 0.04, 0]}
-        scale={1 + 0.13 * (level - 1)}
+        scale={(footR + 0.12) / 0.72}
         visible={false}
       >
         <meshBasicMaterial color="#3ce9a4" transparent opacity={0.9} />
@@ -442,8 +458,9 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
 
       {/* área de captura para ponteiro (cresce com o nível da criatura) */}
       <mesh
+        name="hitbox"
         position={[0, topY / 2, 0]}
-        scale={[1 + 0.16 * (level - 1), topY / 2.1, 1 + 0.16 * (level - 1)]}
+        scale={[grabR, topY / 2.1, grabR]}
         onPointerDown={onPointerDown}
         onPointerOver={() => (document.body.style.cursor = 'pointer')}
         onPointerOut={() => (document.body.style.cursor = 'default')}

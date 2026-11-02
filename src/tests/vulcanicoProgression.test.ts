@@ -4,7 +4,7 @@ import { getGeometry } from '../scene/assets';
 import { makeStoneMaterial } from '../scene/stoneShaders';
 import { makeCoreMaterial } from '../scene/lightningShaders';
 import { ROW_DEPTH, TILE_SPACING_X } from '../game/board';
-import { LEVEL_PROJECTILE_MULT } from '../data/balance';
+import { BOARD_PROJECTILE_SCALE, LEVEL_PROJECTILE_MULT } from '../data/balance';
 import { formTop } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { SPECIES_RIGS } from '../scene/speciesRigs';
@@ -664,7 +664,8 @@ describe('Vulcanico: vulcao de nove estratos com a caldeira acesa no topo (Nv.8)
     // varre o voo: a bomba e guiada (vel = rumo × speed todo tick) e e a mais
     // RÁPIDA dos tiros Nv.8 pesados (base 8 × 1,12⁷ ≈ 17,72 — a bomba de lava
     // chega mais rápido que o matacão de pedra do Geodo)
-    const SPEED8 = VULC.base.projectileSpeed * Math.pow(LEVEL_PROJECTILE_MULT, 7);
+    const SPEED8 =
+      VULC.base.projectileSpeed * Math.pow(LEVEL_PROJECTILE_MULT, 7) * BOARD_PROJECTILE_SCALE;
     const inFlight: Projectile[] = [];
     for (let i = 0; i < 130; i++) {
       runSeconds(eng, 0.05);

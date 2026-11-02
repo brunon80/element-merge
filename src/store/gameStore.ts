@@ -9,7 +9,6 @@ import {
   loadSave,
   persistSave,
   defaultSave,
-  type RetainedUnit,
   type SaveData,
 } from '../persistence/saveGame';
 import type {
@@ -145,6 +144,8 @@ const FUSION_MSG: Record<string, string> = {
   INCOMPATIBLE_SPECIES: 'Essa combinação não está na árvore elemental — veja a enciclopédia.',
   BOARD_FULL: 'Arena cheia.',
   NO_COINS: `Invocação custa ${SUMMON_COST} moedas.`,
+  COMBAT_STARTED:
+    'O combate começou: todo o exército é montado na preparação. Mova e funda, mas não invoke.',
 };
 
 export const useGameStore = create<GameStore>((set, get) => {
@@ -155,7 +156,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         if (e.side === 'player') {
           get().pushToast(
             'error',
-            e.reason === 'NO_COINS' ? FUSION_MSG.NO_COINS : FUSION_MSG.BOARD_FULL,
+            FUSION_MSG[e.reason] ?? `Invocação bloqueada (${e.reason}).`,
           );
         }
         break;
@@ -230,13 +231,22 @@ export const useGameStore = create<GameStore>((set, get) => {
       persistSoon();
     }
     if (engine) {
-      // Time persistido: as criaturas vivas ao fim do combate voltam, vivas e
-      // no mesmo nível, para a próxima partida — sem custo algum.
-      const survivors: RetainedUnit[] = engine
-        .aliveUnits('player')
-        .map((u) => ({ species: u.species, level: u.level }))
-        .slice(0, 12);
-      save.retainedRoster = survivors;
+      // Persistência entre partidas.
+      //  • VITÓRIA: volta TODO o time que o jogador plantou na rodada — vivas e
+      //    mortas em combate. É o prêmio por ganhar: evoluir um monstro deixa de
+      //    ser uma aposta arriscada, porque a morte dele na partida vencida não o
+      //    apaga da coleção. Só não voltam os que foram FUNDIDOS (o filho de
+      //    nível seguinte já é eles) e os VENDIDOS na lixeira (o valor deles já
+      //    virou moeda).
+      //  • DERROTA ou EMPATE: só sobreviventes, como sempre — perder custa.
+      const roster =
+        summary.result === 'victory'
+          ? engine.restoredRoster('player')
+          : engine
+              .aliveUnits('player')
+              .map((u) => ({ species: u.species, level: u.level }))
+              .slice(0, TILES_PER_SIDE);
+      save.retainedRoster = roster;
       persistSoon();
     }
     set({

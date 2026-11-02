@@ -34,7 +34,7 @@ export function BattleControls() {
       ) : (
         <div className="combat-hint">
           Arraste criaturas na arena para mover ou fundir · fusões grátis ·
-          reforços custam 100 · sobreviventes voltam para a próxima partida
+          loja fechada em combate · vitória devolve o time inteiro para a próxima partida
         </div>
       )}
     </div>

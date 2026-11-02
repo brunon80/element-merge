@@ -5,7 +5,7 @@ import { makeStoneMaterial } from '../scene/stoneShaders';
 import { makeIceMaterial } from '../scene/iceShaders';
 import { makeCoreMaterial } from '../scene/lightningShaders';
 import { ROW_DEPTH, TILE_SPACING_X } from '../game/board';
-import { LEVEL_PROJECTILE_MULT } from '../data/balance';
+import { BOARD_PROJECTILE_SCALE, LEVEL_PROJECTILE_MULT } from '../data/balance';
 import { formTop } from '../data/forms';
 import { SPECIES, getSpecies } from '../data/monsters';
 import { SPECIES_RIGS } from '../scene/speciesRigs';
@@ -733,7 +733,8 @@ describe('Geodo: catedral de geodo plantada na própria fundação (Nv.8)', () =
     // × 1,12^7 ≈ 15,5 no Nv.8 — ainda assim o arremesso mais lento dos Nv.8:
     // a cósmica escala a 31, a abissal a 19, a vulcânica a 17,7). O motor é
     // guiado (vel = direção × speed todo tick, magnitude constante)
-    const SPEED8 = GEODO.base.projectileSpeed * Math.pow(LEVEL_PROJECTILE_MULT, 7);
+    const SPEED8 =
+      GEODO.base.projectileSpeed * Math.pow(LEVEL_PROJECTILE_MULT, 7) * BOARD_PROJECTILE_SCALE;
     const inFlight: Projectile[] = [];
     for (let i = 0; i < 130; i++) {
       runSeconds(eng, 0.05);
