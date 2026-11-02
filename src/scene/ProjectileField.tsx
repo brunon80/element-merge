@@ -22,6 +22,10 @@ import { COSMICO_HEAT, COSMICO_STARLIGHT } from './CosmicoRig';
 // veio de ametista do motor e o MESMO quartzo pentagonal da goela — identidade
 // amarrada em teste do motor ao impacto; ver GeodoRig)
 import { BASALT_LOOK, GEODO_AMETHYST, GEODO_LILAC, QUARTZ_LOOK } from './GeodoRig';
+// paleta do ABISSAL (a maré morta arremessada é a MESMA água azul-do-fundo do
+// corpo com a MESMA vida roubada da lanterna e os MESMOS ganchos de osso da
+// armadilha — identidade amarrada em teste do motor ao impacto; ver AbissalRig)
+import { ABISSAL_LIFE, ABISSAL_TIDE, BONE_LOOK, WATER_TIDE_LOOK } from './AbissalRig';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -72,6 +76,36 @@ export const GEODO_CHIP_LOOK = {
   crack: GEODO_LILAC,
   alpha: 0.9,
   sparkle: 0.9,
+};
+
+/** Abissal: a MARÉ MORTA arremessada (o globo d'água do corpo) — a MESMA água
+ *  azul-do-fundo do tamboril (mid = a cor do motor #3f6f8f) com espuma PÁLIDA e
+ *  pouca (maré morta não cavalga: a régua contra a lança branca da Nereia). É
+ *  volume fechado (`soft 0`): a gota do tiro tem o mesmo corpo do tanque */
+export const ABISSAL_GLOB_LOOK = {
+  ...WATER_TIDE_LOOK,
+  amp: 0.04, // a massa voando: ondulação contida para não comer a silhueta
+};
+
+/** Abissal: a VIDA ROUBADA lá dentro (o `drain 0,4` do motor em silhueta: a
+ *  presa vai no bojo da maré) — a MESMA vida da lanterna/núcleo do corpo,
+ *  sempre acento verde-água, nunca o corpo */
+export const ABISSAL_CORE_LOOK = {
+  gold: ABISSAL_LIFE,
+  white: '#e9fff8',
+  cool: ABISSAL_TIDE,
+  amp: 0.02,
+};
+
+/** Abissal: os SETE GANCHOS de osso da armadilha que vão colados na maré (o
+ *  `splash` do tiro) — o MESMO osso pálido com a trinca da cor do motor do
+ *  figurino; sete como tudo aqui (o Geodo é CINCO, o Cósmico OITO) */
+export const ABISSAL_HOOK_LOOK = {
+  iceA: BONE_LOOK.iceA,
+  iceB: BONE_LOOK.iceB,
+  crack: ABISSAL_TIDE,
+  alpha: 0.94,
+  sparkle: BONE_LOOK.sparkle,
 };
 
 /** Névoa: a pluma de bruma do bafo (hot = a GEADA do motor, a mesma cor do
@@ -209,6 +243,9 @@ export function ProjectileField() {
   const flareRef = useRef<THREE.InstancedMesh | null>(null);
   const geobRef = useRef<THREE.InstancedMesh | null>(null);
   const geocRef = useRef<THREE.InstancedMesh | null>(null);
+  const abyssRef = useRef<THREE.InstancedMesh | null>(null);
+  const abyssCRef = useRef<THREE.InstancedMesh | null>(null);
+  const abyssHRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -913,14 +950,79 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const abyssalGlob = useMemo(() => {
+    // a MARÉ MORTA arremessada: globo de água azul-do-fundo (mid = a cor do
+    // MOTOR #3f6f8f — identidade do tiro ao corpo ao FX), espuma pálida e
+    // pouca. Volume denso (icosa sub 1: a gota é MASSA, como a pedra do Geodo,
+    // não a lança oca da Nereia) — é o tanque que voa
+    const geo = new THREE.IcosahedronGeometry(0.3, 1);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeWaterMaterial({
+      deep: ABISSAL_GLOB_LOOK.deep,
+      mid: ABISSAL_GLOB_LOOK.mid, // = a cor do motor (identidade pedra→FX da água)
+      foam: ABISSAL_GLOB_LOOK.foam,
+      foamAmt: ABISSAL_GLOB_LOOK.foamAmt, // maré morta: onda pouca (a régua da Nereia)
+      amp: ABISSAL_GLOB_LOOK.amp,
+      swell: ABISSAL_GLOB_LOOK.swell,
+      bend: ABISSAL_GLOB_LOOK.bend,
+      soft: 0, // volume cheio: a gota não some na borda
+      seed: 3.3,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const abyssalCore = useMemo(() => {
+    // a VIDA ROUBADA no bojo da maré (o `drain 0,4` do motor em silhueta: a
+    // presa vai dentro do tiro, verde-água brilhando por baixo da casca
+    // escura) — a MESMA lanterna/núcleo do corpo, sempre acento
+    const geo = new THREE.IcosahedronGeometry(0.13, 1);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: ABISSAL_CORE_LOOK.gold, // = a vida roubada da espécie (sempre acento)
+      white: ABISSAL_CORE_LOOK.white,
+      cool: ABISSAL_CORE_LOOK.cool,
+      amp: ABISSAL_CORE_LOOK.amp,
+      seed: 6.6,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const abyssalHook = useMemo(() => {
+    // os SETE GANCHOS da armadilha que vão colados na maré (o `splash` escrito
+    // no ar): farpas de osso de SETE faces (o DNA do abissal — o Geodo é
+    // CINCO) na MESMA osso-pálido-com-trinca-da-cor-do-motor do figurino
+    const geo = new THREE.ConeGeometry(0.05, 0.22, 7, 1);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeIceMaterial({
+      iceA: ABISSAL_HOOK_LOOK.iceA,
+      iceB: ABISSAL_HOOK_LOOK.iceB,
+      crack: ABISSAL_HOOK_LOOK.crack, // = a cor do motor (identidade osso→tiro)
+      amp: 0.008, // aresta dura: osso não arredonda (a lição do quartzo)
+      crackGlow: 0.8,
+      crackScale: 1.4,
+      crackWidth: 0.05,
+      sparkle: ABISSAL_HOOK_LOOK.sparkle,
+      alpha: ABISSAL_HOOK_LOOK.alpha,
+      bump: 0.6,
+      reflPow: 100,
+      envMix: 0.35,
+      seed: 11.3,
+      breath: 0.5,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -951,6 +1053,9 @@ export function ProjectileField() {
     let flareN = 0;
     let geoB = 0;
     let geoC = 0;
+    let abyssN = 0;
+    let abyssC = 0;
+    let abyssH = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -1030,11 +1135,21 @@ export function ProjectileField() {
     geodoBoulder.mat.uniforms.uCharge.value = 0.75 + 0.2 * Math.sin(time * 2.6);
     geodoChip.mat.uniforms.uTime.value = time;
     geodoChip.mat.uniforms.uCharge.value = 0.55 + 0.15 * Math.sin(time * 4.2);
+    abyssalGlob.mat.uniforms.uTime.value = time;
+    // a maré morta voa agitada (a gota fresca arrancada do corpo): ondulação
+    // sobe no uAmp e a sucção do arremesso ainda empurra a casca no uSurge
+    abyssalGlob.mat.uniforms.uAmp.value = ABISSAL_GLOB_LOOK.amp * (1.6 + 0.4 * Math.sin(time * 3.4));
+    abyssalCore.mat.uniforms.uTime.value = time;
+    // a vida roubada voa acesa dentro da gota (o `drain` em voo): carga alta,
+    // pulsando como a lanterna do corpo
+    abyssalCore.mat.uniforms.uCharge.value = 0.8 + 0.2 * Math.sin(time * 3.8);
+    abyssalHook.mat.uniforms.uTime.value = time;
+    abyssalHook.mat.uniforms.uCharge.value = 0.5 + 0.15 * Math.sin(time * 5.0);
     cosmicoFlare.mat.uniforms.uTime.value = time;
     cosmicoFlare.mat.uniforms.uCharge.value = 0.8 + 0.12 * Math.sin(time * 8.1);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
-    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat, cristalPrism.mat, cristalSliver.mat, geodoChip.mat]);
+    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat, cristalPrism.mat, cristalSliver.mat, geodoChip.mat, abyssalHook.mat]);
     // a estaca voa "carregada": as trincas internas ficam acesas
     iceSpike.mat.uniforms.uCharge.value = 0.55 + 0.25 * Math.sin(time * 4.2);
 
@@ -1068,6 +1183,7 @@ export function ProjectileField() {
         const isPrism = p.species === 'cristal';
         const isStar = p.species === 'cosmico';
         const isGeob = p.species === 'geodo';
+      const isAbyss = p.species === 'abissal';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -1540,6 +1656,66 @@ export function ProjectileField() {
             haloScale = scale * 1.4; // halo contido: o peso é da pedra, o brilho é da crosta
             signature = true;
           }
+        } else if (isAbyss) {
+          // a MARÉ MORTO cospe a própria massa do fundo: globo de água azul-do-
+          // motor (mid = #3f6f8f — a mesma do corpo) com a VIDA ROUBADA pulsando
+          // no bojo (o `drain 0,4` desenhado: a presa vai dentro do tiro, o
+          // verde-água brilha por baixo da casca escura) e os SETE GANCHOS de
+          // osso da armadilha colados na massa, apontando para fora — o `splash`
+          // escrito no ar. Água tem peso mas NÃO cambalhota como pedra: a gota
+          // desliza +y pelo rumo e gira lenta (a régua da lança da Nereia)
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            dummy.quaternion.copy(tmpQuat);
+          }
+          const launch = Math.min(1, 0.3 + p.age / 0.16); // a maré pega embalo
+          if (abyssN < MAX_PER_ELEMENT) {
+            const scale = (0.9 + 0.1 * (lv - 8)) * launch;
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            abyssRef.current?.setMatrixAt(abyssN, dummy.matrix);
+            abyssalGlob.seeds.setX(abyssN, ((p.id * 41) % 79) / 6.7);
+            abyssN++;
+            if (abyssC < MAX_PER_ELEMENT) {
+              // a vida roubada boiando dentro da barriga d'água: pulsa e
+              // cambaleia miúdo na corrente (a presa ainda se mexendo)
+              const cph = time * 1.5 + p.id * 2.1;
+              dummy.position.set(
+                p.pos[0] + 0.06 * Math.sin(cph),
+                p.pos[1] + 0.04 * Math.sin(cph * 1.7),
+                p.pos[2],
+              );
+              dummy.scale.setScalar(scale * (1 + 0.09 * Math.sin(cph * 2.2)));
+              dummy.updateMatrix();
+              abyssCRef.current?.setMatrixAt(abyssC, dummy.matrix);
+              abyssalCore.seeds.setX(abyssC, ((p.id * 17) % 61) / 5.3);
+              abyssC++;
+            }
+            // SETE ganchos no equador da gota (2π/7 por gancho): três alturas
+            // que nunca se tocam, a boca da armadilha aberta para o rumo do tiro
+            for (let k = 0; k < 7; k++) {
+              if (abyssH >= MAX_PER_ELEMENT) break;
+              const th = k * 0.8976 + time * 0.8 + p.id * 1.4; // 2π/7 = 51,4°
+              const ph = 0.42 - (k % 3) * 0.42; // cintos superior/médio/inferior
+              dir
+                .set(Math.cos(th) * Math.cos(ph), Math.sin(ph), Math.sin(th) * Math.cos(ph))
+                .applyQuaternion(dummy.quaternion)
+                .multiplyScalar(0.31 * scale);
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              rollQuat.setFromUnitVectors(up, dir.normalize()); // a ponta encosta para fora
+              dummy.quaternion.copy(rollQuat);
+              dummy.scale.setScalar(scale);
+              dummy.updateMatrix();
+              abyssHRef.current?.setMatrixAt(abyssH, dummy.matrix);
+              abyssalHook.seeds.setX(abyssH, ((p.id * 29 + k * 11) % 73) / 5.9 + k * 0.9);
+              abyssH++;
+            }
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]); // devolve o centro p/ o halo
+            haloScale = scale * 1.3; // halo da gota inteira (casca + vida + farpas)
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -1621,6 +1797,9 @@ export function ProjectileField() {
       [flareRef.current, flareN, cosmicoFlare.seeds],
       [geobRef.current, geoB, geodoBoulder.seeds],
       [geocRef.current, geoC, geodoChip.seeds],
+      [abyssRef.current, abyssN, abyssalGlob.seeds],
+      [abyssCRef.current, abyssC, abyssalCore.seeds],
+      [abyssHRef.current, abyssH, abyssalHook.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -1933,6 +2112,30 @@ export function ProjectileField() {
           geocRef.current = m;
         }}
         args={[geodoChip.geo, geodoChip.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Abissal: a MARÉ MORTA arremessada — globo de água azul-do-fundo (mid =
+          a cor do motor) com a vida roubada pulsando no bojo e os sete ganchos
+          de osso da armadilha colados na massa: a própria armadilha voando */}
+      <instancedMesh
+        ref={(m) => {
+          abyssRef.current = m;
+        }}
+        args={[abyssalGlob.geo, abyssalGlob.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      <instancedMesh
+        ref={(m) => {
+          abyssCRef.current = m;
+        }}
+        args={[abyssalCore.geo, abyssalCore.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      <instancedMesh
+        ref={(m) => {
+          abyssHRef.current = m;
+        }}
+        args={[abyssalHook.geo, abyssalHook.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

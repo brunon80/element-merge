@@ -122,7 +122,7 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   // pedra, do núcleo na goela, do boulder e do FX: identidade amarrada em
   // teste). O glow #e0b3ff é sempre o hot (nunca a cor principal)
   geodo: { body: '#5c4e74', dark: '#282040', glow: '#e0b3ff', accent: '#c77dff', roughness: 0.9, metalness: 0.06 },
-  abissal: { body: '#2e5f78', dark: '#142b38', glow: '#5fe0c8', accent: '#bfe9ff', roughness: 0.35 },
+  abissal: { body: '#3f6f8f', dark: '#142b38', glow: '#5fe0c8', accent: '#bfe9ff', roughness: 0.35 },
   vulcanico: { body: '#4a3f3a', dark: '#221b18', glow: '#ff3d10', accent: '#ff9d3d', roughness: 0.85 },
   // Nv.9 — lendários
   astral: { body: '#39406e', dark: '#1a1f3a', glow: '#8fd6ff', accent: '#ffe9a8', roughness: 0.35 },
@@ -333,6 +333,96 @@ const quartzPoints = (
       g: 'cyl',
       a: [thick * 0.3, thick, len, 5, Math.max(3, Math.round(len * 6))],
       p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
+      r: aim([ux, uy, uz]),
+    } as Part;
+  });
+
+/**
+ * FIO DE OSSO/TENTÁCULO entre dois pontos — o osso do ABISSAL: vara da isca,
+ * tentáculo, cabo da cauda e costela. É um `cyl` de SETE FACES (o DNA da
+ * espécie: sete em tudo — o Geodo é CINCO, o Cristal SEIS, o Cósmico OITO),
+ * com anéis decentes (≥7 por unidade) para o tentáculo aguentar o close sem
+ * virar low-poly.
+ */
+const rod7 = (
+  a: [number, number, number],
+  b: [number, number, number],
+  thick: number,
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const dz = b[2] - a[2];
+  const len = Math.hypot(dx, dy, dz);
+  return {
+    ...part,
+    g: 'cyl',
+    a: [thick, thick * 0.78, len + 0.04, 7, Math.max(3, Math.round(len * 7))],
+    p: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2],
+    r: aim([dx, dy, dz]),
+  };
+};
+
+/** PREGA DE OSSO do abissal (dente, gancho, raio de barbatana): cone de SETE
+ *  faces com a BASE enterrada na gengiva/macissa (pino enterrado não é ponta
+ *  solta — a regra da coroa da Névoa), mesma matemática do `starPoints` do
+ *  Cósmico lida em sete faces. */
+const fang7 = (
+  c: [number, number, number],
+  nodeR: number,
+  len: number,
+  thick: number,
+  d: [number, number, number],
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const L = Math.hypot(d[0], d[1], d[2]) || 1;
+  const ux = d[0] / L;
+  const uy = d[1] / L;
+  const uz = d[2] / L;
+  const back = nodeR - 0.05; // base enterrada na gengiva
+  return {
+    ...part,
+    g: 'cone',
+    a: [thick, len, 7, 1],
+    p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
+    r: aim([ux, uy, uz]),
+  };
+};
+
+/**
+ * SETE GANCHOS num anel mirando o CENTRO — a armadilha de osso da LANTERNA do
+ * ABISSAL (a presa entra, não sai: as pontas apontam para dentro e a boca da
+ * armadilha abre `tilt` para fora) e a moldura da jaula do peito. A base
+ * afunda no aro (berço/casco — pino enterrado). `plane` 'xz' é o anel
+ * horizontal (ao redor da lanterna), 'xy' é o vertical (ao redor da jaula).
+ */
+const hookRing = (
+  c: [number, number, number],
+  ringR: number,
+  len: number,
+  thick: number,
+  tilt: number,
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+  plane: 'xz' | 'xy' = 'xz',
+): Part[] =>
+  Array.from({ length: 7 }, (_, k) => {
+    const phi = (k / 7) * Math.PI * 2;
+    const rx = Math.cos(phi) * ringR;
+    const rz = Math.sin(phi) * ringR;
+    const base: [number, number, number] =
+      plane === 'xz' ? [c[0] + rx, c[1], c[2] + rz] : [c[0] + rx, c[1] + rz, c[2]];
+    const dx = -rx;
+    const dy = plane === 'xz' ? tilt : -rz;
+    const dz = plane === 'xy' ? tilt : -rz;
+    const L = Math.hypot(dx, dy, dz) || 1;
+    const ux = dx / L;
+    const uy = dy / L;
+    const uz = dz / L;
+    return {
+      ...part,
+      g: 'cone',
+      a: [thick, len, 7, 1],
+      p: [base[0] + ux * (len / 2 - 0.03), base[1] + uy * (len / 2 - 0.03), base[2] + uz * (len / 2 - 0.03)],
       r: aim([ux, uy, uz]),
     } as Part;
   });
@@ -1233,24 +1323,232 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
 
   // Pântano+Névoa — senhor das marés mortas: drena a vida alheia (Nv.8) --
   abissal: {
+    // FLUTUANDO na própria maré morta (floatY 0,2, bob 0,08): o tamboril do
+    // abismo não pisa o tabuleiro — é uma massa de água profunda que boia e
+    // escorre maré pelos tentáculos até roçar o piso.
+    // DNA DA ESPÉCIE = SETE FACES EM TUDO (o sete do abismo: nenhum outro
+    // figurino da árvore usa sete — o Geodo é CINCO, o Cristal SEIS, o
+    // Cósmico OITO/DOZE) + esferas DENSO (água é massa redonda; osso, vara,
+    // dente e gancho são `rod7`/`fang7`/`hookRing` de sete faces).
+    // A ASSINATURA é a ESCA do tamboril: uma luz de VIDA ROUBADA pendurada na
+    // ponta de uma vara de osso sobre a goela (o `drain 0,4` do motor escrito
+    // em forma) — a jaula de osso em volta da lanterna tem SETE ganchos
+    // virados para dentro (a presa entra, não sai) e o peito tem a jaula de
+    // costelas de afogado com o núcleo de vida roubada fervendo lá dentro.
+    // Diferença dura contra os pais: PÂNTANO (Nv.7) é LODO marrom-opaco
+    // plantado na poça; NÉVOA é bruma CLARA quase branca. Aqui a água é AZUL
+    // DO FUNDO (#3f6f8f = a cor do motor, identidade do projétil ao impacto)
+    // e o bicho é ESCURO; toda a luz é bioluminescência verde-água (#5fe0c8 =
+    // vida roubada) e osso pálido (#bfe9ff). Zero marrom, zero branco de bruma.
     floatY: 0.2,
     bob: 0.08,
     parts: [
-      { g: 'sphere', a: [0.68, 12, 10], p: [0, 1.05, 0], s: [1.1, 1.0, 1.05], m: 'body' },
-      { g: 'sphere', a: [0.5, 10, 8], p: [0, 0.75, 0], s: [1.3, 0.55, 1.2], m: 'dark' },
-      { g: 'sphere', a: [0.28, 10, 8], p: [0, 1.72, 0], m: 'body' },
-      ...mm(WEYE(0.14, 1.76, 0.22)),
-      ...mm(WPUPIL(0.14, 1.76, 0.22)),
-      ...mm({ g: 'capsule', a: [0.07, 0.55], p: [0.55, 0.85, 0.15], r: [0, 0, -0.7], m: 'body', group: 0, tag: 'arm' }),
-      ...mm({ g: 'capsule', a: [0.06, 0.45], p: [-0.5, 0.7, -0.25], r: [0, 0, 0.8], m: 'body', group: 1, tag: 'arm' }),
-      ...mm({ g: 'capsule', a: [0.05, 0.35], p: [0.3, 0.55, -0.5], r: [0, 0, -1.1], m: 'body', group: 0 }),
-      ...mm({ g: 'cone', a: [0.05, 0.16, 4], p: [0.12, 1.5, 0.28], r: [Math.PI, 0, 0], m: 'accent' }),
-      { g: 'cone', a: [0.05, 0.16, 4], p: [-0.12, 1.5, 0.28], r: [Math.PI, 0, 0], m: 'accent' },
-      { g: 'sphere', a: [0.09, 8, 6], p: [0.4, 2.1, -0.1], m: 'glow', rise: [0.5, 0.8] },
-      { g: 'sphere', a: [0.075, 8, 6], p: [-0.35, 2.0, 0.2], m: 'glow', rise: [0.65, 0.8] },
-      { g: 'sphere', a: [0.06, 8, 6], p: [0.05, 2.25, 0.35], m: 'glow', rise: [0.8, 0.8] },
+      // ================= MASSA DE ÁGUA DO FUNDO (o corpo-tamboril) =================
+      { g: 'sphere', a: [0.66, 20, 14], p: [0, 1.62, -0.08], s: [1.08, 0.92, 1.2], m: 'body', amp: 0.05 },
+      { g: 'sphere', a: [0.5, 18, 12], p: [0, 1.08, 0.18], s: [1.16, 0.78, 1.1], m: 'dark', amp: 0.045 },
+      { g: 'sphere', a: [0.46, 18, 12], p: [0, 2.05, 0.2], s: [1, 0.95, 1.05], m: 'body', amp: 0.045 },
+      { g: 'sphere', a: [0.5, 20, 14], p: [0, 2.62, 0.08], s: [0.98, 0.86, 1.18], m: 'body', amp: 0.04 },
+      { g: 'sphere', a: [0.4, 16, 12], p: [0, 2.88, -0.16], s: [1.05, 0.72, 1], m: 'dark', amp: 0.04 },
+      { g: 'sphere', a: [0.3, 14, 10], p: [0, 2.66, 0.6], s: [1, 0.45, 1.1], m: 'dark', amp: 0.03 }, // lábio de cima
+      { g: 'sphere', a: [0.26, 14, 10], p: [0, 2.34, -0.14], m: 'dark', amp: 0.035 }, // dobradiça da mandíbula (o maciço do pivô)
+
+      // ================= CABO E CAUDA VERTICAL (o leme da maré) =================
+      { ...rod7([0, 1.62, -0.72], [0, 1.72, -1.48], 0.17, { m: 'body', amp: 0.045 }) },
+      { ...rod7([0, 1.72, -1.48], [0, 1.5, -2.2], 0.115, { m: 'body', amp: 0.04 }) },
+      { g: 'sphere', a: [0.13, 12, 10], p: [0, 1.62, -1.6], m: 'dark', amp: 0.03 },
+      // a ventoinha VERTICAL da cauda (peixe de verdade: a lâmina é fina para os
+      // lados, não uma bandeira deitada): cinco raios de SETE faces abertos no
+      // plano vertical, cada um achatado no X local (s[0.28,1,1])
+      ...([
+        [[0, 1, -0.35], 0.7, 0.08],
+        [[0, 0.6, -0.8], 0.62, 0.075],
+        [[0, -0.5, -0.8], 0.6, 0.075],
+        [[0, -1, -0.2], 0.6, 0.07],
+        [[0, 0.05, -1], 0.75, 0.08],
+      ] as [[number, number, number], number, number][]).map(([d, l, t]) => fang7([0, 1.5, -2.3], 0.05, l, t, d, { m: 'dark', s: [0.28, 1, 1], tag: 'tail' })),
+      { g: 'octa', a: [0.06, 0], p: [0, 2.16, -2.56], m: 'dark', tag: 'tail' },
+      { g: 'octa', a: [0.055, 0], p: [0, 0.86, -2.82], m: 'dark', tag: 'tail' },
+      { g: 'octa', a: [0.06, 0], p: [0, 1.52, -3.04], m: 'dark', tag: 'tail' },
+
+      // ================= ESPINHOS DORSAIS (a crina de osso do tamboril) =================
+      fang7([0, 2.9, -0.5], 0.12, 0.42, 0.075, [0, 1, -0.35], { m: 'dark', tag: 'spike' }),
+      fang7([0, 2.62, -0.95], 0.12, 0.4, 0.07, [0, 0.8, -0.6], { m: 'dark', tag: 'spike' }),
+      fang7([0, 2.25, -1.32], 0.12, 0.34, 0.062, [0, 0.55, -0.8], { m: 'dark', tag: 'spike' }),
+      fang7([0, 1.85, -1.58], 0.12, 0.28, 0.055, [0, 0.3, -0.95], { m: 'dark', tag: 'spike' }),
+      fang7([0, 1.5, -1.74], 0.12, 0.24, 0.05, [0, 0.1, -1], { m: 'dark', tag: 'spike' }),
+      fang7([0, 1.2, -1.8], 0.1, 0.2, 0.045, [0, -0.1, -1], { m: 'dark', tag: 'spike' }),
+      { g: 'sphere', a: [0.05, 10, 8], p: [0, 3.06, -0.6], m: 'glow', flick: 0.18, tag: 'photophore' },
+
+      // pelve ventral (mm): espinho curto de nadadeira paired
+      ...mm(rod7([0.3, 1.18, 0.5], [0.46, 0.72, 0.62], 0.05, { m: 'dark', tag: 'spike' })),
+      ...mm(fang7([0.46, 0.72, 0.62], 0.06, 0.22, 0.04, [0.25, -1, -0.2], { m: 'dark', tag: 'spike' })),
+
+      // ================= BARBATAS PEITORAIS (tag arm: remam para trás no coice) =================
+      // o ombro INTEIRO rocks no nódulo [0.62, 2.02, -0.02] (pivô exportado e
+      // amarrado em teste): nódulo, quatro raios de osso de sete faces,
+      // membrana translúcida e carmim aceso na ponta
+      ...mm({ g: 'octa', a: [0.12, 1], p: [0.62, 2.02, -0.02], m: 'body', tag: 'arm' }),
+      ...mm(fang7([0.66, 2.02, -0.02], 0.12, 0.62, 0.055, [0.55, -0.15, -0.82], { m: 'dark', tag: 'arm' })),
+      ...mm(fang7([0.66, 2.02, -0.02], 0.12, 0.58, 0.05, [0.5, -0.5, -0.7], { m: 'dark', tag: 'arm' })),
+      ...mm(fang7([0.66, 2.02, -0.02], 0.12, 0.52, 0.048, [0.45, 0.15, -0.9], { m: 'dark', tag: 'arm' })),
+      ...mm(fang7([0.66, 2.02, -0.02], 0.12, 0.46, 0.045, [0.35, 0.42, -0.85], { m: 'dark', tag: 'arm' })),
+      // a PELE da barbeta: duas lâminas cônicas translúcidas deitadas entre os
+      // raios (a receita do leme da cauda — cone achatado no X local, nunca
+      // caixa de papelão flotando do lado da cara)
+      ...mm(fang7([0.66, 2.02, -0.02], 0.1, 0.56, 0.14, [0.52, -0.32, -0.76], { m: 'trans', s: [0.2, 1, 1], tag: 'arm.membrane' })),
+      ...mm(fang7([0.66, 2.02, -0.02], 0.1, 0.5, 0.12, [0.4, 0.28, -0.87], { m: 'trans', s: [0.2, 1, 1], tag: 'arm.membrane' })),
+      ...mm({ g: 'sphere', a: [0.05, 10, 8], p: [1.16, 1.9, -0.6], m: 'glow', flick: 0.16, tag: 'arm' }),
+
+      // ================= GUELRAS (o dreno respirando: a água entra, a vida fica) =================
+      // tampa óssea clara + quatro fendas escuras + três linhas acesas por lado
+      ...mm({ g: 'box', a: [0.07, 0.55, 0.72], p: [0.6, 2.0, -0.02], r: [0.12, 0, -0.22], m: 'accent', tag: 'gill' }),
+      ...mm({ g: 'box', a: [0.05, 0.34, 0.09], p: [0.58, 1.92, -0.38], r: [0, 0, -0.18], m: 'dark', tag: 'gill' }),
+      ...mm({ g: 'box', a: [0.05, 0.3, 0.09], p: [0.6, 1.86, -0.56], r: [0, 0, -0.18], m: 'dark', tag: 'gill' }),
+      ...mm({ g: 'box', a: [0.05, 0.26, 0.09], p: [0.62, 1.8, -0.74], r: [0, 0, -0.18], m: 'dark', tag: 'gill' }),
+      ...mm({ g: 'box', a: [0.05, 0.22, 0.09], p: [0.64, 1.74, -0.9], r: [0, 0, -0.18], m: 'dark', tag: 'gill' }),
+      ...mm({ g: 'box', a: [0.045, 0.3, 0.03], p: [0.62, 1.9, -0.47], r: [0, 0, -0.18], m: 'glow', flick: 0.14, tag: 'gill' }),
+      ...mm({ g: 'box', a: [0.045, 0.26, 0.03], p: [0.64, 1.84, -0.65], r: [0, 0, -0.18], m: 'glow', flick: 0.16, tag: 'gill' }),
+      ...mm({ g: 'box', a: [0.045, 0.22, 0.03], p: [0.66, 1.78, -0.82], r: [0, 0, -0.18], m: 'glow', flick: 0.18, tag: 'gill' }),
+
+      // ================= A GOELA (a armadilha): garganta, gengivas e presas de sete faces =================
+      { g: 'sphere', a: [0.3, 16, 12], p: [0, 2.42, 0.42], m: 'black' }, // breu da goela
+      { g: 'sphere', a: [0.16, 14, 10], p: [0, 2.4, 0.66], m: 'white', flick: 0.22, tag: 'throat' }, // a vida fervendo na garganta
+      // gengiva de cima (lábio do lábio): enterrada no maciço, nunca solta
+      ...mm({ g: 'box', a: [0.34, 0.16, 0.2], p: [0.3, 2.56, 0.78], r: [0, 0, 0.1], m: 'dark' }),
+      { g: 'box', a: [0.34, 0.16, 0.2], p: [0, 2.58, 0.84], m: 'dark' },
+      // sete presas de cima pendendo do lábio (5 fileira + 2 caninos miúdos nos
+      // cantos): a base afunda na gengiva, a ponta fica DENTRO da goela
+      fang7([0, 2.54, 0.78], 0.12, 0.3, 0.07, [0, -1, 0.1], { m: 'accent', tag: 'fang.up' }),
+      ...mm(fang7([0.26, 2.54, 0.76], 0.12, 0.26, 0.06, [0, -1, 0.12], { m: 'accent', tag: 'fang.up' })),
+      ...mm(fang7([0.5, 2.52, 0.72], 0.12, 0.22, 0.052, [0, -1, 0.16], { m: 'accent', tag: 'fang.up' })),
+      ...mm(fang7([0.66, 2.5, 0.66], 0.1, 0.14, 0.04, [0.15, -1, 0.2], { m: 'accent', tag: 'fang.up' })),
+      // olhos miúdos afogados no osso (o tamboril enxerga pouco — a isca é a
+      // vista dele): órbita escura, olho branco, pinprick aceso NA FRENTE
+      ...mm({ g: 'box', a: [0.2, 0.16, 0.08], p: [0.32, 2.86, 0.34], r: [-0.1, -0.25, 0.12], m: 'dark', tag: 'socket' }),
+      ...mm({ g: 'sphere', a: [0.085, 12, 10], p: [0.32, 2.84, 0.42], m: 'white', tag: 'eye' }),
+      ...mm({ g: 'sphere', a: [0.032, 8, 6], p: [0.33, 2.84, 0.5], m: 'glow', flick: 0.2, tag: 'eye' }),
+      ...mm({ g: 'box', a: [0.26, 0.07, 0.12], p: [0.33, 3.0, 0.32], r: [0, -0.2, 0.18], m: 'dark', tag: 'brow' }),
+
+      // ============ A MANDÍBULA QUE CAI (tag jaw.*: rocks no pivô da dobradiça) ============
+      // O PIVÔ é a dobradiça no OSSO DA BOA (atrás e abaixo do crânio): tudo
+      // jaw.* está À FRENTE dele (z > -0,14) — tombar no +X é a goela abrir
+      { g: 'sphere', a: [0.3, 16, 12], p: [0, 2.1, 0.52], s: [1.05, 0.5, 1.2], m: 'dark', amp: 0.04, tag: 'jaw.chin' },
+      { g: 'sphere', a: [0.16, 12, 10], p: [0, 2.06, 0.88], m: 'dark', amp: 0.03, tag: 'jaw.chin' },
+      ...mm({ g: 'box', a: [0.3, 0.14, 0.18], p: [0.28, 2.26, 0.58], r: [0, 0, -0.08], m: 'dark', tag: 'jaw.gum' }),
+      { g: 'box', a: [0.3, 0.14, 0.18], p: [0, 2.28, 0.6], m: 'dark', tag: 'jaw.gum' },
+      // sete presas de baixo apontando para cima (a fileira de baixo fica um
+      // dedo ATRÁS da de cima: fechadas, elas ENTRELAÇAM — a armadilha fecha)
+      fang7([0, 2.26, 0.56], 0.12, 0.28, 0.062, [0, 1, 0.12], { m: 'accent', tag: 'jaw.fang' }),
+      ...mm(fang7([0.24, 2.24, 0.54], 0.12, 0.24, 0.055, [0, 1, 0.14], { m: 'accent', tag: 'jaw.fang' })),
+      ...mm(fang7([0.48, 2.22, 0.5], 0.1, 0.2, 0.05, [0, 1, 0.18], { m: 'accent', tag: 'jaw.fang' })),
+      ...mm(fang7([0.62, 2.2, 0.44], 0.1, 0.12, 0.038, [0.2, 1, 0.2], { m: 'accent', tag: 'jaw.fang' })),
+      // barbilho do queixo (a "terceira antena" do tamboril): fio de osso com
+      // nódulo aceso na ponta, pendurado no centro + dois fios laterais miúdos
+      { ...rod7([0, 1.96, 0.95], [0, 1.6, 1.06], 0.045, { m: 'accent', tag: 'jaw.barbel' }) },
+      { ...rod7([0, 1.6, 1.06], [0, 1.24, 1.0], 0.035, { m: 'accent', tag: 'jaw.barbel' }) },
+      { g: 'sphere', a: [0.055, 10, 8], p: [0, 1.19, 1.0], m: 'glow', flick: 0.2, tag: 'jaw.barbel' },
+      ...mm(rod7([0.18, 2.0, 0.9], [0.3, 1.68, 0.96], 0.04, { m: 'accent', tag: 'jaw.barbel' })),
+      ...mm(rod7([0.3, 1.68, 0.96], [0.26, 1.38, 0.9], 0.03, { m: 'accent', tag: 'jaw.barbel' })),
+
+      // ================= A ESCA (a assinatura): vara de osso + lanterna de vida roubada =================
+      // a vara nasce na testa (pivô exportado ABISSAL_LURE_PIVOT), sobe em arco
+      // PARA TRÁS e curva para a frente: a lanterna pende SOBRE a goela aberta,
+      // no escuro, balançando — é o `drain 0,4` do motor desenhado em silhueta
+      { g: 'sphere', a: [0.15, 12, 10], p: [0, 3.08, -0.2], m: 'dark', amp: 0.03, tag: 'lure.base' },
+      { ...rod7([0, 3.08, -0.2], [0, 3.78, -0.46], 0.075, { m: 'accent', amp: 0.008, tag: 'lure.rod' }) },
+      { ...rod7([0, 3.78, -0.46], [0, 4.56, -0.2], 0.06, { m: 'accent', amp: 0.008, tag: 'lure.rod' }) },
+      { ...rod7([0, 4.56, -0.2], [0, 4.86, 0.42], 0.048, { m: 'accent', amp: 0.008, tag: 'lure.rod' }) },
+      { ...rod7([0, 4.86, 0.42], [0, 4.62, 1.0], 0.036, { m: 'accent', amp: 0.006, tag: 'lure.rod' }) },
+      { g: 'octa', a: [0.08, 0], p: [0, 3.78, -0.46], m: 'accent', tag: 'lure.node' },
+      { g: 'octa', a: [0.06, 0], p: [0, 4.56, -0.2], m: 'accent', tag: 'lure.node' },
+      { g: 'octa', a: [0.05, 0], p: [0, 4.86, 0.42], m: 'accent', tag: 'lure.node' },
+      { g: 'sphere', a: [0.19, 14, 10], p: [0, 4.62, 1.05], s: [1, 0.55, 1], m: 'dark', amp: 0.02, tag: 'lure.cup' }, // berço da lanterna
+      // SETE ganchos de osso apontando PARA DENTRO do berço: a jaula da presa
+      ...hookRing([0, 4.58, 1.05], 0.16, 0.15, 0.026, 0.5, { m: 'accent', tag: 'lure.hook' }),
+
+      // ================= A JAULA DO PEITO: costelas de afogado + vida roubada =================
+      { g: 'octa', a: [0.09, 0], p: [0, 2.3, -0.44], m: 'accent', tag: 'rib' },
+      { g: 'octa', a: [0.08, 0], p: [0, 2.0, -0.52], m: 'accent', tag: 'rib' },
+      { g: 'octa', a: [0.07, 0], p: [0, 1.7, -0.52], m: 'accent', tag: 'rib' },
+      ...mm(rod7([0, 2.3, -0.44], [0.44, 2.18, -0.1], 0.04, { m: 'accent', amp: 0.006, tag: 'rib' })),
+      ...mm(rod7([0.44, 2.18, -0.1], [0.3, 1.62, 0.42], 0.035, { m: 'accent', amp: 0.006, tag: 'rib' })),
+      ...mm(rod7([0, 2.12, -0.5], [0.46, 2.0, -0.14], 0.038, { m: 'accent', amp: 0.006, tag: 'rib' })),
+      ...mm(rod7([0.46, 2.0, -0.14], [0.32, 1.44, 0.4], 0.033, { m: 'accent', amp: 0.006, tag: 'rib' })),
+      ...mm(rod7([0, 1.94, -0.52], [0.44, 1.82, -0.16], 0.036, { m: 'accent', amp: 0.006, tag: 'rib' })),
+      ...mm(rod7([0.44, 1.82, -0.16], [0.3, 1.26, 0.36], 0.031, { m: 'accent', amp: 0.006, tag: 'rib' })),
+      ...mm(rod7([0, 1.76, -0.5], [0.4, 1.64, -0.16], 0.034, { m: 'accent', amp: 0.006, tag: 'rib' })),
+      ...mm(rod7([0.4, 1.64, -0.16], [0.28, 1.1, 0.3], 0.029, { m: 'accent', amp: 0.006, tag: 'rib' })),
+      { g: 'box', a: [0.1, 0.6, 0.1], p: [0, 1.95, 0.63], m: 'accent', amp: 0.006, tag: 'rib' }, // esterno
+      { g: 'box', a: [0.08, 0.34, 0.09], p: [0, 1.55, 0.6], m: 'accent', amp: 0.006, tag: 'rib' },
+      // a moldura da cavidade: SETE ganchos em anel vertical emoldurando o
+      // núcleo de vida (a jaula abre para o espectador: a luz é o que se vê)
+      ...hookRing([0, 1.97, 0.52], 0.33, 0.17, 0.027, 0.55, { m: 'accent', tag: 'cavity' }, 'xy'),
+
+      // ================= FOTOÓFOROS (a linha de luz do abismo: do queixo à cauda) =================
+      { g: 'sphere', a: [0.05, 10, 8], p: [0, 2.0, 0.86], m: 'glow', flick: 0.2, tag: 'photophore' },
+      { g: 'sphere', a: [0.05, 10, 8], p: [0, 1.7, 0.78], m: 'glow', flick: 0.18, tag: 'photophore' },
+      { g: 'sphere', a: [0.05, 10, 8], p: [0, 1.42, 0.62], m: 'glow', flick: 0.16, tag: 'photophore' },
+      { g: 'sphere', a: [0.045, 10, 8], p: [0, 1.22, 0.3], m: 'glow', flick: 0.22, tag: 'photophore' },
+      { g: 'sphere', a: [0.045, 10, 8], p: [0, 1.12, -0.15], m: 'glow', flick: 0.18, tag: 'photophore' },
+      { g: 'sphere', a: [0.045, 10, 8], p: [0, 1.2, -0.7], m: 'glow', flick: 0.2, tag: 'photophore' },
+      { g: 'sphere', a: [0.04, 10, 8], p: [0, 1.35, -1.2], m: 'glow', flick: 0.16, tag: 'photophore' },
+      ...mm({ g: 'sphere', a: [0.045, 10, 8], p: [0.45, 1.7, 0.35], m: 'glow', flick: 0.16, tag: 'photophore' }),
+      ...mm({ g: 'sphere', a: [0.04, 10, 8], p: [0.5, 1.5, -0.05], m: 'glow', flick: 0.2, tag: 'photophore' }),
+      ...mm({ g: 'sphere', a: [0.04, 10, 8], p: [0.45, 1.4, -0.45], m: 'glow', flick: 0.18, tag: 'photophore' }),
+
+      // cracas de afogado: osso miúdo colonizando a barriga (densidade de fundo)
+      { g: 'octa', a: [0.07, 0], p: [0.3, 1.35, 0.6], m: 'accent', tag: 'barnacle' },
+      { g: 'octa', a: [0.05, 0], p: [0.44, 1.2, 0.44], m: 'accent', tag: 'barnacle' },
+      { g: 'octa', a: [0.06, 0], p: [-0.18, 1.28, 0.66], m: 'accent', tag: 'barnacle' },
+      { g: 'octa', a: [0.055, 0], p: [0.14, 1.18, 0.74], m: 'accent', tag: 'barnacle' },
+      ...mm({ g: 'octa', a: [0.06, 0], p: [0.52, 1.5, 0.28], m: 'accent', tag: 'barnacle' }),
+      ...mm({ g: 'octa', a: [0.05, 0], p: [0.56, 1.36, 0.02], m: 'accent', tag: 'barnacle' }),
+      ...mm({ g: 'octa', a: [0.045, 0], p: [0.48, 1.12, -0.2], m: 'accent', tag: 'barnacle' }),
+
+      // ================= A MARÉ ESCORRENDO: gotejamento e tentáculos roçando o piso =================
+      // gotas de maré morta pendendo da barriga (a água do corpo nunca para:
+      // escorre e pinga — o "senhor das marés mortas" pingando no tabuleiro)
+      { g: 'cone', a: [0.075, 0.42, 7, 1], p: [0, 0.97, 0.05], r: [3.14, 0, 0], m: 'dark', amp: 0.02, tag: 'drip' },
+      ...mm({ g: 'cone', a: [0.075, 0.42, 7, 1], p: [0.3, 1.02, 0.3], r: [3.14, 0, 0.12], m: 'dark', amp: 0.02, tag: 'drip' }),
+      ...mm({ g: 'cone', a: [0.07, 0.36, 7, 1], p: [0.42, 1.06, -0.35], r: [3.14, 0, -0.1], m: 'dark', amp: 0.02, tag: 'drip' }),
+      ...mm({ g: 'cone', a: [0.065, 0.3, 7, 1], p: [0.2, 1.04, -0.62], r: [3.14, 0, -0.16], m: 'dark', amp: 0.02, tag: 'drip' }),
+      // tentáculos que DESCEM e roçam o piso (a ponta luminosa a 0,02 do chão:
+      // o teste de invólucro cobra minY ≥ -0,01 — o abissal boia, mas pesca)
+      ...mm(rod7([0.4, 1.12, -0.28], [0.56, 0.78, -0.42], 0.055, { m: 'dark', amp: 0.02, tag: 'tentacle' })),
+      ...mm(rod7([0.56, 0.78, -0.42], [0.5, 0.42, -0.28], 0.042, { m: 'dark', amp: 0.02, tag: 'tentacle' })),
+      ...mm(rod7([0.5, 0.42, -0.28], [0.58, 0.1, -0.4], 0.032, { m: 'dark', amp: 0.015, tag: 'tentacle' })),
+      ...mm({ g: 'octa', a: [0.05, 0], p: [0.56, 0.78, -0.42], m: 'accent', tag: 'tentacle' }),
+      ...mm({ g: 'octa', a: [0.045, 0], p: [0.5, 0.42, -0.28], m: 'accent', tag: 'tentacle' }),
+      ...mm({ g: 'sphere', a: [0.045, 10, 8], p: [0.58, 0.06, -0.4], m: 'glow', flick: 0.24, tag: 'tentacle' }),
+      ...mm(rod7([0.28, 1.05, 0.42], [0.36, 0.7, 0.52], 0.04, { m: 'dark', amp: 0.015, tag: 'tentacle' })),
+      ...mm(rod7([0.36, 0.7, 0.52], [0.32, 0.4, 0.46], 0.03, { m: 'dark', amp: 0.015, tag: 'tentacle' })),
+      ...mm({ g: 'sphere', a: [0.04, 10, 8], p: [0.33, 0.36, 0.47], m: 'glow', flick: 0.2, tag: 'tentacle' }),
+
+      // ================= TRÊS ÓRBITAS em alturas que nunca se tocam =================
+      // (0) cardume de vidas cativas girando ALTO (sobre a vara, y ~3,4 e ~4,95:
+      // a isca atrai — as presas já giram em volta do tamboril antes de morrer)
+      ...ringAround(4, 1.3, 3.42, 0.25, {
+        g: 'sphere', a: [0.05, 10, 8], m: 'glow', flick: 0.3, group: 0, tag: 'lure.mote',
+      }),
+      ...ringAround(3, 1.12, 4.95, -0.2, {
+        g: 'sphere', a: [0.045, 10, 8], m: 'glow', flick: 0.35, group: 0, tag: 'lure.mote',
+      }, Math.PI / 7),
+      // (1) luas de maré morta raspando o corpo no SENTIDO CONTRÁRIO (0,34 vs
+      // 0,5: os anéis nunca se tocam — a régua das órbitas do Geodo). Miúdas:
+      // orbe grande demais virava buraco preto boiando no print
+      ...ringAround(5, 1.5, 1.25, 0, {
+        g: 'sphere', a: [0.085, 12, 9], m: 'dark', amp: 0.03, group: 1, tag: 'moon',
+      }),
+      ...ringAround(4, 1.74, 0.85, 0, {
+        g: 'sphere', a: [0.05, 10, 8], m: 'body', amp: 0.025, group: 1, tag: 'moon',
+      }, Math.PI / 4),
+      // (2) farpas de osso em torno da cabeça: sete, como tudo aqui — o anel
+      // ROSBA no maciço (1,08 flutuando virava agulha solta no escuro)
+      ...ringAround(7, 0.96, 3.15, 0.55, {
+        g: 'cone', a: [0.02, 0.26, 7, 1], m: 'accent', group: 2, tag: 'hook',
+      }),
     ],
-    groups: { 0: 0.9, 1: -1.2 },
+    groups: { 0: 0.5, 1: -0.34, 2: 0.26 },
   },
 
   // Terra+Ar — GÊNIO DO DESERTO (Nv.6): duna que ganha vontade. MALHA DENSE

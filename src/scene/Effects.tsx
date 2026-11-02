@@ -22,6 +22,10 @@ import { COSMICO_HEAT, COSMICO_STARLIGHT } from './CosmicoRig';
 // paleta do GEODO (o caco do impacto é o MESMO quartzo pentagonal da goela com
 // o MESMO veio de ametista do motor — identidade amarrada em teste; ver GeodoRig)
 import { GEODO_AMETHYST, GEODO_LILAC, QUARTZ_LOOK } from './GeodoRig';
+// paleta do ABISSAL (a farpa de osso que estilhaça no impacto é o MESMO osso
+// pálido com a trinca da cor do motor do figurino/projétil — identidade
+// amarrada em teste; ver AbissalRig)
+import { ABISSAL_LIFE, ABISSAL_TIDE, BONE_LOOK } from './AbissalRig';
 import type { SmokePool } from './smokePool';
 
 const PARTICLE_CAP = 400;
@@ -396,6 +400,33 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e as FARPAS DE OSSO do impacto do ABISSAL: os sete ganchos de osso da
+  // armadilha (a do figurino E a do projétil) estouram em farpa — o MESMO osso
+  // pálido com a trinca da cor do motor (#3f6f8f, identidade amarrada em teste)
+  // e sete faces (o DNA do abismo: o Geodo é CINCO, o Cósmico OITO). Osso é
+  // SECO e leve: quica como pedra mas gira mais que o caco do geodo.
+  const shardBone = useMemo(() => {
+    const geo = new THREE.CylinderGeometry(0.015, 0.05, 0.26, 7, 1); // farpa de 7 faces bicuda
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeIceMaterial({
+        iceA: BONE_LOOK.iceA, // O MESMO osso molhado do figurino
+        iceB: BONE_LOOK.iceB,
+        crack: ABISSAL_TIDE, // = a cor do motor (identidade amarrada em teste)
+        amp: 0.006, // aresta viva: osso não arredonda (a lição do quartzo)
+        crackGlow: 1.1, // farpa fresca: a trinca ainda acesa do arremesso
+        crackScale: 1.5,
+        crackWidth: 0.05,
+        alpha: 0.94,
+        bump: 0.7,
+        reflPow: 110,
+        envMix: 0.5, // farpa girando espelha a arena (a receita do gelo/vidro)
+        sparkle: 0.5,
+        seed: 12.7 + i * 2.2,
+        breath: 0.4,
+      }),
+    );
+    return { geo, mats };
+  }, []);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
@@ -411,7 +442,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           | 'mud'
           | 'prism'
           | 'star'
-          | 'geode',
+          | 'geode'
+          | 'bone',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -445,6 +477,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       shardStar.geo.dispose();
       for (const m of shardGeode.mats) m.dispose();
       shardGeode.geo.dispose();
+      for (const m of shardBone.mats) m.dispose();
+      shardBone.geo.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
@@ -459,6 +493,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     shardPrism,
     shardStar,
     shardGeode,
+    shardBone,
     arcGeo,
     arcMat,
   ]);
@@ -621,7 +656,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       | 'mudShard'
       | 'prismShard'
       | 'starShard'
-      | 'geodeShard' = 'flame',
+      | 'geodeShard'
+      | 'boneShard' = 'flame',
     life?: number,
   ) => {
     if (kind === 'flame') {
@@ -668,7 +704,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                       ? 'star'
                       : kind === 'geodeShard'
                         ? 'geode'
-                        : 'rock';
+                        : kind === 'boneShard'
+                          ? 'bone'
+                          : 'rock';
       const a = Math.random() * Math.PI * 2;
       // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
       // cambalhota que a pedra (que só desmorona). O VIDRO da Obsidiana é
@@ -689,14 +727,18 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       // no `fast` — sai com a inércia do bloco (o mais pesado da árvore) e só um
       // degrau acima da pedra no giro, porque a quina de quartzo pega o ar
       const geode = kind === 'geodeShard';
+      // a farpa do ABISSAL é OSSO SECO e leve: voa mais longe que a pedra e
+      // gira um degrau acima do caco pesado do geodo (o osso pega o ar como
+      // farpa, não como bloco) — mas sem o salto nervoso do gelo/vidro
+      const bone = kind === 'boneShard';
       const fast = ice || glass || prism || star;
-      const s = (fast ? 2.2 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : mud ? 1.2 : 1.8);
+      const s = (fast ? 2.2 : bone ? 1.9 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : bone ? 2.0 : mud ? 1.2 : 1.8);
       d.vx = Math.cos(a) * s;
       d.vy =
-        (prism || star ? 2.6 : fast ? 2.1 : mud ? 1.1 : 1.6) +
-        Math.random() * (ice ? 2.4 : prism || star ? 2.8 : mud ? 1.1 : 1.8);
+        (prism || star ? 2.6 : fast ? 2.1 : bone ? 1.8 : mud ? 1.1 : 1.6) +
+        Math.random() * (ice ? 2.4 : prism || star ? 2.8 : bone ? 2.2 : mud ? 1.1 : 1.8);
       d.vz = Math.sin(a) * s;
-      const spin = prism ? 23 : star ? 21 : glass ? 19 : ice ? 16 : mud ? 6 : geode ? 13 : 11;
+      const spin = prism ? 23 : star ? 21 : glass ? 19 : ice ? 16 : bone ? 15 : mud ? 6 : geode ? 13 : 11;
       d.rx = (Math.random() - 0.5) * spin;
       d.ry = (Math.random() - 0.5) * spin;
       d.rz = (Math.random() - 0.5) * spin;
@@ -1177,6 +1219,37 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               life: 1.1,
               speed: 1.3,
             });
+          } else if (ev.species === 'abissal') {
+            // o tamboril cospe a própria maré: no alvo a gota ARREBENTA em
+            // farpas de osso da armadilha (pool `boneShard`: o MESMO osso
+            // pálido com a trinca da cor do motor do figurino/projétil —
+            // identidade amarrada em teste), respinga maré MORTO azul-escura
+            // (peso de água: sobe e CAI, mas SEM a espuma branca da Nereia —
+            // a régua da maré morta) e a VIDA ROUBADA (#5fe0c8 = glow da
+            // espécie) ESCAPA da presa e sobe, engolida de volta pelo abismo:
+            // o `drain 0,4` escrito em partícula (fagulhas verdes subindo com
+            // gravidade NEGATIVA — a vida sendo sugerida, nunca faísca quente).
+            // A fumaça é bruma fria do fundo (heat 0,03 — a névoa quente é do
+            // vulcão); o anel verde miúdo é o flash da vida absorvida
+            const lv = Math.max(8, Math.min(10, ev.level ?? 8));
+            const k = 1 + (lv - 8) * 0.12;
+            // os sete ganchos da armadilha estouram em farpa (pool: 3)
+            for (let i = 0; i < 3; i++)
+              spawnBurst(x, y, z, 0.3 + 0.04 * (lv - 8), 'boneShard', 0.9);
+            spawnParticles(x, y, z, ABISSAL_LIFE, 8 + (lv - 8) * 2, 1.4, 0.9, -0.9, 0.5); // a VIDA ROUBADA sobe, sugada de volta (o drain em partícula)
+            spawnParticles(x, y, z, ABISSAL_TIDE, 12 + (lv - 8) * 2, 2.2, 0.6, 2.4, 0.5); // respingo da maré MORTA (azul-do-fundo, pesado)
+            spawnParticles(x, y, z, '#142b38', 8, 2.6, 0.55, 3.4, 0.3); // chuva funda do bojo da gota (o breu do fundo pingando)
+            spawnParticles(x, y, z, '#bfe9ff', 6, 1.6, 0.4, 1.4, 0.5); // espuma PÁLIDA (nunca branca de cachoeira — a régua da Nereia)
+            spawnParticles(x, y - 0.1, z, ABISSAL_LIFE, 4, 0.9, 0.35, -0.5, 0.2); // vida miúda assentando e subindo do piso
+            spawnRing(x, 0.1, z, '#1f4258', 1.7 * k); // marca molhada da maré no piso (a poça escura que alarga e some)
+            spawnRing(x, 0.16, z, ABISSAL_TIDE, 1.15); // anel = a seção da gota estourada (a cor do MOTOR)
+            spawnRing(x, 0.26, z, ABISSAL_LIFE, 0.6); // flash MIÚDO da vida absorvida (o drain — nunca bola de fogo)
+            spawnSmoke(x, y, z, 5, {
+              size: 0.09,
+              heat: 0.03, // BRUMA FRIA do fundo (a névoa quente é do vulcão)
+              life: 1.0,
+              speed: 1.2,
+            });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e
@@ -1549,6 +1622,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       ...shardGlass.mats,
       ...shardPrism.mats,
       ...shardGeode.mats,
+      ...shardBone.mats,
     ]);
     // estilhaços de pedra do impacto do Gólem: saem disparados para os lados,
     // a gravidade os puxa para o chão (quicam), cambalhotam e apagam
@@ -1578,7 +1652,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                       ? shardStar
                       : d.kind === 'geode'
                         ? shardGeode
-                        : shardRock;
+                        : d.kind === 'bone'
+                          ? shardBone
+                          : shardRock;
       const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {

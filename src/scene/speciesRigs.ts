@@ -18,6 +18,7 @@ import { NevoaRig } from './NevoaRig';
 import { CrystalRig } from './CrystalRig';
 import { CosmicoRig } from './CosmicoRig';
 import { GeodoRig } from './GeodoRig';
+import { AbissalRig } from './AbissalRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -56,7 +57,11 @@ export interface SpeciesRigProps {
  * basalto assentado sobre três degraus pentagonais de cantaria, face de máscara
  * clara com rosácea de cinco pétalas e o geodo ABERTO na copa da cabeça — cinco
  * placas mandibulares dobradiçadas no aro com o boulder de luz esperando dentro)
- * já
+ * e Abissal (tamboril das marés mortas: massa de água azul-do-fundo boiando na
+ * própria maré, goela de balde com presas entrelaçadas, jaula de costelas de
+ * afogado com a vida roubada fervendo no peito e a ASSINATURA — a esca de osso
+ * arqueada sobre a cabeça com a lanterna de vida pendurada na ponta, cercada
+ * por sete ganchos virados para dentro) já
  * têm figurino próprio; as demais espécies da árvore ainda usam o rig padrão:
  * a busca é por espécie e o fallback é o rig padrão.
  */
@@ -79,4 +84,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   cristal: CrystalRig,
   cosmico: CosmicoRig,
   geodo: GeodoRig,
+  abissal: AbissalRig,
 };

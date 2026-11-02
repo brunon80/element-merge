@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
-> Estado verificado em **01/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **286 testes / 28 arquivos, todos
+> Estado verificado em **02/nov/2026** por inspeção direta + suíte rodando:
+> `npx tsc --noEmit` OK · `npx vitest run` **299 testes / 29 arquivos, todos
 > verdes** · `npm run build` OK · git limpo em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -21,34 +21,36 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | tempestade, obsidiana, pantano, plasma, névoa, cristal | 7 | ✅ figurino próprio + testes |
 | **cósmico** | 8 | ✅ figurino próprio + testes |
 | **geodo** | 8 | ✅ figurino próprio + testes |
-| abissal, vulcânico | 8 | ⬜ pendente |
+| **abissal** | 8 | ✅ figurino próprio + testes |
+| vulcânico | 8 | ⬜ pendente |
 | astral, colosso | 9 | ⬜ pendente — ruling do usuário: leitura **CÓSMICA** (galáxias/estrelas), escalando acima e DIFERENTE do DNA de constelação do Cósmico |
 | **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **quasar supermassivo com disco de acreção, grande, ataque em rajada de energia** |
 
-**Último monstro melhorado: GEODO (Nv.8 — obsidiana+cristal: a CATEDRAL DE
-GEODO plantada na própria fundação, o mais duro dos tanques: três degraus
-pentagonais de cantaria CLARA escalonados 36° = estrela de dez pontas +
-entulho cuspidido; DNA PENTAGONAL EM TUDO — todo `cyl`/`cone` tem CINCO
-faces, os mamelões são dodecaedros (doze pentágonos), zero esfera/toro no
-modelo inteiro; basalto AMEIXA CRUA e fosca (#5c4e74 metal 0,06 — nunca o
-vidro negro espelhado da Obsidiana-mãe) com a cantaria clara valendo ≥3× a
-luma do corpo; face de MÁSCARA DE FACHADA — placa pentagonal CLARA
-avançando sobre o crânio (vértice para baixo = queixo), rosácea de cinco
-pétalas de quartzo, barra escura de sobrancelha/boca SOBRE a placa clara,
-órbitas de breu com pinpricks na frente e barba DOWN5 no queixo, com a
-colunata pentagonal (capital + plinto alicerçado) FLANQUEANDO a face — a
-cobrança do print: coluna clara atrás da máscara apagava a face; ASSINATURA
-= o RELIQUÁRIO ABERTO na copa (aro pentagonal ABERTO com cinco placas
-mandibulares DOBRADIÇADAS no aro — girar na tangente abre a goela em FLOR,
-e o boulder-de-luz paira na cama de cristais apontada para dentro), torres
-de ápside VERTICAIS com nódulo na ponta e três órbitas em alturas que nunca
-se tocam; identidade única do motor ao caco — ametista #c77dff no veio do
-basalto/cantaria/núcleo/boulder/FX, o hot #e0b3ff é SEMPRE acento;
-coreografia MAIS LENTA da árvore: 1,05 s com 68% de afinação e pose que
-zera no fim; 151 peças / ~8,9 mil vértices / ~5,4 mil triângulos)** — commit
-mais recente de `main` (`git log -1`). Anteriores: cósmico, cristal `f48e789`, névoa/plasma `9d7a881`.
+**Último monstro melhorado: ABISSAL (Nv.8 — pântano+névoa: o TAMBORIL DAS
+MARÉS MORTAS flotando na própria maré, o ladrão de vida: `drain 0,4` + `slow`
++ `poison`, caça `lowestHp`; DNA DE SETE FACES EM TUDO — todo `cyl`/`cone`
+tem SETE faces (`rod7`/`fang7`/`hookRing`; nenhum outro figurino usa sete:
+Geodo CINCO, Cristal SEIS, Cósmico OITO), sete presas por fila, sete gotas,
+sete ganchos na jaula, sete vidas cativas em órbita (4+3); ASSINATURA = a
+ESCA: vara de osso arqueada na testa com a lanterna de VIDA ROUBADA pendendo
+SOBRE a goela — a lanterna é a peça mais PARA FRENTE da cabeça e a jaula de
+sete ganchos FECHA para dentro do aro (a presa entra, não sai); goela é
+DOBRADIÇA no osso da bochecha (mandíbula `jaw.*` rocks no pivô exportado,
+maxila `fang.up` fixa, presas ENTRELAÇAM ao fechar); jaula de costelas de
+afogado no peito emoldura o núcleo de vida; água é o `makeWaterMaterial` da
+Nereia lido em AZUL DO FUNDO com pouca onda (maré MORTA: foamAmt 0,24 — a
+régua contra a Nereia que cavalga), osso molhado é `makeIceMaterial` denso;
+identidade do motor ao anel: maré #3f6f8f = `projectileColor` = corpo = uMid
+= trinca do osso = globo = FX, vida #5fe0c8 é SEMPRE acento (lanterna,
+núcleo, fotoóforos, miolo do projétil); boia (floatY 0,2) mas PESCA: os
+tentáculos roçam o piso a 0,015; coreografia 0,92 s com 60% de sucção
+silenciosa (0,552 s absolutos de afinação > Cósmico) e a MORDIDA é
+instantânea com pose zerando no fim; arremesso mais RÁPIDO dos Nv.8 (base
+8,5 ≈ 18,8 un/s escalado); 213 peças / ~13,3 mil vértices / ~14,9 mil
+triângulos)** — commit mais recente de `main` (`git log -1`). Anteriores:
+geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma `9d7a881`.
 
-**Próximo: ABISSAL (Nv.8)** e depois vulcânico (Nv.8), astral e colosso
+**Próximo: VULCANICO (Nv.8)** e depois astral e colosso
 (Nv.9), primordial (Nv.10) na ordem da tabela. RULING DO USUÁRIO para o
 Nv.9/Nv.10: as espécies Nv.9 (astral, colosso) têm que ler **CÓSMICO —
 aparência de galáxia/estrelas** (escalar acima e diferir do Cósmico: pensar
@@ -243,6 +245,42 @@ grande, com ataque em rajada de energia.
   `|vel|` igual à speed escalada em todo o voo e a ordem base (Geodo:
   interval 2,4 e speed 7 = os mais lentos da faixa).
 
+### Lições do Abissal (tamboril das marés mortas — as seis que o print cobrou)
+
+- **Espécie que só atira com alvo ao alcance precisa de TANQUE no probe de
+  impacto**: abissal tem range 10 e para de cuspir sem alvo — solo run de
+  QA fica em idle e a varredura de cor nunca vê o FX. Promovido
+  `qa/probe-impact-fast.mjs <especie> [aliada] [outDir]`: JPEG do viewport
+  inteiro (~4× mais rápido que PNG no SwiftShader, ~2-3 frames/s), 150
+  frames cobrem voo (0,5 s) + FX (1 s), e o 3º argumento é o aliado tanque
+  (golem/obsidiana — `madera` não tem `debug-spawn-madera`).
+- **A armadilha do `SphereGeometry(r, 1, ...)`**: `widthSegments: 1` degenera
+  a malha (peça invisível/estilhaçada no print) e passa liso no tsc. Toda
+  esfera de corpo é ≥12×8 segmentos; pinar contagens por raio.
+- **Dobradiça se pina por CINEMÁTICA, não por posição**: os centros das
+  presas da mandíbula ficam ACIMA do pivô da bochecha (a raiz entra no
+  maciço), então "centro abaixo do pivô" é falso — o teste certo é girar o
+  quaternion do pose (`setFromAxisAngle(X, gape)`) e cobrar que TODAS as
+  peças `jaw.*` CAIAM (>0,05; queixo >0,25). A mesma virada valeu para o
+  Geodo (tangente) — pivô sempre exportado do rig para o teste.
+- **Sete faces = identidade de espécie**: cada híbrido da árvore agora tem
+  UMA contagem de faces própria (Geodo CINCO, Cristal SEIS, Cósmico OITO,
+  Abissal SETE) — pino `a[3]===7` em todo `cyl` e `a[2]===7` em todo `cone`
+  pega figurino inteiro de uma vez e a silhueta lê diferente no print. O
+  sete vale também para as CONTAGENS (presas, gotas, ganchos, luas, vidas
+  cativas) — forma e número da mesma família.
+- **Bioluminescência própria POLUI varredura de matiz**: scan de cor pontua
+  os fotoóforos do próprio monstro tanto quanto o FX do impacto — o score
+  não separa criatura de tiro. Para projétil/FX, ler frames DENSOS do
+  probe-fast olho no olho (aqui: globo em voo no f-007, enxame de dreno no
+  f-012), varredura é só índice de onde olhar.
+- **Gancho de jaula se pina por RAIO, não por mira**: "a ponta aponta para o
+  centro" é duro demais com tilt (o berço da lanterna abre a boca para cima
+  — `tilt 0,5` num aro de 0,16). A cobrança certa é tip-vs-base: raio da
+  ponta < raio da base (o gancho FECHA) e a ponta invade o vão da luz. O
+  `aim` do `speciesModels` aponta o +Y local (eixo do cyl/cone) — pino de
+  eixo usa `(0,1,0).applyEuler(r)` e fecha as juntas do `rod7` a <0,05.
+
 ### Ferramentas de QA
 
 `qa/inspect-species.mjs <especie> [aliada]` · `qa/find-particles.ps1 <especie>
@@ -257,6 +295,10 @@ olha as COSTAS das unidades e o viewer do card do bestiário também mostra o
 REVERSO, então a face só é olhável por aqui) · `qa/probe-impact.mjs <especie>
 [aliada] [outDir]` (zoom PARA FORA antes do combate: o tabuleiro inimigo fica
 fora do enquadre padrão e o FX de impacto é invisível nos b-frames normais) ·
+`qa/probe-impact-fast.mjs <especie> [aliada tanque] [outDir]` (irmã densa:
+150 JPEGs do viewport a ~2-3 frames/s cobrem o voo + a explosão que duram ~1 s
+— exige ALIADA TANQUE, espécie que só atira com alvo ao alcance fica em idle
+sem ela; `madera` não tem `debug-spawn-` próprio, use golem/obsidiana) ·
 `qa/probe-veil*.mjs` / `probe-quad.mjs` (sondas de material/cena). Prints em
 `%LOCALAPPDATA%\Temp\opencode\shots`. ⚠️ sonda: só roda o `wheel` de zoom no
 centro do canvas — `page.mouse.click` no tabuleiro ANTES do `start-battle`
