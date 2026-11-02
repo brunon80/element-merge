@@ -17,6 +17,7 @@ import { PlasmaRig } from './PlasmaRig';
 import { NevoaRig } from './NevoaRig';
 import { CrystalRig } from './CrystalRig';
 import { CosmicoRig } from './CosmicoRig';
+import { GeodoRig } from './GeodoRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -49,7 +50,13 @@ export interface SpeciesRigProps {
  * geada, túnica de cascas de nuvem) e Cristal (prisma vivo: colosso de
  * colunas hexagonais de ametista fundado numa duna mineral com raízes
  * petrificadas, miolo de luz na fresta do peito e farpas de ricochete em
- * leque nos braços) já
+ * leque nos braços), Cósmico (constelação viva: armadura de tambores
+ * dodecaédricos de pedra-lua plantada no próprio cumulonimbus, coroa de cinco
+ * estrelas e estrela engaiolada no peito) e Geodo (catedral de geodo: maciço de
+ * basalto assentado sobre três degraus pentagonais de cantaria, face de máscara
+ * clara com rosácea de cinco pétalas e o geodo ABERTO na copa da cabeça — cinco
+ * placas mandibulares dobradiçadas no aro com o boulder de luz esperando dentro)
+ * já
  * têm figurino próprio; as demais espécies da árvore ainda usam o rig padrão:
  * a busca é por espécie e o fallback é o rig padrão.
  */
@@ -71,4 +78,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   nevoa: NevoaRig,
   cristal: CrystalRig,
   cosmico: CosmicoRig,
+  geodo: GeodoRig,
 };

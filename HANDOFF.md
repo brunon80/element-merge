@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
 > Estado verificado em **01/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **272 testes / 27 arquivos, todos
+> `npx tsc --noEmit` OK · `npx vitest run` **286 testes / 28 arquivos, todos
 > verdes** · `npm run build` OK · git limpo em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -20,28 +20,41 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | raio, madeira, magma, gelo, vapor, areia | 6 | ✅ figurino próprio + testes |
 | tempestade, obsidiana, pantano, plasma, névoa, cristal | 7 | ✅ figurino próprio + testes |
 | **cósmico** | 8 | ✅ figurino próprio + testes |
-| geodo, abissal, vulcânico | 8 | ⬜ pendente |
-| astral, colosso | 9 | ⬜ pendente |
-| **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **buraco negro
-  com disco de acreção, grande, ataque em rajada de energia** |
+| **geodo** | 8 | ✅ figurino próprio + testes |
+| abissal, vulcânico | 8 | ⬜ pendente |
+| astral, colosso | 9 | ⬜ pendente — ruling do usuário: leitura **CÓSMICA** (galáxias/estrelas), escalando acima e DIFERENTE do DNA de constelação do Cósmico |
+| **primordial** | 10 | ⬜ pendente — pedido especial do usuário: **quasar supermassivo com disco de acreção, grande, ataque em rajada de energia** |
 
-**Último monstro melhorado: CÓSMICO (Nv.8 — tempestade+plasma, "constelação
-viva": entidade PLANTADA na própria cumulonimbus da mãe (cascos achatados +
-rolo de tempestade ATRÁS), loriga de tambores de DOZE FACES que ALARGAM para
-cima e torcem 15° por tambor (a régua da passada 1: "pilha de bolas azuis com
-estourinhos" → A ARMADURA FAZ A SILHUETA), asterismo desenhado por cima com
-fios de oito faces e nós MIÚDOS, discos de lua nos joelhos / fagulhas no disco
-do chão / cometas altos em órbitas contrárias, coroa W de cinco estrelas
-(Cassiopeia) costurada em V ao crânio, estrela caída presa no obelisco de doze
-faces (o `uCoreCut` do shell abre a cavidade na rocha — a herança do Plasma sem
-grade de ferro); ataque = ALINHA a coroa travando o alvo mais distante (62% da
-janela, o mais longo da árvore junto com o Plasma) e cospe DUAS estrelas de
-oito pontas que saltam — `farthest` + `doubleShot` + `chain 2` + burn; 141
-peças / ~14,8 mil vértices desenhados)** — commit mais recente de `main`
-(`git log -1`). Anteriores: cristal, depois névoa/plasma `9d7a881`.
+**Último monstro melhorado: GEODO (Nv.8 — obsidiana+cristal: a CATEDRAL DE
+GEODO plantada na própria fundação, o mais duro dos tanques: três degraus
+pentagonais de cantaria CLARA escalonados 36° = estrela de dez pontas +
+entulho cuspidido; DNA PENTAGONAL EM TUDO — todo `cyl`/`cone` tem CINCO
+faces, os mamelões são dodecaedros (doze pentágonos), zero esfera/toro no
+modelo inteiro; basalto AMEIXA CRUA e fosca (#5c4e74 metal 0,06 — nunca o
+vidro negro espelhado da Obsidiana-mãe) com a cantaria clara valendo ≥3× a
+luma do corpo; face de MÁSCARA DE FACHADA — placa pentagonal CLARA
+avançando sobre o crânio (vértice para baixo = queixo), rosácea de cinco
+pétalas de quartzo, barra escura de sobrancelha/boca SOBRE a placa clara,
+órbitas de breu com pinpricks na frente e barba DOWN5 no queixo, com a
+colunata pentagonal (capital + plinto alicerçado) FLANQUEANDO a face — a
+cobrança do print: coluna clara atrás da máscara apagava a face; ASSINATURA
+= o RELIQUÁRIO ABERTO na copa (aro pentagonal ABERTO com cinco placas
+mandibulares DOBRADIÇADAS no aro — girar na tangente abre a goela em FLOR,
+e o boulder-de-luz paira na cama de cristais apontada para dentro), torres
+de ápside VERTICAIS com nódulo na ponta e três órbitas em alturas que nunca
+se tocam; identidade única do motor ao caco — ametista #c77dff no veio do
+basalto/cantaria/núcleo/boulder/FX, o hot #e0b3ff é SEMPRE acento;
+coreografia MAIS LENTA da árvore: 1,05 s com 68% de afinação e pose que
+zera no fim; 151 peças / ~8,9 mil vértices / ~5,4 mil triângulos)** — commit
+mais recente de `main` (`git log -1`). Anteriores: cósmico, cristal `f48e789`, névoa/plasma `9d7a881`.
 
-**Próximo: GEODO (Nv.8)** e depois abissal, vulcânico (Nv.8), astral e colosso
-(Nv.9), primordial (Nv.10) na ordem da tabela.
+**Próximo: ABISSAL (Nv.8)** e depois vulcânico (Nv.8), astral e colosso
+(Nv.9), primordial (Nv.10) na ordem da tabela. RULING DO USUÁRIO para o
+Nv.9/Nv.10: as espécies Nv.9 (astral, colosso) têm que ler **CÓSMICO —
+aparência de galáxia/estrelas** (escalar acima e diferir do Cósmico: pensar
+em galáxia espiral, enxames de estrelas, anéis orbitais); o primordial
+Nv.10 tem que parecer um **QUASAR SUPERMASSIVO com disco de acreção**,
+grande, com ataque em rajada de energia.
 
 ### Regras do loop (valem para cada monstro)
 
@@ -195,6 +208,41 @@ peças / ~14,8 mil vértices desenhados)** — commit mais recente de `main`
   (`star: 21`), e os pools `shardPrism`/`shardStar` precisam de `dispose()` na
   limpeza (o vazamento do `shardObsidian` já estava amarrado — copiar o padrão).
 
+### Lições do Geodo (catedral de geodo — as cinco que o print cobrou)
+
+- **O print cobra a CARA, não o traço**: a 6 m no card, sobrancelha/olho/boca
+  rasos morriam. A régua nova: face de MÁSCARA DE FACHADA — placa aparafusada
+  AVANÇANDO sobre o crânio (`zFront` da placa > zFront do crânio), traço
+  ESCURO sobre placa CLARA (brow/mouth dark sobre accent), pinprick claro na
+  FRENTE da órbita de breu, e a peça mais PARA FRENTE de tudo é a luz do olho
+  (o coração da rosácea). Pinar com bbox transformado (`zFront`), senão os
+  eixos diferentes de máscara/pétala/órbita mentem.
+- **A cobrança do CONTRASTE com a mãe**: com basalto #453a52 o Geodo lia o
+  MESMO preto-vidro da Obsidiana ao lado dela no print. Pedra crua ≠ vidro:
+  corpo clareado pra ameixa (luma LINEAR ≥ 4× a do corpo da mãe), roughness
+  ≥ 0,85 e metalness ≤ 0,1 (a mãe é espelhada, ≥ 0,5). Amarrar VISUALS =
+  hexes reais dos LOOKS do shader (senão figurino e rig derivam).
+- **A dobradiça é geometria, não animação**: a goela só abre se cada placa
+  mandibular tem a própria BASE ABAIXO do plano do aro e o rig gira no eixo
+  TANGENCIAL da borda (`q.setFromAxisAngle(tangent, -jawOpen)`) — aí o topo
+  tomba PARA FORA (flor abrindo, a leitura aprovada) e o pé desliza para
+  dentro do colarinho. Pinar o sinal com quaternion (topo·radial > 0,
+  pé·radial < 0), senão a peça vira "pedra voando da cabeça".
+- **Anti-z-fighting e anti-coluna-boiando**: `mm()` espelha SÓ o x (o z do
+  par espelhado é o MESMO) e peça em x=0 não se espelha — mas escrevem-se
+  aspas laterais NUM SÓ `mm()`; espelhar os dois lados em linhas separadas
+  duplica tudo em cima (quatro prismas colados = z-fighting, o print não
+  mostra mas o teste pega). E pilar que assenta em pedra tem o pé ENTERRADO
+  ou plinto até a pedra: coluna boiando a 0,16 do degrau passou no olho e
+  caiu no teste de alvenaria. Densidade anti-low-poly que se recupera de
+  dedup se repõe com peça ARQUITETÔNICA (plinto), nunca duplicata.
+- **O motor não tem gravidade de projétil**: arremesso é GUIADO a velocidade
+  CONSTANTE `speed = base × 1.12^(L-1)` (o matacão do Geodo a 15,5 un/s no
+  Nv.8 — o mais lento dos Nv.8 mesmo escalado; a régua de "pedra pesada" é
+  a VELOCIDADE ESCALADA + `heavy`/`splash`, não um arco que cai). Pinar
+  `|vel|` igual à speed escalada em todo o voo e a ordem base (Geodo:
+  interval 2,4 e speed 7 = os mais lentos da faixa).
+
 ### Ferramentas de QA
 
 `qa/inspect-species.mjs <especie> [aliada]` · `qa/find-particles.ps1 <especie>
@@ -203,6 +251,12 @@ peças / ~14,8 mil vértices desenhados)** — commit mais recente de `main`
 materials/uniforms) · `qa/probe-flake.mjs` (print na hora do voo) ·
 `qa/probe-nevoa.mjs` (varre a CENA atrás da pluma/estilhaço em voo e printa —
 útil quando o projétil é LENTO e o b-frame de 0,25 s atravessa o voo) ·
+`qa/probe-front.mjs <especie> [aliada] [outDir] [graus]` (orbita a câmera da
+arena até a FRENTE do modelo + zoom e fotografa o combate — a câmera padrão
+olha as COSTAS das unidades e o viewer do card do bestiário também mostra o
+REVERSO, então a face só é olhável por aqui) · `qa/probe-impact.mjs <especie>
+[aliada] [outDir]` (zoom PARA FORA antes do combate: o tabuleiro inimigo fica
+fora do enquadre padrão e o FX de impacto é invisível nos b-frames normais) ·
 `qa/probe-veil*.mjs` / `probe-quad.mjs` (sondas de material/cena). Prints em
 `%LOCALAPPDATA%\Temp\opencode\shots`. ⚠️ sonda: só roda o `wheel` de zoom no
 centro do canvas — `page.mouse.click` no tabuleiro ANTES do `start-battle`

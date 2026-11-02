@@ -19,6 +19,9 @@ import { SLIVER_LOOK } from './CrystalRig';
 // paleta do CÓSMICO (o caco do impacto é o MESMO plasma frio dos nós do corpo:
 // azul-estrela com o ouro do plasma no aro — identidade do projétil ao impacto)
 import { COSMICO_HEAT, COSMICO_STARLIGHT } from './CosmicoRig';
+// paleta do GEODO (o caco do impacto é o MESMO quartzo pentagonal da goela com
+// o MESMO veio de ametista do motor — identidade amarrada em teste; ver GeodoRig)
+import { GEODO_AMETHYST, GEODO_LILAC, QUARTZ_LOOK } from './GeodoRig';
 import type { SmokePool } from './smokePool';
 
 const PARTICLE_CAP = 400;
@@ -363,13 +366,52 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
+  // ...e os CACOS PENTAGONAIS de quartzo do impacto do GEODO: o matacão arrebenta
+  // na crosta da própria goela — o caco é o MESMO prisma de cinco faces do
+  // figurino com o MESMO veio de ametista do motor (#c77dff, identidade do
+  // projétil ao impacto). Física de pedra (o mais pesado da árvore): o caco é
+  // denso, arremessado para os lados e cai reto — o splash 1,8 escrito no chão
+  const shardGeode = useMemo(() => {
+    // espada PENTAGONAL bicuda (o mesmo prisma de 5 faces da crosta em voo):
+    // bicuda só de um lado porque pedra de geodo FRATURA em losango, não em
+    // agulha bicuda de vidro (a lasca da Obsidiana é que é agulha)
+    const geo = new THREE.CylinderGeometry(0.02, 0.14, 0.38, 5, 2);
+    const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
+      makeIceMaterial({
+        iceA: QUARTZ_LOOK.iceA, // O MESMO quartzo orquídea da goela
+        iceB: QUARTZ_LOOK.iceB,
+        crack: GEODO_AMETHYST, // = a cor do motor (identidade amarrada em teste)
+        amp: 0.012, // aresta viva: o relevo não pode arredondar o prisma de 5 faces
+        crackGlow: 1.4,
+        crackScale: 1.6,
+        crackWidth: 0.05,
+        alpha: 0.88,
+        bump: 0.9, // caco girando: a faceta de 5 quinas pisca no reflexo
+        reflPow: 130,
+        envMix: 0.6, // caco rodando espelha a arena (a receita do gelo/vidro)
+        sparkle: 0.75,
+        seed: 7.7 + i * 2.5,
+        breath: 0.4,
+      }),
+    );
+    return { geo, mats };
+  }, []);
   const shardData = useMemo(
     () =>
       Array.from({ length: SHARD_CAP }, () => ({
         life: 0,
         max: 0.62,
         size: 1,
-        kind: 'rock' as 'rock' | 'wood' | 'lava' | 'ice' | 'glass' | 'mud' | 'prism' | 'star',
+        kind: 'rock' as
+          | 'rock'
+          | 'wood'
+          | 'lava'
+          | 'ice'
+          | 'glass'
+          | 'mud'
+          | 'prism'
+          | 'star'
+          | 'geode',
         vx: 0,
         vy: 0,
         vz: 0,
@@ -401,6 +443,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       shardPrism.geo.dispose();
       for (const m of shardStar.mats) m.dispose();
       shardStar.geo.dispose();
+      for (const m of shardGeode.mats) m.dispose();
+      shardGeode.geo.dispose();
       arcGeo.dispose();
       arcMat.dispose();
     };
@@ -414,6 +458,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     shardMud,
     shardPrism,
     shardStar,
+    shardGeode,
     arcGeo,
     arcMat,
   ]);
@@ -575,7 +620,8 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       | 'glassShard'
       | 'mudShard'
       | 'prismShard'
-      | 'starShard' = 'flame',
+      | 'starShard'
+      | 'geodeShard' = 'flame',
     life?: number,
   ) => {
     if (kind === 'flame') {
@@ -620,7 +666,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                     ? 'prism'
                     : kind === 'starShard'
                       ? 'star'
-                      : 'rock';
+                      : kind === 'geodeShard'
+                        ? 'geode'
+                        : 'rock';
       const a = Math.random() * Math.PI * 2;
       // o gelo EXPLODE em farpas: mais velocidade radial, mais salto, mais
       // cambalhota que a pedra (que só desmorona). O VIDRO da Obsidiana é
@@ -637,6 +685,10 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       // o caco do Cósmico é ESTRELA partida: plasma frio SEM inércia de pedra
       // — sobe tanto quanto a farpa e gira quase tanto (só um degrau abaixo)
       const star = kind === 'starShard';
+      // o caco de GEODO é pedra de verdade (prisma pentagonal denso): NÃO entra
+      // no `fast` — sai com a inércia do bloco (o mais pesado da árvore) e só um
+      // degrau acima da pedra no giro, porque a quina de quartzo pega o ar
+      const geode = kind === 'geodeShard';
       const fast = ice || glass || prism || star;
       const s = (fast ? 2.2 : mud ? 1.15 : 1.6) + Math.random() * (fast ? 2.4 : mud ? 1.2 : 1.8);
       d.vx = Math.cos(a) * s;
@@ -644,7 +696,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
         (prism || star ? 2.6 : fast ? 2.1 : mud ? 1.1 : 1.6) +
         Math.random() * (ice ? 2.4 : prism || star ? 2.8 : mud ? 1.1 : 1.8);
       d.vz = Math.sin(a) * s;
-      const spin = prism ? 23 : star ? 21 : glass ? 19 : ice ? 16 : mud ? 6 : 11;
+      const spin = prism ? 23 : star ? 21 : glass ? 19 : ice ? 16 : mud ? 6 : geode ? 13 : 11;
       d.rx = (Math.random() - 0.5) * spin;
       d.ry = (Math.random() - 0.5) * spin;
       d.rz = (Math.random() - 0.5) * spin;
@@ -1097,6 +1149,34 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
             spawnRing(x, 0.1, z, '#3a4670', 2.2 * k); // marca da noite no piso
             spawnRing(x, 0.16, z, COSMICO_STARLIGHT, 1.15); // anel = a seção da estrela estourada
             spawnRing(x, 0.26, z, COSMICO_HEAT, 0.62); // ouro MIÚDO do plasma (nunca bola de fogo)
+          } else if (ev.species === 'geodo') {
+            // a catedral cospe o matacão da goela: no alvo o bloco ARREBENTA em
+            // cacos pentagonal-quartzo da própria crosta (pool `geodeShard`: a
+            // pedra do tiro e o caco do FX são o MESMO basalto/quartzo com o
+            // MESMO veio de ametista do motor), chove basalto pesado no piso (o
+            // `heavy` + `splash 1,8` escritos em física: a onda de choque é a
+            // mais LARGA da árvore) e a luz da cavidade vaza num flash miúdo
+            // lilás. SEM arco (assinatura do Raio); a fumaça é PÓ FRIO de
+            // catedral (heat 0 — pedra moída não brilha, a lição do rig)
+            const lv = Math.max(8, Math.min(10, ev.level ?? 8));
+            const k = 1 + (lv - 8) * 0.12;
+            // o matacão trinca nas costuras de quartzo e vira cinco quinas (pool: 3)
+            for (let i = 0; i < 3; i++)
+              spawnBurst(x, y, z, 0.32 + 0.05 * (lv - 8), 'geodeShard', 1.0);
+            spawnParticles(x, y, z, GEODO_AMETHYST, 10 + (lv - 8) * 2, 2.5, 0.5, 2.2, 0.55); // estilhaços de quartzo ARQUEANDO e caindo (cristal de geodo tem peso)
+            spawnParticles(x, y, z, '#282040', 12, 3.2, 0.55, 3.6, 0.35); // chuva de BASALTO (o bloco desfez: cai reto, pesado)
+            spawnParticles(x, y, z, '#5c4e74', 8, 2.6, 0.6, 3.1, 0.3); // lasca de rocha do corpo pegando a luz
+            spawnParticles(x, y, z, '#f6e6ff', 6, 1.6, 0.3, 0.7, 0.3); // a luz da cavidade que vazou (miúda e brevíssima)
+            spawnParticles(x, y - 0.1, z, GEODO_LILAC, 5, 1.2, 0.3, 1.1, 0.25); // quartzo miúdo assentando no piso
+            spawnRing(x, 0.1, z, '#3a3054', 2.6 * k); // onda de choque do matacão (a mais LARGA da árvore: o splash 1,8)
+            spawnRing(x, 0.16, z, GEODO_AMETHYST, 1.3); // anel = a seção do bloco estourada (maior: o boulder é maior)
+            spawnRing(x, 0.24, z, GEODO_LILAC, 0.66); // estouro miúdo da luz da goela (nunca bola de fogo)
+            spawnSmoke(x, y, z, 5, {
+              size: 0.1,
+              heat: 0, // POZOLANA: pedra moída não brilha (a fumaça quente é do vulcão)
+              life: 1.1,
+              speed: 1.3,
+            });
           } else if (ev.species === 'zephyr') {
             // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
             // de choque flutuante na altura do impacto, marca no chão e
@@ -1464,7 +1544,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
 
     // os cacos de gelo/vidro leem o MESMO cubemap da arena (captura one-shot
     // do IceRig) — plug idempotente e barato
-    plugArenaEnv(state.gl, [...shardIce.mats, ...shardGlass.mats, ...shardPrism.mats]);
+    plugArenaEnv(state.gl, [
+      ...shardIce.mats,
+      ...shardGlass.mats,
+      ...shardPrism.mats,
+      ...shardGeode.mats,
+    ]);
     // estilhaços de pedra do impacto do Gólem: saem disparados para os lados,
     // a gravidade os puxa para o chão (quicam), cambalhotam e apagam
     // encolhendo — as fissuras de magma acendem no instante do impacto e
@@ -1491,7 +1576,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                     ? shardPrism
                     : d.kind === 'star'
                       ? shardStar
-                      : shardRock;
+                      : d.kind === 'geode'
+                        ? shardGeode
+                        : shardRock;
       const mat = set.mats[i];
       if (!mesh) continue;
       if (d.life > 0) {

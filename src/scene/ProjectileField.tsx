@@ -18,6 +18,10 @@ import { SHARD_LOOK, SLIVER_LOOK } from './CrystalRig';
 // o fio dela é o MESMO traje dos fios da constelação — identidade amarrada em
 // teste do motor ao impacto; ver CosmicoRig)
 import { COSMICO_HEAT, COSMICO_STARLIGHT } from './CosmicoRig';
+// paleta do GEODO (o boulder arremessado é o MESMO basalto do corpo com o mesmo
+// veio de ametista do motor e o MESMO quartzo pentagonal da goela — identidade
+// amarrada em teste do motor ao impacto; ver GeodoRig)
+import { BASALT_LOOK, GEODO_AMETHYST, GEODO_LILAC, QUARTZ_LOOK } from './GeodoRig';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -45,6 +49,29 @@ export const COSMICO_FLARE_LOOK = {
   jitter: 0.015,
   dash: 3.0,
   flow: 5.5,
+};
+
+/** Geodo: o BOULDER arrancado da goela (o `heavy` + `splash 1,8` do motor) — o
+ *  MESMO basalto do corpo com o MESMO veio de ametista do motor (#c77dff),
+ *  rachado aceso porque a pedra acabou de sair do forno da catedral. É um
+ *  dodecaedro (as doze faces PENTAGONAIS da espécie) — a silhueta do tiro é a
+ *  silhueta do mameluco do figurino (a régua do projétil da árvore) */
+export const GEODO_BOULDER_LOOK = {
+  ...BASALT_LOOK,
+  crack: GEODO_AMETHYST,
+  crackGlow: 0.7, // veio ACESO: a pedra fresca sai da cavidade luminosa
+};
+
+/** Geodo: a CROSTA de quartzo do boulder — as pontas pentagonais do próprio
+ *  reliquário que saem arrancadas junto com a pedra (o `splash`: a goela
+ *  desaba com o boulder). Quartzo da espécie em voo: ametista orquídea com o
+ *  veio lilás-quente, NUNCA o trans lúcido do Cristal */
+export const GEODO_CHIP_LOOK = {
+  iceA: QUARTZ_LOOK.iceA,
+  iceB: QUARTZ_LOOK.iceB,
+  crack: GEODO_LILAC,
+  alpha: 0.9,
+  sparkle: 0.9,
 };
 
 /** Névoa: a pluma de bruma do bafo (hot = a GEADA do motor, a mesma cor do
@@ -180,6 +207,8 @@ export function ProjectileField() {
   const slvRef = useRef<THREE.InstancedMesh | null>(null);
   const starRef = useRef<THREE.InstancedMesh | null>(null);
   const flareRef = useRef<THREE.InstancedMesh | null>(null);
+  const geobRef = useRef<THREE.InstancedMesh | null>(null);
+  const geocRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -833,14 +862,65 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const geodoBoulder = useMemo(() => {
+    // o BOULDER da goela (o `heavy` + `splash 1,8` do motor): dodecaedro de
+    // basalto — as doze faces PENTAGONAIS costuradas em cada mameluco do
+    // figurino. NÃO é bola: é bloco facetado que tomba, e a silhueta do tiro é a
+    // silhueta do maciço (a régua do projétil da árvore). Pedra fresca arrancada
+    // do forno: o veio de ametista do MOTOR (#c77dff) aceso no uCharge do loop
+    const geo = new THREE.DodecahedronGeometry(0.34, 0); // 36 faces duras, quinas vivas
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: GEODO_BOULDER_LOOK.rockA,
+      rockB: GEODO_BOULDER_LOOK.rockB,
+      crack: GEODO_BOULDER_LOOK.crack, // = a cor do motor (identidade pedra→impacto)
+      amp: 0.03,
+      crackGlow: GEODO_BOULDER_LOOK.crackGlow,
+      crackScale: GEODO_BOULDER_LOOK.crackScale,
+      crackWidth: GEODO_BOULDER_LOOK.crackWidth,
+      crackBoost: GEODO_BOULDER_LOOK.crackBoost,
+      speck: GEODO_BOULDER_LOOK.speck,
+      seed: 6.1,
+      breath: 0.5,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const geodoChip = useMemo(() => {
+    // a CROSTA da goela que sai arrancada junto com a pedra: cinco ESPADAS
+    // PENTAGONAIS de quartzo fincadas no boulder (5 faces = o DNA da espécie),
+    // na MESMA ametista orquídea do figurino — nunca o trans lúcido do Cristal
+    const geo = new THREE.CylinderGeometry(0.028, 0.1, 0.26, 5, 2);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeIceMaterial({
+      iceA: GEODO_CHIP_LOOK.iceA,
+      iceB: GEODO_CHIP_LOOK.iceB,
+      crack: GEODO_CHIP_LOOK.crack, // o lilás-QUENTE da espécie (sempre acento)
+      amp: 0.012, // aresta dura: relevo algum pode arredondar o prisma de 5 faces
+      crackGlow: 0.8,
+      crackScale: 1.3,
+      crackWidth: 0.05,
+      sparkle: GEODO_CHIP_LOOK.sparkle,
+      alpha: GEODO_CHIP_LOOK.alpha,
+      bump: 0.7,
+      reflPow: 120,
+      envMix: 0.4,
+      seed: 9.3,
+      breath: 0.6,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -869,6 +949,8 @@ export function ProjectileField() {
     let slvN = 0;
     let starN = 0;
     let flareN = 0;
+    let geoB = 0;
+    let geoC = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -942,11 +1024,17 @@ export function ProjectileField() {
     // doubleShot ainda carregado — é luz saindo do peito, não brasa)
     cosmicoStar.mat.uniforms.uTime.value = time;
     cosmicoStar.mat.uniforms.uCharge.value = 0.85 + 0.1 * Math.sin(time * 6.8);
+    geodoBoulder.mat.uniforms.uTime.value = time;
+    // pedra ARRANCADA da goela: veio de ametista aceso (a luz da cavidade ainda
+    // vazando pela quina) e o uHurt nunca sobe — pedra não sangra, trinca
+    geodoBoulder.mat.uniforms.uCharge.value = 0.75 + 0.2 * Math.sin(time * 2.6);
+    geodoChip.mat.uniforms.uTime.value = time;
+    geodoChip.mat.uniforms.uCharge.value = 0.55 + 0.15 * Math.sin(time * 4.2);
     cosmicoFlare.mat.uniforms.uTime.value = time;
     cosmicoFlare.mat.uniforms.uCharge.value = 0.8 + 0.12 * Math.sin(time * 8.1);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
     // IceRig; idempotente e barato — teste de identidade ignora o resto)
-    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat, cristalPrism.mat, cristalSliver.mat]);
+    plugArenaEnv(state.gl, [iceSpike.mat, stormHail.mat, obsFlake.mat, frostNub.mat, cristalPrism.mat, cristalSliver.mat, geodoChip.mat]);
     // a estaca voa "carregada": as trincas internas ficam acesas
     iceSpike.mat.uniforms.uCharge.value = 0.55 + 0.25 * Math.sin(time * 4.2);
 
@@ -979,6 +1067,7 @@ export function ProjectileField() {
         const isMist = p.species === 'nevoa';
         const isPrism = p.species === 'cristal';
         const isStar = p.species === 'cosmico';
+        const isGeob = p.species === 'geodo';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -1413,6 +1502,44 @@ export function ProjectileField() {
             haloScale = scale * 1.55; // halo da estrela inteira (nó + bicos), nunca bola de fogo
             signature = true;
           }
+        } else if (isGeob) {
+          // a CATEDRAL cospe o próprio boulder: bloco de basalto pentagonal que
+          // TOMBA de ponta-cabeça no ar (inércia de pedra: mais lento que a
+          // lasca da Obsidiana — é o arremesso mais pesado da árvore, 7 m/s) e
+          // a crosta arrancada da goela vem colada nele: cinco espadas
+          // PENTAGONAIS de quartzo fincadas nos vértices de um pentágono (72°)
+          // que gira junto com o bloco — o `splash` de 1,8 começa no ar: o
+          // reliquário desaba junto com a pedra
+          dummy.rotation.set(time * 1.35 + p.id, time * 0.85 + p.id * 0.7, 0.5 + time * 0.4);
+          const launch = Math.min(1, 0.26 + p.age / 0.2); // até pedra pega embalo
+          if (geoB < MAX_PER_ELEMENT) {
+            const scale = (0.95 + 0.1 * (lv - 8)) * launch;
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            geobRef.current?.setMatrixAt(geoB, dummy.matrix);
+            geodoBoulder.seeds.setX(geoB, ((p.id * 59) % 83) / 6.3);
+            geoB++;
+            for (let k = 0; k < 5; k++) {
+              if (geoC >= MAX_PER_ELEMENT) break;
+              const th = k * 1.2566 + time * 0.9 + p.id * 1.3; // pentágono: 72°
+              const ph = 0.34 + (k % 2) * 0.6; // cinturão superior e inferior
+              dir
+                .set(Math.cos(th) * Math.cos(ph), Math.sin(ph), Math.sin(th) * Math.cos(ph))
+                .applyQuaternion(dummy.quaternion)
+                .multiplyScalar(0.38 * scale);
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              rollQuat.setFromUnitVectors(up, dir.normalize()); // a ponta encosta para fora
+              dummy.quaternion.copy(rollQuat);
+              dummy.scale.setScalar(scale);
+              dummy.updateMatrix();
+              geocRef.current?.setMatrixAt(geoC, dummy.matrix);
+              geodoChip.seeds.setX(geoC, ((p.id * 23 + k * 13) % 71) / 5.7 + k * 1.1);
+              geoC++;
+            }
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]); // devolve o centro p/ o halo
+            haloScale = scale * 1.4; // halo contido: o peso é da pedra, o brilho é da crosta
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -1492,6 +1619,8 @@ export function ProjectileField() {
       [slvRef.current, slvN, cristalSliver.seeds],
       [starRef.current, starN, cosmicoStar.seeds],
       [flareRef.current, flareN, cosmicoFlare.seeds],
+      [geobRef.current, geoB, geodoBoulder.seeds],
+      [geocRef.current, geoC, geodoChip.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -1783,6 +1912,27 @@ export function ProjectileField() {
           flareRef.current = m;
         }}
         args={[cosmicoFlare.geo, cosmicoFlare.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Geodo: o matacão arrancado da goela (o `heavy` + `splash 1,8` do
+          motor) — dodecaedro de basalto com o veio de ametista do motor aceso.
+          A silhueta do tiro é a silhueta do maciço: pedra facetada que tomba,
+          nunca bolinha */}
+      <instancedMesh
+        ref={(m) => {
+          geobRef.current = m;
+        }}
+        args={[geodoBoulder.geo, geodoBoulder.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Geodo: a crosta de cinco espadas PENTAGONAIS de quartzo que sai cravada
+          no boulder (o reliquário desaba junto com a pedra — o splash começa no
+          ar), na mesma ametista orquídea do figurino */}
+      <instancedMesh
+        ref={(m) => {
+          geocRef.current = m;
+        }}
+        args={[geodoChip.geo, geodoChip.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

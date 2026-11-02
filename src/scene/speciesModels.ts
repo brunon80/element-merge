@@ -115,7 +115,13 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   cristal: { body: '#7d5ec8', dark: '#a296a6', glow: '#b7a6ff', accent: '#d9c9ff', bodyOpacity: 0.9, roughness: 0.18, metalness: 0.15 },
   // Nv.8 — avançados
   cosmico: { body: '#2b3560', dark: '#141a33', glow: '#9ad0ff', accent: '#ffe9a8', roughness: 0.4 },
-  geodo: { body: '#8a7fae', dark: '#453c63', glow: '#e0b3ff', accent: '#c77dff', roughness: 0.5, metalness: 0.2 },
+  // Nv.8 — a CATEDRAL DE GEODO: basalto ameixa CRUA e salpicada (nunca o vidro
+  // negro espelhado da Obsidiana, mãe — corpo/dark são os MESMOS hex do
+  // BASALT_LOOK/BASALT_DEEP do rig, amarrados em teste) com a cantaria clara de
+  // pedra lilás e a ametista ORQUÍDEA #c77dff (= a cor do motor, do veio da
+  // pedra, do núcleo na goela, do boulder e do FX: identidade amarrada em
+  // teste). O glow #e0b3ff é sempre o hot (nunca a cor principal)
+  geodo: { body: '#5c4e74', dark: '#282040', glow: '#e0b3ff', accent: '#c77dff', roughness: 0.9, metalness: 0.06 },
   abissal: { body: '#2e5f78', dark: '#142b38', glow: '#5fe0c8', accent: '#bfe9ff', roughness: 0.35 },
   vulcanico: { body: '#4a3f3a', dark: '#221b18', glow: '#ff3d10', accent: '#ff9d3d', roughness: 0.85 },
   // Nv.9 — lendários
@@ -195,9 +201,12 @@ const ringAround = (
   y: number,
   tilt: number,
   part: Omit<Part, 'p' | 'r'>,
+  /** giro do anel inteiro em torno de Y: serve quando a peça tem que cair na
+   *  FACE de um tambor pentagonal (o colar do Geodo), não na quina */
+  phase = 0,
 ): Part[] =>
   Array.from({ length: n }, (_, k) => {
-    const phi = (k / n) * Math.PI * 2;
+    const phi = phase + (k / n) * Math.PI * 2;
     return {
       ...part,
       p: [radius * Math.cos(phi), y, radius * Math.sin(phi)],
@@ -271,6 +280,98 @@ const starPoints = (
       r: aim([ux, uy, uz]),
     } as Part;
   });
+
+/**
+ * PRISMA DE PEDRA CORTADA entre dois pontos — o osso da CATEDRAL DE GEODO:
+ * colunas da nave, arcobotantes e costelas. É um `cyl` de CINCO FACES (o DNA
+ * pentagonal da espécie: o quartzo do geodo é pentagonal; o Cristal tem SEIS
+ * faces e o Cósmico tem OITO FACES no fio), com anéis verticais generosos
+ * (≥5 por unidade) para a aresta aguentar o macro sem virar low-poly.
+ */
+const prism = (
+  a: [number, number, number],
+  b: [number, number, number],
+  thick: number,
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const dz = b[2] - a[2];
+  const len = Math.hypot(dx, dy, dz);
+  return {
+    ...part,
+    g: 'cyl',
+    a: [thick, thick * 0.86, len + 0.04, 5, Math.max(3, Math.round(len * 5))],
+    p: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2],
+    r: aim([dx, dy, dz]),
+  };
+};
+
+/**
+ * PONTAS DE QUARTZO PENTAGONAL do GEODO (a costela da espécie: CINCO FACES em
+ * cada ponta, em TODAS as pontas — colar, rosácea da face, coroa, estilhaços em
+ * órbita e garras): `dirs` prismas bicudos com a BASE enterrada na rocha (pino
+ * enterrado não é ponta solta — a regra da coroa da Névoa) e anéis verticais
+ * que aguentam o close. `nodeR` é o raio do nódulo/colar onde a base afunda.
+ */
+const quartzPoints = (
+  c: [number, number, number],
+  nodeR: number,
+  len: number,
+  thick: number,
+  dirs: [number, number, number][],
+  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
+): Part[] =>
+  dirs.map((d) => {
+    const L = Math.hypot(d[0], d[1], d[2]) || 1;
+    const ux = d[0] / L;
+    const uy = d[1] / L;
+    const uz = d[2] / L;
+    const back = nodeR - 0.06; // base enterrada na rocha
+    return {
+      ...part,
+      g: 'cyl',
+      a: [thick * 0.3, thick, len, 5, Math.max(3, Math.round(len * 6))],
+      p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
+      r: aim([ux, uy, uz]),
+    } as Part;
+  });
+
+/** cinco direções de cacho (o geodo brota em CINCOS: cinco pontas por mamelon,
+ *  sempre uma mais em pé) — a espécie é 5-em-tudo, como o Cristal é 6-em-tudo */
+const CLUSTER5: [number, number, number][] = [
+  [0.12, 1, 0.12],
+  [0.8, 0.62, 0.34],
+  [-0.62, 0.7, -0.28],
+  [0.34, 0.5, -0.78],
+  [-0.4, 0.46, 0.76],
+];
+
+/** as cinco PÉTALAS da ROSÁCEA da máscara (a janela redonda da catedral desenhada
+ *  no plano da FRENTE): um pentágono de pétalas com uma apontando para cima */
+const ROSE5: [number, number, number][] = Array.from({ length: 5 }, (_, k) => {
+  const a = Math.PI / 2 + (k / 5) * Math.PI * 2;
+  return [Math.cos(a), Math.sin(a), 0.3];
+});
+
+/** garras/pentes para baixo (o queixo de cristal do queixo) */
+const DOWN5: [number, number, number][] = [
+  [0.05, -1, 0.2],
+  [0.66, -0.75, 0.3],
+  [-0.66, -0.75, 0.3],
+  [0.4, -0.55, -0.6],
+  [-0.4, -0.55, -0.6],
+];
+
+/** punho de cristal dos arcobotantes: cinco pontas para fora/frente (a mão do
+ *  tanque que segura o arcobotante e ateia o boulder para a goela) */
+const FIST5: [number, number, number][] = [
+  [0.25, 0.9, 0.45],
+  [0.95, 0.35, 0.35],
+  [-0.55, 0.5, 0.62],
+  [0.5, 0.2, -0.8],
+  [-0.35, 0.3, -0.85],
+];
 
 /** um leque de pontas simétrico no plano da FRENTE (a estrela de oito bicos
  *  vista de frente) + uma ponta para dentro/para fora no Z, para a estrela não
@@ -1739,22 +1840,144 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
 
   // Obsidiana+Cristal — catedral de geodo: o mais duro dos tanques -------
   geodo: {
-    bob: 0.02,
+    // PLANTADO NA PRÓPRIA FUNDAÇÃO (floatY 0, bob 0,015): o tanque mais duro da
+    // árvore não flutua nem balança — é um maciço de obsidiana assentado sobre
+    // três degraus pentagonais de pedra clara, com entulho ao redor (ele já
+    // apanhou muito e DEVOLVE estilhaços).
+    // DNA DA ESPÉCIE = PENTÁGONO EM TUDO: os mamelons de rocha são dodecaedros
+    // (doze PENTÁGONOS) e todo cristal, coluna, arcobotante, estilhaço em órbita
+    // e rosácea da face é `cyl`/`cone` de CINCO FACES. É a diferença dura contra
+    // os dois pais: a Obsidiana (Nv.7) é vidro negro de arestas retas e o Cristal
+    // (Nv.7) são colunas de SEIS faces; aqui a pedra é facetada em pentágonos e
+    // o cristal é pentagonal e BAIXO (cristal de geodo: toco grosso, não lança).
+    // A ASSINATURA é o GEODO ABERTO na copa da cabeça: cinco placas pentagonais
+    // mandibulares dobradiçadas na borda do aro + cinco pontas de quartzo nas
+    // costuras, com a luz-núcleo pairando dentro da cavidade; o boulder do tiro
+    // sai DA GOELA (o `heavy` + `splash` do motor).
+    floatY: 0,
+    bob: 0.015,
     parts: [
-      { g: 'dodeca', a: [0.85], p: [0, 1.0, 0], s: [1.1, 1.0, 1.05], m: 'body' },
-      { g: 'sphere', a: [0.4, 10, 8], p: [0, 1.2, 0.45], s: [0.9, 0.8, 0.6], m: 'glow', flick: 0.05 },
-      { g: 'octa', a: [0.3, 0], p: [0, 2.1, 0], s: [1.0, 1.3, 1.0], m: 'body' },
-      ...mm({ g: 'cone', a: [0.16, 0.7, 6], p: [0.62, 1.9, 0.1], r: [0, 0, -0.4], m: 'accent' }),
-      ...mm({ g: 'cone', a: [0.13, 0.55, 6], p: [-0.5, 2.15, -0.15], r: [0, 0, 0.5], m: 'accent' }),
-      ...mm({ g: 'cone', a: [0.1, 0.45, 6], p: [0.3, 2.45, -0.35], r: [0.3, 0, -0.25], m: 'accent' }),
-      ...mm({ g: 'box', a: [0.4, 0.5, 0.46], p: [-0.72, 0.42, 0.05], m: 'dark' }),
-      ...mm(SEYE(0.18, 2.14, 0.36)),
-      ...mm(SPUPIL(0.18, 2.14, 0.36)),
-      { g: 'torus', a: [0.7, 0.06, 8, 24], p: [0, 0.16, 0], r: [1.57, 0, 0], m: 'accent' },
-      { g: 'octa', a: [0.09, 0], p: [0.75, 0.6, 0.4], s: [0.7, 1.5, 0.7], m: 'glow', group: 0 },
-      { g: 'octa', a: [0.08, 0], p: [-0.7, 0.8, -0.35], s: [0.7, 1.4, 0.7], m: 'glow', group: 0 },
+      // ===== A FUNDAÇÃO: três degraus pentagonais de pedra clara (um em cima do
+      // outro com a fase girada 36° = estrela de dez pontas) + os cinco blocos do
+      // degrau + o entulho de basalto que ele já cuspiu =====
+      { g: 'cyl', a: [1.66, 1.78, 0.12, 5, 2], p: [0, 0.06, 0], r: [0, -1.5708, 0], m: 'accent', amp: 0.01, tag: 'floor' },
+      { g: 'cyl', a: [1.3, 1.42, 0.16, 5, 2], p: [0, 0.2, 0], r: [0, -0.9425, 0], m: 'accent', amp: 0.012, tag: 'dais' },
+      { g: 'cyl', a: [0.98, 1.1, 0.14, 5, 2], p: [0, 0.35, 0], r: [0, -1.5708, 0], m: 'dark', amp: 0.014, tag: 'dais' },
+      ...ringAround(5, 1.52, 0.46, 0.12, { g: 'box', a: [0.32, 0.28, 0.28], m: 'accent', amp: 0.016, tag: 'plinthrow' }, -1.5708),
+      ...ringAround(5, 2.04, 0.11, 0.08, { g: 'dodeca', a: [0.13], s: [1.2, 0.7, 1.1], m: 'dark', amp: 0.028, tag: 'rubble' }),
+      ...mm({ g: 'dodeca', a: [0.34], p: [0.86, 0.54, 0.62], s: [1.15, 0.85, 1], m: 'dark', amp: 0.03, tag: 'rubble' }),
+      ...mm({ g: 'dodeca', a: [0.2], p: [-1.3, 0.32, -0.52], s: [1.1, 0.8, 1.1], m: 'body', amp: 0.03, tag: 'rubble' }),
+      // mamelões de quartzo brotando do degrau (cinco pontas por mamelon)
+      ...quartzPoints([1.44, 0.36, 0.44], 0.3, 0.34, 0.075, CLUSTER5, { m: 'trans', tag: 'cluster' }).flatMap(mm),
+      ...quartzPoints([0, 1.9, -1.14], 0.34, 0.42, 0.08, CLUSTER5, { m: 'trans', tag: 'cluster' }),
+
+      // ===== O MACIÇO: nódulos dodecaédricos de basalto empilhados (a pedra é o
+      // corpo: squat, plantada, um degrau de raio pequeno entre eles) com as
+      // COLUNAS PENTAGONAIS da nave pregadas na frente e as costelas de pedra =====
+      { g: 'dodeca', a: [1.0], p: [0, 1.02, 0], s: [1.45, 0.95, 1.3], m: 'body', amp: 0.034 },
+      { g: 'dodeca', a: [0.8], p: [0, 1.84, 0.02], s: [1.3, 0.88, 1.12], m: 'body', amp: 0.032 },
+      { g: 'dodeca', a: [0.72], p: [0, 2.52, -0.02], s: [1.22, 0.92, 1.06], m: 'body', amp: 0.03, tag: 'chest' },
+      { g: 'dodeca', a: [0.58], p: [0, 2.14, -0.86], s: [1.1, 1.05, 0.9], m: 'body', amp: 0.03, tag: 'apse' },
+      ...mm({ g: 'dodeca', a: [0.42], p: [0.92, 1.16, 0.1], s: [1.05, 1.3, 1.05], m: 'body', amp: 0.03, tag: 'leg' }),
+      ...mm({ g: 'dodeca', a: [0.3], p: [0.98, 0.66, 0.34], s: [1.1, 1.0, 1.15], m: 'body', amp: 0.028, tag: 'leg' }),
+      ...mm({ g: 'cyl', a: [0.34, 0.42, 0.22, 5, 2], p: [0.98, 0.38, 0.42], r: [0, -0.9, 0], m: 'accent', amp: 0.016, tag: 'foot' }),
+      // colunas pentagonais em pé, FLANQUEANDO a frente do maciço (não na
+      // frente: a cobrança do print — coluna clara atrás da máscara apagava a
+      // face no meio do branco), com capital: a catedral não é um bloco, ela
+      // tem COLUNATA
+      ...mm(prism([0.86, 0.58, 0.26], [0.78, 2.64, 0.1], 0.13, { m: 'accent', amp: 0.012, tag: 'column' })),
+      ...mm({ g: 'cyl', a: [0.21, 0.15, 0.16, 5, 1], p: [0.76, 2.74, 0.08], m: 'accent', amp: 0.012, tag: 'column' }),
+      // BASE da coluna (plinto pentagonal): sem ela a haste ficava BOIANDO a
+      // 0,16 do degrau — coluna alicerçada assenta EXATA no degrau alto
+      ...mm({ g: 'cyl', a: [0.22, 0.26, 0.2, 5, 1], p: [0.86, 0.52, 0.26], m: 'accent', amp: 0.012, tag: 'column' }),
+      ...mm({ g: 'box', a: [0.15, 0.32, 0.11], p: [0.52, 2.68, 0.42], m: 'accent', amp: 0.014, tag: 'ashlar' }),
+      // costelas de basalto apontando (tag spike: eriçam na afinação)
+      ...mm(prism([0.88, 2.34, -0.06], [1.3, 3.0, -0.16], 0.1, { m: 'body', amp: 0.02, tag: 'spike' })),
+      ...mm({ g: 'cone', a: [0.16, 0.72, 5, 2], p: [1.02, 3.06, -0.52], r: [0.35, 0, -0.5], m: 'body', amp: 0.022, tag: 'spike' }),
+      ...mm({ g: 'cone', a: [0.13, 0.62, 5, 2], p: [1.18, 1.92, -0.68], r: [0.5, 0, -0.45], m: 'body', amp: 0.022, tag: 'spike' }),
+      // os olhos de ametista que respiram por dentro da basalto (a luz do geodo
+      // vazando pelas fissuras — três nódulos acesos na frente do maciço)
+      ...mm({ g: 'octa', a: [0.11, 1], p: [0.3, 2.34, 0.82], m: 'glow', flick: 0.08, tag: 'vein' }),
+      { g: 'octa', a: [0.12, 1], p: [0.02, 1.62, 0.94], m: 'glow', flick: 0.09, tag: 'vein' },
+
+      // ===== PESCOÇO + CRÂNIO: um colar pentagonal de BASALTO ESCURO segurando
+      // a cabeça-mamelon (o colar é escuro de caso: a cobrança do print — com
+      // cantaria clara embaixo da máscara, a face virava mancha branca e a
+      // máscara de pedra clara apagava. Pedra escura sob placa clara = o único
+      // contraste que lê a 6 m; o geodo em si é a COPA da cabeça, não um capacete) =====
+      { g: 'cyl', a: [0.42, 0.56, 0.34, 5, 3], p: [0, 2.9, -0.02], r: [0, -0.9425, 0], m: 'dark', amp: 0.014, tag: 'neck' },
+      ...mm({ g: 'box', a: [0.1, 0.34, 0.13], p: [0.46, 2.9, -0.08], r: [0, 0, -0.35], m: 'dark', amp: 0.012, tag: 'neck' }),
+      { g: 'dodeca', a: [0.62], p: [0, 3.18, 0], s: [1.14, 0.92, 1.04], m: 'body', amp: 0.026, tag: 'skull' },
+      ...mm({ g: 'box', a: [0.07, 0.32, 0.36], p: [0.64, 3.08, 0.14], m: 'accent', amp: 0.012, tag: 'cheek' }),
+
+      // ===== A FACE: placa pentagonal CLARA (vértice para baixo = queixo, aresta
+      // plana = testa) aparafusada na frente do crânio, com a ROSÁCEA de cinco
+      // pétalas de quartzo no meio e sobrolho/boca em barra escura sobre a placa
+      // clara. Órbita escura + lasca clara NA FRENTE (nunca googly — a regra da
+      // árvore) e o coração de ametista no olho da rosácea. A face INTEIRA é
+      // MAIOR e mais saltada que o crânio (a cobrança do print: traço raso
+      // morria a 6 m; aqui a máscara, o sobrolho, as órbitas e a boca projetam
+      // como máscara de pedra de fachada) =====
+      { g: 'cyl', a: [0.52, 0.54, 0.14, 5, 3], p: [0, 3.04, 0.66], r: [1.5708, 0, 0], m: 'accent', amp: 0.008, tag: 'mask' },
+      ...quartzPoints([0, 3.04, 0.7], 0.36, 0.22, 0.062, ROSE5, { m: 'trans', tag: 'rosette' }),
+      { g: 'cyl', a: [0.12, 0.13, 0.1, 5, 1], p: [0, 3.04, 0.8], r: [1.5708, 0, 0], m: 'accent', amp: 0.006, tag: 'boss' },
+      { g: 'octa', a: [0.09, 0], s: [0.8, 1.6, 0.8], p: [0, 3.04, 0.92], m: 'white', flick: 0.1, tag: 'heart' },
+      { g: 'box', a: [0.6, 0.1, 0.07], p: [0, 3.36, 0.78], m: 'dark', tag: 'brow' },
+      ...mm({ g: 'box', a: [0.17, 0.14, 0.07], p: [0.23, 3.18, 0.82], m: 'black', tag: 'socket' }),
+      ...mm({ g: 'octa', a: [0.075, 0], s: [0.75, 1.6, 0.75], p: [0.23, 3.18, 0.9], m: 'white', flick: 0.14, tag: 'eye' }),
+      { g: 'box', a: [0.34, 0.08, 0.06], p: [0, 2.74, 0.8], m: 'dark', tag: 'mouth' },
+      ...quartzPoints([0.3, 2.78, 0.66], 0.1, 0.2, 0.05, DOWN5, { m: 'trans', tag: 'beard' }),
+
+      // ===== O RELIQUÁRIO ABERTO (a assinatura): o aro pentagonal do geodo +
+      // cinco placas mandibulares DOBRADIÇADAS na borda do aro (o rig abre a
+      // goela no `pose.jaw`) + cinco pontas de quartzo nas costuras + a cama de
+      // cristais por baixo do núcleo que paira na cavidade + as abóbadas em
+      // ruína e as torres de quartzo por trás =====
+      { g: 'cyl', a: [0.56, 0.7, 0.36, 5, 3, 1], p: [0, 3.44, 0], r: [0, -0.9425, 0], m: 'accent', amp: 0.012, tag: 'jaw.collar' },
+      ...ringAround(5, 0.7, 3.3, 0.4, { g: 'box', a: [0.5, 0.36, 0.11], m: 'accent', amp: 0.012, tag: 'jaw.cup' }, 0.3142),
+      ...ringAround(5, 0.55, 3.7, 0.34, { g: 'box', a: [0.5, 0.4, 0.11], m: 'accent', amp: 0.012, tag: 'jaw.plate' }, 0.3142),
+      ...ringAround(5, 0.55, 3.66, 0.22, { g: 'cyl', a: [0.035, 0.12, 0.44, 5, 4], m: 'trans', amp: 0.01, tag: 'jaw.point' }, 0.9425),
+      ...ringAround(5, 0.3, 3.34, -0.3, { g: 'cyl', a: [0.03, 0.09, 0.3, 5, 3], m: 'trans', amp: 0.01, tag: 'bed' }, 0.3142),
+      // as TORRES DE ÁPSIDE da abóbada em ruína: três pináculos VERTICAIS de
+      // quartzo (prisma de 5 faces) plantados nas três costuras de trás do aro,
+      // cada um com um nódulo de cantaria na ponta. Ordem pentagonal — a coroa
+      // do geodo é ALICERÇADA, não feixe de gravetos quebrados (a cobrança do
+      // print: torres inclinadas + ripas finas lixavam ruína, não catedral)
+      // (o do meio é ímpar: x=0, não se espelha — senão duas peças sobrepostas
+      // brigariam em z-fighting no print)
+      { ...prism([0, 3.56, -0.66], [0, 4.56, -0.76], 0.09, { m: 'trans', amp: 0.012, tag: 'crest' }) },
+      { g: 'dodeca', a: [0.1], p: [0, 4.64, -0.78], m: 'accent', amp: 0.02, tag: 'crest' },
+      // as duas torres laterais NUM SÓ mm (espelhar as duas linhas = quatro
+      // prismas colados no mesmo lugar brigando em z-fighting no print)
+      ...mm(prism([-0.63, 3.5, -0.2], [-0.72, 4.28, -0.28], 0.085, { m: 'trans', amp: 0.012, tag: 'crest' })),
+      ...mm({ g: 'dodeca', a: [0.09], p: [-0.74, 4.36, -0.3], m: 'accent', amp: 0.02, tag: 'crest' }),
+
+      // ===== BRAÇOS = ARCOBOTANTES (a lição estrutural da catedral): o peso do
+      // ombro desce por um arco pentagonal até um pilar plantado no degrau. O
+      // braço INTEIRO gira no nódulo do ombro (pivô exportado pelo rig) =====
+      ...mm({ g: 'dodeca', a: [0.34], p: [0.82, 3.1, -0.04], s: [1, 1, 1.05], m: 'body', amp: 0.028, tag: 'arm.shoulder' }),
+      ...mm(prism([0.84, 3.04, -0.04], [1.34, 2.26, 0.02], 0.14, { m: 'accent', amp: 0.014, tag: 'arm.upper' })),
+      ...mm(prism([1.34, 2.26, 0.02], [1.46, 1.04, -0.02], 0.15, { m: 'accent', amp: 0.014, tag: 'arm.lower' })),
+      ...mm(prism([0.7, 2.76, 0.3], [1.2, 1.96, 0.34], 0.075, { m: 'accent', amp: 0.012, tag: 'arm.rib' })),
+      ...mm({ g: 'dodeca', a: [0.22], p: [1.34, 2.26, 0.02], m: 'body', amp: 0.026, tag: 'arm.elbow' }),
+      ...mm({ g: 'dodeca', a: [0.3], p: [1.48, 0.66, -0.04], s: [1.05, 1.35, 1.05], m: 'dark', amp: 0.026, tag: 'arm.pier' }),
+      ...quartzPoints([1.5, 1.88, 0.0], 0.18, 0.24, 0.055, FIST5, { m: 'trans', tag: 'arm.claw' }).flatMap(mm),
+
+      // ===== TRÊS ÓRBITAS de ESTILHAÇOS em três alturas (o tanque devolve o que
+      // apanhou): seis tocos de quartzo girando no peito (0), sete lascas de
+      // basalto raspando o degrau no SENTIDO CONTRÁRIO (1) e cinco estilhaços
+      // altos acima da goela (2) — CINCO na coroa, de novo o pentágono =====
+      ...ringAround(6, 1.0, 2.04, -0.38, {
+        g: 'cyl', a: [0.03, 0.11, 0.42, 5, 4], m: 'trans', amp: 0.01, tag: 'dart', group: 0, flick: 0.14,
+      }),
+      ...ringAround(7, 1.9, 0.28, 0.12, {
+        g: 'dodeca', a: [0.12], s: [1.1, 0.7, 1], m: 'dark', amp: 0.026, tag: 'dart', group: 1, flick: 0.18,
+      }),
+      ...ringAround(5, 0.9, 4.36, 0.34, {
+        g: 'cyl', a: [0.025, 0.09, 0.38, 5, 4], m: 'trans', amp: 0.01, tag: 'dart', group: 2, flick: 0.2,
+      }),
     ],
-    groups: { 0: 0.8 },
+    groups: { 0: 0.55, 1: -0.75, 2: 0.35 },
   },
 
   // Plasma+Obsidiana — catástrofe andante: o vulcão primordial a Nv.8 ----
