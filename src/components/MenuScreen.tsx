@@ -34,8 +34,9 @@ export function MenuScreen() {
             vitória <b>+100</b>, derrota <b>+50</b> — o saldo persiste entre partidas.
           </div>
           <div>
-            <b>Time persistente</b> vencendo, todo o seu time volta para a próxima
-            partida — até o que morreu. O <b>inimigo é calculado na hora do
+            <b>Time persistente</b> vencendo ou perdendo, todo o seu time volta
+            para a próxima partida — até o que morreu (na derrota, o prejuízo
+            financeiro fica). O <b>inimigo é calculado na hora do
             combate</b>: orçamento e nível de evolução escalados pelo seu time × dificuldade.
           </div>
         </div>

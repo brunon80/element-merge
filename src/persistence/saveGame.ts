@@ -18,8 +18,9 @@ const LEGACY_HYBRID_MAP: Record<string, SpeciesId> = {
 };
 
 /** Unidade do time do jogador que volta automaticamente para a próxima partida.
- *  Na vitória volta todo o time plantado (vivas e mortas em combate); na derrota
- *  ou empate, só quem sobreviveu. Fusões e vendas ficam de fora. */
+ *  Na vitória e na derrota volta todo o time plantado (vivas e mortas em
+ *  combate — na derrota sem reembolso: o prejuízo financeiro fica); no empate
+ *  com sobreviventes, só quem sobreviveu. Fusões e vendas ficam de fora. */
 export interface RetainedUnit {
   species: SpeciesId;
   level: MonsterLevel;

@@ -152,7 +152,8 @@ export function SettingsMenu() {
                 <p className="hint">
                   Ajuste também em Configurações → Depuração. A escolha fica
                   salva. Criaturas criadas assim entram no time persistido e
-                  voltam com ele (vitória: todo o time; derrota: só os vivos).
+                  voltam com ele (vitória e derrota: todo o time; empate com
+                  vivos: só os vivos).
                 </p>
               </section>
             )}

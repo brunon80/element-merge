@@ -238,14 +238,25 @@ export const useGameStore = create<GameStore>((set, get) => {
       //    apaga da coleção. Só não voltam os que foram FUNDIDOS (o filho de
       //    nível seguinte já é eles) e os VENDIDOS na lixeira (o valor deles já
       //    virou moeda).
-      //  • DERROTA ou EMPATE: só sobreviventes, como sempre — perder custa.
+      //  • DERROTA (regra anti-softlock): se o jogador quiser continuar jogando,
+      //    o time inteiro daquela rodada também volta — mas o prejuízo financeiro
+      //    fica: nenhuma moeda gasta na rodada é devolvida além da recompensa
+      //    padrão de derrota (+50). Sem isso, comprar 5 monstros na 1ª rodada e
+      //    perdê-los todos deixaria o jogador com 50 moedas — sem time e sem
+      //    nem poder invocar (custo 100): sem-fim de partida. Com o time de
+      //    volta, ele pode trocar de dificuldade, vender criaturas na lixeira
+      //    (o valor delas vira moeda) e remontar a estratégia sem ser
+      //    severamente penalizado.
+      //  • EMPATE com sobreviventes: só sobreviventes, como sempre — perder
+      //    unidades no empate faz parte do acordo do empate. O empate com o
+      //    tabuleiro zerado cai na regra anti-softlock (time inteiro de volta).
+      const survivors = engine
+        .aliveUnits('player')
+        .map((u) => ({ species: u.species, level: u.level }));
       const roster =
-        summary.result === 'victory'
-          ? engine.restoredRoster('player')
-          : engine
-              .aliveUnits('player')
-              .map((u) => ({ species: u.species, level: u.level }))
-              .slice(0, TILES_PER_SIDE);
+        summary.result === 'draw' && survivors.length > 0
+          ? survivors.slice(0, TILES_PER_SIDE)
+          : engine.restoredRoster('player');
       save.retainedRoster = roster;
       persistSoon();
     }

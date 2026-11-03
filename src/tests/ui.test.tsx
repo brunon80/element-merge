@@ -609,7 +609,7 @@ describe('Tempo persistido entre partidas', () => {
     for (const u of restored) expect(u.species).toBe('golem');
   });
 
-  test('derrota total zera o time persistido (recomeçar com moedas)', () => {
+  test('derrota total devolve o time inteiro (regra anti-softlock)', () => {
     renderAll();
     useGameStore.getState().setDifficulty('hard');
     clickSummon('shop-zephyr'); // frágil contra um exército difícil
@@ -623,9 +623,11 @@ describe('Tempo persistido entre partidas', () => {
     const st = useGameStore.getState();
     expect(st.lastSummary).not.toBeNull();
     if (st.lastSummary!.result === 'defeat') {
-      expect(st.retainedCount).toBe(0);
+      // o zephyr que caiu em combate volta para a próxima partida: sem isso,
+      // o jogador ficaria sem exército e sem moedas para montar outro (softlock)
+      expect(st.retainedCount).toBe(1);
       act(() => useGameStore.getState().startNewMatch());
-      expect(myUnits()).toHaveLength(0);
+      expect(myUnits()).toHaveLength(1);
     }
   });
 });

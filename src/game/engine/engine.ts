@@ -106,9 +106,11 @@ export class GameEngine {
   /**
    * Livro de bordo de TUDO que cada lado pôs em campo na partida, com o destino
    * final de cada unidade (viva, morta em combate, consumida por fusão, vendida).
-   * É a base da regra de persistência entre partidas: na vitória, o time da
-   * próxima rodada é tudo o que o jogador plantou — inclusive o que morreu —, e
-   * só ficam de fora o que foi fundido (o filho já carrega o valor) ou vendido.
+   * É a base da regra de persistência entre partidas: na vitória — e, desde a
+   * regra anti-softlock, na derrota também — o time da próxima rodada é tudo o
+   * que o jogador plantou, inclusive o que morreu; no empate com sobreviventes,
+   * só o que ficou vivo. Ficam de fora o que foi fundido (o filho já carrega o
+   * valor) ou vendido.
    */
   private readonly deployed: DeployedRecord[] = [];
   private nextUnitId = 1;

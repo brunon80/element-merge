@@ -676,7 +676,7 @@ fx `mergeDone`/`primordial` fica ancorado nesse ponto e o buraco de origem fica
 livre. Senão a criatura "pula de volta" para o buraco de onde saiu. Pino:
 `fusion.test.ts` 1b e `ui.test.tsx` ("o filho nasce no slot do ALVO").
 
-**5. Preparação fecha no combate; vitória devolve o time inteiro.**
+**5. Preparação fecha no combate; vitória E derrota devolvem o time inteiro.**
 - **Tudo é montado antes da luta**: `engine.summon` só na fase `preparation` —
   em combate devolve `reason: 'COMBAT_STARTED'` e emite `summonBlocked` (o
   jogador vê o aviso). Nem jogador nem IA invocam reforços no combate (o
@@ -691,13 +691,31 @@ livre. Senão a criatura "pula de volta" para o buraco de onde saiu. Pino:
   tudo o que o jogador pôs em campo com destino `alive` **ou `dead`** (ordem de
   nível decrescente, teto `TILES_PER_SIDE` = 12). Ficam de fora os FUNDIDOS (o
   filho de nível seguinte já carrega o valor deles) e os VENDIDOS na lixeira (o
-  valor virou moeda). Em derrota/empate voltam só os vivos, como antes. O motor
-  mantém o livro de bordo `deployed[]` com o `fate` de cada unidade
-  (`createUnit` / `killUnit` / `removeUnit(fate)` / `sellUnit('sold')`). Assim
-  evoluir um monstro deixa de ser aposta com a morte dele na partida vencida.
-  Format do save NÃO mudou (sem bump de `SAVE_VERSION`). Pino: `fullMatch.test.ts`
-  (morto volta, fundido e vendido não; nível decrescente) e `ui.test.tsx`
-  ("VITÓRIA devolve o time inteiro").
+  valor virou moeda). O motor mantém o livro de bordo `deployed[]` com o `fate`
+  de cada unidade (`createUnit` / `killUnit` / `removeUnit(fate)` /
+  `sellUnit('sold')`). Assim evoluir um monstro deixa de ser aposta com a morte
+  dele na partida vencida. Pino: `fullMatch.test.ts` (morto volta, fundido e
+  vendido não; nível decrescente) e `ui.test.tsx` ("VITÓRIA devolve o time
+  inteiro").
+- **Derrota = resgate anti-softlock (regra nova, 02/nov/2026 — não reverter)**:
+  quem perder e quiser continuar jogando recebe de volta o time INTEIRO daquela
+  rodada — o mesmo `restoredRoster` da vitória — mas o prejuízo financeiro
+  fica: nenhuma moeda gasta na rodada é devolvida além da recompensa padrão
+  (`DEFEAT_REWARD` = +50). O softlock que a regra mata: comprar 5 monstros na
+  1ª rodada (5×100), perdê-los todos e começar a próxima só com as 50 moedas
+  da recompensa — sem criatura guardada e sem pagar nem a invocação (100),
+  sem como recomeçar. Com o time de volta o jogador pode trocar de
+  dificuldade, vender criaturas na lixeira (o valor delas vira moeda) e
+  montar outra estratégia sem ser severamente penalizado. EMPATE com
+  sobreviventes mantém a regra antiga (só os vivos voltam); empate com o
+  tabuleiro do jogador zerado cai no mesmo resgate da derrota. A escolha
+  vive no `finishMatch` do `store/gameStore.ts` — o motor continua sem
+  credentar moeda nenhuma e sem conhecer a regra. Format do save NÃO mudou
+  (sem bump de `SAVE_VERSION`). Pino: `defeatRoster.test.ts` (estória
+  completa: zerou → os 5 voltam, saldo só +50, vende 1 → volta a invocar;
+  derrota com sobrevivente → mortos também voltam; empate com vivos →
+  mortos NÃO voltam) e `ui.test.tsx` ("derrota total devolve o time
+  inteiro").
 
 **6. Enquadramento: os 24 buracos têm que estar alcançáveis pelo ponteiro.** O
 dock (loja/controles) é DOM e engole o `pointerdown`; se o chão de um buraco é
