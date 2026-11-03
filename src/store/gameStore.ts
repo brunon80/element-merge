@@ -6,6 +6,7 @@ import { grantMatchReward } from '../game/economy/economy';
 import { checkFusion } from '../game/fusion/fusionRules';
 import { tileFromWorld } from '../game/board';
 import {
+  MAX_BLOOM_INTENSITY,
   loadSave,
   persistSave,
   defaultSave,
@@ -79,6 +80,8 @@ interface GameStoreState {
   stats: SaveData['stats'];
   difficulty: Difficulty;
   scenario: ScenarioChoice;
+  bloomIntensity: number;
+  sceneryBloomIntensity: number;
   activeArenaScene: ArenaScene;
   lastMatchArenaScene: ArenaScene | null;
   startingCoinsCfg: number;
@@ -111,6 +114,8 @@ interface GameStoreActions {
   setSettings: (open: boolean) => void;
   setDifficulty: (d: Difficulty) => void;
   setScenario: (scenario: ScenarioChoice) => void;
+  setBloomIntensity: (intensity: number) => void;
+  setSceneryBloomIntensity: (intensity: number) => void;
   setStartingCoins: (n: number) => void;
   setDebugMode: (on: boolean) => void;
   /** Depuração: coloca a espécie no slot livre mais à esquerda (só na preparação). */
@@ -318,6 +323,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     stats: { ...save.stats },
     difficulty: save.settings.difficulty,
     scenario: save.settings.scenario,
+    bloomIntensity: save.settings.bloomIntensity,
+    sceneryBloomIntensity: save.settings.sceneryBloomIntensity,
     activeArenaScene: resolveArenaScene(save.settings.scenario, save.lastArenaScene),
     lastMatchArenaScene: save.lastArenaScene,
     startingCoinsCfg: save.settings.startingCoins,
@@ -337,6 +344,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         stats: { ...save.stats },
         difficulty: save.settings.difficulty,
         scenario: save.settings.scenario,
+        bloomIntensity: save.settings.bloomIntensity,
+        sceneryBloomIntensity: save.settings.sceneryBloomIntensity,
         activeArenaScene: resolveArenaScene(save.settings.scenario, save.lastArenaScene),
         lastMatchArenaScene: save.lastArenaScene,
         startingCoinsCfg: save.settings.startingCoins,
@@ -588,6 +597,24 @@ export const useGameStore = create<GameStore>((set, get) => {
           ? { lastMatchArenaScene: activeArenaScene }
           : {}),
       });
+    },
+
+    setBloomIntensity(intensity: number): void {
+      const value = Number.isFinite(intensity)
+        ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(intensity)))
+        : 0;
+      save.settings.bloomIntensity = value;
+      persistSoon();
+      set({ bloomIntensity: value });
+    },
+
+    setSceneryBloomIntensity(intensity: number): void {
+      const value = Number.isFinite(intensity)
+        ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(intensity)))
+        : 0;
+      save.settings.sceneryBloomIntensity = value;
+      persistSoon();
+      set({ sceneryBloomIntensity: value });
     },
 
     setStartingCoins(n: number): void {

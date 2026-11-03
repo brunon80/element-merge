@@ -164,6 +164,32 @@ describe('Cenário da arena', () => {
   });
 });
 
+describe('Bloom da arena', () => {
+  test('controla e desliga o bloom pelo menu de gráficos', () => {
+    renderAll();
+    act(() => useGameStore.getState().setSettings(true));
+    fireEvent.click(screen.getByTestId('settings-tab-graphics'));
+
+    const slider = screen.getByRole('slider', { name: 'Intensidade do bloom' });
+    expect(slider).toHaveValue('20');
+    expect(screen.getByTestId('bloom-value')).toHaveTextContent('20%');
+
+    fireEvent.change(slider, { target: { value: '0' } });
+    expect(useGameStore.getState().bloomIntensity).toBe(0);
+    expect(screen.getByTestId('bloom-value')).toHaveTextContent('Desligado');
+
+    fireEvent.change(slider, { target: { value: '80' } });
+    expect(useGameStore.getState().bloomIntensity).toBe(80);
+    expect(screen.getByTestId('bloom-value')).toHaveTextContent('80%');
+
+    const scenerySlider = screen.getByRole('slider', { name: 'Bloom do cenário' });
+    expect(scenerySlider).toHaveValue('30');
+    fireEvent.change(scenerySlider, { target: { value: '65' } });
+    expect(useGameStore.getState().sceneryBloomIntensity).toBe(65);
+    expect(screen.getByTestId('scenery-bloom-value')).toHaveTextContent('65%');
+  });
+});
+
 describe('Loja e invocação', () => {
   test('invocar Ignis custa 100 e a criatura entra na arena', () => {
     renderAll();

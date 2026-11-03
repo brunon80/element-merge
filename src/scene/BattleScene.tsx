@@ -1,6 +1,7 @@
 import { useThree } from '@react-three/fiber';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { SCENERY_BLOOM_LAYER } from './BloomGate';
 import { useGameStore } from '../store/gameStore';
 import { Arena } from './Arena';
 import { CameraController } from './CameraController';
@@ -32,6 +33,13 @@ export function BattleScene({
   // fuligem compartilhada: trilha das bolas de fogo + fumaça que sai das
   // chamas das criaturas + fumaça das fusões e explosões
   const smoke = useMemo(() => new SmokePool(700), []);
+  const sceneryLayerRef = useRef<THREE.Group>(null);
+
+  useLayoutEffect(() => {
+    sceneryLayerRef.current?.traverse((object) => {
+      object.layers.enable(SCENERY_BLOOM_LAYER);
+    });
+  }, [sceneVariant]);
 
   const dragTools = useMemo(() => {
     return {
@@ -90,8 +98,10 @@ export function BattleScene({
 
   return (
     <group>
-      <Lighting sceneVariant={sceneVariant} />
-      <Arena sceneVariant={sceneVariant} />
+      <group ref={sceneryLayerRef} name="scenery-bloom-layer">
+        <Lighting sceneVariant={sceneVariant} />
+        <Arena sceneVariant={sceneVariant} />
+      </group>
       <SmokeLayer pool={smoke} />
       <FlameTrail pool={smoke} />
       <ProjectileField />

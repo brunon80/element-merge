@@ -10,8 +10,11 @@ import type {
 } from '../game/types';
 
 export const SAVE_KEY = 'elemental-merge-save-v1';
-/** v2: time persistido; v3: árvore elemental; v4: último cenário de partida. */
-export const SAVE_VERSION = 4;
+/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário. */
+export const SAVE_VERSION = 6;
+export const DEFAULT_BLOOM_INTENSITY = 20;
+export const MAX_BLOOM_INTENSITY = 100;
+export const DEFAULT_SCENERY_BLOOM_INTENSITY = 30;
 
 /** Híbridos removidos (Nv.1 por par de puros) → espécie equivalente da nova árvore. */
 const LEGACY_HYBRID_MAP: Record<string, SpeciesId> = {
@@ -35,6 +38,8 @@ export interface RetainedUnit {
 export interface SettingsData {
   difficulty: Difficulty;
   scenario: ScenarioChoice;
+  bloomIntensity: number;
+  sceneryBloomIntensity: number;
   /** Parâmetro configurável do saldo inicial. */
   startingCoins: number;
   /** Depuração: permite criar qualquer criatura do bestiário direto na arena. */
@@ -73,6 +78,8 @@ export function defaultSave(): SaveData {
     settings: {
       difficulty: 'normal',
       scenario: 'arcane',
+      bloomIntensity: DEFAULT_BLOOM_INTENSITY,
+      sceneryBloomIntensity: DEFAULT_SCENERY_BLOOM_INTENSITY,
       startingCoins: DEFAULT_STARTING_COINS,
       debugMode: false,
     },
@@ -180,6 +187,16 @@ export function loadSave(): SaveData {
       parsed.settings?.scenario === 'random'
         ? parsed.settings.scenario
         : base.settings.scenario;
+    const bloomIntensity =
+      typeof parsed.settings?.bloomIntensity === 'number' &&
+      Number.isFinite(parsed.settings.bloomIntensity)
+        ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(parsed.settings.bloomIntensity)))
+        : base.settings.bloomIntensity;
+    const sceneryBloomIntensity =
+      typeof parsed.settings?.sceneryBloomIntensity === 'number' &&
+      Number.isFinite(parsed.settings.sceneryBloomIntensity)
+        ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(parsed.settings.sceneryBloomIntensity)))
+        : base.settings.sceneryBloomIntensity;
     const lastArenaScene: ArenaScene | null =
       parsed.lastArenaScene === 'arcane' ||
       parsed.lastArenaScene === 'forest' ||
@@ -210,6 +227,8 @@ export function loadSave(): SaveData {
       settings: {
         difficulty,
         scenario,
+        bloomIntensity,
+        sceneryBloomIntensity,
         startingCoins,
         debugMode: !!parsed.settings?.debugMode,
       },

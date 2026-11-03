@@ -76,9 +76,8 @@ export function App() {
             menuMode={!inGame}
             sceneVariant={activeArenaScene}
           />
-          {/* o bloom do quasar: o pipeline de pós é permanente e só o pass de
-              bloom é gateado (o fundo do scene sai daqui e passa ao clearColor
-              do RenderPass — ver BloomGate) */}
+          {/* Bloom global, com intensidade controlada nas configurações. O fundo
+              da cena passa ao clearColor do RenderPass (ver BloomGate). */}
           <BloomGate
             backgroundColor={sceneBackground}
           />

@@ -19,11 +19,12 @@ const SCENARIOS: { id: ScenarioChoice; label: string }[] = [
   { id: 'random', label: 'Aleatório' },
 ];
 
-type TabId = 'match' | 'scenario' | 'economy' | 'progress' | 'debug';
+type TabId = 'match' | 'scenario' | 'graphics' | 'economy' | 'progress' | 'debug';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'match', label: '⚔ Partida' },
   { id: 'scenario', label: '🌄 Cenário' },
+  { id: 'graphics', label: '✨ Gráficos' },
   { id: 'economy', label: '🪙 Economia' },
   { id: 'progress', label: '📊 Progresso' },
   { id: 'debug', label: '🐞 Depuração' },
@@ -40,6 +41,10 @@ export function SettingsMenu() {
   const setDifficulty = useGameStore((s) => s.setDifficulty);
   const scenario = useGameStore((s) => s.scenario);
   const setScenario = useGameStore((s) => s.setScenario);
+  const bloomIntensity = useGameStore((s) => s.bloomIntensity);
+  const setBloomIntensity = useGameStore((s) => s.setBloomIntensity);
+  const sceneryBloomIntensity = useGameStore((s) => s.sceneryBloomIntensity);
+  const setSceneryBloomIntensity = useGameStore((s) => s.setSceneryBloomIntensity);
   const startingCoinsCfg = useGameStore((s) => s.startingCoinsCfg);
   const setStartingCoins = useGameStore((s) => s.setStartingCoins);
   const debugMode = useGameStore((s) => s.debugMode);
@@ -153,6 +158,66 @@ export function SettingsMenu() {
                     </button>
                   ))}
                 </div>
+              </section>
+            )}
+
+            {tab === 'graphics' && (
+              <section>
+                <h3>Gráficos</h3>
+                <p className="hint">
+                  Ajuste o bloom geral e o bloom adicional da paisagem. Reduzir
+                  ou desligar os efeitos pode aliviar a GPU em dispositivos mais lentos.
+                </p>
+                <label className="bloom-control" htmlFor="bloom-intensity">
+                  <span className="bloom-control-heading">
+                    Intensidade do bloom
+                    <output data-testid="bloom-value">
+                      {bloomIntensity === 0 ? 'Desligado' : `${bloomIntensity}%`}
+                    </output>
+                  </span>
+                  <input
+                    id="bloom-intensity"
+                    data-testid="bloom-intensity"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={bloomIntensity}
+                    aria-label="Intensidade do bloom"
+                    aria-valuetext={bloomIntensity === 0 ? 'Desligado' : `${bloomIntensity}%`}
+                    onChange={(event) => setBloomIntensity(Number(event.currentTarget.value))}
+                  />
+                  <span className="hint">
+                    0% desliga o bloom geral. O bloom do cenário é controlado separadamente.
+                  </span>
+                </label>
+                <label className="bloom-control" htmlFor="scenery-bloom-intensity">
+                  <span className="bloom-control-heading">
+                    Bloom do cenário
+                    <output data-testid="scenery-bloom-value">
+                      {sceneryBloomIntensity === 0 ? 'Desligado' : `${sceneryBloomIntensity}%`}
+                    </output>
+                  </span>
+                  <input
+                    id="scenery-bloom-intensity"
+                    data-testid="scenery-bloom-intensity"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={sceneryBloomIntensity}
+                    aria-label="Bloom do cenário"
+                    aria-valuetext={
+                      sceneryBloomIntensity === 0 ? 'Desligado' : `${sceneryBloomIntensity}%`
+                    }
+                    onChange={(event) =>
+                      setSceneryBloomIntensity(Number(event.currentTarget.value))
+                    }
+                  />
+                  <span className="hint">
+                    Realça a paisagem e a quadra sem adicionar bloom às criaturas.
+                  </span>
+                </label>
               </section>
             )}
 

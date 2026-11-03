@@ -18,8 +18,8 @@ vi.mock('../scene/BattleScene', () => ({
   ),
 }));
 
-// o bloom do quasar é cenário puro (composer + gate): no smoke jsdom ele não
-// tem WebGL, e o App só precisa do ARENA_BG (o fog)
+// O compositor bloom precisa de WebGL; no smoke jsdom o App só precisa do
+// ARENA_BG (o fog).
 vi.mock('../scene/BloomGate', () => ({
   ARENA_BG: '#0b1020',
   BloomGate: () => null,
@@ -76,6 +76,7 @@ describe('App (smoke)', () => {
 
     // três grupos na sidebar
     expect(screen.getByTestId('settings-tab-match')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-tab-graphics')).toBeInTheDocument();
     expect(screen.getByTestId('settings-tab-economy')).toBeInTheDocument();
     expect(screen.getByTestId('settings-tab-progress')).toBeInTheDocument();
 

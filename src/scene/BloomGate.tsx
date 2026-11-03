@@ -7,21 +7,20 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import { useGameStore } from '../store/gameStore';
+import { MAX_BLOOM_INTENSITY } from '../persistence/saveGame';
+
+export const SCENERY_BLOOM_LAYER = 1;
 
 /**
- * O BLOOM DO QUASAR (autorizado pelo usuário SÓ pro disco do Primordial — a
- * decisão está no HANDOFF). Como o pedido amarra: o brilho do disco precisa de
- * pós-processamento de verdade (anel de fótons em HDR estourando pra fora da
- * tela), mas "a arena inteira não pode trocar de pipeline por causa de uma
- * unidade". Este componente resolve os dois.
+ * Pós-processamento bloom da arena. A intensidade é controlada pelo jogador;
+ * quando está em zero, o compositor é contornado para dispensar o custo extra.
+ * O disco do Primordial continua usando HDR e recebe o mesmo efeito global.
  *
- * ## Por que o pipeline é SEMPRE o composer (montado desde o primeiro frame) e
- * ## o que é gateado é o próprio bloom
+ * ## O compositor é criado uma vez e usado enquanto o bloom está ativo
  *
- * Ligar/desligar o composer quando um primordial nasce/morre trocaria o caminho
- * de cor da arena inteira num único frame — com o pipeline permanente, o
- * `UnrealBloomPass` entra e sai (subindo e descendo a rampa) e TODO o resto é
- * pixel a pixel o que a arena já mostra hoje sem pós nenhum.
+ * Com o pipeline ativo, o `UnrealBloomPass` sobe e desce suavemente conforme a
+ * configuração muda. Ao desligá-lo, o render direto preserva o caminho de cor
+ * da arena sem pós-processamento.
  *
  * ## A armadilha de cor (three r169) — e por que o pass final NÃO codifica
  *
@@ -39,7 +38,7 @@ import { useGameStore } from '../store/gameStore';
  *  - ShaderMaterials crus: continuam escrevendo o valor display-referred cru
  *    (ninguém mexe neles) → no RT eles JÁ chegam no formato do framebuffer;
  *  - materiais EMBUTIDOS: chegariam LINEAR no RT (sem ACES, sem sRGB) e a arena
- *    escureceria inteira quando o primordial piscasse em cena. Daí o
+ *    escureceria inteira ao ativar o bloom. Daí o
  *    `patchBuiltins`: enquanto o composer é o caminho, a codificação que o three
  *    faria no canvas é devolvida MATERIAL A MATERIAL, no instante da escrita no
  *    RT — o `onBeforeCompile` troca os includes `tonemapping_fragment`/
@@ -57,18 +56,16 @@ import { useGameStore } from '../store/gameStore';
  * framebuffer mostra" e o pass final é uma CÓPIA PURA (ShaderPass do
  * CopyShader, sem `OutputPass` — OutputPass codificaria de novo e estouraria os
  * ~90% da cena que já chega display-referred). O bloom ainda extrai pelo limiar
- * de luminância: o anel de fótons do disco sai >1 do shader no RT HalfFloat
- * (Float16 segura o HDR) e é exatamente isso que o `UnrealBloomPass` pesca —
- * 0,8 no display-referred é perto do branco, só o horizonte acende.
+ * de luminância: pixels acima do limiar acendem, incluindo valores HDR do disco
+ * de fótons do Primordial. O RT HalfFloat preserva esses valores; no
+ * display-referred, 0,8 é perto do branco.
  *
  * ## O gate
  *
- * `UnrealBloomPass.enabled` segue "existe um primordial vivo em cena" (morto:
- * rampa de volta a zero durante a pose de morte, o disco já apaga sozinho).
- * O RT HalfFloat + MSAA `samples: 4` (o canvas nu tinha MSAA nativo; sem
- * samples o composer trocaria serrilhado bom por serrilhado pior) existem
- * sempre — o pass de bloom desligado não desenha nada (o EffectComposer pula
- * passes disabled), então o custo do gate fechado é só o RT + a cópia.
+ * A intensidade positiva ativa o composer e o bloom. O RT HalfFloat + MSAA
+ * `samples: 4` (o canvas nu tinha MSAA nativo; sem samples o composer trocaria
+ * serrilhado bom por serrilhado pior) são usados enquanto o efeito estiver
+ * ativo. Em intensidade zero, a cena volta ao render direto.
  * O palco da enciclopédia (outro contexto, outro Canvas) fica intocado: o
  * print do card do primordial não floresce, igual ao resto da árvore.
  */
@@ -78,10 +75,8 @@ import { useGameStore } from '../store/gameStore';
  *  para o `<fog>`, mantendo os dois no mesmo tom) */
 export const ARENA_BG = '#0b1020';
 
-/** os três números do florecer do disco: intensidade, espalhamento e o limiar
- *  (0,8 no display-referred = perto do branco; só o branco-quasar do horizonte
- *  e o HDR do anel de fótons passam — o ouro do disco fica abaixo) */
-const BLOOM_STRENGTH = 0.62;
+/** Teto visual: o bloom não deve exceder o nível que era usado em 50%. */
+const BLOOM_MAX_STRENGTH = 0.62;
 const BLOOM_RADIUS = 0.5;
 const BLOOM_THRESHOLD = 0.8;
 
@@ -95,8 +90,7 @@ const BLOOM_THRESHOLD = 0.8;
 const QA_FLAGS = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
 const QA_NO_BLOOM = !!import.meta.env.DEV && QA_FLAGS?.get('qtNoBloom') === '1';
 const QA_NO_COMPOSER = !!import.meta.env.DEV && QA_FLAGS?.get('qtNoComposer') === '1';
-/** a rampa (por segundo): ~0,25 s acendendo quando o quasar nasce, ~0,25 s
- *  apagando quando ele morre — ninguém merece pop de pós-processamento */
+/** Suaviza mudanças rápidas no controle para evitar pop visual. */
 const BLOOM_RAMP = 2.5;
 
 /**
@@ -135,6 +129,38 @@ void main() {
   vec3 rgb = c.r >= 0.0 && c.g >= 0.0 && c.b >= 0.0 ? c.rgb : vec3( 0.0 );
   float a = c.a >= 0.0 && c.a <= 1.0 ? c.a : 0.0;
   gl_FragColor = vec4( min( rgb, vec3( 65504.0 ) ), a );
+}
+`,
+};
+
+const SCENERY_COMPOSITE_SHADER = {
+  uniforms: {
+    tDiffuse: { value: null as THREE.Texture | null },
+    uScenerySource: { value: null as THREE.Texture | null },
+    uSceneryBloom: { value: null as THREE.Texture | null },
+    uSceneryIntensity: { value: 0 },
+  },
+  vertexShader: /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+`,
+  fragmentShader: /* glsl */ `
+uniform sampler2D tDiffuse;
+uniform sampler2D uScenerySource;
+uniform sampler2D uSceneryBloom;
+uniform float uSceneryIntensity;
+varying vec2 vUv;
+void main() {
+  vec4 base = texture2D( tDiffuse, vUv );
+  if ( uSceneryIntensity > 0.0 ) {
+    vec3 source = texture2D( uScenerySource, vUv ).rgb;
+    vec3 bloomed = texture2D( uSceneryBloom, vUv ).rgb;
+    base.rgb += max( bloomed - source, vec3( 0.0 ) ) * uSceneryIntensity;
+  }
+  gl_FragColor = base;
 }
 `,
 };
@@ -240,9 +266,9 @@ function unpatchBuiltins(scene: THREE.Scene) {
 
 export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: string }) {
   const { gl, scene, camera, size } = useThree();
-  const primAlive = useGameStore(
-    (s) => s.units.some((u) => u.species === 'primordial' && !u.dying),
-  );
+  const bloomIntensity = useGameStore((s) => s.bloomIntensity);
+  const sceneryBloomIntensity = useGameStore((s) => s.sceneryBloomIntensity);
+  const useComposer = (bloomIntensity > 0 || sceneryBloomIntensity > 0) && !QA_NO_COMPOSER;
 
   const stack = useMemo(() => {
     // RT do composer: HalfFloat segura o HDR do anel de fótons (o highpass lê
@@ -254,6 +280,7 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
       { type: THREE.HalfFloatType, samples: 4 },
     );
     const composer = new EffectComposer(gl, rt);
+    composer.renderToScreen = false;
     // Higiene de plumbing (NÃO é o conserto do quadrado preto — esse conserto
     // é o NaN na raiz dos shaders do rig + o cinto logo abaixo; ver lesson no
     // HANDOFF): o `EffectComposer` clona o RT do construtor, então o
@@ -269,9 +296,7 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
     // topo)
     const renderPass = new RenderPass(scene, camera, null, new THREE.Color(backgroundColor));
     // resolve do multisample + cinto anti-Não-Finito: cópia do buffer
-    // multisample pro simples com a sanificação do SANITIZE_SHADER no mesmo
-    // draw. Só entra com o quasar vivo (o mesmo gate do bloom) — sem primordial
-    // o caminho é exatamente o de hoje, um resolve só
+    // multisample pro simples com a sanificação do SANITIZE_SHADER no mesmo draw.
     const resolve = new ShaderPass(SANITIZE_SHADER);
     resolve.enabled = false;
     const bloom = new UnrealBloomPass(
@@ -281,44 +306,95 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
       BLOOM_THRESHOLD,
     );
     bloom.enabled = false;
-    const copy = new ShaderPass(CopyShader); // a cópia pura SEM codificação — é
-    // ela que fecha a conta: o buffer já vale "o que o framebuffer mostra"
+    const composite = new ShaderPass(SCENERY_COMPOSITE_SHADER);
+    const screenCopy = new ShaderPass(CopyShader);
+    screenCopy.renderToScreen = true;
     composer.addPass(renderPass);
     composer.addPass(resolve);
     composer.addPass(bloom);
-    composer.addPass(copy);
+    composer.addPass(composite);
     composer.setSize(size.width, size.height); // crava CSS px + _pixelRatio certo
-    return { composer, bloom, copy, renderPass, resolve };
+    const sceneryCapture = new THREE.WebGLRenderTarget(rt.width, rt.height, {
+      type: THREE.HalfFloatType,
+    });
+    const scenerySource = sceneryCapture.clone();
+    const sceneryBloomTarget = sceneryCapture.clone();
+    const scenerySanitize = new ShaderPass(SANITIZE_SHADER);
+    const sceneryCopy = new ShaderPass(CopyShader);
+    const sceneryBloom = new UnrealBloomPass(
+      new THREE.Vector2(rt.width, rt.height),
+      0.5,
+      BLOOM_RADIUS,
+      0.42,
+    );
+    const target = gl.getRenderTarget();
+    const clearColor = gl.getClearColor(new THREE.Color()).clone();
+    const clearAlpha = gl.getClearAlpha();
+    gl.setClearColor(0x000000, 0);
+    for (const sceneryTarget of [sceneryCapture, scenerySource, sceneryBloomTarget]) {
+      gl.setRenderTarget(sceneryTarget);
+      gl.clear(true, true, true);
+    }
+    gl.setRenderTarget(target);
+    gl.setClearColor(clearColor, clearAlpha);
+    return {
+      composer,
+      bloom,
+      composite,
+      screenCopy,
+      renderPass,
+      resolve,
+      sceneryCapture,
+      scenerySource,
+      sceneryBloomTarget,
+      scenerySanitize,
+      sceneryCopy,
+      sceneryBloom,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, scene, camera]);
 
-  // gate: só o pass de bloom entra/sai; o pipeline é sempre o mesmo
+  // Mantém a configuração da cena sincronizada com o modo de renderização.
   const strength = useRef(0);
   useEffect(() => {
     // o fundo do scene sai de cena (literalmente): quem pinta é o clearColor do
     // RenderPass, do contrário o WebGLBackground limparia o RT em linear. Com o
     // desvio `qtNoComposer` é o inverso: devolve o fundo ao WebGLBackground.
     const prev = scene.background;
-    scene.background = QA_NO_COMPOSER ? new THREE.Color(backgroundColor) : null;
+    scene.background = useComposer ? null : new THREE.Color(backgroundColor);
+    if (!useComposer) unpatchBuiltins(scene);
     return () => {
       scene.background = prev;
     };
-  }, [scene, backgroundColor]);
+  }, [scene, backgroundColor, useComposer]);
 
   useEffect(() => {
     return () => {
       stack.composer.dispose();
       stack.bloom.dispose();
-      stack.copy.dispose();
+      stack.composite.dispose();
+      stack.screenCopy.dispose();
       stack.resolve.dispose();
       stack.renderPass.dispose();
+      stack.sceneryCapture.dispose();
+      stack.scenerySource.dispose();
+      stack.sceneryBloomTarget.dispose();
+      stack.scenerySanitize.dispose();
+      stack.sceneryCopy.dispose();
+      stack.sceneryBloom.dispose();
       unpatchBuiltins(scene);
     };
   }, [stack, scene]);
 
   useEffect(() => {
     stack.composer.setSize(size.width, size.height);
-  }, [stack, size.width, size.height]);
+    const width = Math.max(1, Math.round(size.width * gl.getPixelRatio()));
+    const height = Math.max(1, Math.round(size.height * gl.getPixelRatio()));
+    stack.sceneryCapture.setSize(width, height);
+    stack.scenerySource.setSize(width, height);
+    stack.sceneryBloomTarget.setSize(width, height);
+    stack.sceneryBloom.setSize(width, height);
+  }, [gl, stack, size.width, size.height]);
 
   useFrame((_, dt) => {
     // cabo da cena para as sondas de QA (só dev): varre a cena atrás de NaN e
@@ -327,28 +403,61 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
     if (import.meta.env.DEV) {
       (window as unknown as { __QT?: unknown }).__QT = { scene, camera, gl, THREE, composer: stack.composer };
     }
-    if (QA_NO_COMPOSER) {
-      // desvio de QA: volta o `gl.render` nu de sempre — tone map + sRGB pelo
-      // three no framebuffer, fundo pelo WebGLBackground, nenhum RT no meio e
-      // NENHUM patch de cor (o patch é exatamente o que o three faz sozinho aqui)
+    if (!useComposer) {
+      // Sem bloom, usa o render direto para evitar render targets e passes extras.
+      strength.current = 0;
       gl.setRenderTarget(null);
       gl.render(scene, camera);
       return;
     }
     stack.renderPass.clearColor?.set(backgroundColor);
     patchBuiltins(scene); // material novo que spawnou no meio da partida
-    const target = primAlive && !QA_NO_BLOOM ? BLOOM_STRENGTH : 0;
+    const target = QA_NO_BLOOM
+      ? 0
+      : (bloomIntensity / MAX_BLOOM_INTENSITY) * BLOOM_MAX_STRENGTH;
     const cur = strength.current;
     if (cur !== target) {
       const step = BLOOM_RAMP * dt;
       strength.current = target > cur ? Math.min(target, cur + step) : Math.max(target, cur - step);
     }
     const v = strength.current;
-    // o gate: bloom e o cinto de sanificação (que também resolve o multisample)
-    // entram juntos — sem quasar o caminho é o de sempre, um resolve só
     stack.bloom.enabled = v > 0.004;
-    stack.resolve.enabled = v > 0.004;
+    stack.resolve.enabled = v > 0.004 || sceneryBloomIntensity > 0;
     stack.bloom.strength = v;
+
+    if (sceneryBloomIntensity > 0) {
+      const previousLayerMask = camera.layers.mask;
+      const previousTarget = gl.getRenderTarget();
+      const previousClearColor = gl.getClearColor(new THREE.Color()).clone();
+      const previousClearAlpha = gl.getClearAlpha();
+      try {
+        camera.layers.set(SCENERY_BLOOM_LAYER);
+        gl.setClearColor(0x000000, 0);
+        gl.setRenderTarget(stack.sceneryCapture);
+        gl.clear(true, true, true);
+        gl.render(scene, camera);
+      } finally {
+        camera.layers.mask = previousLayerMask;
+        gl.setRenderTarget(previousTarget);
+        gl.setClearColor(previousClearColor, previousClearAlpha);
+      }
+
+      stack.scenerySanitize.render(gl, stack.scenerySource, stack.sceneryCapture, dt, false);
+      stack.sceneryCopy.render(gl, stack.sceneryBloomTarget, stack.scenerySource, dt, false);
+      stack.sceneryBloom.strength = 0.5;
+      stack.sceneryBloom.render(
+        gl,
+        stack.sceneryBloomTarget,
+        stack.sceneryBloomTarget,
+        dt,
+        false,
+      );
+    }
+
+    stack.composite.uniforms.uScenerySource.value = stack.scenerySource.texture;
+    stack.composite.uniforms.uSceneryBloom.value = stack.sceneryBloomTarget.texture;
+    stack.composite.uniforms.uSceneryIntensity.value =
+      sceneryBloomIntensity / MAX_BLOOM_INTENSITY;
     // PAPEL FIXO nos dois buffers: a cena SEMPRE cai no renderTarget1
     // (multisample) e o pós SEMPRE no renderTarget2 (simples). O
     // `EffectComposer` troca esses ponteiros a cada pass com `needsSwap`, então
@@ -358,7 +467,14 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
     stack.composer.readBuffer = stack.composer.renderTarget1;
     stack.composer.writeBuffer = stack.composer.renderTarget2;
     stack.composer.render(Math.min(dt, 0.05));
-  }, 1); // >0: o R3F deixa de desenhar sozinho e quem desenha é o composer
+    stack.screenCopy.render(
+      gl,
+      stack.composer.writeBuffer,
+      stack.composer.readBuffer,
+      dt,
+      false,
+    );
+  }, 1); // >0: o R3F deixa de desenhar sozinho e quem desenha é o compositor
 
   return null;
 }

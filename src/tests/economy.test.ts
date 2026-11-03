@@ -6,7 +6,7 @@ import {
   type RewardLedger,
 } from '../game/economy/economy';
 import { DEFEAT_REWARD, SUMMON_COST, VICTORY_REWARD } from '../game/types';
-import { defaultSave, loadSave, persistSave, SAVE_KEY } from '../persistence/saveGame';
+import { defaultSave, loadSave, persistSave, SAVE_KEY, SAVE_VERSION } from '../persistence/saveGame';
 import { collectEvents, makeEngine, mustMerge, mustSummon, runSeconds } from './helpers';
 
 /**
@@ -220,7 +220,7 @@ describe('Migração de save v2 → v3 (árvore elemental)', () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify(legacy));
 
     const migrated = loadSave();
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(SAVE_VERSION);
     // descobertas migram para a espécie da árvore do mesmo par; lixo é descartado
     expect(migrated.discovered).toContain('ignis');
     expect(migrated.discovered).toContain('magma');
@@ -251,7 +251,7 @@ describe('Migração de save v2 → v3 (árvore elemental)', () => {
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(odd));
     const fixed = loadSave();
-    expect(fixed.version).toBe(4);
+    expect(fixed.version).toBe(SAVE_VERSION);
     expect(fixed.retainedRoster).toEqual([
       { species: 'ignis', level: 5 },
       { species: 'magma', level: 6 },
