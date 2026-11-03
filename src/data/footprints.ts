@@ -86,10 +86,12 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   vulcanico: [{ x: 2.5, z: 2.5 }],
   astral: [{ x: 2.56, z: 2.94 }],
   colosso: [{ x: 2.36, z: 2.23 }],
-  // Nv.10 ainda é o marcador provisório; o figurino definitivo tem que ser
-  // autoral em ~MONSTER_FOOT_R (2,5) para ser O maior bicho do jogo sem
-  // precisar ser escalado para cima.
-  primordial: [{ x: 1.77, z: 1.77 }],
+  // Nv.10 — o quasar: a corte de dezessete pilares (meia-envergadura 2,43) e as
+  // garras penduradas por fora das torres laterais varrem 3,13 de profundidade
+  // — o maior invólucro autoral da árvore, escalado pelo `slotFit` para o
+  // buraco de 2,5 e ainda assim o bicho mais alto renderizado (topo autoral
+  // 6,20 × encaixe ≈ 4,8 de mundo).
+  primordial: [{ x: 2.43, z: 3.13 }],
 };
 
 /** invólucro autoral da forma que o nível mostra */
