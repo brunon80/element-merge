@@ -220,7 +220,7 @@ describe('Migração de save v2 → v3 (árvore elemental)', () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify(legacy));
 
     const migrated = loadSave();
-    expect(migrated.version).toBe(3);
+    expect(migrated.version).toBe(4);
     // descobertas migram para a espécie da árvore do mesmo par; lixo é descartado
     expect(migrated.discovered).toContain('ignis');
     expect(migrated.discovered).toContain('magma');
@@ -251,6 +251,7 @@ describe('Migração de save v2 → v3 (árvore elemental)', () => {
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(odd));
     const fixed = loadSave();
+    expect(fixed.version).toBe(4);
     expect(fixed.retainedRoster).toEqual([
       { species: 'ignis', level: 5 },
       { species: 'magma', level: 6 },
