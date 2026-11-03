@@ -15,6 +15,8 @@ import { useGameStore } from '../store/gameStore';
 import { circleTexture } from './assets';
 import type { ArenaScene } from '../game/types';
 import { ForestEnvironment } from './ForestEnvironment';
+import { IceEnvironment } from './IceEnvironment';
+import { VolcanicEnvironment } from './VolcanicEnvironment';
 
 /** Marcadores de slot: o anel EXTERNO é a fronteira de encaixe (`MONSTER_FOOT_R`)
  *  — o invólucro do figurino nunca passa dele, então o anel mostra ao jogador o
@@ -32,6 +34,9 @@ const OBELISK_Z = PLATFORM.centerZ;
  *  alargar os slots alarga a arena inteira junto. */
 export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
   const forest = sceneVariant === 'forest';
+  const icy = sceneVariant === 'ice';
+  const volcanic = sceneVariant === 'volcanic';
+  const scenic = forest || icy || volcanic;
   const crystalRef = useRef<THREE.Mesh>(null!);
   const rockRefs = useRef<THREE.Mesh[]>([]);
   const motesRef = useRef<THREE.Points>(null!);
@@ -112,28 +117,51 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
   return (
     <group>
       {forest && <ForestEnvironment />}
+      {icy && <IceEnvironment />}
+      {volcanic && <VolcanicEnvironment />}
       {/* ilha */}
       <mesh position={[0, -0.8, 0]} receiveShadow>
         <cylinderGeometry args={[ISLAND_R, ISLAND_R, 1.6, 12]} />
-        <meshStandardMaterial color={forest ? '#526640' : '#232c44'} flatShading roughness={0.95} />
+        <meshStandardMaterial
+          color={forest ? '#526640' : icy ? '#789ba9' : volcanic ? '#49332a' : '#232c44'}
+          emissive={volcanic ? '#301008' : '#000000'}
+          emissiveIntensity={volcanic ? 0.18 : 0}
+          flatShading
+          roughness={0.95}
+        />
       </mesh>
-      {!forest && (
+      {!scenic && (
         <mesh position={[0, -4.9, 0]} rotation={[Math.PI, 0, 0]}>
           <coneGeometry args={[ISLAND_R - 0.6, 6.8, 9]} />
           <meshStandardMaterial color="#1a2136" flatShading roughness={1} />
         </mesh>
       )}
 
-      {/* campo circular arcano ou quadra retangular de pedra na floresta */}
-      {forest ? (
-        <group name="forest-court">
+      {/* campo circular arcano ou quadra retangular dos cenários naturais */}
+      {scenic ? (
+        <group
+          name={
+            forest ? 'forest-court' : icy ? 'ice-court' : 'volcanic-court'
+          }
+        >
           <mesh position={[0, 0.02, 0]} receiveShadow castShadow>
             <boxGeometry args={[COURT_WIDTH + 1.15, 0.48, COURT_DEPTH + 1.15]} />
-            <meshStandardMaterial color="#656653" roughness={0.96} flatShading />
+            <meshStandardMaterial
+              color={forest ? '#656653' : icy ? '#789aa8' : '#684637'}
+              roughness={0.96}
+              flatShading
+            />
           </mesh>
           <mesh position={[0, 0.225, 0]} receiveShadow>
             <boxGeometry args={[COURT_WIDTH, 0.11, COURT_DEPTH]} />
-            <meshStandardMaterial color="#50564a" roughness={0.95} flatShading />
+            <meshStandardMaterial
+              color={forest ? '#50564a' : icy ? '#416276' : '#493229'}
+              emissive={volcanic ? '#291007' : '#000000'}
+              emissiveIntensity={volcanic ? 0.18 : 0}
+              roughness={0.88}
+              metalness={icy ? 0.12 : 0}
+              flatShading
+            />
           </mesh>
           {slots.map((slot) => (
             <mesh
@@ -144,11 +172,18 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
               <boxGeometry args={[TILE_SPACING_X - 0.14, 0.004, ROW_DEPTH - 0.14]} />
               <meshStandardMaterial
                 color={
-                  ['#50574a', '#53594b', '#4f564a', '#555a4b'][
+                  (forest
+                    ? ['#50574a', '#53594b', '#4f564a', '#555a4b']
+                    : icy
+                      ? ['#3e5b6d', '#456578', '#3b596c', '#496a7d']
+                      : ['#4c352a', '#573a2c', '#493229', '#62402d'])[
                     (slot.tile * 3 + (slot.side === 'ai' ? 2 : 0)) % 4
                   ]
                 }
-                roughness={1}
+                roughness={icy ? 0.82 : 1}
+                metalness={icy ? 0.1 : 0}
+                emissive={volcanic ? '#341309' : '#000000'}
+                emissiveIntensity={volcanic ? 0.16 : 0}
                 flatShading
               />
             </mesh>
@@ -163,7 +198,11 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
           ).map((edge, index) => (
             <mesh key={index} position={[edge[0], edge[1], edge[2]]} castShadow>
               <boxGeometry args={[edge[3], edge[4], edge[5]]} />
-              <meshStandardMaterial color="#777661" roughness={1} flatShading />
+              <meshStandardMaterial
+                color={forest ? '#777661' : icy ? '#a9cad5' : '#80543a'}
+                roughness={icy ? 0.86 : 1}
+                flatShading
+              />
             </mesh>
           ))}
         </group>
@@ -176,22 +215,29 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[ISLAND_R - 1.9, ISLAND_R - 1.5, 64]} />
         <meshBasicMaterial
-          color={forest ? '#8a9460' : '#3c4b74'}
+          color={forest ? '#8a9460' : icy ? '#8ee7fb' : volcanic ? '#ff4c14' : '#3c4b74'}
           transparent
-          opacity={forest ? 0.48 : 0.55}
+          opacity={forest ? 0.48 : icy ? 0.42 : volcanic ? 0.72 : 0.55}
         />
       </mesh>
 
       {/* linha central luminosa */}
-      {forest ? (
+      {scenic ? (
         <group>
           <mesh position={[0, 0.292, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
             <planeGeometry args={[PLATFORM.halfX * 2.1, 0.72]} />
-            <meshStandardMaterial color="#706d53" roughness={1} />
+            <meshStandardMaterial
+              color={forest ? '#706d53' : icy ? '#7395a4' : '#68442f'}
+              roughness={1}
+            />
           </mesh>
           <mesh position={[0, 0.304, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[PLATFORM.halfX * 2.1, 0.055]} />
-            <meshBasicMaterial color="#c6a85e" transparent opacity={0.78} />
+            <meshBasicMaterial
+              color={forest ? '#c6a85e' : icy ? '#a5efff' : '#ff7832'}
+              transparent
+              opacity={volcanic ? 0.82 : 0.78}
+            />
           </mesh>
           {[-1, 1].map((side) => (
             <mesh
@@ -201,7 +247,11 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
               castShadow
             >
               <boxGeometry args={[0.42, 0.24, 0.72]} />
-              <meshStandardMaterial color="#79745c" roughness={1} flatShading />
+              <meshStandardMaterial
+                color={forest ? '#79745c' : icy ? '#91b5c3' : '#704832'}
+                roughness={1}
+                flatShading
+              />
             </mesh>
           ))}
         </group>
@@ -217,9 +267,9 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
         <mesh ref={crystalRef} position={[0, 1.7, 0]}>
           <octahedronGeometry args={[0.55]} />
           <meshStandardMaterial
-            color="#7050d8"
-            emissive="#8f5cff"
-            emissiveIntensity={1.6}
+            color={icy ? '#b1f1ff' : volcanic ? '#ff6622' : '#7050d8'}
+            emissive={icy ? '#68d9f5' : volcanic ? '#ff3b00' : '#8f5cff'}
+            emissiveIntensity={icy ? 1.25 : volcanic ? 1.8 : 1.6}
             flatShading
             toneMapped={false}
           />
@@ -237,7 +287,7 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
         return (
           <group key={side}>
             {/* topo da plataforma exatamente na base das criaturas */}
-            {!forest && (
+            {!scenic && (
               <mesh position={[0, UNIT_BASE_Y - 0.15, cz]} receiveShadow>
                 <boxGeometry args={[w, 0.3, d]} />
                 <meshStandardMaterial color="#33406a" roughness={0.75} />
@@ -252,7 +302,7 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
                 [hx + 0.03, 0.2, cz, 0.1, 0.06, d + 0.12],
               ] as const
             ).map((b, i) => (
-              !forest && (
+              !scenic && (
               <mesh key={i} position={[b[0], b[1], b[2]]}>
                 <boxGeometry args={[b[3], b[4], b[5]]} />
                 <meshBasicMaterial color={trim} toneMapped={false} transparent opacity={0.85} />
@@ -270,9 +320,9 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
                 >
                   <ringGeometry args={[SLOT_RING[0], SLOT_RING[1], 28]} />
                   <meshBasicMaterial
-                    color={forest ? '#c1c79a' : '#cfe3ff'}
+                    color={forest ? '#c1c79a' : volcanic ? '#ff7842' : '#cfe3ff'}
                     transparent
-                    opacity={forest ? 0.24 : 0.12}
+                    opacity={forest ? 0.24 : icy ? 0.34 : volcanic ? 0.4 : 0.12}
                   />
                 </mesh>
               ))}
@@ -293,12 +343,12 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
           <mesh position={[0, 1.1, 0]} castShadow>
             <cylinderGeometry args={[0.22, 0.34, 2.2, 6]} />
             <meshStandardMaterial
-              color={forest ? '#656b52' : '#2c3554'}
+              color={forest ? '#656b52' : icy ? '#7ca8b8' : volcanic ? '#38241e' : '#2c3554'}
               flatShading
               roughness={0.9}
             />
           </mesh>
-          {!forest && (
+          {!scenic && (
             <mesh position={[0, 2.6, 0]}>
               <octahedronGeometry args={[0.3]} />
               <meshStandardMaterial
@@ -310,11 +360,34 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
               />
             </mesh>
           )}
+          {icy && (
+            <mesh position={[0, 2.6, 0]}>
+              <octahedronGeometry args={[0.38]} />
+              <meshStandardMaterial
+                color="#b4f0ff"
+                emissive="#6bd8f5"
+                emissiveIntensity={0.75}
+                flatShading
+              />
+            </mesh>
+          )}
+          {volcanic && (
+            <mesh position={[0, 2.6, 0]}>
+              <octahedronGeometry args={[0.38]} />
+              <meshStandardMaterial
+                color="#ff6a22"
+                emissive="#ff3300"
+                emissiveIntensity={1.4}
+                flatShading
+                toneMapped={false}
+              />
+            </mesh>
+          )}
         </group>
       ))}
 
       {/* rochas flutuantes */}
-      {!forest && rockDefs.map((d, i) => (
+      {!scenic && rockDefs.map((d, i) => (
         <mesh
           key={i}
           ref={(m) => {
@@ -328,7 +401,7 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
       ))}
 
       {/* céu estrelado + motes */}
-      {!forest && <points geometry={stars} frustumCulled={false}>
+      {!scenic && <points geometry={stars} frustumCulled={false}>
         <pointsMaterial
           size={0.5}
           color="#9fb8e8"
@@ -339,7 +412,7 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
           depthWrite={false}
         />
       </points>}
-      <points ref={motesRef} geometry={motes} frustumCulled={false}>
+      {!icy && !volcanic && <points ref={motesRef} geometry={motes} frustumCulled={false}>
         <pointsMaterial
           size={forest ? 0.13 : 0.09}
           color={forest ? '#d3dc91' : '#7ad4ff'}
@@ -350,7 +423,7 @@ export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
           depthWrite={false}
           sizeAttenuation
         />
-      </points>
+      </points>}
 
       {/* plano invisível para raycast do arraste */}
       <mesh

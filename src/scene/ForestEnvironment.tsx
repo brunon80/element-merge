@@ -1,13 +1,13 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { ARENA_R, FOREST_CAMERA_MAX_DISTANCE, ORBIT_TARGET } from '../game/board';
+import { ARENA_R, ORBIT_TARGET, SCENIC_CAMERA_MAX_DISTANCE } from '../game/board';
 
 export const FOREST_BG = '#4d6041';
 const TREE_CANOPY_RADIUS = 24;
 const TREE_CAMERA_CLEARANCE = 3;
 const TREE_RING_WIDTH = 18;
 const TREE_RING_INNER_RADIUS =
-  FOREST_CAMERA_MAX_DISTANCE +
+  SCENIC_CAMERA_MAX_DISTANCE +
   Math.hypot(ORBIT_TARGET[0], ORBIT_TARGET[2]) +
   TREE_CANOPY_RADIUS +
   TREE_CAMERA_CLEARANCE;

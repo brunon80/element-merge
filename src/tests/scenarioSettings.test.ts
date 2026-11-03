@@ -20,7 +20,7 @@ describe('Preferência de cenário', () => {
     expect(loadSave().lastArenaScene).toBeNull();
   });
 
-  test.each(['forest', 'random'] as const)('persiste a escolha %s', (scenario) => {
+  test.each(['forest', 'ice', 'volcanic', 'random'] as const)('persiste a escolha %s', (scenario) => {
     const save = defaultSave();
     save.settings.scenario = scenario;
     persistSave(save);
@@ -41,8 +41,8 @@ describe('Preferência de cenário', () => {
 
   test('mantém o último cenário de partida para evitar repetição no modo aleatório', () => {
     const save = defaultSave();
-    save.lastArenaScene = 'forest';
+    save.lastArenaScene = 'volcanic';
     persistSave(save);
-    expect(loadSave().lastArenaScene).toBe('forest');
+    expect(loadSave().lastArenaScene).toBe('volcanic');
   });
 });

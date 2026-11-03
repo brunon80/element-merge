@@ -99,11 +99,19 @@ describe('Cenário da arena', () => {
     expect(useGameStore.getState().screen).toBe('game');
     expect(useGameStore.getState().activeArenaScene).toBe('forest');
 
+    fireEvent.click(screen.getByTestId('scenario-ice'));
+    expect(useGameStore.getState().activeArenaScene).toBe('ice');
+
+    fireEvent.click(screen.getByTestId('scenario-volcanic'));
+    expect(useGameStore.getState().activeArenaScene).toBe('volcanic');
+
     fireEvent.click(screen.getByTestId('scenario-arcane'));
     expect(useGameStore.getState().activeArenaScene).toBe('arcane');
 
     fireEvent.click(screen.getByTestId('scenario-random'));
-    expect(['arcane', 'forest']).toContain(useGameStore.getState().activeArenaScene);
+    expect(['arcane', 'forest', 'ice', 'volcanic']).toContain(
+      useGameStore.getState().activeArenaScene,
+    );
   });
 
   test('alterna o cenário aleatório em cada nova partida pela tela de resultado', () => {

@@ -145,8 +145,11 @@ function resolveArenaScene(
   previousScene?: ArenaScene | null,
 ): ArenaScene {
   if (scenario !== 'random') return scenario;
-  if (previousScene) return previousScene === 'forest' ? 'arcane' : 'forest';
-  return Math.random() < 0.5 ? 'arcane' : 'forest';
+  const choices: ArenaScene[] = ['arcane', 'forest', 'ice', 'volcanic'];
+  const available = previousScene
+    ? choices.filter((scene) => scene !== previousScene)
+    : choices;
+  return available[Math.floor(Math.random() * available.length)];
 }
 
 const FUSION_MSG: Record<string, string> = {

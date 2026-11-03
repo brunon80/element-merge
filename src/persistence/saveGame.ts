@@ -174,11 +174,16 @@ export function loadSave(): SaveData {
     const scenario: ScenarioChoice =
       parsed.settings?.scenario === 'arcane' ||
       parsed.settings?.scenario === 'forest' ||
+      parsed.settings?.scenario === 'ice' ||
+      parsed.settings?.scenario === 'volcanic' ||
       parsed.settings?.scenario === 'random'
         ? parsed.settings.scenario
         : base.settings.scenario;
     const lastArenaScene: ArenaScene | null =
-      parsed.lastArenaScene === 'arcane' || parsed.lastArenaScene === 'forest'
+      parsed.lastArenaScene === 'arcane' ||
+      parsed.lastArenaScene === 'forest' ||
+      parsed.lastArenaScene === 'ice' ||
+      parsed.lastArenaScene === 'volcanic'
         ? parsed.lastArenaScene
         : null;
     const startingCoins =

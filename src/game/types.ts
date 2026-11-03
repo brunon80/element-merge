@@ -9,7 +9,7 @@
 
 export type ElementId = 'fire' | 'water' | 'earth' | 'air';
 
-export type ScenarioChoice = 'arcane' | 'forest' | 'random';
+export type ScenarioChoice = 'arcane' | 'forest' | 'ice' | 'volcanic' | 'random';
 export type ArenaScene = Exclude<ScenarioChoice, 'random'>;
 
 export type SpeciesId =

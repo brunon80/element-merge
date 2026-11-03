@@ -13,6 +13,8 @@ const DIFF_DESC: Record<Difficulty, string> = {
 const SCENARIOS: { id: ScenarioChoice; label: string }[] = [
   { id: 'arcane', label: 'Ilha arcana' },
   { id: 'forest', label: 'Floresta' },
+  { id: 'ice', label: 'Gélido' },
+  { id: 'volcanic', label: 'Inferno Vulcânico' },
   { id: 'random', label: 'Aleatório' },
 ];
 

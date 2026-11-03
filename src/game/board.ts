@@ -57,7 +57,9 @@ PLATFORM.centerZ = (PLATFORM.frontZ + PLATFORM.backZ) / 2;
  *  cresce, a ilha, o enquadramento e o fog acompanham sozinhos. */
 export const ARENA_R = Math.hypot(PLATFORM.halfX, PLATFORM.backZ) + 2.3;
 export const CAMERA_MAX_DISTANCE = ARENA_R * 2.76;
-export const FOREST_CAMERA_MAX_DISTANCE = ARENA_R * 1.6;
+export const SCENIC_CAMERA_MAX_DISTANCE = ARENA_R * 1.6;
+export const ICE_CAMERA_MAX_DISTANCE = ARENA_R * 2.55;
+export const VOLCANIC_CAMERA_MAX_DISTANCE = ARENA_R * 2.15;
 
 /**
  * ENQUADRAMENTO DA CÂMERA — regra dura: o chão dos 24 buracos tem que ficar

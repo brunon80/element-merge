@@ -1,8 +1,13 @@
 import { OrbitControls } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
+import { useEffect } from 'react';
 import {
+  CAMERA_POS,
   CAMERA_MAX_DISTANCE,
-  FOREST_CAMERA_MAX_DISTANCE,
+  ICE_CAMERA_MAX_DISTANCE,
   ORBIT_TARGET,
+  SCENIC_CAMERA_MAX_DISTANCE,
+  VOLCANIC_CAMERA_MAX_DISTANCE,
 } from '../game/board';
 import { useGameStore } from '../store/gameStore';
 import type { ArenaScene } from '../game/types';
@@ -22,9 +27,27 @@ export function CameraController({
   sceneVariant: ArenaScene;
 }) {
   const forest = sceneVariant === 'forest';
+  const icy = sceneVariant === 'ice';
+  const volcanic = sceneVariant === 'volcanic';
+  const { camera } = useThree();
   const dragActive = useGameStore(
     (s) => s.dragId !== null || s.pendingDrag !== null,
   );
+
+  useEffect(() => {
+    if (icy || volcanic) {
+      const distance = icy ? ICE_CAMERA_MAX_DISTANCE : VOLCANIC_CAMERA_MAX_DISTANCE;
+      camera.position.set(
+        0,
+        ORBIT_TARGET[1] + distance * (icy ? 0.46 : 0.4),
+        ORBIT_TARGET[2] + distance * (icy ? 0.89 : 0.92),
+      );
+    } else {
+      camera.position.set(...CAMERA_POS);
+    }
+    camera.lookAt(...ORBIT_TARGET);
+  }, [camera, icy, volcanic]);
+
   return (
     <OrbitControls
       makeDefault
@@ -38,7 +61,13 @@ export function CameraController({
       minDistance={3} // zoom colado p/ inspecionar o figurino (o clamp antigo
       // em 10 deixava a estaca e os cacos de gelo minúsculos na tela)
       maxDistance={
-        forest ? FOREST_CAMERA_MAX_DISTANCE : CAMERA_MAX_DISTANCE
+        forest
+          ? SCENIC_CAMERA_MAX_DISTANCE
+          : icy
+            ? ICE_CAMERA_MAX_DISTANCE
+            : volcanic
+              ? VOLCANIC_CAMERA_MAX_DISTANCE
+            : CAMERA_MAX_DISTANCE
       } // dá para ler a ilha inteira de uma vez
       minPolarAngle={0.35}
       maxPolarAngle={1.32}

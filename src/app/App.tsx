@@ -15,6 +15,8 @@ import { ARENA_R, CAMERA_POS } from '../game/board';
 import { BestiaryStage } from '../scene/BestiaryStage';
 import { ARENA_BG, BloomGate } from '../scene/BloomGate';
 import { FOREST_BG } from '../scene/ForestEnvironment';
+import { ICE_BG } from '../scene/IceEnvironment';
+import { VOLCANIC_BG } from '../scene/VolcanicEnvironment';
 import { BattleScene } from '../scene/BattleScene';
 import { useGameStore } from '../store/gameStore';
 import { GLBoundary } from './GLBoundary';
@@ -26,6 +28,15 @@ export function App() {
   const matchKey = useGameStore((s) => s.matchId);
   const activeArenaScene = useGameStore((s) => s.activeArenaScene);
   const seed = useMemo(() => Math.floor(Math.random() * 1e9), []);
+  const sceneBackground =
+    activeArenaScene === 'forest'
+      ? FOREST_BG
+      : activeArenaScene === 'ice'
+        ? ICE_BG
+        : activeArenaScene === 'volcanic'
+          ? VOLCANIC_BG
+        : ARENA_BG;
+  const scenic = activeArenaScene !== 'arcane';
 
   const inGame = screen === 'game';
 
@@ -43,9 +54,16 @@ export function App() {
           <fog
             attach="fog"
             args={[
-              activeArenaScene === 'forest' ? FOREST_BG : ARENA_BG,
-              ARENA_R * (activeArenaScene === 'forest' ? 2 : 2.36),
-              ARENA_R * (activeArenaScene === 'forest' ? 5.5 : 6.26),
+              sceneBackground,
+              ARENA_R * (scenic ? 2 : 2.36),
+              ARENA_R *
+                (activeArenaScene === 'ice'
+                  ? 7.5
+                  : activeArenaScene === 'volcanic'
+                    ? 6.2
+                    : scenic
+                      ? 5.5
+                      : 6.26),
             ]}
           />
           <BattleScene
@@ -57,7 +75,7 @@ export function App() {
               bloom é gateado (o fundo do scene sai daqui e passa ao clearColor
               do RenderPass — ver BloomGate) */}
           <BloomGate
-            backgroundColor={activeArenaScene === 'forest' ? FOREST_BG : ARENA_BG}
+            backgroundColor={sceneBackground}
           />
         </Canvas>
       </GLBoundary>
