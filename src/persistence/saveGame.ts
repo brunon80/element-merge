@@ -10,8 +10,8 @@ import type {
 } from '../game/types';
 
 export const SAVE_KEY = 'elemental-merge-save-v1';
-/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário. */
-export const SAVE_VERSION = 6;
+/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo. */
+export const SAVE_VERSION = 7;
 export const DEFAULT_BLOOM_INTENSITY = 20;
 export const MAX_BLOOM_INTENSITY = 100;
 export const DEFAULT_SCENERY_BLOOM_INTENSITY = 30;
@@ -77,7 +77,7 @@ export function defaultSave(): SaveData {
     retainedRoster: [],
     settings: {
       difficulty: 'normal',
-      scenario: 'arcane',
+      scenario: 'random',
       bloomIntensity: DEFAULT_BLOOM_INTENSITY,
       sceneryBloomIntensity: DEFAULT_SCENERY_BLOOM_INTENSITY,
       startingCoins: DEFAULT_STARTING_COINS,
@@ -184,6 +184,7 @@ export function loadSave(): SaveData {
       parsed.settings?.scenario === 'ice' ||
       parsed.settings?.scenario === 'volcanic' ||
       parsed.settings?.scenario === 'underwater' ||
+      parsed.settings?.scenario === 'universe-end' ||
       parsed.settings?.scenario === 'random'
         ? parsed.settings.scenario
         : base.settings.scenario;
@@ -202,7 +203,8 @@ export function loadSave(): SaveData {
       parsed.lastArenaScene === 'forest' ||
       parsed.lastArenaScene === 'ice' ||
       parsed.lastArenaScene === 'volcanic' ||
-      parsed.lastArenaScene === 'underwater'
+      parsed.lastArenaScene === 'underwater' ||
+      parsed.lastArenaScene === 'universe-end'
         ? parsed.lastArenaScene
         : null;
     const startingCoins =

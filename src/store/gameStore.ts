@@ -150,7 +150,14 @@ function resolveArenaScene(
   previousScene?: ArenaScene | null,
 ): ArenaScene {
   if (scenario !== 'random') return scenario;
-  const choices: ArenaScene[] = ['arcane', 'forest', 'ice', 'volcanic', 'underwater'];
+  const choices: ArenaScene[] = [
+    'arcane',
+    'forest',
+    'ice',
+    'volcanic',
+    'underwater',
+    'universe-end',
+  ];
   const available = previousScene
     ? choices.filter((scene) => scene !== previousScene)
     : choices;
@@ -283,11 +290,16 @@ export const useGameStore = create<GameStore>((set, get) => {
       save.retainedRoster = roster;
       persistSoon();
     }
+    const activeArenaScene = resolveArenaScene(
+      save.settings.scenario,
+      get().activeArenaScene,
+    );
     set({
       lastSummary: save.lastSummary ?? summary,
       coins: save.coins,
       phase: summary.result,
       retainedCount: save.retainedRoster.length,
+      activeArenaScene,
     });
   }
 
@@ -355,8 +367,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     startNewMatch(): void {
-      const previousScene = get().lastMatchArenaScene ?? get().activeArenaScene;
-      const activeArenaScene = resolveArenaScene(save.settings.scenario, previousScene);
+      const activeArenaScene = get().activeArenaScene;
       save.lastArenaScene = activeArenaScene;
       persistSoon();
       newEngine();
@@ -389,14 +400,20 @@ export const useGameStore = create<GameStore>((set, get) => {
     returnToMenu(): void {
       // Abandonar partida em andamento não gera nem devolve moedas.
       // Partida encerrada: o saldo já inclui a recompensa (finishMatch) — não regrava.
-      if (engine && !engine.world.summary) {
-        save.coins = engine.world.playerCoins;
+      const currentEngine = engine;
+      const abandoningMatch = currentEngine !== null && !currentEngine.world.summary;
+      if (abandoningMatch && currentEngine) {
+        save.coins = currentEngine.world.playerCoins;
         persistSoon();
       }
+      const activeArenaScene = abandoningMatch
+        ? resolveArenaScene(save.settings.scenario, get().activeArenaScene)
+        : get().activeArenaScene;
       engine = null;
       set({
         screen: 'menu',
         phase: 'menu',
+        activeArenaScene,
         units: [],
         selectedId: null,
         pendingDrag: null,

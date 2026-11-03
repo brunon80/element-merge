@@ -13,6 +13,7 @@ import { ProjectileField } from './ProjectileField';
 import { SmokeLayer } from './SmokeLayer';
 import { SmokePool } from './smokePool';
 import { UnitView } from './UnitView';
+import { UniverseEndEnvironment } from './UniverseEndEnvironment';
 import type { ArenaScene } from '../game/types';
 
 export function BattleScene({
@@ -101,6 +102,7 @@ export function BattleScene({
       <group ref={sceneryLayerRef} name="scenery-bloom-layer">
         <Lighting sceneVariant={sceneVariant} />
         <Arena sceneVariant={sceneVariant} />
+        {sceneVariant === 'universe-end' && <UniverseEndEnvironment />}
       </group>
       <SmokeLayer pool={smoke} />
       <FlameTrail pool={smoke} />

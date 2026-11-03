@@ -5,8 +5,8 @@ describe('Preferência de cenário', () => {
     localStorage.clear();
   });
 
-  test('mantém o cenário atual como padrão em saves novos e antigos', () => {
-    expect(defaultSave().settings.scenario).toBe('arcane');
+  test('usa o modo aleatório como padrão em saves novos e antigos', () => {
+    expect(defaultSave().settings.scenario).toBe('random');
     expect(defaultSave().lastArenaScene).toBeNull();
 
     const oldSave = defaultSave();
@@ -16,11 +16,19 @@ describe('Preferência de cenário', () => {
       SAVE_KEY,
       JSON.stringify({ ...legacySave, settings: legacySettings }),
     );
-    expect(loadSave().settings.scenario).toBe('arcane');
+    expect(loadSave().settings.scenario).toBe('random');
     expect(loadSave().lastArenaScene).toBeNull();
   });
 
-  test.each(['forest', 'ice', 'volcanic', 'underwater', 'random'] as const)('persiste a escolha %s', (scenario) => {
+  test.each([
+    'arcane',
+    'forest',
+    'ice',
+    'volcanic',
+    'underwater',
+    'universe-end',
+    'random',
+  ] as const)('persiste a escolha %s', (scenario) => {
     const save = defaultSave();
     save.settings.scenario = scenario;
     persistSave(save);
@@ -36,13 +44,13 @@ describe('Preferência de cenário', () => {
         settings: { ...save.settings, scenario: 'unknown' },
       }),
     );
-    expect(loadSave().settings.scenario).toBe('arcane');
+    expect(loadSave().settings.scenario).toBe('random');
   });
 
   test('mantém o último cenário de partida para evitar repetição no modo aleatório', () => {
     const save = defaultSave();
-    save.lastArenaScene = 'underwater';
+    save.lastArenaScene = 'universe-end';
     persistSave(save);
-    expect(loadSave().lastArenaScene).toBe('underwater');
+    expect(loadSave().lastArenaScene).toBe('universe-end');
   });
 });

@@ -691,6 +691,22 @@ button {
     radial-gradient(ellipse at 82% 55%, #c093b3 0 3%, transparent 4%),
     linear-gradient(180deg, transparent 0 58%, rgba(8, 32, 47, 0.48) 59% 100%);
 }
+.scenario-preview-universe-end {
+  background:
+    radial-gradient(ellipse at 50% 43%, #03050b 0 9%, transparent 10%),
+    radial-gradient(ellipse at 50% 44%, rgba(255, 251, 230, 0.98) 10% 12%, transparent 14%),
+    radial-gradient(ellipse at 50% 46%, rgba(255, 204, 104, 0.88) 15% 20%, transparent 24%),
+    radial-gradient(ellipse at 50% 48%, rgba(255, 232, 179, 0.55) 23% 29%, transparent 34%),
+    linear-gradient(180deg, #10243e 0%, #17162f 60%, #090e1f 100%);
+}
+.scenario-preview-universe-end::before {
+  background:
+    radial-gradient(circle at 15% 28%, #e0d9ff 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 24%, #d7edff 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 68%, #ffd1a5 0 1px, transparent 2px),
+    radial-gradient(circle at 27% 74%, #94dfff 0 1px, transparent 2px),
+    linear-gradient(180deg, transparent 0 60%, rgba(5, 9, 20, 0.42) 100%);
+}
 .scenario-preview-random {
   background: linear-gradient(135deg, #687245 0%, #43839a 34%, #583335 67%, #27345f 100%);
 }

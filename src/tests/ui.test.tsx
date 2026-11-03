@@ -12,6 +12,7 @@ import { Bestiary } from '../components/Bestiary';
 import { DiscoveryOverlay } from '../components/DiscoveryOverlay';
 import { HUD } from '../components/HUD';
 import { InspectorPanel } from '../components/InspectorPanel';
+import { MenuScreen } from '../components/MenuScreen';
 import { ResultScreen } from '../components/ResultScreen';
 import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
@@ -105,7 +106,15 @@ describe('Cenário da arena', () => {
 
     const scenarioList = screen.getByRole('radiogroup', { name: 'Cenário da arena' });
     expect(scenarioList).toHaveClass('scenario-list');
-    for (const id of ['arcane', 'forest', 'ice', 'volcanic', 'underwater', 'random']) {
+    for (const id of [
+      'arcane',
+      'forest',
+      'ice',
+      'volcanic',
+      'underwater',
+      'universe-end',
+      'random',
+    ]) {
       const option = screen.getByTestId(`scenario-${id}`);
       expect(option.firstElementChild).toHaveClass('scenario-preview');
       expect(option.children[1]).toHaveClass('scenario-option-name');
@@ -130,37 +139,37 @@ describe('Cenário da arena', () => {
     fireEvent.click(screen.getByTestId('scenario-underwater'));
     expect(useGameStore.getState().activeArenaScene).toBe('underwater');
 
+    fireEvent.click(screen.getByTestId('scenario-universe-end'));
+    expect(useGameStore.getState().activeArenaScene).toBe('universe-end');
+
     fireEvent.click(screen.getByTestId('scenario-arcane'));
     expect(useGameStore.getState().activeArenaScene).toBe('arcane');
 
     fireEvent.click(screen.getByTestId('scenario-random'));
-    expect(['arcane', 'forest', 'ice', 'volcanic', 'underwater']).toContain(
+    expect(['arcane', 'forest', 'ice', 'volcanic', 'underwater', 'universe-end']).toContain(
       useGameStore.getState().activeArenaScene,
     );
   });
 
-  test('alterna o cenário aleatório em cada nova partida pela tela de resultado', () => {
+  test('usa a prévia aleatória na partida e prepara a próxima prévia ao terminar', () => {
     renderAll();
+    act(() => useGameStore.getState().returnToMenu());
     act(() => useGameStore.getState().setScenario('random'));
-    const firstScene = useGameStore.getState().activeArenaScene;
-    const summary = {
-      matchId: 'random-arena-test',
-      result: 'victory' as const,
-      reward: 100,
-      balanceBefore: 500,
-      balanceAfter: 600,
-      duration: 1,
-      difficulty: 'normal' as const,
-    };
+    const previewScene = useGameStore.getState().activeArenaScene;
 
-    act(() => useGameStore.setState({ phase: 'victory', lastSummary: summary }));
-    fireEvent.click(screen.getByTestId('new-match'));
-    const secondScene = useGameStore.getState().activeArenaScene;
-    expect(secondScene).not.toBe(firstScene);
+    render(<MenuScreen />);
+    fireEvent.click(screen.getByTestId('play'));
+    expect(useGameStore.getState().activeArenaScene).toBe(previewScene);
 
-    act(() => useGameStore.setState({ phase: 'victory', lastSummary: summary }));
+    act(() => useGameStore.getState().startBattle());
+    const nextPreview = useGameStore.getState().activeArenaScene;
+    expect(nextPreview).not.toBe(previewScene);
+
     fireEvent.click(screen.getByTestId('new-match'));
-    expect(useGameStore.getState().activeArenaScene).not.toBe(secondScene);
+    expect(useGameStore.getState().activeArenaScene).toBe(nextPreview);
+
+    act(() => useGameStore.getState().startBattle());
+    expect(useGameStore.getState().activeArenaScene).not.toBe(nextPreview);
   });
 });
 

@@ -18,6 +18,7 @@ import { FOREST_BG } from '../scene/ForestEnvironment';
 import { ICE_BG } from '../scene/IceEnvironment';
 import { VOLCANIC_BG } from '../scene/VolcanicEnvironment';
 import { UNDERWATER_BG } from '../scene/UnderwaterEnvironment';
+import { UNIVERSE_END_BG } from '../scene/UniverseEndEnvironment';
 import { BattleScene } from '../scene/BattleScene';
 import { useGameStore } from '../store/gameStore';
 import { GLBoundary } from './GLBoundary';
@@ -38,6 +39,8 @@ export function App() {
           ? VOLCANIC_BG
           : activeArenaScene === 'underwater'
             ? UNDERWATER_BG
+            : activeArenaScene === 'universe-end'
+              ? UNIVERSE_END_BG
         : ARENA_BG;
   const scenic = activeArenaScene !== 'arcane';
 
@@ -54,23 +57,25 @@ export function App() {
         >
           {/* o fog começa logo além da borda inimiga da ilha (o tabuleiro em si
               fica limpo) e engole o vazio — as duas distâncias saem de ARENA_R */}
-          <fog
-            attach="fog"
-            args={[
-              sceneBackground,
-              ARENA_R * (scenic ? 2 : 2.36),
-              ARENA_R *
-                (activeArenaScene === 'ice'
-                  ? 7.5
-                  : activeArenaScene === 'volcanic'
-                    ? 6.2
-                    : activeArenaScene === 'underwater'
-                      ? 5.4
-                    : scenic
-                      ? 5.5
-                      : 6.26),
-            ]}
-          />
+          {activeArenaScene !== 'universe-end' && (
+            <fog
+              attach="fog"
+              args={[
+                sceneBackground,
+                ARENA_R * (scenic ? 2 : 2.36),
+                ARENA_R *
+                  (activeArenaScene === 'ice'
+                    ? 7.5
+                    : activeArenaScene === 'volcanic'
+                      ? 6.2
+                      : activeArenaScene === 'underwater'
+                        ? 5.4
+                        : scenic
+                          ? 5.5
+                          : 6.26),
+              ]}
+            />
+          )}
           <BattleScene
             key={matchKey ?? `menu-${seed}`}
             menuMode={!inGame}

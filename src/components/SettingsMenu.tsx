@@ -16,6 +16,7 @@ const SCENARIOS: { id: ScenarioChoice; label: string }[] = [
   { id: 'ice', label: 'Gélido' },
   { id: 'volcanic', label: 'Inferno Vulcânico' },
   { id: 'underwater', label: 'Subaquático' },
+  { id: 'universe-end', label: 'Fim do universo' },
   { id: 'random', label: 'Aleatório' },
 ];
 
