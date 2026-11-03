@@ -770,10 +770,11 @@ alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
   grátis, venda devolve custo acumulado, saldo nunca negativo. **Invocar só na
   preparação** (`COMBAT_STARTED`): o exército fecha quando o combate começa.
 - **Persistência** (`persistence/saveGame.ts`, chave `elemental-merge-save-v1`,
-  `SAVE_VERSION 3`): moedas, descobertas, `retainedRoster` (vitória: todo o time
-  plantado, vivas e mortas em combate; derrota/empate: só vivas — ≤12, fundidos e
-  vendidos ficam de fora), settings (dificuldade, saldo inicial, debugMode),
-  estatísticas; load defensivo com migração.
+  `SAVE_VERSION 3`): moedas, descobertas, `retainedRoster` (vitória E derrota: todo
+  o time plantado, vivas e mortas em combate — na derrota sem reembolso, o prejuízo
+  fica; empate com sobreviventes: só vivas — ≤12, fundidos e vendidos ficam de
+  fora; ver a regra anti-softlock na seção de partida), settings (dificuldade,
+  saldo inicial, debugMode), estatísticas; load defensivo com migração.
 - **Modo debug**: Configurações → Depuração → botão "Criar no campo" em todo
   card do bestiário (`engine.addRetainedUnit`, só na preparação, sem descoberta);
   puros têm seletor de forma Nv.1–5; card selado mostra rig real.
