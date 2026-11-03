@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { unlockSfx } from '../audio/sfx';
 import { Bestiary } from '../components/Bestiary';
 import { BattleControls } from '../components/BattleControls';
 import { DiscoveryOverlay } from '../components/DiscoveryOverlay';
@@ -25,6 +26,9 @@ import { GLBoundary } from './GLBoundary';
 
 export function App() {
   useGameDriver();
+  // política de autoplay: o AudioContext nasce suspenso e só acende no
+  // primeiro clique/tecla (qualquer botão do menu já resolve isso)
+  useEffect(() => unlockSfx(), []);
   const screen = useGameStore((s) => s.screen);
   const selectUnit = useGameStore((s) => s.selectUnit);
   const matchKey = useGameStore((s) => s.matchId);

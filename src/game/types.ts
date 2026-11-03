@@ -292,6 +292,8 @@ export interface FxEvent {
   type:
     | 'hit'
     | 'impact'
+    /** projétil recém-lançado (camada de áudio: som de disparo; visual: nenhum) */
+    | 'launch'
     | 'kill'
     | 'summon'
     | 'mergeStart'

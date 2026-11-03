@@ -10,11 +10,13 @@ import type {
 } from '../game/types';
 
 export const SAVE_KEY = 'elemental-merge-save-v1';
-/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo. */
-export const SAVE_VERSION = 7;
+/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som. */
+export const SAVE_VERSION = 8;
 export const DEFAULT_BLOOM_INTENSITY = 20;
 export const MAX_BLOOM_INTENSITY = 100;
 export const DEFAULT_SCENERY_BLOOM_INTENSITY = 30;
+export const DEFAULT_SFX_VOLUME = 80;
+export const MAX_SFX_VOLUME = 100;
 
 /** Híbridos removidos (Nv.1 por par de puros) → espécie equivalente da nova árvore. */
 const LEGACY_HYBRID_MAP: Record<string, SpeciesId> = {
@@ -40,6 +42,8 @@ export interface SettingsData {
   scenario: ScenarioChoice;
   bloomIntensity: number;
   sceneryBloomIntensity: number;
+  /** Volume dos efeitos sonoros sintetizados (0 = desligado, 100 = máximo). */
+  sfxVolume: number;
   /** Parâmetro configurável do saldo inicial. */
   startingCoins: number;
   /** Depuração: permite criar qualquer criatura do bestiário direto na arena. */
@@ -80,6 +84,7 @@ export function defaultSave(): SaveData {
       scenario: 'random',
       bloomIntensity: DEFAULT_BLOOM_INTENSITY,
       sceneryBloomIntensity: DEFAULT_SCENERY_BLOOM_INTENSITY,
+      sfxVolume: DEFAULT_SFX_VOLUME,
       startingCoins: DEFAULT_STARTING_COINS,
       debugMode: false,
     },
@@ -198,6 +203,11 @@ export function loadSave(): SaveData {
       Number.isFinite(parsed.settings.sceneryBloomIntensity)
         ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(parsed.settings.sceneryBloomIntensity)))
         : base.settings.sceneryBloomIntensity;
+    const sfxVolume =
+      typeof parsed.settings?.sfxVolume === 'number' &&
+      Number.isFinite(parsed.settings.sfxVolume)
+        ? Math.min(MAX_SFX_VOLUME, Math.max(0, Math.round(parsed.settings.sfxVolume)))
+        : base.settings.sfxVolume;
     const lastArenaScene: ArenaScene | null =
       parsed.lastArenaScene === 'arcane' ||
       parsed.lastArenaScene === 'forest' ||
@@ -231,6 +241,7 @@ export function loadSave(): SaveData {
         scenario,
         bloomIntensity,
         sceneryBloomIntensity,
+        sfxVolume,
         startingCoins,
         debugMode: !!parsed.settings?.debugMode,
       },

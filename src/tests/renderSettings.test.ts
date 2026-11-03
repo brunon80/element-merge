@@ -31,4 +31,17 @@ describe('Preferência de bloom', () => {
     useGameStore.getState().setSceneryBloomIntensity(125);
     expect(loadSave().settings.sceneryBloomIntensity).toBe(100);
   });
+
+  test('persiste o volume do som e aceita desligar ou limitar o valor', () => {
+    expect(useGameStore.getState().sfxVolume).toBe(80);
+
+    useGameStore.getState().setSfxVolume(0);
+    expect(loadSave().settings.sfxVolume).toBe(0);
+
+    useGameStore.getState().setSfxVolume(45);
+    expect(loadSave().settings.sfxVolume).toBe(45);
+
+    useGameStore.getState().setSfxVolume(150);
+    expect(loadSave().settings.sfxVolume).toBe(100);
+  });
 });

@@ -715,6 +715,15 @@ export class GameEngine {
       age: 0,
     };
     this.world.projectiles.push(projectile);
+    // Som de lançamento: a camada de áudio (src/audio/sfx.ts) sintetiza o
+    // disparo a partir deste evento; a camada visual o ignora.
+    this.world.fx.push({
+      type: 'launch',
+      pos: [...pos],
+      element: unit.damageElement,
+      species: unit.species,
+      level: unit.level,
+    });
   }
 
   private abilityFactor(unit: CombatUnit, kind: string): number | undefined {

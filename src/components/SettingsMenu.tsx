@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { testSfx } from '../audio/sfx';
 import type { Difficulty, ScenarioChoice } from '../game/types';
 import { useGameStore } from '../store/gameStore';
 import { CoinIcon } from './icons';
@@ -20,12 +21,13 @@ const SCENARIOS: { id: ScenarioChoice; label: string }[] = [
   { id: 'random', label: 'Aleatório' },
 ];
 
-type TabId = 'match' | 'scenario' | 'graphics' | 'economy' | 'progress' | 'debug';
+type TabId = 'match' | 'scenario' | 'graphics' | 'audio' | 'economy' | 'progress' | 'debug';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'match', label: '⚔ Partida' },
   { id: 'scenario', label: '🌄 Cenário' },
   { id: 'graphics', label: '✨ Gráficos' },
+  { id: 'audio', label: '🔊 Som' },
   { id: 'economy', label: '🪙 Economia' },
   { id: 'progress', label: '📊 Progresso' },
   { id: 'debug', label: '🐞 Depuração' },
@@ -46,6 +48,8 @@ export function SettingsMenu() {
   const setBloomIntensity = useGameStore((s) => s.setBloomIntensity);
   const sceneryBloomIntensity = useGameStore((s) => s.sceneryBloomIntensity);
   const setSceneryBloomIntensity = useGameStore((s) => s.setSceneryBloomIntensity);
+  const sfxVolume = useGameStore((s) => s.sfxVolume);
+  const setSfxVolume = useGameStore((s) => s.setSfxVolume);
   const startingCoinsCfg = useGameStore((s) => s.startingCoinsCfg);
   const setStartingCoins = useGameStore((s) => s.setStartingCoins);
   const debugMode = useGameStore((s) => s.debugMode);
@@ -219,6 +223,49 @@ export function SettingsMenu() {
                     Realça a paisagem e a quadra sem adicionar bloom às criaturas.
                   </span>
                 </label>
+              </section>
+            )}
+
+            {tab === 'audio' && (
+              <section>
+                <h3>Som</h3>
+                <p className="hint">
+                  Efeitos sintetizados no navegador (sem arquivos): o
+                  lançamento do tiro, a colisão, a invocação e a fusão mudam
+                  de timbre com o elemento e crescem com o nível. Volume 0%
+                  desliga tudo.
+                </p>
+                <label className="bloom-control" htmlFor="sfx-volume">
+                  <span className="bloom-control-heading">
+                    Volume dos efeitos
+                    <output data-testid="sfx-volume-value">
+                      {sfxVolume === 0 ? 'Desligado' : `${sfxVolume}%`}
+                    </output>
+                  </span>
+                  <input
+                    id="sfx-volume"
+                    data-testid="sfx-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={sfxVolume}
+                    aria-label="Volume dos efeitos sonoros"
+                    aria-valuetext={sfxVolume === 0 ? 'Desligado' : `${sfxVolume}%`}
+                    onChange={(event) => setSfxVolume(Number(event.currentTarget.value))}
+                  />
+                  <span className="hint">
+                    O som é direcional: tiros à esquerda soam à esquerda. Em
+                    celulares, use também o volume do aparelho.
+                  </span>
+                </label>
+                <button className="btn ghost small" data-testid="sfx-test" onClick={testSfx}>
+                  ▶ Testar som
+                </button>
+                <p className="hint">
+                  Toque em testar para ouvir a sequência: invocação, disparo,
+                  colisão e fusão.
+                </p>
               </section>
             )}
 

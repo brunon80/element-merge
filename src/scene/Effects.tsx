@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { ELEMENTS } from '../data/elements';
 import { SPECIES } from '../data/monsters';
 import type { ElementId, FxEvent, SpeciesId } from '../game/types';
+import { playFx } from '../audio/sfx';
 import { getEngine } from '../store/gameStore';
 import { circleTexture, drawPopupText, flameDropGeometry, flameIconTexture, getGeometry, slowIconTexture } from './assets';
 import { makeFlameMaterial } from './flameShaders';
@@ -1048,6 +1049,9 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
 
   const handleFx = (events: FxEvent[]) => {
     for (const ev of events) {
+      // camada de áudio: lançamento, colisão, invocação e fusão (a camada
+      // decide o que toca e tem limiter/intervalo próprios)
+      playFx(ev);
       const [x, y, z] = ev.pos;
       switch (ev.type) {
         case 'hit': {

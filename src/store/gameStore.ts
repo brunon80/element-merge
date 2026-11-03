@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { setSfxVolume as applySfxVolume } from '../audio/sfx';
 import { MAX_BATTLE_TIME, DEFAULT_STARTING_COINS } from '../data/balance';
 import { getSpecies, speciesAllowsLevel } from '../data/monsters';
 import { GameEngine } from '../game/engine/engine';
@@ -7,6 +8,7 @@ import { checkFusion } from '../game/fusion/fusionRules';
 import { tileFromWorld } from '../game/board';
 import {
   MAX_BLOOM_INTENSITY,
+  MAX_SFX_VOLUME,
   loadSave,
   persistSave,
   defaultSave,
@@ -82,6 +84,7 @@ interface GameStoreState {
   scenario: ScenarioChoice;
   bloomIntensity: number;
   sceneryBloomIntensity: number;
+  sfxVolume: number;
   activeArenaScene: ArenaScene;
   lastMatchArenaScene: ArenaScene | null;
   startingCoinsCfg: number;
@@ -116,6 +119,7 @@ interface GameStoreActions {
   setScenario: (scenario: ScenarioChoice) => void;
   setBloomIntensity: (intensity: number) => void;
   setSceneryBloomIntensity: (intensity: number) => void;
+  setSfxVolume: (volume: number) => void;
   setStartingCoins: (n: number) => void;
   setDebugMode: (on: boolean) => void;
   /** Depuração: coloca a espécie no slot livre mais à esquerda (só na preparação). */
@@ -337,6 +341,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     scenario: save.settings.scenario,
     bloomIntensity: save.settings.bloomIntensity,
     sceneryBloomIntensity: save.settings.sceneryBloomIntensity,
+    sfxVolume: save.settings.sfxVolume,
     activeArenaScene: resolveArenaScene(save.settings.scenario, save.lastArenaScene),
     lastMatchArenaScene: save.lastArenaScene,
     startingCoinsCfg: save.settings.startingCoins,
@@ -348,6 +353,8 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     initFromSave(): void {
       save = loadSave();
+      // o volume salvo acende a camada de áudio antes do primeiro frame
+      applySfxVolume(save.settings.sfxVolume);
       set({
         coins: save.coins,
         aiCoins: 0,
@@ -358,6 +365,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         scenario: save.settings.scenario,
         bloomIntensity: save.settings.bloomIntensity,
         sceneryBloomIntensity: save.settings.sceneryBloomIntensity,
+        sfxVolume: save.settings.sfxVolume,
         activeArenaScene: resolveArenaScene(save.settings.scenario, save.lastArenaScene),
         lastMatchArenaScene: save.lastArenaScene,
         startingCoinsCfg: save.settings.startingCoins,
@@ -632,6 +640,16 @@ export const useGameStore = create<GameStore>((set, get) => {
       save.settings.sceneryBloomIntensity = value;
       persistSoon();
       set({ sceneryBloomIntensity: value });
+    },
+
+    setSfxVolume(volume: number): void {
+      const value = Number.isFinite(volume)
+        ? Math.min(MAX_SFX_VOLUME, Math.max(0, Math.round(volume)))
+        : 0;
+      save.settings.sfxVolume = value;
+      applySfxVolume(value);
+      persistSoon();
+      set({ sfxVolume: value });
     },
 
     setStartingCoins(n: number): void {
