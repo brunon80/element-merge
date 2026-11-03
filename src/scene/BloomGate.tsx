@@ -237,7 +237,7 @@ function unpatchBuiltins(scene: THREE.Scene) {
   });
 }
 
-export function BloomGate() {
+export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: string }) {
   const { gl, scene, camera, size } = useThree();
   const primAlive = useGameStore(
     (s) => s.units.some((u) => u.species === 'primordial' && !u.dying),
@@ -266,7 +266,7 @@ export function BloomGate() {
     // vinculado, então o three codifica pro espaço do framebuffer e o RT
     // recebe o hex cru — fechando a convenção display-referred (ver o doc do
     // topo)
-    const renderPass = new RenderPass(scene, camera, null, new THREE.Color(ARENA_BG));
+    const renderPass = new RenderPass(scene, camera, null, new THREE.Color(backgroundColor));
     // resolve do multisample + cinto anti-Não-Finito: cópia do buffer
     // multisample pro simples com a sanificação do SANITIZE_SHADER no mesmo
     // draw. Só entra com o quasar vivo (o mesmo gate do bloom) — sem primordial
@@ -298,11 +298,11 @@ export function BloomGate() {
     // RenderPass, do contrário o WebGLBackground limparia o RT em linear. Com o
     // desvio `qtNoComposer` é o inverso: devolve o fundo ao WebGLBackground.
     const prev = scene.background;
-    scene.background = QA_NO_COMPOSER ? new THREE.Color(ARENA_BG) : null;
+    scene.background = QA_NO_COMPOSER ? new THREE.Color(backgroundColor) : null;
     return () => {
       scene.background = prev;
     };
-  }, [scene]);
+  }, [scene, backgroundColor]);
 
   useEffect(() => {
     return () => {
@@ -334,6 +334,7 @@ export function BloomGate() {
       gl.render(scene, camera);
       return;
     }
+    stack.renderPass.clearColor?.set(backgroundColor);
     patchBuiltins(scene); // material novo que spawnou no meio da partida
     const target = primAlive && !QA_NO_BLOOM ? BLOOM_STRENGTH : 0;
     const cur = strength.current;

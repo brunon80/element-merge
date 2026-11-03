@@ -1,4 +1,5 @@
 import { ARENA_R, PLATFORM } from '../game/board';
+import type { ArenaScene } from '../game/types';
 
 /** Iluminação da arena: key com sombras + preenchimento hemisférico + tons das equipes.
  *
@@ -17,15 +18,29 @@ const TEAM_LIGHT_RANGE = ARENA_R * 0.85;
 // plataforma continuar com o mesmo brilho de antes do tabuleiro ter crescido
 const TEAM_LIGHT_INTENSITY = 22 * (TEAM_LIGHT_RANGE / 17) ** 2;
 
-export function Lighting() {
+export function Lighting({ sceneVariant }: { sceneVariant: ArenaScene }) {
+  const forest = sceneVariant === 'forest';
   return (
     <group>
-      <hemisphereLight args={['#8fb2ff', '#141a2c', 0.75]} />
-      <ambientLight intensity={0.18} color="#a8c4ff" />
+      <hemisphereLight
+        args={[
+          forest ? '#e2edc5' : '#8fb2ff',
+          forest ? '#465638' : '#141a2c',
+          forest ? 1.18 : 0.75,
+        ]}
+      />
+      <ambientLight
+        intensity={forest ? 0.62 : 0.18}
+        color={forest ? '#e0edc0' : '#a8c4ff'}
+      />
       <directionalLight
-        position={[ARENA_R * 0.3, ARENA_R * 0.65, ARENA_R * 0.22]}
-        intensity={1.7}
-        color="#ffe9c4"
+        position={
+          forest
+            ? [0, ARENA_R * 1.7, 0]
+            : [ARENA_R * 0.3, ARENA_R * 0.65, ARENA_R * 0.22]
+        }
+        intensity={forest ? 1.8 : 1.7}
+        color={forest ? '#fff1cb' : '#ffe9c4'}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -43,21 +58,21 @@ export function Lighting() {
         intensity={TEAM_LIGHT_INTENSITY}
         distance={TEAM_LIGHT_RANGE}
         decay={2}
-        color="#f5c451"
+        color={forest ? '#d8b45d' : '#f5c451'}
       />
       <pointLight
         position={[0, TEAM_LIGHT_Y, -TEAM_LIGHT_Z]}
         intensity={TEAM_LIGHT_INTENSITY}
         distance={TEAM_LIGHT_RANGE}
         decay={2}
-        color="#9d5cff"
+        color={forest ? '#849b65' : '#9d5cff'}
       />
       <pointLight
         position={[0, ARENA_R * 0.24, 0]}
         intensity={12 * ((ARENA_R * 0.62) / 12) ** 2}
         distance={ARENA_R * 0.62}
         decay={2}
-        color="#6d4fff"
+        color={forest ? '#8b9860' : '#6d4fff'}
       />
     </group>
   );

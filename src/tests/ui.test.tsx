@@ -90,6 +90,47 @@ beforeEach(() => {
   freshGame();
 });
 
+describe('Cenário da arena', () => {
+  test('aplica a escolha imediatamente durante uma partida', () => {
+    renderAll();
+    act(() => useGameStore.getState().setSettings(true));
+
+    fireEvent.click(screen.getByTestId('scenario-forest'));
+    expect(useGameStore.getState().screen).toBe('game');
+    expect(useGameStore.getState().activeArenaScene).toBe('forest');
+
+    fireEvent.click(screen.getByTestId('scenario-arcane'));
+    expect(useGameStore.getState().activeArenaScene).toBe('arcane');
+
+    fireEvent.click(screen.getByTestId('scenario-random'));
+    expect(['arcane', 'forest']).toContain(useGameStore.getState().activeArenaScene);
+  });
+
+  test('alterna o cenário aleatório em cada nova partida pela tela de resultado', () => {
+    renderAll();
+    act(() => useGameStore.getState().setScenario('random'));
+    const firstScene = useGameStore.getState().activeArenaScene;
+    const summary = {
+      matchId: 'random-arena-test',
+      result: 'victory' as const,
+      reward: 100,
+      balanceBefore: 500,
+      balanceAfter: 600,
+      duration: 1,
+      difficulty: 'normal' as const,
+    };
+
+    act(() => useGameStore.setState({ phase: 'victory', lastSummary: summary }));
+    fireEvent.click(screen.getByTestId('new-match'));
+    const secondScene = useGameStore.getState().activeArenaScene;
+    expect(secondScene).not.toBe(firstScene);
+
+    act(() => useGameStore.setState({ phase: 'victory', lastSummary: summary }));
+    fireEvent.click(screen.getByTestId('new-match'));
+    expect(useGameStore.getState().activeArenaScene).not.toBe(secondScene);
+  });
+});
+
 describe('Loja e invocação', () => {
   test('invocar Ignis custa 100 e a criatura entra na arena', () => {
     renderAll();

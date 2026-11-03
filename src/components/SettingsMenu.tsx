@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Difficulty } from '../game/types';
+import type { Difficulty, ScenarioChoice } from '../game/types';
 import { useGameStore } from '../store/gameStore';
 import { CoinIcon } from './icons';
 import { DIFFICULTY_LABEL } from './labels';
@@ -9,6 +9,12 @@ const DIFF_DESC: Record<Difficulty, string> = {
   normal: 'Inimigo com o mesmo valor do seu time: puras até Nv.3 e criaturas da árvore elemental até Nv.6–7.',
   hard: 'Inimigo com ~140% do valor do seu time: puras até Nv.4, árvore elemental até o Nv.10 e contra-escolhas cirúrgicas.',
 };
+
+const SCENARIOS: { id: ScenarioChoice; label: string }[] = [
+  { id: 'arcane', label: 'Ilha arcana' },
+  { id: 'forest', label: 'Floresta' },
+  { id: 'random', label: 'Aleatório' },
+];
 
 type TabId = 'match' | 'economy' | 'progress' | 'debug';
 
@@ -28,6 +34,8 @@ export function SettingsMenu() {
   const setOpen = useGameStore((s) => s.setSettings);
   const difficulty = useGameStore((s) => s.difficulty);
   const setDifficulty = useGameStore((s) => s.setDifficulty);
+  const scenario = useGameStore((s) => s.scenario);
+  const setScenario = useGameStore((s) => s.setScenario);
   const startingCoinsCfg = useGameStore((s) => s.startingCoinsCfg);
   const setStartingCoins = useGameStore((s) => s.setStartingCoins);
   const debugMode = useGameStore((s) => s.debugMode);
@@ -106,6 +114,29 @@ export function SettingsMenu() {
                     </li>
                   ))}
                 </ul>
+                <h3 className="scenario-heading">Cenário</h3>
+                <div
+                  className="difficulty-row left"
+                  role="radiogroup"
+                  aria-label="Cenário da arena"
+                >
+                  {SCENARIOS.map((option) => (
+                    <button
+                      key={option.id}
+                      role="radio"
+                      aria-checked={scenario === option.id}
+                      data-testid={`scenario-${option.id}`}
+                      className={`diff-btn ${scenario === option.id ? 'active' : ''}`}
+                      onClick={() => setScenario(option.id)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="hint scenario-hint">
+                  A escolha é aplicada imediatamente. Aleatório escolhe um cenário agora
+                  e sorteia novamente a cada nova partida.
+                </p>
               </section>
             )}
 

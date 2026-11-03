@@ -534,6 +534,12 @@ button {
   margin: 2px 0 10px;
   font-size: 16px;
 }
+.settings-content h3.scenario-heading {
+  margin-top: 20px;
+}
+.scenario-hint {
+  margin-top: 4px;
+}
 .difficulty-row.left {
   justify-content: flex-start;
 }

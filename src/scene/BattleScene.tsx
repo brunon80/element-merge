@@ -12,8 +12,15 @@ import { ProjectileField } from './ProjectileField';
 import { SmokeLayer } from './SmokeLayer';
 import { SmokePool } from './smokePool';
 import { UnitView } from './UnitView';
+import type { ArenaScene } from '../game/types';
 
-export function BattleScene({ menuMode }: { menuMode: boolean }) {
+export function BattleScene({
+  menuMode,
+  sceneVariant,
+}: {
+  menuMode: boolean;
+  sceneVariant: ArenaScene;
+}) {
   const { camera, gl } = useThree();
   const unitIdsRaw = useGameStore((s) => s.units.map((u) => u.id).join(','));
 
@@ -83,8 +90,8 @@ export function BattleScene({ menuMode }: { menuMode: boolean }) {
 
   return (
     <group>
-      <Lighting />
-      <Arena />
+      <Lighting sceneVariant={sceneVariant} />
+      <Arena sceneVariant={sceneVariant} />
       <SmokeLayer pool={smoke} />
       <FlameTrail pool={smoke} />
       <ProjectileField />
@@ -93,7 +100,7 @@ export function BattleScene({ menuMode }: { menuMode: boolean }) {
       {unitIds.map((id) => (
         <UnitView key={id} unitId={id} smoke={smoke} />
       ))}
-      <CameraController menuMode={menuMode} />
+      <CameraController menuMode={menuMode} sceneVariant={sceneVariant} />
     </group>
   );
 }

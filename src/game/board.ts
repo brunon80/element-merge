@@ -56,6 +56,8 @@ PLATFORM.centerZ = (PLATFORM.frontZ + PLATFORM.backZ) / 2;
  *  distante da plataforma). Arte, luz e câmera derivam daqui: quando o tabuleiro
  *  cresce, a ilha, o enquadramento e o fog acompanham sozinhos. */
 export const ARENA_R = Math.hypot(PLATFORM.halfX, PLATFORM.backZ) + 2.3;
+export const CAMERA_MAX_DISTANCE = ARENA_R * 2.76;
+export const FOREST_CAMERA_MAX_DISTANCE = ARENA_R * 1.6;
 
 /**
  * ENQUADRAMENTO DA CÂMERA — regra dura: o chão dos 24 buracos tem que ficar

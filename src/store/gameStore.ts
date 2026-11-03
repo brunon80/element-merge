@@ -13,10 +13,12 @@ import {
 } from '../persistence/saveGame';
 import type {
   Difficulty,
+  ArenaScene,
   EngineEvent,
   MatchPhase,
   MatchSummary,
   MonsterLevel,
+  ScenarioChoice,
   Side,
   SpeciesId,
   StatusType,
@@ -76,6 +78,9 @@ interface GameStoreState {
   discoveryReveal: { species: SpeciesId; level: MonsterLevel; level10: boolean } | null;
   stats: SaveData['stats'];
   difficulty: Difficulty;
+  scenario: ScenarioChoice;
+  activeArenaScene: ArenaScene;
+  lastMatchArenaScene: ArenaScene | null;
   startingCoinsCfg: number;
   /** Depuração ativável nas configurações: criar qualquer espécie no campo. */
   debugMode: boolean;
@@ -105,6 +110,7 @@ interface GameStoreActions {
   setBestiary: (open: boolean) => void;
   setSettings: (open: boolean) => void;
   setDifficulty: (d: Difficulty) => void;
+  setScenario: (scenario: ScenarioChoice) => void;
   setStartingCoins: (n: number) => void;
   setDebugMode: (on: boolean) => void;
   /** Depuração: coloca a espécie no slot livre mais à esquerda (só na preparação). */
@@ -132,6 +138,15 @@ export function getSave(): SaveData {
 
 function persistSoon(): void {
   persistSave(save);
+}
+
+function resolveArenaScene(
+  scenario: ScenarioChoice,
+  previousScene?: ArenaScene | null,
+): ArenaScene {
+  if (scenario !== 'random') return scenario;
+  if (previousScene) return previousScene === 'forest' ? 'arcane' : 'forest';
+  return Math.random() < 0.5 ? 'arcane' : 'forest';
 }
 
 const FUSION_MSG: Record<string, string> = {
@@ -299,6 +314,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     discoveryReveal: null,
     stats: { ...save.stats },
     difficulty: save.settings.difficulty,
+    scenario: save.settings.scenario,
+    activeArenaScene: resolveArenaScene(save.settings.scenario, save.lastArenaScene),
+    lastMatchArenaScene: save.lastArenaScene,
     startingCoinsCfg: save.settings.startingCoins,
     debugMode: save.settings.debugMode,
     lastSummary: save.lastSummary,
@@ -315,6 +333,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         retainedCount: save.retainedRoster.length,
         stats: { ...save.stats },
         difficulty: save.settings.difficulty,
+        scenario: save.settings.scenario,
+        activeArenaScene: resolveArenaScene(save.settings.scenario, save.lastArenaScene),
+        lastMatchArenaScene: save.lastArenaScene,
         startingCoinsCfg: save.settings.startingCoins,
         debugMode: save.settings.debugMode,
         lastSummary: save.lastSummary,
@@ -322,6 +343,10 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     startNewMatch(): void {
+      const previousScene = get().lastMatchArenaScene ?? get().activeArenaScene;
+      const activeArenaScene = resolveArenaScene(save.settings.scenario, previousScene);
+      save.lastArenaScene = activeArenaScene;
+      persistSoon();
       newEngine();
       // Time persistido volta automaticamente, sem custo.
       for (const r of save.retainedRoster) {
@@ -330,6 +355,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       set({
         screen: 'game',
         phase: 'preparation',
+        activeArenaScene,
+        lastMatchArenaScene: activeArenaScene,
         matchId: engine!.world.matchId,
         coins: engine!.world.playerCoins,
         aiCoins: 0,
@@ -541,6 +568,25 @@ export const useGameStore = create<GameStore>((set, get) => {
       set({ difficulty: d });
     },
 
+    setScenario(scenario: ScenarioChoice): void {
+      const current = get();
+      const previousScene =
+        current.screen === 'game'
+          ? current.activeArenaScene
+          : current.lastMatchArenaScene ?? current.activeArenaScene;
+      const activeArenaScene = resolveArenaScene(scenario, previousScene);
+      save.settings.scenario = scenario;
+      if (current.screen === 'game') save.lastArenaScene = activeArenaScene;
+      persistSoon();
+      set({
+        scenario,
+        activeArenaScene,
+        ...(current.screen === 'game'
+          ? { lastMatchArenaScene: activeArenaScene }
+          : {}),
+      });
+    },
+
     setStartingCoins(n: number): void {
       const value = Math.max(0, Math.floor(n / 100) * 100);
       save.settings.startingCoins = value;
@@ -597,6 +643,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       set({
         coins: save.coins,
         aiCoins: 0,
+        lastMatchArenaScene: null,
         discovered: [...save.discovered],
         retainedCount: 0,
         stats: { ...save.stats },

@@ -1,11 +1,17 @@
 import { DEFAULT_STARTING_COINS } from '../data/balance';
 import { ALL_SPECIES_IDS, getSpecies, speciesAllowsLevel } from '../data/monsters';
-import type { Difficulty, MatchSummary, MonsterLevel, SpeciesId } from '../game/types';
+import type {
+  Difficulty,
+  ArenaScene,
+  MatchSummary,
+  MonsterLevel,
+  ScenarioChoice,
+  SpeciesId,
+} from '../game/types';
 
 export const SAVE_KEY = 'elemental-merge-save-v1';
-/** v2: time do jogador persistido entre partidas (retainedRoster).
- *  v3: árvore elemental (Nv.6–10) — híbridos antigos viram espécies da árvore. */
-export const SAVE_VERSION = 3;
+/** v2: time persistido; v3: árvore elemental; v4: último cenário de partida. */
+export const SAVE_VERSION = 4;
 
 /** Híbridos removidos (Nv.1 por par de puros) → espécie equivalente da nova árvore. */
 const LEGACY_HYBRID_MAP: Record<string, SpeciesId> = {
@@ -28,6 +34,7 @@ export interface RetainedUnit {
 
 export interface SettingsData {
   difficulty: Difficulty;
+  scenario: ScenarioChoice;
   /** Parâmetro configurável do saldo inicial. */
   startingCoins: number;
   /** Depuração: permite criar qualquer criatura do bestiário direto na arena. */
@@ -52,6 +59,7 @@ export interface SaveData {
   /** Partidas cuja recompensa já foi liberada (anti-duplicação). */
   processedMatchIds: string[];
   lastSummary: MatchSummary | null;
+  lastArenaScene: ArenaScene | null;
 }
 
 export const PURE_START: SpeciesId[] = ['ignis', 'nereia', 'golem', 'zephyr'];
@@ -64,12 +72,14 @@ export function defaultSave(): SaveData {
     retainedRoster: [],
     settings: {
       difficulty: 'normal',
+      scenario: 'arcane',
       startingCoins: DEFAULT_STARTING_COINS,
       debugMode: false,
     },
     stats: { wins: 0, losses: 0, draws: 0, matchesPlayed: 0 },
     processedMatchIds: [],
     lastSummary: null,
+    lastArenaScene: null,
   };
 }
 
@@ -161,6 +171,16 @@ export function loadSave(): SaveData {
       parsed.settings?.difficulty === 'hard'
         ? parsed.settings.difficulty
         : base.settings.difficulty;
+    const scenario: ScenarioChoice =
+      parsed.settings?.scenario === 'arcane' ||
+      parsed.settings?.scenario === 'forest' ||
+      parsed.settings?.scenario === 'random'
+        ? parsed.settings.scenario
+        : base.settings.scenario;
+    const lastArenaScene: ArenaScene | null =
+      parsed.lastArenaScene === 'arcane' || parsed.lastArenaScene === 'forest'
+        ? parsed.lastArenaScene
+        : null;
     const startingCoins =
       typeof parsed.settings?.startingCoins === 'number' &&
       parsed.settings.startingCoins >= 0
@@ -180,10 +200,16 @@ export function loadSave(): SaveData {
       coins,
       discovered,
       retainedRoster,
-      settings: { difficulty, startingCoins, debugMode: !!parsed.settings?.debugMode },
+      settings: {
+        difficulty,
+        scenario,
+        startingCoins,
+        debugMode: !!parsed.settings?.debugMode,
+      },
       stats,
       processedMatchIds,
       lastSummary: parsed.lastSummary ?? null,
+      lastArenaScene,
     };
   } catch {
     return defaultSave();

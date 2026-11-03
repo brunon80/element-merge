@@ -14,6 +14,7 @@ import { useGameDriver } from '../hooks/useGameDriver';
 import { ARENA_R, CAMERA_POS } from '../game/board';
 import { BestiaryStage } from '../scene/BestiaryStage';
 import { ARENA_BG, BloomGate } from '../scene/BloomGate';
+import { FOREST_BG } from '../scene/ForestEnvironment';
 import { BattleScene } from '../scene/BattleScene';
 import { useGameStore } from '../store/gameStore';
 import { GLBoundary } from './GLBoundary';
@@ -23,6 +24,7 @@ export function App() {
   const screen = useGameStore((s) => s.screen);
   const selectUnit = useGameStore((s) => s.selectUnit);
   const matchKey = useGameStore((s) => s.matchId);
+  const activeArenaScene = useGameStore((s) => s.activeArenaScene);
   const seed = useMemo(() => Math.floor(Math.random() * 1e9), []);
 
   const inGame = screen === 'game';
@@ -38,12 +40,25 @@ export function App() {
         >
           {/* o fog começa logo além da borda inimiga da ilha (o tabuleiro em si
               fica limpo) e engole o vazio — as duas distâncias saem de ARENA_R */}
-          <fog attach="fog" args={[ARENA_BG, ARENA_R * 2.36, ARENA_R * 6.26]} />
-          <BattleScene key={matchKey ?? `menu-${seed}`} menuMode={!inGame} />
+          <fog
+            attach="fog"
+            args={[
+              activeArenaScene === 'forest' ? FOREST_BG : ARENA_BG,
+              ARENA_R * (activeArenaScene === 'forest' ? 2 : 2.36),
+              ARENA_R * (activeArenaScene === 'forest' ? 5.5 : 6.26),
+            ]}
+          />
+          <BattleScene
+            key={matchKey ?? `menu-${seed}`}
+            menuMode={!inGame}
+            sceneVariant={activeArenaScene}
+          />
           {/* o bloom do quasar: o pipeline de pós é permanente e só o pass de
               bloom é gateado (o fundo do scene sai daqui e passa ao clearColor
               do RenderPass — ver BloomGate) */}
-          <BloomGate />
+          <BloomGate
+            backgroundColor={activeArenaScene === 'forest' ? FOREST_BG : ARENA_BG}
+          />
         </Canvas>
       </GLBoundary>
 

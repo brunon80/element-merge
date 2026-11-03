@@ -6,16 +6,22 @@ import {
   ARENA_R as ISLAND_R,
   MONSTER_FOOT_R,
   PLATFORM,
+  ROW_DEPTH,
+  TILE_SPACING_X,
   UNIT_BASE_Y,
   boardSlotPositions,
 } from '../game/board';
 import { useGameStore } from '../store/gameStore';
 import { circleTexture } from './assets';
+import type { ArenaScene } from '../game/types';
+import { ForestEnvironment } from './ForestEnvironment';
 
 /** Marcadores de slot: o anel EXTERNO é a fronteira de encaixe (`MONSTER_FOOT_R`)
  *  — o invólucro do figurino nunca passa dele, então o anel mostra ao jogador o
  *  buraco real e os anéis de vizinhos nunca se encostam (2 × 2,5 < 5,2 do vão). */
 const SLOT_RING: [number, number] = [MONSTER_FOOT_R * 0.86, MONSTER_FOOT_R];
+const COURT_WIDTH = (PLATFORM.halfX + 0.55) * 2;
+const COURT_DEPTH = (PLATFORM.backZ + 0.55) * 2;
 
 /** obeliscos elementais: do lado de fora das plataformas, na altura do meio */
 const OBELISK_X = PLATFORM.halfX + 2.4;
@@ -24,7 +30,8 @@ const OBELISK_Z = PLATFORM.centerZ;
 /** Arena: ilha flutuante com plataformas elementais e decorações.
  *  Toda a arte é derivada das constantes do tabuleiro (board.ts), então
  *  alargar os slots alarga a arena inteira junto. */
-export function Arena() {
+export function Arena({ sceneVariant }: { sceneVariant: ArenaScene }) {
+  const forest = sceneVariant === 'forest';
   const crystalRef = useRef<THREE.Mesh>(null!);
   const rockRefs = useRef<THREE.Mesh[]>([]);
   const motesRef = useRef<THREE.Points>(null!);
@@ -104,43 +111,120 @@ export function Arena() {
 
   return (
     <group>
+      {forest && <ForestEnvironment />}
       {/* ilha */}
       <mesh position={[0, -0.8, 0]} receiveShadow>
         <cylinderGeometry args={[ISLAND_R, ISLAND_R, 1.6, 12]} />
-        <meshStandardMaterial color="#232c44" flatShading roughness={0.95} />
+        <meshStandardMaterial color={forest ? '#526640' : '#232c44'} flatShading roughness={0.95} />
       </mesh>
-      <mesh position={[0, -4.9, 0]} rotation={[Math.PI, 0, 0]}>
-        <coneGeometry args={[ISLAND_R - 0.6, 6.8, 9]} />
-        <meshStandardMaterial color="#1a2136" flatShading roughness={1} />
-      </mesh>
+      {!forest && (
+        <mesh position={[0, -4.9, 0]} rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[ISLAND_R - 0.6, 6.8, 9]} />
+          <meshStandardMaterial color="#1a2136" flatShading roughness={1} />
+        </mesh>
+      )}
 
-      {/* convés */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[ISLAND_R - 0.1, 12]} />
-        <meshStandardMaterial color="#2a3552" roughness={0.9} />
-      </mesh>
+      {/* campo circular arcano ou quadra retangular de pedra na floresta */}
+      {forest ? (
+        <group name="forest-court">
+          <mesh position={[0, 0.02, 0]} receiveShadow castShadow>
+            <boxGeometry args={[COURT_WIDTH + 1.15, 0.48, COURT_DEPTH + 1.15]} />
+            <meshStandardMaterial color="#656653" roughness={0.96} flatShading />
+          </mesh>
+          <mesh position={[0, 0.225, 0]} receiveShadow>
+            <boxGeometry args={[COURT_WIDTH, 0.11, COURT_DEPTH]} />
+            <meshStandardMaterial color="#50564a" roughness={0.95} flatShading />
+          </mesh>
+          {slots.map((slot) => (
+            <mesh
+              key={`paver-${slot.side}-${slot.tile}`}
+              position={[slot.pos[0], 0.282, slot.pos[2]]}
+              receiveShadow
+            >
+              <boxGeometry args={[TILE_SPACING_X - 0.14, 0.004, ROW_DEPTH - 0.14]} />
+              <meshStandardMaterial
+                color={
+                  ['#50574a', '#53594b', '#4f564a', '#555a4b'][
+                    (slot.tile * 3 + (slot.side === 'ai' ? 2 : 0)) % 4
+                  ]
+                }
+                roughness={1}
+                flatShading
+              />
+            </mesh>
+          ))}
+          {(
+            [
+              [0, 0.325, -COURT_DEPTH / 2, COURT_WIDTH + 0.5, 0.14, 0.38],
+              [0, 0.325, COURT_DEPTH / 2, COURT_WIDTH + 0.5, 0.14, 0.38],
+              [-COURT_WIDTH / 2, 0.325, 0, 0.38, 0.14, COURT_DEPTH + 0.5],
+              [COURT_WIDTH / 2, 0.325, 0, 0.38, 0.14, COURT_DEPTH + 0.5],
+            ] as const
+          ).map((edge, index) => (
+            <mesh key={index} position={[edge[0], edge[1], edge[2]]} castShadow>
+              <boxGeometry args={[edge[3], edge[4], edge[5]]} />
+              <meshStandardMaterial color="#777661" roughness={1} flatShading />
+            </mesh>
+          ))}
+        </group>
+      ) : (
+        <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <circleGeometry args={[ISLAND_R - 0.1, 12]} />
+          <meshStandardMaterial color="#2a3552" roughness={0.9} />
+        </mesh>
+      )}
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[ISLAND_R - 1.9, ISLAND_R - 1.5, 64]} />
-        <meshBasicMaterial color="#3c4b74" transparent opacity={0.55} />
+        <meshBasicMaterial
+          color={forest ? '#8a9460' : '#3c4b74'}
+          transparent
+          opacity={forest ? 0.48 : 0.55}
+        />
       </mesh>
 
       {/* linha central luminosa */}
-      <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[ISLAND_R * 1.7, 0.14]} />
-        <meshBasicMaterial color="#4fd4ff" transparent opacity={0.4} toneMapped={false} />
-      </mesh>
+      {forest ? (
+        <group>
+          <mesh position={[0, 0.292, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[PLATFORM.halfX * 2.1, 0.72]} />
+            <meshStandardMaterial color="#706d53" roughness={1} />
+          </mesh>
+          <mesh position={[0, 0.304, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[PLATFORM.halfX * 2.1, 0.055]} />
+            <meshBasicMaterial color="#c6a85e" transparent opacity={0.78} />
+          </mesh>
+          {[-1, 1].map((side) => (
+            <mesh
+              key={side}
+              position={[side * (PLATFORM.halfX * 1.04), 0.12, 0]}
+              rotation={[0, 0, 0.08 * side]}
+              castShadow
+            >
+              <boxGeometry args={[0.42, 0.24, 0.72]} />
+              <meshStandardMaterial color="#79745c" roughness={1} flatShading />
+            </mesh>
+          ))}
+        </group>
+      ) : (
+        <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[ISLAND_R * 1.7, 0.14]} />
+          <meshBasicMaterial color="#4fd4ff" transparent opacity={0.4} toneMapped={false} />
+        </mesh>
+      )}
 
       {/* cristal central */}
-      <mesh ref={crystalRef} position={[0, 1.7, 0]}>
-        <octahedronGeometry args={[0.55]} />
-        <meshStandardMaterial
-          color="#7050d8"
-          emissive="#8f5cff"
-          emissiveIntensity={1.6}
-          flatShading
-          toneMapped={false}
-        />
-      </mesh>
+      {!forest && (
+        <mesh ref={crystalRef} position={[0, 1.7, 0]}>
+          <octahedronGeometry args={[0.55]} />
+          <meshStandardMaterial
+            color="#7050d8"
+            emissive="#8f5cff"
+            emissiveIntensity={1.6}
+            flatShading
+            toneMapped={false}
+          />
+        </mesh>
+      )}
 
       {/* plataformas das equipes */}
       {(['player', 'ai'] as const).map((side) => {
@@ -153,10 +237,12 @@ export function Arena() {
         return (
           <group key={side}>
             {/* topo da plataforma exatamente na base das criaturas */}
-            <mesh position={[0, UNIT_BASE_Y - 0.15, cz]} receiveShadow>
-              <boxGeometry args={[w, 0.3, d]} />
-              <meshStandardMaterial color="#33406a" roughness={0.75} />
-            </mesh>
+            {!forest && (
+              <mesh position={[0, UNIT_BASE_Y - 0.15, cz]} receiveShadow>
+                <boxGeometry args={[w, 0.3, d]} />
+                <meshStandardMaterial color="#33406a" roughness={0.75} />
+              </mesh>
+            )}
             {/* moldura emissiva */}
             {(
               [
@@ -166,10 +252,12 @@ export function Arena() {
                 [hx + 0.03, 0.2, cz, 0.1, 0.06, d + 0.12],
               ] as const
             ).map((b, i) => (
+              !forest && (
               <mesh key={i} position={[b[0], b[1], b[2]]}>
                 <boxGeometry args={[b[3], b[4], b[5]]} />
                 <meshBasicMaterial color={trim} toneMapped={false} transparent opacity={0.85} />
               </mesh>
+              )
             ))}
             {/* marcadores de slot */}
             {slots
@@ -181,7 +269,11 @@ export function Arena() {
                   rotation={[-Math.PI / 2, 0, 0]}
                 >
                   <ringGeometry args={[SLOT_RING[0], SLOT_RING[1], 28]} />
-                  <meshBasicMaterial color="#cfe3ff" transparent opacity={0.12} />
+                  <meshBasicMaterial
+                    color={forest ? '#c1c79a' : '#cfe3ff'}
+                    transparent
+                    opacity={forest ? 0.24 : 0.12}
+                  />
                 </mesh>
               ))}
           </group>
@@ -200,23 +292,29 @@ export function Arena() {
         <group key={o.el} position={[o.x, 0, o.z]}>
           <mesh position={[0, 1.1, 0]} castShadow>
             <cylinderGeometry args={[0.22, 0.34, 2.2, 6]} />
-            <meshStandardMaterial color="#2c3554" flatShading roughness={0.9} />
-          </mesh>
-          <mesh position={[0, 2.6, 0]}>
-            <octahedronGeometry args={[0.3]} />
             <meshStandardMaterial
-              color={ELEMENTS[o.el].color}
-              emissive={ELEMENTS[o.el].glow}
-              emissiveIntensity={1.4}
+              color={forest ? '#656b52' : '#2c3554'}
               flatShading
-              toneMapped={false}
+              roughness={0.9}
             />
           </mesh>
+          {!forest && (
+            <mesh position={[0, 2.6, 0]}>
+              <octahedronGeometry args={[0.3]} />
+              <meshStandardMaterial
+                color={ELEMENTS[o.el].color}
+                emissive={ELEMENTS[o.el].glow}
+                emissiveIntensity={1.4}
+                flatShading
+                toneMapped={false}
+              />
+            </mesh>
+          )}
         </group>
       ))}
 
       {/* rochas flutuantes */}
-      {rockDefs.map((d, i) => (
+      {!forest && rockDefs.map((d, i) => (
         <mesh
           key={i}
           ref={(m) => {
@@ -230,7 +328,7 @@ export function Arena() {
       ))}
 
       {/* céu estrelado + motes */}
-      <points geometry={stars} frustumCulled={false}>
+      {!forest && <points geometry={stars} frustumCulled={false}>
         <pointsMaterial
           size={0.5}
           color="#9fb8e8"
@@ -240,11 +338,11 @@ export function Arena() {
           map={circleTexture()}
           depthWrite={false}
         />
-      </points>
+      </points>}
       <points ref={motesRef} geometry={motes} frustumCulled={false}>
         <pointsMaterial
-          size={0.09}
-          color="#7ad4ff"
+          size={forest ? 0.13 : 0.09}
+          color={forest ? '#d3dc91' : '#7ad4ff'}
           transparent
           opacity={0.5}
           map={circleTexture()}
@@ -264,7 +362,7 @@ export function Arena() {
         }}
       >
         <planeGeometry args={[ISLAND_R * 2.15, ISLAND_R * 2.15]} />
-        <meshBasicMaterial colorWrite={false} transparent opacity={0} />
+        <meshBasicMaterial colorWrite={false} depthWrite={false} transparent opacity={0} />
       </mesh>
     </group>
   );

@@ -9,6 +9,9 @@
 
 export type ElementId = 'fire' | 'water' | 'earth' | 'air';
 
+export type ScenarioChoice = 'arcane' | 'forest' | 'random';
+export type ArenaScene = Exclude<ScenarioChoice, 'random'>;
+
 export type SpeciesId =
   // Puros (evoluem sozinhos até o Nv.5)
   | 'ignis' // fogo

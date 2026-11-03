@@ -1,6 +1,11 @@
 import { OrbitControls } from '@react-three/drei';
-import { ARENA_R, ORBIT_TARGET } from '../game/board';
+import {
+  CAMERA_MAX_DISTANCE,
+  FOREST_CAMERA_MAX_DISTANCE,
+  ORBIT_TARGET,
+} from '../game/board';
 import { useGameStore } from '../store/gameStore';
+import type { ArenaScene } from '../game/types';
 
 /**
  * Câmera de batalha com órbita LIVRE em 360° ao redor da arena (dá para ver a
@@ -9,7 +14,14 @@ import { useGameStore } from '../store/gameStore';
  * continua limitada: acima demais vira vista aérea sem leitura, abaixo da
  * horizontal o ponteiro entraria debaixo da ilha flutuante.
  */
-export function CameraController({ menuMode }: { menuMode: boolean }) {
+export function CameraController({
+  menuMode,
+  sceneVariant,
+}: {
+  menuMode: boolean;
+  sceneVariant: ArenaScene;
+}) {
+  const forest = sceneVariant === 'forest';
   const dragActive = useGameStore(
     (s) => s.dragId !== null || s.pendingDrag !== null,
   );
@@ -25,7 +37,9 @@ export function CameraController({ menuMode }: { menuMode: boolean }) {
       autoRotateSpeed={0.55}
       minDistance={3} // zoom colado p/ inspecionar o figurino (o clamp antigo
       // em 10 deixava a estaca e os cacos de gelo minúsculos na tela)
-      maxDistance={ARENA_R * 2.76} // dá para ler a ilha inteira de uma vez
+      maxDistance={
+        forest ? FOREST_CAMERA_MAX_DISTANCE : CAMERA_MAX_DISTANCE
+      } // dá para ler a ilha inteira de uma vez
       minPolarAngle={0.35}
       maxPolarAngle={1.32}
     />
