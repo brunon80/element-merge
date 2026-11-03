@@ -49,13 +49,12 @@ export function ResultScreen() {
           </button>
         </div>
         <p className="result-note">
-          A recompensa desta partida já foi creditada e não se repete.{' '}
           {summary.result === 'victory'
-            ? 'Vitória: todo o time que você plantou volta para a próxima partida, inclusive quem caiu em combate — evoluir um monstro não é uma aposta. Ficam de fora só os fundidos (o filho carrega o valor deles) e os vendidos.'
+            ? 'Todo o time que você plantou volta para a próxima partida, inclusive quem caiu em combate.'
             : summary.result === 'defeat'
-              ? 'Derrota: para você não ficar sem exército, o time inteiro da rodada também volta — mas o prejuízo financeiro fica (as moedas gastas não voltam). Troque a dificuldade, venda criaturas na lixeira e monte outra estratégia.'
-              : 'No empate, só voltam para a próxima partida as criaturas que sobreviveram; se o tabuleiro zerou, vale a regra da derrota e o time inteiro volta.'}{' '}
-          O inimigo será recalculado pelo tamanho do seu time.
+              ? 'O time inteiro volta para você não ficar sem exército; as moedas gastas não voltam.'
+              : 'No empate, só voltam as criaturas que sobreviveram.'}{' '}
+          <span className="rules-ref">Regras completas em ⚙ Configurações → Regras.</span>
         </p>
       </div>
     </div>

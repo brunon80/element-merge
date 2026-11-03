@@ -103,11 +103,6 @@ export function ShopPanel() {
           );
         })}
       </div>
-      <p className="shop-note">
-        {phase === 'combat'
-          ? 'Loja fechada: o exército se fecha na preparação. Vitória devolve o time inteiro.'
-          : 'Monte todo o exército AQUI, antes de iniciar o combate.'}
-      </p>
     </div>
   );
 }

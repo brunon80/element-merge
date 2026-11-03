@@ -1,4 +1,5 @@
 import { ELEMENTS } from '../data/elements';
+import { useFullscreen } from '../hooks/useFullscreen';
 import { useGameStore } from '../store/gameStore';
 import type { ElementId } from '../game/types';
 import { SUMMON_COST } from '../game/types';
@@ -24,6 +25,7 @@ export function HUD() {
   const setBestiary = useGameStore((s) => s.setBestiary);
   const setSettings = useGameStore((s) => s.setSettings);
   const returnToMenu = useGameStore((s) => s.returnToMenu);
+  const fullscreen = useFullscreen();
 
   const timer = phase === 'combat' ? fmtTime(battleTime) : '—';
   const enemyCount = units.filter((u) => u.side === 'ai' && !u.dying).length;
@@ -31,14 +33,16 @@ export function HUD() {
   return (
     <header className="hud panel" data-testid="hud">
       <div className="hud-left">
-        <span className="hud-logo">◈ Elemental Battle</span>
+        <span className="hud-logo">
+          ◈<span className="hud-logo-name"> Elemental Battle</span>
+        </span>
         <span className="hud-diff">{DIFFICULTY_LABEL[difficulty]}</span>
       </div>
 
       <div className="hud-center">
         {phase === 'preparation' && (
           <span className="hud-timer prep" data-testid="prep-status">
-            Preparação — monte seu esquadrão
+            Preparação<span className="prep-sub"> — monte seu esquadrão</span>
           </span>
         )}
         {phase === 'combat' && (
@@ -60,8 +64,19 @@ export function HUD() {
           data-testid="enemy-count"
           title="O exército inimigo é calculado e convocado quando o combate começa"
         >
-          Inimigo: {enemyCount > 0 ? `${enemyCount} criaturas` : 'aguardando combate'}
+          <span className="enemy-label">Inimigo: </span>
+          {enemyCount > 0 ? `${enemyCount} criaturas` : 'aguardando combate'}
         </span>
+        {fullscreen.supported && (
+          <button
+            className="btn ghost small hud-fullscreen"
+            data-testid="fullscreen-toggle"
+            title={fullscreen.active ? 'Sair da tela cheia' : 'Tela cheia'}
+            onClick={fullscreen.toggle}
+          >
+            {fullscreen.active ? '🗗' : '⛶'}
+          </button>
+        )}
         <button
           className="btn ghost small"
           data-testid="open-bestiary"
