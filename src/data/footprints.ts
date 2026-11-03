@@ -86,12 +86,13 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   vulcanico: [{ x: 2.5, z: 2.5 }],
   astral: [{ x: 2.56, z: 2.94 }],
   colosso: [{ x: 2.36, z: 2.23 }],
-  // Nv.10 — o quasar: a corte de dezessete pilares (meia-envergadura 2,43) e as
-  // garras penduradas por fora das torres laterais varrem 3,13 de profundidade
-  // — o maior invólucro autoral da árvore, escalado pelo `slotFit` para o
-  // buraco de 2,5 e ainda assim o bicho mais alto renderizado (topo autoral
-  // 6,20 × encaixe ≈ 4,8 de mundo).
-  primordial: [{ x: 2.43, z: 3.13 }],
+  // Nv.10 — o quasar PURO (rework 03/nov): o disco de acreção de ρ 3,0 inclinado
+  // (o wrapper do rig tomba ~0,46) mede no mundo 3,01 × 2,74 autoral — os arcos
+  // de lente e o anel de fótons ficam todos dentro dessa banda. É o maior
+  // invólucro autoral da árvore em X; escalado pelo `slotFit` (~0,81) para o
+  // buraco de 2,5 (3,01 × 0,81 ≈ 2,44 de mundo) e o topo caiu de 6,20 para 4,9
+  // — o quasar é largo, não alto.
+  primordial: [{ x: 3.01, z: 2.74 }],
 };
 
 /** invólucro autoral da forma que o nível mostra */

@@ -155,18 +155,16 @@ export const VISUALS: Record<SpeciesId, SpeciesVisual> = {
   // aqui é pedra cinza com ferimento âmbar e cristal orquídea)
   colosso: { body: '#9a95a3', dark: '#2b2636', glow: '#d98c4a', accent: '#c77dff', roughness: 0.95 },
   // Nv.10 — PRIMORDIAL (Astral+Colosso: O QUASAR SUPERMASSIVO que precede os
-  // quatro elementos). A pedra da arena ruína é a GEOBRUTA #d8e4f2 — a geada
-  // clara dos dezessete pilares, a mais CLARA da árvore inteira (o corpo escuro
-  // do Astral e o regolito do Colosso ficam para trás de propósito: o print tem
-  // que ler um templo gelado em volta de um buraco de luz). A IDENTIDADE é a
-  // LUZ-DE-AZO #e8f6ff (= projectileColor do motor = glow daqui = uCrack de
-  // TODA a pedra = a cor do anel de fótons no shader do disco): a única fonte
-  // de luz da espécie é a própria gravidade — nunca o âmbar do Astral nem o
-  // âmbar-que-esfria do Colosso. O ESCURO é o BREU-ROXO #241f33 do poço (as
-  // dezessete cantarias pesadas e o funil da goela), e o ACENTO é o GELO #9ad0ff
-  // das lunetas orbitais (o astral #cfe4ff do pai fica para trás: aqui é gelo
-  // azulado, a cor da poeira de disco esfriando na borda)
-  primordial: { body: '#d8e4f2', dark: '#241f33', glow: '#e8f6ff', accent: '#9ad0ff', roughness: 0.3, metalness: 0.25 },
+  // quatro elementos). Desde o rework de 03/nov a criatura é APENAS o quasar.
+  // A IDENTIDADE é a LUZ DE OURO-QUASAR: o BODY é o ouro #ffd66b do disco na
+  // meia-envergadura, o GLOW é a luz-de-quasar quase branca #ffeccb (=
+  // projectileColor do motor = anel de fótons = veio da rajada — identidade
+  // boca→rajada→FX amarrada em teste) e o ACENTO é o EMBER #ff7a3c que esfria
+  // na borda do disco. O ESCURO é o BREU NEGRO #0e0a16 da esfera negra do
+  // horizonte — nunca o breu-roxo do templo antigo. O corpo amarelado~
+  // esbranquiçado e metálico (metalness 0,35: plasma, não pedra) é o que
+  // brilha no print; o azó frio do desenho antigo morreu junto com o templo.
+  primordial: { body: '#ffd66b', dark: '#0e0a16', glow: '#ffeccb', accent: '#ff7a3c', roughness: 0.25, metalness: 0.35 },
 };
 
 const EYE = (x: number, y: number, z: number, group?: number): Part => ({
@@ -222,21 +220,6 @@ const mm = (p: Part): Part[] => [
     ...p,
     p: [-p.p[0], p.p[1], p.p[2]],
     r: p.r ? [p.r[0], -p.r[1], -p.r[2]] : undefined,
-  },
-];
-
-/** espelha uma parte no plano XY (par frontal/traseiro simétrico: |z₀| == |z₁|
- *  exato). É o espelho das garras do PRIMORDIAL: num polígono de 17 lados com
- *  um pilar em 0°, o único par de pilares espelhado no Z é k e 17−k (k 4 e 13 =
- *  ±84,7°) — o espelho no X desse par CAI fora dos pilares (180−84,7 = 95,3°
- *  não é múltiplo de 360/17), então o par simétrico da garra é o do Z. Sob a
- *  conjugação por diag(1,1,−1), Rx/Ry mudam de sinal e Rz preserva. */
-const mz = (p: Part): Part[] => [
-  p,
-  {
-    ...p,
-    p: [p.p[0], p.p[1], -p.p[2]],
-    r: p.r ? [-p.r[0], -p.r[1], p.r[2]] : undefined,
   },
 ];
 
@@ -743,57 +726,55 @@ export const COLOSSO_CORE_POS: [number, number, number] = [0, 2.36, 1.44];
 
 /**
  * As medidas do PRIMORDIAL (amarradas em teste — o rig e o figurino leem as
- * MESMAS constantes). A FÍSICA DO DISCO manda no figurino inteiro: o anel é
- * rígido e précessiona em Y (o wrapper qTilt·qSpin do rig), então o plano
- * inclinado varre TODOS os azimutes — para um ponto a distância ρ do eixo, a
- * superfície do disco passa entre Y_D − ρ·tan(t_max) e Y_D + ρ·tan(t_max)
- * (com t_max 0,50 isso é ±0,546·ρ). Três zonas intocáveis:
+ * MESMAS constantes). Desde o rework de 03/nov o figurino é APENAS o QUASAR
+ * estilo Gargantua — sem templo, sem torres, sem garras:
  *
- *   ABAIXO do disco (topo < Y_D − ρ·0,546 − folga): a CORTE toda (pilares a
- *   ρ 2,19 com coroa 1,55 — o arco de frente do disco, no tilt máximo, desce
- *   a 1,70 na borda: 0,15 de folga da coroa, e no tilt de descanso 0,46 paira
- *   ~0,30 acima — o "0,1–0,6 acima da coroa" do ruling), o entulho rasteiro e
- *   a cinta de detritos (tope 1,48 < 1,70−0,22).
+ *   A ESFERA NEGRA (o horizonte de eventos AGORA tem geometria): esfera de
+ *   raio 0,98 plantada no plano do disco (centro em Y_D = 2,4). É o buraco de
+ *   verdade — breu puro, sem material de pedra nenhuma.
  *
- *   O FURO (ρ<0,62): fuso + cubo + tampa moram NO buraco do horizonte — o
- *   anel começa em 0,62 e nunca toca o fuso de ρ 0,60 (pino do teste: peça
- *   alguma com centro na faixa do plano projeta na coroa 0,62≤ρ≤2,28).
+ *   O DISCO DE ACREÇÃO (a assinatura, a que "ficou muito bom"): anel de ρ
+ *   0,96 (encostado na esfera — o disco nasce NA superfície do horizonte) a
+ *   ρ 3,0 — 32% mais largo que o desenho antigo (2,28). O plano inclinado
+ *   précessiona em Y no pivô (0, Y_D, 0) como sempre; com o tilt oscilando até
+ *   0,5 a superfície desce a Y_D − 3,0·sin(0,5) ≈ 0,95 na borda — o quasar
+ *   paira, nada encosta no deck, e não há mais peça alguma para o plano varrer
+ *   (a física das três zonas morreu junto com o templo).
  *
- *   ACIMA do disco (base > Y_D + ρ·0,546 + folga): a coroa ascendente —
- *   mastro no eixo (ρ≤0,16, onde não há anel nenhum), os dois anéis de
- *   contenção (a banda de baixo do maior fica 0,27 acima do teto do plano
- *   varrido na sua borda) e os espinhos — e o orbe alto com as lunetas. E
- *   FORA da borda (ρ>2,28+folga): as TORRES de ρ 2,62 com as garras penduradas
- *   por fora (a peça mais funda da garra é a cauda do cometa, que para em
- *   ρ 2,34 e a coleta gira no eixo da torre sem nunca varar a borda) — os dois
- *   flancos k 4 e k 13 (±84,7°, o par espelhado no Z de 17 lados: k e 17−k).
+ *   O ARCO DE LENTE (a silhueta superior e inferior do disco sobre a esfera —
+ *   o look Gargantua do Interestelar): dois arcos de toro no plano VERTICAL de
+ *   frente (XY do modelo), arqueando por CIMA e por BAIXO da esfera negra, com
+ *   as pontas esmaecidas onde encontram a banda do disco. O rig faz o par
+ *   inteiro encarar a câmera (billboard em Y no eixo da esfera — o anel de
+ *   lente mora no plano do céu, não no plano do disco).
  *
- * O astro/event-horizon NÃO tem geometria visível: é pintado no disco.
+ *   O ANEL DE FÓTONS: um toro miúdo rente ao ombro da esfera, também no plano
+ *   do céu (billboard) — a volta de luz que segura o horizonte na tela.
  */
-export const PRIMORDIAL_CORTE_R = 2.19; // anel dos dezessete pilares
-export const PRIMORDIAL_PYLON_TOP = 1.55; // coroa dos pilares (o disco paira acima)
-export const PRIMORDIAL_DISK_Y = 2.95; // plano do disco no descanso
-export const PRIMORDIAL_HORIZON_R = 0.62; // o furo = horizonte de eventos (astro pintado)
-export const PRIMORDIAL_DISK_R = 2.28; // borda do disco (a franja ember morre aqui)
+export const PRIMORDIAL_HORIZON_R = 0.98; // a esfera negra = horizonte de eventos (agora COM geometria)
+export const PRIMORDIAL_DISK_Y = 2.4; // plano do disco no descanso (e o centro da esfera)
+export const PRIMORDIAL_DISK_IN = 0.96; // o disco nasce na superfície da esfera (0,98 − 0,02 embutido)
+export const PRIMORDIAL_DISK_R = 3.0; // borda do disco (a franja ember morre aqui; era 2,28)
 export const PRIMORDIAL_DISK_TILT = 0.46; // inclinação de descanso (o rig oscila 0,42–0,50)
-export const PRIMORDIAL_TILT_MAX = 0.5; // o tilt mais fundo que o rig pode pôr (a régua da folga)
-export const PRIMORDIAL_SPINDLE_R = 0.60; // o fuso de dezessete faces no eixo (ρ = 1 dedo do furo)
-export const PRIMORDIAL_HUB_Y = 3.1; // centro do cubo central (no furo, coroando o fuso)
-export const PRIMORDIAL_HUB_R = 0.58; // o cubo fica DENTRO do furo (0,58 < 0,62)
-export const PRIMORDIAL_MAST_TOP = 5.35; // topo do mastro da coroa ascendente
-export const PRIMORDIAL_TOWER_R = 2.62; // as torres do braço: por FORA da borda do disco
-export const PRIMORDIAL_TOWER_K: readonly number[] = [4, 13]; // os flancos ±84,7° (k e 17−k)
-export const PRIMORDIAL_MUZZLE: [number, number, number] = [0, 2.95, 0.55]; // a rajada sai do FURO do horizonte
+export const PRIMORDIAL_TILT_MAX = 0.5; // o tilt mais fundo que o rig pode pôr (a régua da folga do deck)
+export const PRIMORDIAL_LENS_TOP_R = 1.3; // arco de cima: anel de lente sobre a cabeça da esfera
+export const PRIMORDIAL_LENS_TOP_TUBE = 0.09;
+export const PRIMORDIAL_LENS_TOP_ARC = 2.4; // rad; as pontas morrem antes da banda do disco
+export const PRIMORDIAL_LENS_BOT_R = 1.42; // arco de baixo: mais fundo e mais fininho (a imagem lensada de baixo é mais fraca)
+export const PRIMORDIAL_LENS_BOT_TUBE = 0.07;
+export const PRIMORDIAL_LENS_BOT_ARC = 2.9;
+export const PRIMORDIAL_PHOTON_R = 1.015; // anel de fótons rente ao ombro da esfera (0,98 + 0,035)
+export const PRIMORDIAL_MUZZLE: [number, number, number] = [0, 2.4, 1.06]; // a rajada sai do VENTRE da esfera (h ≥ 1,06 > raio 0,98), no plano do disco
 
 /** A PALETA PINADA do quasar (motor↔figurino↔rig↔projétil↔FX — o teste amarra
- *  as cinco pontas): a pedra é a geobrauta clara, o escuro é o breu-roxo do
- *  poço, e a ÚNICA luz é a luz-de-azo do motor correndo no veio de toda pedra,
- *  no anel de fótons do disco e na rajada. */
-export const PRIMORDIAL_QUASAR = '#e8f6ff'; // = projectileColor do motor
-export const PRIMORDIAL_ICE = '#9ad0ff'; // acento: gelo das lunetas orbitais
+ *  as pontas): o rework de 03/nov trocou a luz-de-azo fria pelo OURO-QUASAR —
+ *  o disco é amarelado~esbranquiçado (branco-quasar no anel de fótons, ouro na
+ *  meia-envergadura, ember esfriando na borda) e a única pedra que sobrou é a
+ *  matéria VITRIFICADA do jato (o corpo da rajada e as farpas do impacto). */
+export const PRIMORDIAL_QUASAR = '#ffeccb'; // luz-de-quasar quase branca = projectileColor do motor
+export const PRIMORDIAL_GOLD = '#ffd66b'; // o ouro do disco na meia-envergadura = o acento da espécie
 export const PRIMORDIAL_EMBER = '#ff7a3c'; // a franja ember do disco (a borda esfriando)
-export const PRIMORDIAL_FROST = '#d8e4f2'; // = body do figurino (geada bruta)
-export const PRIMORDIAL_DEEP = '#241f33'; // = dark do figurino (breu do poço)
+export const PRIMORDIAL_DEEP = '#0e0a16'; // o breu NEGRO do poço (a esfera negra e a chuva de breu do impacto)
 
 /** VARA DO COLOSSO (contraforte, úmero, matacão, menir): um `cyl` de TREZE FACES
  *  (o treze da montanha-eterna-que-virou-lua: nenhum outro figurino da árvore
@@ -841,55 +822,6 @@ const spike13 = (
     ...part,
     g: 'cone',
     a: [thick, len, 13, 1],
-    p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
-    r: aim([ux, uy, uz]),
-  };
-};
-
-/** VARA DO PRIMORDIAL (pilar da corte, arcobotante, torre do braço, úmero da
- *  garra, espinho da coroa): um `cyl`/`cone` de DEZESSETE FACES — o DNA da
- *  espécie (nenhum outro figurino da árvore usa dezessete: Geodo CINCO, Cristal
- *  SEIS, Abissal SETE, Cósmico OITO, Vulcânico NOVE, Astral ONZE, Colosso
- *  TREZE), com anéis ≥7 por unidade afinando no rumo da ponta (a MESMA receita
- *  do `rod13`, no triplo da régua: o Primordial é o maior da árvore). */
-const rod17 = (
-  a: [number, number, number],
-  b: [number, number, number],
-  thick: number,
-  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
-): Part => {
-  const dx = b[0] - a[0];
-  const dy = b[1] - a[1];
-  const dz = b[2] - a[2];
-  const len = Math.hypot(dx, dy, dz);
-  return {
-    ...part,
-    g: 'cyl',
-    a: [thick * 0.72, thick, len + 0.04, 17, Math.max(4, Math.round(len * 7))],
-    p: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2],
-    r: aim([dx, dy, dz]),
-  };
-};
-
-/** PONTA DO PRIMORDIAL (os três espinhos da coroa ascendente): cone de
- *  DEZESSETE FACES com a base enterrada no nó (a mesma receita do `spike13`). */
-const spike17 = (
-  c: [number, number, number],
-  nodeR: number,
-  len: number,
-  thick: number,
-  d: [number, number, number],
-  part: Omit<Part, 'g' | 'p' | 'r' | 'a'>,
-): Part => {
-  const L = Math.hypot(d[0], d[1], d[2]) || 1;
-  const ux = d[0] / L;
-  const uy = d[1] / L;
-  const uz = d[2] / L;
-  const back = nodeR - 0.05; // base enterrada no nó
-  return {
-    ...part,
-    g: 'cone',
-    a: [thick, len, 17, 1],
     p: [c[0] + ux * (back + len / 2), c[1] + uy * (back + len / 2), c[2] + uz * (back + len / 2)],
     r: aim([ux, uy, uz]),
   };
@@ -3451,206 +3383,56 @@ export const MODELS: Record<SpeciesId, SpeciesModel> = {
   },
 
   // Astral+Colosso — O QUASAR SUPERMASSIVO que precede os quatro elementos
-  // (Nv.10). DEZESSETE EM TUDO: o DNA da espécie é o DEZESSETE — nenhum outro
-  // figurino da árvore usa dezessete (Geodo CINCO, Cristal SEIS, Abissal SETE,
-  // Cósmico OITO, Vulcânico NOVE, Astral ONZE, Colosso TREZE) e ele manda nas
-  // contagens: dezessete pilares + dezessete almofadas + dezessete arcobotantes
-  // + dezessete lages (a corte), as duas torres nos flancos k 4 e k 13 (±84,7°,
-  // o único par de 17 lados espelhado no Z: k e 17−k), o anel de fótons do
-  // disco pintado no shader, e o ataque em rajada de DEZESSETE baforadas (rig).
-  // A ASSINATURA é o DISCO DE ACREFÃO inclinado (descanso 0,46) — UMA peça com
-  // shader próprio (máscara de horizonte no frag, o astro NÃO tem geometria: o
-  // buraco ρ<0,62 fica vazio e o poço é o fuso de dezessete faces dentro do
-  // furo). O templo é GEOBRUTA (geada clara, a pedra mais clara da árvore)
-  // sobre cantaria de BREU-ROXO; a única luz é a luz-de-azo do motor (veio de
-  // toda pedra + anel de fótons + rajada). A FÍSICA DO PLANO VARRIDO (ver o
-  // bloco de constantes) divide o figurino nas três zonas: corte/entulho por
-  // BAIXO do arco do disco, fuso/cubo/tampa NO furo, coroa/orbe/lunetas ACIMA
-  // do arco de trás, torres/garras POR FORA da borda. COREOGRAFIA (amarrada no
-  // rig): janela 0,94 — a cadência do Nv.10 (1,5) fica entre o astral (0,74 no
-  // interval 1,2) e o colosso (1,25 no 2,5).
+  // (Nv.10). REWORK artístico de 03/nov: o monstro é APENAS o quasar — o templo
+  // dos dezessete pilares, as torres, as garras, a coroa e as lunetas foram
+  // DERRUBADOS; não sobrou uma pedra. O figurino inteiro são CINCO peças de
+  // céu: a ESFERA NEGRA do horizonte (o buraco agora TEM geometria — breu
+  // puro), o DISCO DE ACREÇÃO (a assinatura elogiada: de ρ 0,96 — colado na
+  // esfera — a ρ 3,0, 32% mais largo, amarelado~esbranquiçado e girando BEM
+  // mais rápido), o ANEL DE FÓTONS rente ao ombro da esfera e os DOIS ARCOS DE
+  // LENTE — a silhueta SUPERIOR e INFERIOR do disco arqueando sobre o breu (o
+  // look Gargantua do Interestelar, na imagem de referência do usuário). O DNA
+  // DEZESSETE sobrevive nas costuras das curvas: a esfera é cortada em 34×17
+  // (2×17 meridianos), o disco tem 6×17=102 segmentos e os três toros do céu
+  // têm 17×34; no rig ficam o jato de 17 faces, o pó 2×17 e as 17 baforadas do
+  // sopro. A luz é OURO QUASAR (#ffeccb no anel de fótons, #ffd66b no disco,
+  // #ff7a3c esfriando na borda). COREOGRAFIA (amarrada no rig): janela 0,94 —
+  // a cadência do Nv.10 (1,5) fica entre o astral (0,74 no interval 1,2) e o
+  // colosso (1,25 no 2,5).
   primordial: {
     floatY: 0,
     bob: 0.014,
     parts: [
-      // ---- a CORTE dos dezessete (ZONA DE BAIXO): almofada + pilar (geada
-      // bruta sobre cantaria de breu) + arcobotante para o pilar vizinho (o
-      // decágono voador de dezessete lados sempre NO SENTIDO CRESCENTE). A
-      // coroa dos pilares fica em 1,68 — o arco de frente do disco, no tilt
-      // máximo 0,52, desce a 1,81 na borda: 0,13 de folga. Nos flancos k 4 e
-      // k 13 a corte ganha torre (ZONA DE FORA: ρ 2,62, fora da borda 2,28).
-      ...Array.from({ length: 17 }, (_, k): Part[] => {
-        const phi = (k / 17) * Math.PI * 2;
-        const c = Math.cos(phi);
-        const s = Math.sin(phi);
-        const nk = ((k + 1) / 17) * Math.PI * 2;
-        const nc = Math.cos(nk);
-        const ns = Math.sin(nk);
-        const side = k === 4 || k === 13;
-        return [
-          { g: 'cyl', a: [0.24, 0.21, 0.14, 17, 3], p: [2.19 * c, 0.24, 2.19 * s], m: 'dark', tag: 'court.pad' },
-          { g: 'cyl', a: [0.16, 0.24, 1.19, 17, 9], p: [2.19 * c, 0.955, 2.19 * s], m: 'body', tag: 'court.pylon' },
-          rod17([2.19 * c, 1.0, 2.19 * s], [2.14 * nc, 1.25, 2.14 * ns], 0.11, { m: 'dark', tag: 'court.brace' }),
-          ...(side
-            ? ([
-                // a torre do braço sobe POR FORA da borda do disco (ρ 2,62 ±
-                // 0,15 contra a borda 2,28) — o plano varrido do disco nunca
-                // chega nela, e o entulho do arco frontal passa por baixo
-                { g: 'cyl', a: [0.20, 0.17, 0.14, 17, 3], p: [2.62 * c, 0.24, 2.62 * s], m: 'dark', tag: 'court.tower.pad' },
-                rod17([2.62 * c, 0.32, 2.62 * s], [2.62 * c, 3.42, 2.62 * s], 0.15, { m: 'dark', tag: 'court.tower' }),
-                rod17([2.19 * c, 1.0, 2.19 * s], [2.55 * c, 0.75, 2.55 * s], 0.10, { m: 'dark', tag: 'court.tower.brace' }),
-              ] as Part[])
-            : []),
-        ];
-      }).flat(),
-      // as lages do soalho (17): cada uma DEITADA NA TANGENTE (o +X do `box` vai
-      // para a tangente: r = −π/2 − φ), fechando o anel por dentro dos pilares
-      ...Array.from({ length: 17 }, (_, k): Part => {
-        const phi = (k / 17) * Math.PI * 2;
-        return {
-          g: 'box',
-          a: [0.80, 0.12, 0.24],
-          p: [2.12 * Math.cos(phi), 0.26, 2.12 * Math.sin(phi)],
-          r: [0, -Math.PI / 2 - phi, 0],
-          m: 'dark',
-        };
-      }),
+      // ---- A ESFERA NEGRA (1): o horizonte de eventos com geometria — 34
+      // meridianos × 17 paralelos (o dezessete na costura da esfera); `black`
+      // é o breu puro do kernel, o buraco não tem relevo nenhum.
+      { g: 'sphere', a: [PRIMORDIAL_HORIZON_R, 34, 17], p: [0, PRIMORDIAL_DISK_Y, 0], m: 'black', tag: 'hole.horizon' },
 
-      // ---- O DISCO DE ACREFÃO (a assinatura): UMA peça, `ring` de 96 segmentos
-      // do horizonte (0,62) à borda (2,28). O material é o ShaderMaterial próprio
-      // do rig (DISK_FRAG: máscara de horizonte, anel de fótons em HDR e bandas
-      // de gás com ω ∝ ρ^−1,5); a inclinação e o wrapper qTilt·qSpin vêm do rig.
-      // Nada de calota, aro ou astro com geometria — o buraco é o vazio e a
-      // luz é pintura.
-      { g: 'ring', a: [0.62, 2.28, 96], p: [0, PRIMORDIAL_DISK_Y, 0], r: [-Math.PI / 2, 0, 0], m: 'trans', tag: 'disk.accr' },
+      // ---- O ANEL DE FÓTONS (1): a volta de luz rente ao ombro da esfera, no
+      // plano do CÉU (o rig vira anel e arcos para encarar a câmera — é o que
+      // ancora o horizonte na tela). Toro 17 × 34.
+      { g: 'torus', a: [PRIMORDIAL_PHOTON_R, 0.02, 17, 34], p: [0, PRIMORDIAL_DISK_Y, 0], m: 'glow', tag: 'hole.photon', flick: 0.18 },
 
-      // ---- A GOELA DO BURACO (5 peças de dezessete faces): a gola escura
-      // emoldura o horizonte pelo lado de BAIXO (topo 2,04, folga 0,55 do arco
-      // mais fundo na borda do furo), o fuso da singularidade sobe do poço até
-      // o cubo SEMPRE dentro do furo (ρ 0,60 < 0,62 — o anel nunca o toca), o
-      // cubo coroa o fuso também dentro do furo (ρ 0,58), e a tampa luminosa é
-      // a lâmpada do horizonte (glow — a única luz com geometria no furo). A
-      // saia-funil (tubo aberto de boca larga: ρ 1.10 na boca, afunilando até
-      // ρ 0.90 no topo) paira abaixo, no meio da corte, zona de baixo.
-      { g: 'cyl', a: [0.60, 0.72, 0.46, 17, 4, 1], p: [0, 1.81, 0], m: 'black', tag: 'well.collar' },
-      { g: 'cyl', a: [0.90, 1.10, 0.20, 17, 3, 1], p: [0, 1.0, 0], m: 'dark', tag: 'well.skirt' },
-      { g: 'cyl', a: [0.60, 0.60, 1.55, 17, 8], p: [0, 2.825, 0], m: 'body', tag: 'well.spindle' },
-      { g: 'cyl', a: [0.58, 0.58, 0.50, 17, 4], p: [0, PRIMORDIAL_HUB_Y, 0], m: 'body', tag: 'well.hub' },
-      { g: 'cyl', a: [0.50, 0.58, 0.08, 17, 2], p: [0, 3.39, 0], m: 'glow', tag: 'well.cap', flick: 0.25 },
+      // ---- O DISCO DE ACREÇÃO (a assinatura): UMA peça, `ring` de 6×17 = 102
+      // segmentos nascendo EMBUTIDO na superfície da esfera negra (ρ 0,96) até
+      // a borda ρ 3,0. O material é o ShaderMaterial próprio do rig (DISK_FRAG:
+      // ouro-quasar na boca, bandas de gás com ω ∝ ρ^−1,5 e franja ember na
+      // borda); a inclinação e o wrapper qTilt·qSpin vêm do rig — e o disco
+      // girou muito mais rápido neste rework.
+      { g: 'ring', a: [PRIMORDIAL_DISK_IN, PRIMORDIAL_DISK_R, 102], p: [0, PRIMORDIAL_DISK_Y, 0], r: [-Math.PI / 2, 0, 0], m: 'trans', tag: 'disk.accr' },
 
-      // ---- a COROA ASCENDENTE (9, ZONA DE CIMA): o mastro no eixo (ρ ≤ 0,16,
-      // fora do anel — varar o plano onde não há anel nenhum), dois anéis de
-      // contenção girando com o grupo 3, três espinhos de dezessete faces e a
-      // luz de azó em cada ponta. O anel de contenção de ρ 1,05 tem a BANDA DE
-      // BAIXO em 3,77 — acima do teto do plano varrido na sua borda externa
-      // (Y_D + 1,10·0,4973 = 3,50): o disco passa por baixo dele em qualquer
-      // atitude. O topo do figurino fica em ~6,2, dentro do topo autoral 6,2.
-      rod17([0, PRIMORDIAL_HUB_Y + 0.29, 0], [0, PRIMORDIAL_MAST_TOP, 0], 0.16, { m: 'body', tag: 'crown.mast' }),
-      // conTEMÇÃO deitados (o toro do three mora no plano XY: −π/2 no X deita o
-      // anel em volta do mastro; o tilt de inclinação vem DEPOIS, e a banda de
-      // baixo do maior fica 0,25 acima do teto do plano varrido na sua borda)
-      { g: 'torus', a: [1.05, 0.05, 13, 34], p: [0, 4.42, 0], r: [-Math.PI / 2 + 0.55, 0, 0], m: 'accent', tag: 'crown.ring', group: 3 },
-      { g: 'torus', a: [0.85, 0.045, 13, 32], p: [0, 5.05, 0], r: [-Math.PI / 2 - 0.42, 0, 0], m: 'accent', tag: 'crown.ring', group: 3 },
-      ...Array.from({ length: 3 }, (_, k): Part[] => {
-        const phi = (k / 3) * Math.PI * 2 + 0.4;
-        const c = Math.cos(phi);
-        const s = Math.sin(phi);
-        const tip = [0.83 * c, 6.1, 0.83 * s] as [number, number, number];
-        return [
-          spike17([0, PRIMORDIAL_MAST_TOP, 0], 0.16, 0.72, 0.13, [tip[0], 6.1 - PRIMORDIAL_MAST_TOP, tip[2]], { m: 'body', tag: 'crown.spike' }),
-          { g: 'sphere', a: [0.09, 12, 10], p: tip, m: 'glow', tag: 'crown.lamp', flick: 0.2 },
-        ];
-      }).flat(),
-
-      // ---- AS DUAS GARRAS DE ACREFÃO (20 = dez de cada lado, espelhadas no Z
-      // num só `mz`: os flancos k 4/k 13 são k e 17−k, o par simétrico de um
-      // polígono de 17 lados): a garra pendurada NA TORRE (uma quaternión só no
-      // eixo Y da torre no rig — a coleta gira β com o braço varrendo só o
-      // exterior), e cada garra segura um COMETA de matéria capturada POR FORA
-      // da borda do disco: a peça mais funda é a cauda do cometa, que para em
-      // ρ 2,34 (folga 0,06 da borda 2,28 — e o giro β na vertical da torre só
-      // faz o cometa, colado no eixo da torre, VARREZER arco exterior). O
-      // cometa é o GRÃO que o quasar engole: na afinação ele some (o rig o
-      // apaga) e a luz recolhe no horizonte — a rajada sai do FURO.
-      ...([
-        { g: 'cyl', a: [0.21, 0.19, 0.40, 17, 4], p: [0.242, 3.62, 2.609], m: 'dark', tag: 'arm.drum' },
-        rod17([0.30, 3.78, 2.78], [0.52, 3.30, 2.98], 0.15, { m: 'body', tag: 'arm.upper' }),
-        { g: 'cyl', a: [0.15, 0.15, 0.24, 17, 3], p: [0.52, 3.30, 2.98], r: [0, 0, 0.6], m: 'dark', tag: 'arm.elbow' },
-        rod17([0.52, 3.30, 2.98], [0.42, 3.52, 2.90], 0.13, { m: 'body', tag: 'arm.fore' }),
-        { g: 'sphere', a: [0.16, 12, 10], p: [0.42, 3.52, 2.9], m: 'glow', tag: 'arm.wrist', flick: 0.15 },
-        { g: 'ico', a: [0.26, 2], p: [0.38, 3.38, 2.62], m: 'glow', tag: 'arm.core', amp: 0.03, flick: 0.3 },
-        { g: 'sphere', a: [0.1, 10, 8], p: [0.34, 3.14, 2.42], m: 'glow', tag: 'arm.tail', amp: 0.02, flick: 0.4 },
-        rod17([0.42, 3.52, 2.9], [0.30, 3.30, 2.52], 0.09, { m: 'body', tag: 'arm.claw' }),
-        rod17([0.30, 3.56, 2.7], [0.32, 3.36, 2.5], 0.09, { m: 'body', tag: 'arm.claw' }),
-        rod17([0.52, 3.42, 2.66], [0.40, 3.30, 2.52], 0.09, { m: 'body', tag: 'arm.claw' }),
-      ] as Part[]).flatMap(mz),
-
-      // ---- CORPOS ORBITAIS (cinco, em velocidades DIFERENTES e em dois planos
-      // — o Colosso gira o anel, o Primordial gira o céu): a cinta rasteira de
-      // detritos rente à corte (11, grupo 0 a 0,34 — ZONA DE BAIXO: tope 1,48,
-      // o arco mais fundo do disco na sua borda é 1,81), a cinta de entulho no
-      // MEIO da corte (11, grupo 1 a 0,62 ao CONTRÁRIO) e o orbe alto da coroa
-      // (10, grupo 4 a −0,38, lá em cima de tudo) com um cometa fantasma. As
-      // quatro lunetas elementais (grupo 5 a −0,7) são o aceno miúdo aos quatro
-      // elementos que o Primordial precede: fogo, mar, pedra e vento, cada uma
-      // na sua forma — todas ACIMA do teto do plano varrido na sua borda.
-      ...Array.from({ length: 11 }, (_, k): Part => {
-        const phi = (k / 11) * Math.PI * 2;
-        const r = 2.22 + (k % 3) * 0.04;
-        return {
-          g: 'octa',
-          a: [0.12 + (k % 3) * 0.02, 0],
-          p: [r * Math.cos(phi), 1.28 - (k % 2) * 0.16, r * Math.sin(phi)],
-          s: [1, 1.25, 1],
-          m: 'dark',
-          tag: 'debris.ring',
-          group: 0,
-          flick: 0.08,
-        };
-      }),
-      ...Array.from({ length: 11 }, (_, k): Part => {
-        const phi = (k / 11) * Math.PI * 2 + 0.28;
-        const r = 1.0 + (k % 3) * 0.13;
-        return {
-          g: 'dodeca',
-          a: [0.11 + (k % 2) * 0.03, 0],
-          p: [r * Math.cos(phi), 0.6 + (k % 2) * 0.18, r * Math.sin(phi)],
-          m: 'dark',
-          tag: 'debris.court',
-          group: 1,
-          flick: 0.06,
-        };
-      }),
-      // o orbe alto da coroa: tamborete do eixo + oito seixos em dois níveis +
-      // o cometa fantasma (esfera com a cauda de geada engatada)
-      { g: 'cyl', a: [0.14, 0.14, 0.30, 17, 3], p: [0, 5.9, 0], m: 'body', tag: 'orbital.hub' },
-      ...Array.from({ length: 8 }, (_, k): Part => {
-        const phi = (k / 8) * Math.PI * 2;
-        const r = 1.18 + (k % 2) * 0.07;
-        return {
-          g: 'ico',
-          a: [0.13 + (k % 3) * 0.02, 1],
-          p: [r * Math.cos(phi), 5.73 + (k % 2) * 0.32, r * Math.sin(phi)],
-          s: [1, 0.85, 1],
-          m: 'accent',
-          tag: 'orbital.rock',
-          group: 4,
-          flick: 0.12,
-        };
-      }),
-      { g: 'sphere', a: [0.11, 10, 8], p: [1.16, 5.9, 0.3], m: 'glow', tag: 'orbital.comet', group: 4, flick: 0.35 },
-      // as quatro lunetas elementais (foguia, mar, pedra, vento)
-      { g: 'drop', a: [0.16, 0.45, 14, 12], p: [1.35, 4.6, 0], m: 'accent', tag: 'sat.fire', group: 5, flick: 0.3 },
-      { g: 'sphere', a: [0.14, 12, 10], p: [-1.25, 4.6, 0.55], m: 'accent', tag: 'sat.water', group: 5 },
-      { g: 'octa', a: [0.13, 0], p: [-1.25, 4.6, -0.55], s: [0.85, 1.3, 0.85], m: 'accent', tag: 'sat.earth', group: 5 },
-      { g: 'vortex', a: [0.14, 0.05, 0.5, 12, 16, 1.6], p: [1.25, 4.6, -0.55], m: 'trans', tag: 'sat.air', group: 5 },
+      // ---- OS DOIS ARCOS DE LENTE (a silhueta do disco sobre o breu — o look
+      // Gargantua): arcos de toro 17×34 no plano VERTICAL de frente (XY do
+      // modelo), centrados no centro da esfera — o de cima arqueia SOBRE a
+      // cabeça do horizonte, o de baixo pendura POR BAIXO, e as pontas esmaecem
+      // onde a banda do disco assume (shader LENS_FRAG no rig). O par inteiro
+      // encara a câmera (billboard em Y no eixo da esfera): o anel de lente
+      // mora no plano do céu, não no plano do disco.
+      { g: 'torus', a: [PRIMORDIAL_LENS_TOP_R, PRIMORDIAL_LENS_TOP_TUBE, 17, 34, PRIMORDIAL_LENS_TOP_ARC], p: [0, PRIMORDIAL_DISK_Y, 0], r: [0, 0, Math.PI / 2 - PRIMORDIAL_LENS_TOP_ARC / 2], m: 'glow', tag: 'lens.top' },
+      { g: 'torus', a: [PRIMORDIAL_LENS_BOT_R, PRIMORDIAL_LENS_BOT_TUBE, 17, 34, PRIMORDIAL_LENS_BOT_ARC], p: [0, PRIMORDIAL_DISK_Y, 0], r: [0, 0, -Math.PI / 2 - PRIMORDIAL_LENS_BOT_ARC / 2], m: 'glow', tag: 'lens.bottom' },
     ],
-    // os cinco corpos orbitais giram em velocidades DIFERENTES: a cinta rasteira
-    // 0 a 0,34, a de entulho 1 a −0,62 (as duas da corte em sentidos contrários
-    // nunca se encostam porque moram em raios diferentes), a coroa de anéis 3 a
-    // 0,50, o orbe alto 4 a −0,38 e as lunetas 5 a −0,70. O DISCO não é grupo: o
-    // rig gira-e-inclina-e-acelera-e-frene o disco sozinho (a rotação diferencial
-    // das bandas é do shader, ω ∝ ρ^−1,5).
-    groups: { 0: 0.34, 1: -0.62, 3: 0.5, 4: -0.38, 5: -0.7 },
+    // nenhum corpo orbital e nenhum grupo: o quasar puro não tem lua, coroa
+    // nem entulho. O DISCO (qTilt·qSpin) e o CÉU (anel de fótons + arcos de
+    // lente, billboard em Y) têm wrapper próprio no rig.
   },
 };

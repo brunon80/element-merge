@@ -43,12 +43,12 @@ import {
   HEARTH_COLOSSO_LOOK,
   REGOLITO_COLOSSO_LOOK,
 } from './ColossoRig';
-// o PRIMORDIAL cospe a RAJADA de azó: a geobruta, o gelo e a luz-de-azo vêm
-// todos do figurino (ver PrimordialRig) — a identidade amarrada em teste do
-// motor ao projétil ao impacto
+// o PRIMORDIAL cospe a RAJADA de plasma: a MATÉRIA VITRIFICADA (a única
+// "pedra" que sobrou depois que o templo caiu) e a luz-de-quasar vêm todas do
+// figurino (ver PrimordialRig) — a identidade amarrada em teste do motor ao
+// projétil ao impacto
 import {
-  GEOBRUTA_LOOK,
-  ICESTONE_LOOK,
+  SINTER_LOOK,
   QUASAR_PLASMA,
   PRIMORDIAL_QUASAR,
 } from './PrimordialRig';
@@ -259,21 +259,22 @@ export const COLOSSO_CHIP_LOOK = {
 };
 
 /** PRIMORDIAL: a LANÇA de dezessete faces da rajada (o corpo do tiro) é a
- *  GEOBRUTA do figurino lida em voo — a haste de pedra do templo com a trinca
- *  de luz-de-azo do MOTOR (#e8f6ff) correndo por dentro; o núcleo é o plasma
- *  do horizonte (o MESMO da tampa do fuso) e as dezessete fagulhas da cauda
- *  são o gelo das lunetas com o veio de azó — paleta única pinada
+ *  MATÉRIA VITRIFICADA do jato lida em voo — a escória de plasma que passou
+ *  pelo poço e esfriou em vidro dourado, com a trinca de luz-de-quasar do
+ *  MOTOR (#ffeccb) correndo por dentro; o núcleo é o plasma do horizonte (o
+ *  MESMO anel de fótons do figurino) e as dezessete fagulhas da cauda são o
+ *  ouro do disco com o veio branco do motor — paleta única pinada
  *  motor↔rig↔projétil↔FX */
 export const PRIMORDIAL_RAY_CORE_LOOK = {
   gold: QUASAR_PLASMA.gold, // = a cor do motor (identidade boca→rajada→FX)
   white: QUASAR_PLASMA.white,
-  cool: QUASAR_PLASMA.cool,
+  cool: QUASAR_PLASMA.cool, // = o OURO do disco no fresnel (nunca o azó antigo)
   amp: 0.03,
 };
 export const PRIMORDIAL_SPARK_LOOK = {
-  ...ICESTONE_LOOK,
-  rockA: '#7fb0dd', // gelo das lunetas, um degrau mais claro que a pedra accent
-  crack: PRIMORDIAL_QUASAR, // o azó do motor na lasca de gelo
+  ...SINTER_LOOK,
+  rockA: '#f2dcae', // o ouro claro do disco, um degrau mais claro que a escória
+  crack: PRIMORDIAL_QUASAR, // o branco-quasar do motor na lasca vitrificada
   crackScale: 3.2, // lasca miúda: ruído lido no espaço LOCAL
   crackWidth: 0.05,
   crackGlow: 0.9,
@@ -333,7 +334,7 @@ function speciesColor(species: SpeciesId): THREE.Color {
       astral: '#ffb347', // = ASTRAL_STARLIGHT, o âmbar do motor (geada é o acento)
       colosso: '#d98c4a',
       // Nv.10 — primordial
-      primordial: '#e8f6ff',
+      primordial: '#ffeccb', // = PRIMORDIAL_QUASAR, a luz-de-quasar do motor
     };
     c = new THREE.Color(map[species] ?? '#ffffff');
     cache.set(species, c);
@@ -1420,22 +1421,22 @@ export function ProjectileField() {
     // silhueta): haste de DEZESSETE FACES (o DNA — o Geodo arranca matacões de
     // CINCO, o Abissal ganchos de SETE, o Vulcânico bombas de NOVE, o Astral
     // cometas de ONZE, o Colosso arremessa TUDO em TREZE; o Primordial é o
-    // DEZESSETE em tudo) de GEOBRUTA com a trinca de azó do MOTOR. Afiada e
-    // COMPRIDA como o cometa do pai Astral (o tiro é rajada de energia, 12
-    // u/s, não bloco): pedra do templo virando dardo de luz
+    // DEZESSETE em tudo) de MATÉRIA VITRIFICADA com a trinca de luz-de-quasar
+    // do MOTOR. Afiada e COMPRIDA como o cometa do pai Astral (o tiro é rajada
+    // de energia, 12 u/s, não bloco): escória de plasma virando dardo de luz
     const geo = new THREE.ConeGeometry(0.2, 0.66, 17, 2);
     const seeds = seedsAttr();
     geo.setAttribute('aSeed', seeds);
     const mat = makeStoneMaterial({
-      rockA: GEOBRUTA_LOOK.rockA,
-      rockB: GEOBRUTA_LOOK.rockB,
-      crack: GEOBRUTA_LOOK.crack, // = a cor do motor (identidade boca→rajada→FX)
+      rockA: SINTER_LOOK.rockA,
+      rockB: SINTER_LOOK.rockB,
+      crack: SINTER_LOOK.crack, // = a cor do motor (identidade boca→rajada→FX)
       amp: 0.016, // régua do relevo: haste de 0,2 de raio (0,2·0,25 = 0,05 de teto)
-      crackGlow: GEOBRUTA_LOOK.crackGlow * 1.8, // a lança é LIGHT-DO-MOTOR: veio mais aceso que a pedra do chão
-      crackScale: GEOBRUTA_LOOK.crackScale,
-      crackWidth: GEOBRUTA_LOOK.crackWidth,
-      crackBoost: GEOBRUTA_LOOK.crackBoost * 1.3,
-      speck: GEOBRUTA_LOOK.speck,
+      crackGlow: SINTER_LOOK.crackGlow * 1.8, // a lança é LIGHT-DO-MOTOR: veio mais aceso que a escória
+      crackScale: SINTER_LOOK.crackScale,
+      crackWidth: SINTER_LOOK.crackWidth,
+      crackBoost: SINTER_LOOK.crackBoost * 1.3,
+      speck: SINTER_LOOK.speck,
       seed: 6.1,
       breath: 0.5,
     });
@@ -1443,17 +1444,17 @@ export function ProjectileField() {
   }, []);
 
   const primordialRayCore = useMemo(() => {
-    // o CAROÇO de horizonte saltando pela boca da lança: é o MESMO plasma da
-    // tampa do fuso do figurino (gold = azó do motor #e8f6ff) — a cabeça acesa
-    // é o que se reparte em três alvos (o `chain 3`) e o que incendeia o alvo
-    // (o `burn 0,4`)
+    // o CAROÇO de horizonte saltando pela boca da lança: é o MESMO plasma do
+    // anel de fótons do figurino (gold = luz-de-quasar #ffeccb) — a cabeça
+    // acesa é o que se reparte em três alvos (o `chain 3`) e o que incendeia o
+    // alvo (o `burn 0,4`)
     const geo = new THREE.IcosahedronGeometry(0.15, 1);
     const seeds = seedsAttr();
     geo.setAttribute('aSeed', seeds);
     const mat = makeCoreMaterial({
       gold: PRIMORDIAL_RAY_CORE_LOOK.gold, // = a cor do motor
       white: PRIMORDIAL_RAY_CORE_LOOK.white,
-      cool: PRIMORDIAL_RAY_CORE_LOOK.cool, // gelo no fresnel: o templo contorna a luz
+      cool: PRIMORDIAL_RAY_CORE_LOOK.cool, // ouro no fresnel: o disco contorna a luz
       amp: PRIMORDIAL_RAY_CORE_LOOK.amp,
       seed: 9.2,
     });
@@ -1461,10 +1462,10 @@ export function ProjectileField() {
   }, []);
 
   const primordialSpark = useMemo(() => {
-    // as DEZESSETE fagulhas de gelo que a rajada arrasta (o rasto do `pierce`
-    // e do `slow 0,4` escrito no ar): lasquinhas de octaedro do GELO das
-    // lunetas com o veio de azó do motor. Miúdas: cauda de grão desenhando a
-    // órbita, nunca envelope cheio (a régua do cometa)
+    // as DEZESSETE fagulhas de escória dourada que a rajada arrasta (o rasto
+    // do `pierce` e do `slow 0,4` escrito no ar): lasquinhas de octaedro de
+    // MATÉRIA VITRIFICADA com o veio branco-quasar do motor. Miúdas: cauda de
+    // grão desenhando a órbita, nunca envelope cheio (a régua do cometa)
     const geo = new THREE.OctahedronGeometry(0.08, 0);
     const seeds = seedsAttr();
     geo.setAttribute('aSeed', seeds);
@@ -2435,15 +2436,16 @@ export function ProjectileField() {
             signature = true;
           }
         } else if (isPrim) {
-          // o PRIMORDIAL cospe a RAJADA de azó pelo furo do horizonte (o
-          // `pierce 2` + `chain 3` + `burn` + `slow` do motor): lança de
-          // GEOBRUTA de DEZESSETE FACES voando PONTA-FRIA e RETA como o cometa
-          // do pai Astral (rajada de energia a 12 u/s não tomba cambalhota: ela
-          // RISCA o rumo) e só dá rolo no próprio eixo — broca de dezessete
-          // faces, é isso que as faz piscar no voo sem desandar a pontaria. O
-          // caroço de horizonte salta pela boca (o `chain` se reparte em três
-          // alvos e os incendeia — o `burn 0,4`) e DEZESSETE fagulhas de gelo
-          // pontilhadas atrás são o rasto do `slow 0,4` escrito no ar
+          // o PRIMORDIAL cospe a RAJADA de plasma pelo ventre da esfera negra
+          // (o `pierce 2` + `chain 3` + `burn` + `slow` do motor): lança de
+          // MATÉRIA VITRIFICADA de DEZESSETE FACES voando PONTA-FRIA e RETA como
+          // o cometa do pai Astral (rajada de energia a 12 u/s não tomba
+          // cambalhota: ela RISCA o rumo) e só dá rolo no próprio eixo — broca
+          // de dezessete faces, é isso que as faz piscar no voo sem desandar a
+          // pontaria. O caroço de horizonte salta pela boca (o `chain` se
+          // reparte em três alvos e os incendeia — o `burn 0,4`) e DEZESSETE
+          // fagulhas de escória dourada pontilhadas atrás são o rasto do
+          // `slow 0,4` escrito no ar
           dir.set(p.vel[0], p.vel[1], p.vel[2]);
           if (dir.lengthSq() > 1e-6) {
             dir.normalize();
@@ -3031,10 +3033,10 @@ export function ProjectileField() {
         args={[colossoChip.geo, colossoChip.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
-      {/* Primordial: a LANÇA de dezessete faces da rajada — geobruta com a
-          trinca de azó do motor (o `pierce 2` do voo em silhueta: dardo de
-          pedra do templo furando o ar ponta-fria, o mais rápido da árvore
-          depois do cometa) */}
+      {/* Primordial: a LANÇA de dezessete faces da rajada — matéria
+          vitrificada com a trinca de luz-de-quasar do motor (o `pierce 2` do
+          voo em silhueta: dardo de escória de plasma furando o ar ponta-fria,
+          o mais rápido da árvore depois do cometa) */}
       <instancedMesh
         ref={(m) => {
           rayRef.current = m;
@@ -3043,8 +3045,8 @@ export function ProjectileField() {
         frustumCulled={false}
       />
       {/* Primordial: o caroço de horizonte pulsando na boca da lança (o `chain
-          3` e o `burn 0,4` do motor moram aqui — o mesmo plasma azo da tampa do
-          fuso do figurino, o ponto mais aceso do tiro) */}
+          3` e o `burn 0,4` do motor moram aqui — o mesmo plasma branco-quasar
+          do anel de fótons do figurino, o ponto mais aceso do tiro) */}
       <instancedMesh
         ref={(m) => {
           rayCRef.current = m;
@@ -3052,9 +3054,9 @@ export function ProjectileField() {
         args={[primordialRayCore.geo, primordialRayCore.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
-      {/* Primordial: as DEZESSETE fagulhas de gelo pontilhando a cauda (o rasto
-          do `slow 0,4` e do `pierce`), sempre no gelo das lunetas com o veio de
-          azó do motor */}
+      {/* Primordial: as DEZESSETE fagulhas de escória dourada pontilhando a
+          cauda (o rasto do `slow 0,4` e do `pierce`), sempre em matéria
+          vitrificada com o veio branco-quasar do motor */}
       <instancedMesh
         ref={(m) => {
           rayTRef.current = m;

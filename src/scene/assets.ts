@@ -45,7 +45,9 @@ export function getGeometry(kind: GeoKind, args: number[]): THREE.BufferGeometry
       );
       break;
     case 'torus':
-      geo = new THREE.TorusGeometry(args[0], args[1], args[2] ?? 8, args[3] ?? 24);
+      // args extras: [4] = arco (rad; omitido = anel cheio) — o arco de lente do
+      // quasar só existe porque o `arc` do toro do three é exposto aqui
+      geo = new THREE.TorusGeometry(args[0], args[1], args[2] ?? 8, args[3] ?? 24, args[4]);
       break;
     case 'dodeca':
       geo = new THREE.DodecahedronGeometry(args[0], args[1] ?? 0);

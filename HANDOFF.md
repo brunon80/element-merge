@@ -25,105 +25,115 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | **vulcânico** | 8 | ✅ figurino próprio + testes |
 | **astral** | 9 | ✅ figurino próprio + testes (espiral barrada de ONZE braços, plantado por onze raízes de gravidade) |
 | **colosso** | 9 | ✅ figurino próprio + testes (montanha eterna que virou LUA: planetóide de regolito claro com anel inclinado de treze matacões) |
-| **primordial** | 10 | ✅ figurino próprio + testes (quasar supermassivo com disco de acreção PINTADO em shader com **BLOOM gateado**; rajada de energia do furo do horizonte; DNA DEZESSETE EM TUDO) |
+| **primordial** | 10 | ✅ figurino próprio + testes (REWORK quasar-puro 03/nov: ESFERA NEGRA + disco dourado LARGO girando RÁPIDO + silhueta lensada do disco por CIMA e por BAIXO (Gargantua); BLOOM gateado) |
 
-> **REWORK artístico do PRIMORDIAL pedido pelo usuário em 03/nov (próximo loop,
-> ainda NÃO feito):** o monstro deve ser APENAS o QUASAR — derrubar a base
-> rochosa/cantaria e o corpo "tronco com cabeça" (templo, torres, garras, pátio,
-> entulho, coroa, lunetas, cometa segurado ficam de fora); o centro passa a ser
-> uma **ESFERA NEGRA** (geometria esfera no breu, não só o furo pintado do
-> shader); o disco de acreção (que ficou bom) deve ser **MAIOR**, na cor
-> **amarelada → esbranquiçada**, girando **BEM mais rápido** que hoje; e a
-> silhueta superior E inferior do disco deve aparecer arqueando sobre a esfera
-> (a lente gravacional estilo Gargantua de Interestelar — a imagem de referência
-> que o usuário colou no chat é esse look). Consequências amarradas pra quando
-> for feito: o envelope/familyRadius/`MEDIDO.primordial` mudam (o quasar fica
-> mais LARGO que alto), as contagens de dezessete do templo somem do figurino
-> (avaliar se o DNA 17 continua em algo — disco/spark/ring têm 17), os testes de
-> `primordialProgression.test.ts` de peças do templo e do plano varrido vão junto,
-> e a paleta (pin motor↔rig↔proj↔FX) troca o azó frio por ouro-quasar. O
-> commit+push do FIX do quadrado preto (03/nov) fecha ANTES disso — ver lesson
-> item 4 da seção iOS/WebKit.
+> **REWORK artístico do PRIMORDIAL pedido pelo usuário em 03/nov — FEITO (é o
+> commit mais recente de `main`):** o monstro agora é APENAS o QUASAR — tombou o
+> templo "tronco com cabeça" de dezessete pilares (base rochosa, torres, garras,
+> pátio, entulho, coroa, lunetas e cometa segurado; 145 peças viraram CINCO); o
+> centro é uma ESFERA NEGRA COM geometria (o horizonte de eventos); o disco de
+> acreção (o que o usuário elogiou) ficou MAIOR (ρ 0,96→3,0, +32%), amarelado~
+> esbranquiçado, e gira BEM mais rápido (`PRIMORDIAL_SPIN.base` 2,4 vs 0,5); a
+> silhueta SUPERIOR e INFERIOR do disco arqueia sobre a esfera (os arcos de lente
+> estilo Gargantua do Interestelar — a referência que o usuário colou). O FIX do
+> quadrado preto (`21e9c09`) foi commitado+pushado ANTES do rework, e os três
+> pins `?raw` do lesson WebKit seguem verdes no rig reescrito (blindam os shaders
+> novos). Detalhes no bloco do PRIMORDIAL abaixo.
 
 **Último monstro melhorado: PRIMORDIAL (Nv.10 — astral+colosso: A ENTIDADE
-PRIMORDIAL, o QUASAR SUPERMASSIVO com DISCO DE ACREFÃO inclinado — o ÚLTIMO da
-árvore e o único monstro com pós-processamento; caça `lowestHp`, rajada `#e8f6ff`
-no projétil MAIS RÁPIDO da árvore (12), `pierce 2` + `chain 3` + o `splash` MAIS
-LARGO (2,5) + `burn/slow 0,4` + `regen 0,05`, hp 130 / dmg 30, e é o ÚNICO com os
-QUATRO elementos resistidos (0,25 cada — ele os precede); DNA DEZESSETE EM TUDO —
-todo `cyl`/`cone` tem DEZESSETE faces (`rod17`/`spike17`; nenhum outro figurino
-usa dezessete: Geodo CINCO, Cristal SEIS, Abissal SETE, Cósmico OITO, Vulcânico
-NOVE, Astral ONZE, Colosso TREZE) e o dezessete manda nas CONTAGENS: dezessete
-almofadas + dezessete pilares geobruta + dezessete arcobotantes + dezessete lages
-da corte, torres nos flancos k 4 e 13 (k e 17−k: o ÚNICO par de um polígono de 17
-lados espelhado no Z — o berço `mz` das garras); ASSINATURA = o DISCO DE ACREFÃO
-— UMA só peça `ring` (0,62→2,28, 96 segs) com shader próprio DISK_FRAG: máscara
-de horizonte (o ASTRO NÃO TEM GEOMETRIA — o furo ρ<0,62 é vazio e a luz é
-pintura), anel de fótons em HDR rente ao horizonte com feixe doppler (é o que
-alimenta o BLOOM) e bandas de gás SEM noise com ω ∝ ρ^−1,5 arrastadas pelo ângulo
-ACUMULADO `uSpin` (o wrapper do rig SÓ INCLINA no pivô = centro do anel,
-`PRIMORDIAL_DISK_PIVOT`; o spin diferencial mora no SHADER; tilt descanso 0,46, o
-rig oscila 0,42–0,50); A FÍSICA DO PLANO VARRIDO MANDA A PLANTA (pino de teste):
-com o tilt no máximo toda peça ou fica TODA no furo (fuso/cubo/tampa, ρ ≤ 0,60 <
-0,62), ou TODA abaixo do arco (corte/entulho: tope 1,48 vs arco 1,70 na borda), ou
-TODA acima do teto (coroa/lunetas/orbe), ou TODA fora da borda (torres ρ 2,62,
-cauda do cometa segurado ρ 2,34) — folga ≥ 0,15 de `tan(0,5)` amarrada; as garras
-giram no eixo VERTICAL da torre (`primTowerPivot`, lado espelhado com β NEGADO; β
-máx do rig 0,26+0,012) e o varrido amostrado não fura a borda; GOELA DO BURACO:
-colarinho de breu + saia-funil + fuso de dezessete faces SEMPRE no furo + tampa
-glow (a única luz com geometria no furo) — a RAJADA SAI DO FURO
-(`PRIMORDIAL_MUZZLE` [0, 2,95, 0,55], no plano do disco); o COMETA SEGURADO
-MURCHA na afinação (`arm.core`/`arm.tail` apagam com o charge — matéria engolida
-pelo horizonte) e o disco infla em flare no sopro; PALETA = GEOBRUTA `#d8e4f2` (a
-pedra MAIS CLARA da árvore — passa o talco do Colosso; é o que faz o print ler
-templo de quasar) + breu-ROXO `#241f33` (o mais FUNDO da árvore) + veio de azó
-`#e8f6ff` em TODA pedra, CONTIDO (glow 0,3 × boost 0,6 = 0,18: com o disco inteiro
-aceso em HDR, veio solto viraria lanterna) + gelo-das-lunetas `#9ad0ff` + franja
-ember `#ff7a3c` na borda esfriando do disco; identidade motor↔figurino↔rig↔
-projétil↔FX amarrada em teste pelo HEX; COREOGRAFIA: janela 0,94 (entre astral
-0,74 e colosso 1,25; a cadência do Nv.10 é interval 1,5) com 60% SÓ DE COLETA
-(`gather` gira o braco na torre β, templo tomba −0,6, cometa afunda, disco
-esquenta), jato que IGNORA DO ZERO no frame do corte (continuidade gather/lean/
-charge amarrada; só o `flare` da tampa é impulso declarado — convenção do poço do
-Colosso), ESTOURA em pico de seno no meio do sopro e ASSENTA em 0 aos 87% (nada
-de jato aceso no frame em que a pose vira zero); projétil = cone GEOMBRUTA de
-dezessete faces em voo com o MESMO plasma do horizonte no núcleo ico na boca +
-rabo de DEZESSETE fagulhas de gelo com veio de azó (rolo de broca 3,4 rad/s, halo
-1,3); impacto = pool de farpas de BROCA `shardQuasar` (física 'quasar': tier
-comet, spin 17, quique de geada vy·0,3 / vx·0,6) + anéis QUASAR 3,7·k (o MAIS
-LARGO da árvore, espelhando o splash 2,5) + EMBER 2,0·k POR FORA (a ordem
-azo-dentro/ember-fora é SÓ do Nv.10; os pais são o contrário) + flash `#f2f9ff` +
-17 puffs de pó frio heat 0,08; CHAIN = o traço mais RETO da árvore (amp 0,06 —
-jato relativístico não ferve) vestido com o INVERSO do pai astral: cauda de gelo
-com miolo azó (âmbar+geada do pai → azó+gelo do filho — é assim que um print
-separa os dois Nv.9/Nv.10) + burst `quasarShard` + miniatura do disco no destino
-(azo dentro, ember fora); BLOOM (autorizado pelo usuário SÓ pro disco,
-`src/scene/BloomGate.tsx`): o pipeline do Canvas de batalha é PERMANENTE (composer
-montado desde o frame 1: RenderPass com clearColor `ARENA_BG` + RT HalfFloat
-`samples: 4` devolvendo o MSAA do canvas nu + UnrealBloomPass GATEADO por "existe
-um primordial VIVO em cena" com rampa 2,5/s — strength 0,62 / radius 0,5 /
-threshold 0,8 — + pass final de CÓPIA PURA) e os três cuidados de cor que isso
-exige em three r169: (1) o three PULA o tone map e FORÇA LinearSRGB nos materiais
-embutidos quando desenha em render target (three.module.js L30509), enquanto os
-shaders crus do repo são display-referred → `patchBuiltins` devolve ACES+sRGB aos
-embutidos material a material via `onBeforeCompile` (chunks verbatim do three,
-cache key `qtBloomEncode`, idempotente, traverse por frame pega rig que spawnou
-no meio da partida, unpatch no desmonte); (2) `scene.background = null` (o
-WebGLBackground limparia o RT em LINEAR — quem pinta o fundo é o `clearColor` do
-RenderPass, que chama `setClearColor` ANTES de vincular o RT e recebe o hex cru
-como o framebuffer recebe hoje; o App tirou o `<color attach>` e o `<fog>` lê o
-`ARENA_BG` exportado); (3) NADA de `OutputPass` — o pass final CODIFICARIA DE
-NOVO os ~90% da cena que já chegam display-referred. Envolucro medido halfX 2,429
-/ halfZ 3,130 / minY 0,170 (o templo PAIRA: almofadas a ~0,17 do piso) / maxY
-6,195 com formTop 6,2; `MEDIDO.primordial {x: 2,43, z: 3,13}` → familyRadius
-3,21, slotFit 0,779 (o UnitView REDUZ o quasar 0,78 — diff board 0,08); **145
-peças / 9.060 vértices / 10.450 triângulos** — o disco é PINTURA: o Nv.10 é mais
-LEVE em malha que o pai Colosso (221 peças) porque o céu work é do HDR) e 7
-testes em `src/tests/primordialProgression.test.ts`) — commit mais recente de
-`main` (`git log -1`). WIP do próprio: figurino+footprints `5c271b4`, HANDOFF
-`3b8c1a6`, anti-softlock `1808274`. Anteriores: colosso `a96bccb`, astral
-`488fc40`, vulcânico `e4b4463`, abissal `e38d018`, geodo `8ae1176`, cósmico
-`5a11c80`, cristal `f48e789`, névoa/plasma `9d7a881`.
+PRIMORDIAL — agora QUASAR PURO (rework artístico de 03/nov a pedido do usuário:
+"ele deve ser APENAS o Quasar"; o quasar-de-templo de 145 peças foi DEMOLIDO: não
+sobrou uma pedra). É o ÚLTIMO da árvore e o único monstro com pós-processamento;
+caça `lowestHp`, rajada `#ffeccb` (luz-de-quasar) no projétil MAIS RÁPIDO da
+árvore (12), `pierce 2` + `chain 3` + o `splash` MAIS LARGO (2,5) + `burn/slow
+0,4` + `regen 0,05`, hp 130 / dmg 30, e é o ÚNICO com os QUATRO elementos
+resistidos (0,25 cada — ele os precede); FIGURINO = CINCO peças de céu: a ESFERA
+NEGRA `hole.horizon` (sphere r 0,98 plantada no plano do disco y 2,4, `m:'black'`
+— breu puro SEM relevo; cortada em 34(=2×17)×17), o ANEL DE FÓTONS `hole.photon`
+(toro 1,015 + tubo 0,02, 17×34, plasma rente ao ombro da esfera, `flick 0,18`), o
+DISCO DE ACREÇÃO `disk.accr` (UMA só peça `ring` de ρ 0,96→3,0 com 102=6×17
+segs — NASCE EMBUTIDO na superfície da esfera (o furo ρ<0,62 pintado do desenho
+antigo morreu), 32% MAIS LARGO que o antigo 2,28 — o "maior" que o usuário pediu,
+com shader próprio DISK_FRAG: branco-quasar na boca, OURO na meia-envergadura
+(smoothstep 1,05→2,3) e franja EMBER esfriando na borda (2,5→2,9), anel de fótons
+em HDR com feixe doppler é o que alimenta o bloom, e bandas de gás SEM noise com
+ω ∝ ρ^−1,5), e os DOIS ARCOS DE LENTE `lens.top`/`lens.bottom` (toros de ARCO —
+1,3/tubo 0,09/arco 2,4 rad e 1,42/0,07/2,9 rad, todos < π: as pontas esmaecem no
+shader LENS_FRAG antes da banda do disco — a SILHUETA GARGANTUA pedida: o de cima
+arqueia SOBRE a cabeça da esfera negra, o de baixo pendura POR BAIXO, no plano
+VERTICAL de frente do modelo); o DNA DEZESSETE sobrevive só nas COSTURAS das
+curvas (esfera 2×17 meridianos, disco 6×17, toros 17×34) e no rig (jato de 17
+faces, pó 2×17=34, 17 baforadas) — NENHUM `cyl`/`cone` sobrou no figurino
+(`rod17`/`spike17`/`mz` mortos), NENHUM grupo orbital, NENHUMA tag de templo;
+FÍSICA DO DISCO: o wrapper só INCLINA no pivô (0, 2,4, 0) `PRIMORDIAL_DISK_PIVOT`
+e o tilt oscila APENAS 0,42–0,50 — o quasar PAIRA (a borda ρ 3,0 desce a ~0,96 no
+tilt máximo e a lente de baixo a 0,91; pino `env.minY ≥ 0,5`); o spin diferencial
+mora no SHADER (ângulo ACUMULADO `uSpin`; a rotação ALTA pedida: `PRIMORDIAL_SPIN
+{base 2,4, charge 1,7, jet 2,6}` — era 0,5 de base; pino `base ≥ 2`; e o pó orbita
+a 5,2/ρ (era 1,4/ρ) na FAIXA do disco novo ρ 1,02–2,92); o CÉU (fótons + lentes)
+é virado em Y pelo rig para ENCARAR A CÂMERA (billboard: anel de lente é projeção
+no plano do céu e NUNCA entra no wrapper do disco); a RAJADA sai do VENTRE da
+esfera negra (`PRIMORDIAL_MUZZLE` [0, 2,4, 1,06] — fura a casca frontal, h > raio,
+como o jato relativístico varando o disco) e `formTops [4,9]` (caiu de 6,2: o
+quasar é LARGO, não alto) amarra `formMuzzleY` 2,39 ≈ `PRIMORDIAL_DISK_Y` 2,4
+(pino < 0,06: a origem do motor e o ventre do rig falam a mesma língua); PALETA
+NOVA (pin motor↔figurino↔rig↔proj↔FX pelo HEX): OURO-QUASAR `#ffeccb` (=
+`projectileColor` = `VISUALS.glow` = anel de fótons = veio da rajada = miolo do
+jato = veio da farpa), o OURO do disco `#ffd66b` (= `VISUALS.body` = contorno do
+`QUASAR_PLASMA.cool` — o azó frio `#e8f6ff` e o gelo `#9ad0ff` do desenho antigo
+MORRERAM com o templo; pinos de separação: ≠ âmbar do astral `#ffb347`, ≠ âmbar
+do colosso), o EMBER `#ff7a3c` esfriando na borda e o BREU NEGRO `#0e0a16` da
+esfera (mais fundo que o breu do Colosso — pino de luma) — e a MATÉRIA
+VITRIFICADA `SINTER_LOOK` (a única "pedra" que sobrou: escória de plasma que
+passou pelo poço e esfriou em vidro dourado) é o corpo da LANÇA de rajada E as
+farpas `quasarShard`; pino `warm` (b < g) em toda luz da espécie (amarelado~
+esbranquiçado de verdade); COREOGRAFIA: janela 0,94 (entre astral 0,74 e colosso
+1,25; a cadência do Nv.10 é interval 1,5) com 60% de afinação — o canal `gather`
+das garras MORREU junto com o templo (lean/charge/flare/jet/recoil/quake), o jato
+IGNORA do zero, ESTOURA em seno no meio do sopro e ASSENTA em 0 aos 87%;
+projétil = lança de DEZESSETE faces de MATÉRIA VITRIFICADA com o plasma do MESMO
+anel de fótons no caroço da boca (ouro no fresnel: o disco contorna a luz) +
+rabo de DEZESSETE fagulhas de escória dourada `#f2dcae` com veio branco-quasar
+(rolo de broca, ponta-fria e reta como o cometa do pai); impacto = farpa bicuda
+de DEZESSETE faces `quasarShard` (física 'quasar': tier comet, spin 17, quique de
+VÍTRO dourado vy·0,3 / vx·0,6) + anel QUASAR 3,7·k (o MAIS LARGO da árvore,
+espelhando o splash 2,5) + EMBER 2,0·k POR FORA (a ordem ouro-dentro/ember-fora é
+SÓ do Nv.10) + flash MIÚDO `#fff4d9` + DEZESSETE grãos de OURO SUSPENSOS subindo
+(o DNA em partícula) + 17 puffs de VAPOR VITRIFICADO heat 0,22 (plasma arrancado
+do disco esfriando em vidro — o pó de lua do Colosso 0,12 é FRIO ao lado); CHAIN =
+o traço mais RETO da árvore (amp 0,06 — jato relativístico não ferve) vestido com
+o INVERSO do pai astral: cauda OURO com miolo BRANCO-QUASAR (o pai é âmbar com
+geada; o filho é branco-ouro — é assim que um print separa os dois Nv.9/Nv.10) +
+burst `quasarShard` + miniatura do disco no destino (ouro dentro, ember fora);
+NASCIMENTO: o terceiro anel do birth é o EMBER da borda do disco (o anel azo
+`#9ad0ff` antigo morreu com o templo); BLOOM (autorizado pelo usuário SÓ pro
+disco, `src/scene/BloomGate.tsx`): pipeline DECIDIDO em 01/nov MANTIDO (composer
+PERMANENTE montado desde o frame 1: RenderPass com clearColor `ARENA_BG` + RT
+HalfFloat `samples: 4` + UnrealBloomPass GATEADO por "existe um primordial VIVO
+em cena" com rampa 2,5/s — strength 0,62 / radius 0,5 / threshold 0,8 — + pass
+final de CÓPIA PURA; `patchBuiltins` devolve ACES+sRGB aos materiais embutidos
+que o three despacha cru no RT; `scene.background = null`; proibido `OutputPass`)
+— com o rework o HDR que alimenta o bloom é o anel de fótons do disco + o anel
+billboardado, e o alpha do disco caiu a 0,45 (era 0,5) para frear a área HDR 32%
+maior nova; invólucro medido: estático autoral halfX 3,0 / halfZ 3,0 / minY 0,91
+(quasar PAIRA) / maxY 3,79 com formTop 4,9; EM MUNDO REAL autoral X 3,01 × Z 2,74
+(a sonda de footprint; o tilt do rig fecha o Z); `MEDIDO.primordial {x: 3,01,
+z: 2,74}` → familyRadius 3,09, slotFit ≈0,81 (o UnitView REDUZ o quasar 0,81: o
+disco de 3,01 ocupa 2,44 dentro do buraco de 2,5); **CINCO peças / 2.726
+vértices / 4.760 triângulos** — o figurino MAIS LEVE da árvore (contra 145 peças
+do templo antigo e 221 do pai Colosso): o céu do Nv.10 é trabalho do SHADER
+(disco, jato, pó e lentes são pintura HDR) e a malha é só o esqueleto do
+horizonte; **10 testes** em `src/tests/primordialProgression.test.ts` (pins:
+cinco peças e zero tag de templo, silhueta Gargantua — yHi da lente de cima ACIMA
+da cabeça da esfera e yLo da de baixo ABAIXO do breu, arcos só com rotação em Z e
+< π, esfera negra centrada no plano do disco, disco > 2,6 e embutido na esfera,
+rajada no ventre, spin ALTA, paleta warm separada dos pais, coreografia sem
+`gather`, motor armado — e os TRÊS pins estáticos `?raw` do lesson WebKit
+intactos, blindando os shaders NOVOS contra a volta do quadrado preto) — commit
+mais recente de `main` (`git log -1`), em cima do fix do quadrado preto `21e9c09`
+(03/nov). Anteriores: colosso `a96bccb`, astral `488fc40`, vulcânico `e4b4463`,
+abissal `e38d018`, geodo `8ae1176`, cósmico `5a11c80`, cristal `f48e789`,
+névoa/plasma `9d7a881`.
 
 **O COLOSSO (Nv.9 — geodo+vulcânico: a MONTANHA ETERNA
 QUE VIROU LUA, o planetóide de regolito claro com ANEL INCLINADO de treze
