@@ -14,6 +14,10 @@ export interface CoreAudio {
   musicBus: GainNode;
   /** ruído branco de 1s compartilhado por rajadas, washes e chiados */
   noise: AudioBuffer;
+  /** ruído rosa (aprox. Kellet): a base "cara" de whoosh, vento e explosões */
+  pink: AudioBuffer;
+  /** ruído marrom (integrado): o ribombar grave de trovões e magmas */
+  brown: AudioBuffer;
 }
 
 let core: CoreAudio | null = null;
@@ -80,7 +84,29 @@ export function ensureCore(): CoreAudio | null {
     const noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noise.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    core = { ctx, sfxBus, musicBus, noise };
+    // ruído rosa (Kellet): agudos e graves com a mesma energia — quem soa
+    // "natural" na natureza; o branco puro é o que soa a chiado de 8 bits
+    const pink = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const pk = pink.getChannelData(0);
+    let b0 = 0;
+    let b1 = 0;
+    let b2 = 0;
+    for (let i = 0; i < pk.length; i++) {
+      const w = Math.random() * 2 - 1;
+      b0 = 0.99765 * b0 + w * 0.0990460;
+      b1 = 0.96300 * b1 + w * 0.2965164;
+      b2 = 0.57000 * b2 + w * 1.0526913;
+      pk[i] = (b0 + b1 + b2 + w * 0.1848) * 0.11;
+    }
+    // ruído marrom: integrado e vazado — o peito dos trovões
+    const brown = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const br = brown.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < br.length; i++) {
+      last = (last + 0.02 * (Math.random() * 2 - 1)) * 0.995;
+      br[i] = last * 3.0;
+    }
+    core = { ctx, sfxBus, musicBus, noise, pink, brown };
     applyBuses();
   } catch {
     core = null;

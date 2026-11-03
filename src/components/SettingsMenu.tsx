@@ -290,8 +290,8 @@ export function SettingsMenu() {
                   ▶ Testar som
                 </button>
                 <p className="hint">
-                  Toque em testar para ouvir a sequência: invocação, disparo,
-                  colisão e fusão.
+                  Toque em testar para ouvir a sequência: invocação, bola de
+                  fogo detonando, raio estalando e uma fusão.
                 </p>
               </section>
             )}
