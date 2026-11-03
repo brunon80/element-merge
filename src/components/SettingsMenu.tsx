@@ -50,6 +50,8 @@ export function SettingsMenu() {
   const setSceneryBloomIntensity = useGameStore((s) => s.setSceneryBloomIntensity);
   const sfxVolume = useGameStore((s) => s.sfxVolume);
   const setSfxVolume = useGameStore((s) => s.setSfxVolume);
+  const musicVolume = useGameStore((s) => s.musicVolume);
+  const setMusicVolume = useGameStore((s) => s.setMusicVolume);
   const startingCoinsCfg = useGameStore((s) => s.startingCoinsCfg);
   const setStartingCoins = useGameStore((s) => s.setStartingCoins);
   const debugMode = useGameStore((s) => s.debugMode);
@@ -230,10 +232,10 @@ export function SettingsMenu() {
               <section>
                 <h3>Som</h3>
                 <p className="hint">
-                  Efeitos sintetizados no navegador (sem arquivos): o
-                  lançamento do tiro, a colisão, a invocação e a fusão mudam
-                  de timbre com o elemento e crescem com o nível. Volume 0%
-                  desliga tudo.
+                  Tudo é sintetizado no navegador (sem arquivos): os efeitos
+                  mudam de timbre com o elemento e crescem com o nível, e cada
+                  cenário — e o menu, a vitória e a derrota — tem sua própria
+                  trilha. Volume 0% desliga cada camada.
                 </p>
                 <label className="bloom-control" htmlFor="sfx-volume">
                   <span className="bloom-control-heading">
@@ -257,6 +259,31 @@ export function SettingsMenu() {
                   <span className="hint">
                     O som é direcional: tiros à esquerda soam à esquerda. Em
                     celulares, use também o volume do aparelho.
+                  </span>
+                </label>
+                <label className="bloom-control" htmlFor="music-volume">
+                  <span className="bloom-control-heading">
+                    Volume da trilha
+                    <output data-testid="music-volume-value">
+                      {musicVolume === 0 ? 'Desligado' : `${musicVolume}%`}
+                    </output>
+                  </span>
+                  <input
+                    id="music-volume"
+                    data-testid="music-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={musicVolume}
+                    aria-label="Volume da trilha sonora"
+                    aria-valuetext={musicVolume === 0 ? 'Desligado' : `${musicVolume}%`}
+                    onChange={(event) => setMusicVolume(Number(event.currentTarget.value))}
+                  />
+                  <span className="hint">
+                    Menu, cada cenário da arena, vitória e derrota têm faixas
+                    próprias que trocam com crossfade. No empate, toca a
+                    vitória.
                   </span>
                 </label>
                 <button className="btn ghost small" data-testid="sfx-test" onClick={testSfx}>

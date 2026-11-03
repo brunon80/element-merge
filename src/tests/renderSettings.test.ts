@@ -44,4 +44,17 @@ describe('Preferência de bloom', () => {
     useGameStore.getState().setSfxVolume(150);
     expect(loadSave().settings.sfxVolume).toBe(100);
   });
+
+  test('persiste o volume da trilha e aceita desligar ou limitar o valor', () => {
+    expect(useGameStore.getState().musicVolume).toBe(60);
+
+    useGameStore.getState().setMusicVolume(0);
+    expect(loadSave().settings.musicVolume).toBe(0);
+
+    useGameStore.getState().setMusicVolume(35);
+    expect(loadSave().settings.musicVolume).toBe(35);
+
+    useGameStore.getState().setMusicVolume(160);
+    expect(loadSave().settings.musicVolume).toBe(100);
+  });
 });

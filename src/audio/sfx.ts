@@ -1,86 +1,25 @@
 import type { ElementId, FxEvent, SpeciesId } from '../game/types';
+import { ensureCore, getCore, setSfxVolume, sfxAudible } from './core';
+
+export { setSfxVolume };
 
 /**
- * Camada de som procedural (Web Audio API): nenhum arquivo, tudo sintetizado
- * na hora. O ponto de entrada é playFx — a MESMA fila de FxEvents que alimenta
- * as partículas (Effects.tsx) também toca os sons: 'launch' (lançamento do
- * tiro), 'impact' (colisão), 'chain' (salto da corrente), 'summon' (invocação)
- * e 'mergeDone' (fusão); todo o resto passa mudo.
- *
- * Autoplay: o AudioContext só nasce no primeiro gesto do usuário (clique ou
- * tecla — unlockSfx); antes disso nada toca, e sem AudioContext (jsdom nos
- * testes) o módulo inteiro é um no-op seguro.
+ * Camada de som procedural (efeitos): nenhum arquivo, tudo sintetizado na
+ * hora sobre o AudioContext compartilhado (src/audio/core.ts). O ponto de
+ * entrada é playFx — a MESMA fila de FxEvents que alimenta as partículas
+ * (Effects.tsx) também toca os sons: 'launch' (lançamento do tiro), 'impact'
+ * (colisão), 'chain' (salto da corrente), 'summon' (invocação) e 'mergeDone'
+ * (fusão); todo o resto passa mudo.
  *
  * Mixagem: cada categoria tem um curto interval de repetição (metralhadora de
- * projéteis não vira chiado), o teto de vozes evita estouro, e um compressor
- * mestre doma os impactos simultâneos. O pan sai do x da arena — o ouvido
+ * projéteis não vira chiado), o teto de vozes evita estouro, e o compressor
+ * do core doma os impactos simultâneos. O pan sai do x da arena — o ouvido
  * acompanha o olho.
  */
 
-let ctx: AudioContext | null = null;
-let master: GainNode | null = null;
-let noiseBuf: AudioBuffer | null = null;
-/** ganho do master (curva perceptual do percentual salvo); 0 = desligado */
-let gain = 0;
 let voices = 0;
 const MAX_VOICES = 14;
 const lastAt = new Map<string, number>();
-
-/** percentual 0–100 do save → ganho (curva ~potencial: 20% ainda é audível) */
-export function setSfxVolume(pct: number): void {
-  const v = Math.max(0, Math.min(100, pct)) / 100;
-  gain = v === 0 ? 0 : Math.pow(v, 1.6);
-  if (ctx && master) master.gain.setTargetAtTime(gain, ctx.currentTime, 0.03);
-}
-
-type AudioCtor = typeof AudioContext;
-
-function audioCtor(): AudioCtor | null {
-  const g = globalThis as {
-    AudioContext?: AudioCtor;
-    webkitAudioContext?: AudioCtor;
-  };
-  return g.AudioContext ?? g.webkitAudioContext ?? null;
-}
-
-function ensureCtx(): AudioContext | null {
-  if (ctx) return ctx;
-  const Ctor = audioCtor();
-  if (!Ctor) return null;
-  try {
-    ctx = new Ctor();
-    master = ctx.createGain();
-    master.gain.value = gain;
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -18;
-    comp.knee.value = 24;
-    comp.ratio.value = 6;
-    master.connect(comp);
-    comp.connect(ctx.destination);
-    // ruído branco de 1s compartilhado por todas as rajadas (whoosh, estouro)
-    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-    const d = noiseBuf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  } catch {
-    ctx = null;
-    master = null;
-  }
-  return ctx;
-}
-
-/** destrava o áudio no primeiro gesto (política de autoplay); devolve o cleanup */
-export function unlockSfx(): () => void {
-  const resume = () => {
-    const c = ensureCtx();
-    if (c && c.state === 'suspended') void c.resume();
-  };
-  document.addEventListener('pointerdown', resume);
-  document.addEventListener('keydown', resume);
-  return () => {
-    document.removeEventListener('pointerdown', resume);
-    document.removeEventListener('keydown', resume);
-  };
-}
 
 function track(src: AudioScheduledSourceNode): void {
   voices++;
@@ -104,18 +43,19 @@ function tone(
   peak: number,
   pan = 0,
 ): void {
-  if (!ctx || !master) return;
-  const o = ctx.createOscillator();
+  const c = getCore();
+  if (!c) return;
+  const o = c.ctx.createOscillator();
   o.type = type;
   o.frequency.setValueAtTime(Math.max(1, f0), t0);
   o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
-  const g = ctx.createGain();
+  const g = c.ctx.createGain();
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(0.015, dur * 0.2));
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  const p = ctx.createStereoPanner();
+  const p = c.ctx.createStereoPanner();
   p.pan.value = pan;
-  o.connect(g).connect(p).connect(master);
+  o.connect(g).connect(p).connect(c.sfxBus);
   track(o);
   o.start(t0);
   o.stop(t0 + dur + 0.03);
@@ -133,23 +73,24 @@ function noise(
   q = 1,
   pan = 0,
 ): void {
-  if (!ctx || !master || !noiseBuf) return;
-  const s = ctx.createBufferSource();
-  s.buffer = noiseBuf;
+  const c = getCore();
+  if (!c) return;
+  const s = c.ctx.createBufferSource();
+  s.buffer = c.noise;
   s.loop = true;
-  const offset = Math.random() * Math.max(0.01, noiseBuf.duration - dur - 0.1);
-  const f = ctx.createBiquadFilter();
+  const offset = Math.random() * Math.max(0.01, c.noise.duration - dur - 0.1);
+  const f = c.ctx.createBiquadFilter();
   f.type = type;
   f.Q.value = q;
   f.frequency.setValueAtTime(Math.max(20, f0), t0);
   f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
-  const g = ctx.createGain();
+  const g = c.ctx.createGain();
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(0.012, dur * 0.25));
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  const p = ctx.createStereoPanner();
+  const p = c.ctx.createStereoPanner();
   p.pan.value = pan;
-  s.connect(f).connect(g).connect(p).connect(master);
+  s.connect(f).connect(g).connect(p).connect(c.sfxBus);
   track(s);
   s.start(t0, offset, dur + 0.06);
   s.stop(t0 + dur + 0.08);
@@ -161,8 +102,9 @@ function noise(
 
 /** lançamento: todo tiro empurra o ar (whoosh subindo) e cada elemento empresta a voz */
 function sLaunch(x: number, element?: ElementId, species?: SpeciesId, level = 1): void {
-  if (!ctx) return;
-  const t = ctx.currentTime;
+  const c = getCore();
+  if (!c) return;
+  const t = c.ctx.currentTime;
   const pan = panOf(x);
   const j = 0.9 + Math.random() * 0.2; // sem jitter, a metralhadora vira ruído estático
   const deep = 1 - Math.min(0.3, (level - 1) * 0.035); // o dragão Nv.5 cospe mais grave que o Nv.1
@@ -188,8 +130,9 @@ function sLaunch(x: number, element?: ElementId, species?: SpeciesId, level = 1)
 
 /** colisão: o peito grave de todo impacto + o estilhaço filtrado, e o elemento tempera */
 function sImpact(x: number, element?: ElementId, species?: SpeciesId, level = 1): void {
-  if (!ctx) return;
-  const t = ctx.currentTime;
+  const c = getCore();
+  if (!c) return;
+  const t = c.ctx.currentTime;
   const pan = panOf(x);
   const j = 0.92 + Math.random() * 0.16;
   const big = 1 + Math.min(0.5, (level - 1) * 0.06); // impacto cresce com o nível, igual à bola de fogo na tela
@@ -226,8 +169,9 @@ function sImpact(x: number, element?: ElementId, species?: SpeciesId, level = 1)
 
 /** invocação: o portal abre (ruído subindo), a chamada sobe e o sino anuncia a chegada */
 function sSummon(x: number): void {
-  if (!ctx) return;
-  const t = ctx.currentTime;
+  const c = getCore();
+  if (!c) return;
+  const t = c.ctx.currentTime;
   const pan = panOf(x);
   noise(t, 0.3, 0.07, 'bandpass', 400, 1700, 1.2, pan);
   tone('triangle', 200, 760, t, 0.34, 0.13, pan);
@@ -236,8 +180,9 @@ function sSummon(x: number): void {
 
 /** fusão: duas vozes a quinta convergem para a mesma nota (é assim que fundir soa) e o clarão resolve no sino */
 function sMerge(x: number): void {
-  if (!ctx) return;
-  const t = ctx.currentTime;
+  const c = getCore();
+  if (!c) return;
+  const t = c.ctx.currentTime;
   const pan = panOf(x);
   tone('sine', 330, 550, t, 0.3, 0.11, pan - 0.25);
   tone('sine', 495, 550, t, 0.3, 0.11, pan + 0.25);
@@ -248,8 +193,9 @@ function sMerge(x: number): void {
 
 /** salto da corrente: zap curto (é um lançamento que já nasce em trânsito) */
 function sChain(x: number): void {
-  if (!ctx) return;
-  const t = ctx.currentTime;
+  const c = getCore();
+  if (!c) return;
+  const t = c.ctx.currentTime;
   const pan = panOf(x);
   noise(t, 0.09, 0.07, 'bandpass', 2600, 1100, 1.6, pan);
   tone('square', 2000, 1200, t, 0.05, 0.03, pan);
@@ -261,8 +207,9 @@ function sChain(x: number): void {
 
 /** interval mínimo entre sons da mesma categoria, em segundos do clock do áudio */
 function throttled(key: string, gap: number): boolean {
-  if (!ctx) return true;
-  const t = ctx.currentTime;
+  const c = getCore();
+  if (!c) return true;
+  const t = c.ctx.currentTime;
   const prev = lastAt.get(key);
   if (prev !== undefined && t - prev < gap) return true;
   lastAt.set(key, t);
@@ -271,8 +218,9 @@ function throttled(key: string, gap: number): boolean {
 
 /** Effects.tsx despeja aqui cada FxEvent drenado; só as quatro famílias pedidas (e o zap da corrente) toca */
 export function playFx(ev: FxEvent): void {
-  if (gain === 0) return;
-  if (!ensureCtx() || ctx!.state !== 'running' || voices >= MAX_VOICES) return;
+  if (!sfxAudible()) return;
+  const c = ensureCore();
+  if (!c || c.ctx.state !== 'running' || voices >= MAX_VOICES) return;
   const x = ev.pos[0];
   switch (ev.type) {
     case 'launch':
@@ -295,8 +243,9 @@ export function playFx(ev: FxEvent): void {
 
 /** demonstração do menu de configurações: invocação → disparo → colisão → fusão */
 export function testSfx(): void {
-  if (gain === 0) return;
-  if (!ensureCtx() || ctx!.state !== 'running') return;
+  if (!sfxAudible()) return;
+  const c = ensureCore();
+  if (!c || c.ctx.state !== 'running') return;
   sSummon(0);
   window.setTimeout(() => sLaunch(-2, 'fire', 'ignis', 3), 350);
   window.setTimeout(() => sImpact(2, 'fire', 'ignis', 3), 750);

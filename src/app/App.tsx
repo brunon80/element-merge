@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import { unlockSfx } from '../audio/sfx';
+import { unlockAudio } from '../audio/core';
 import { Bestiary } from '../components/Bestiary';
 import { BattleControls } from '../components/BattleControls';
 import { DiscoveryOverlay } from '../components/DiscoveryOverlay';
@@ -12,6 +12,7 @@ import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
 import { ToastLayer } from '../components/ToastLayer';
 import { useGameDriver } from '../hooks/useGameDriver';
+import { useMusicTrack } from '../hooks/useMusicTrack';
 import { ARENA_R, CAMERA_POS } from '../game/board';
 import { BestiaryStage } from '../scene/BestiaryStage';
 import { ARENA_BG, BloomGate } from '../scene/BloomGate';
@@ -26,9 +27,10 @@ import { GLBoundary } from './GLBoundary';
 
 export function App() {
   useGameDriver();
+  useMusicTrack();
   // política de autoplay: o AudioContext nasce suspenso e só acende no
   // primeiro clique/tecla (qualquer botão do menu já resolve isso)
-  useEffect(() => unlockSfx(), []);
+  useEffect(() => unlockAudio(), []);
   const screen = useGameStore((s) => s.screen);
   const selectUnit = useGameStore((s) => s.selectUnit);
   const matchKey = useGameStore((s) => s.matchId);

@@ -10,12 +10,13 @@ import type {
 } from '../game/types';
 
 export const SAVE_KEY = 'elemental-merge-save-v1';
-/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som. */
-export const SAVE_VERSION = 8;
+/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som; v9: volume da música. */
+export const SAVE_VERSION = 9;
 export const DEFAULT_BLOOM_INTENSITY = 20;
 export const MAX_BLOOM_INTENSITY = 100;
 export const DEFAULT_SCENERY_BLOOM_INTENSITY = 30;
 export const DEFAULT_SFX_VOLUME = 80;
+export const DEFAULT_MUSIC_VOLUME = 60;
 export const MAX_SFX_VOLUME = 100;
 
 /** Híbridos removidos (Nv.1 por par de puros) → espécie equivalente da nova árvore. */
@@ -44,6 +45,8 @@ export interface SettingsData {
   sceneryBloomIntensity: number;
   /** Volume dos efeitos sonoros sintetizados (0 = desligado, 100 = máximo). */
   sfxVolume: number;
+  /** Volume da trilha generativa (menu, cenários e resultados). */
+  musicVolume: number;
   /** Parâmetro configurável do saldo inicial. */
   startingCoins: number;
   /** Depuração: permite criar qualquer criatura do bestiário direto na arena. */
@@ -85,6 +88,7 @@ export function defaultSave(): SaveData {
       bloomIntensity: DEFAULT_BLOOM_INTENSITY,
       sceneryBloomIntensity: DEFAULT_SCENERY_BLOOM_INTENSITY,
       sfxVolume: DEFAULT_SFX_VOLUME,
+      musicVolume: DEFAULT_MUSIC_VOLUME,
       startingCoins: DEFAULT_STARTING_COINS,
       debugMode: false,
     },
@@ -208,6 +212,11 @@ export function loadSave(): SaveData {
       Number.isFinite(parsed.settings.sfxVolume)
         ? Math.min(MAX_SFX_VOLUME, Math.max(0, Math.round(parsed.settings.sfxVolume)))
         : base.settings.sfxVolume;
+    const musicVolume =
+      typeof parsed.settings?.musicVolume === 'number' &&
+      Number.isFinite(parsed.settings.musicVolume)
+        ? Math.min(MAX_SFX_VOLUME, Math.max(0, Math.round(parsed.settings.musicVolume)))
+        : base.settings.musicVolume;
     const lastArenaScene: ArenaScene | null =
       parsed.lastArenaScene === 'arcane' ||
       parsed.lastArenaScene === 'forest' ||
@@ -242,6 +251,7 @@ export function loadSave(): SaveData {
         bloomIntensity,
         sceneryBloomIntensity,
         sfxVolume,
+        musicVolume,
         startingCoins,
         debugMode: !!parsed.settings?.debugMode,
       },
