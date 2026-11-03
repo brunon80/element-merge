@@ -199,6 +199,21 @@ describe('Bloom da arena', () => {
   });
 });
 
+describe('Regras reunidas nas configurações', () => {
+  test('aba Regras centraliza os textos que estavam espalhados pelas telas', () => {
+    renderAll();
+    act(() => useGameStore.getState().setSettings(true));
+    fireEvent.click(screen.getByTestId('settings-tab-regras'));
+
+    const panel = screen.getByRole('tabpanel');
+    expect(panel.textContent).toContain('duas criaturas do mesmo nível'); // fusão
+    expect(panel.textContent).toContain('a loja só funciona aí'); // preparação
+    expect(panel.textContent).toContain('lixeira'); // venda
+    expect(panel.textContent).toContain('contra-escolhas cirúrgicas'); // dificuldades
+    expect(panel.textContent).toContain('+100'); // recompensa
+  });
+});
+
 describe('Loja e invocação', () => {
   test('invocar Ignis custa 100 e a criatura entra na arena', () => {
     renderAll();
@@ -563,6 +578,27 @@ describe('HUD e inspetor', () => {
     expect(insp).toBeInTheDocument();
     expect(insp.textContent).toContain('Nereia');
     expect(insp.textContent).toContain('Lentidão');
+  });
+
+  test('o inspetor abre no TOQUE (soltar sem andar); arraste/órbita não abre', () => {
+    renderAll();
+    clickSummon('shop-ignis');
+    const id = myUnits()[0].id;
+    const st = useGameStore.getState();
+    st.selectUnit(null);
+
+    // imprensa + solta quase no mesmo ponto: é toque → seleciona
+    st.beginTapCandidate(id, 100, 100);
+    st.trackTap(103, 102);
+    st.commitTap(103, 102);
+    expect(useGameStore.getState().selectedId).toBe(id);
+
+    // andou ≥ 9 px desde a imprensa: virou arraste/órbita → nada de inspetor
+    st.selectUnit(null);
+    st.beginTapCandidate(id, 100, 100);
+    st.trackTap(140, 130);
+    st.commitTap(140, 130);
+    expect(useGameStore.getState().selectedId).toBeNull();
   });
 });
 

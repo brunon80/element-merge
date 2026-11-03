@@ -21,7 +21,7 @@ const SCENARIOS: { id: ScenarioChoice; label: string }[] = [
   { id: 'random', label: 'Aleatório' },
 ];
 
-type TabId = 'match' | 'scenario' | 'graphics' | 'audio' | 'economy' | 'progress' | 'debug';
+type TabId = 'match' | 'scenario' | 'graphics' | 'audio' | 'economy' | 'progress' | 'regras' | 'debug';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'match', label: '⚔ Partida' },
@@ -30,6 +30,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'audio', label: '🔊 Som' },
   { id: 'economy', label: '🪙 Economia' },
   { id: 'progress', label: '📊 Progresso' },
+  { id: 'regras', label: '📜 Regras' },
   { id: 'debug', label: '🐞 Depuração' },
 ];
 
@@ -101,9 +102,9 @@ export function SettingsMenu() {
               <section>
                 <h3>Partida</h3>
                 <p className="hint">
-                  Define como o exército inimigo é calculado no início do combate
-                  (orçamento, nível máximo e híbridos). Vale já para a preparação
-                  em andamento.
+                  Define como o exército inimigo é calculado no início do
+                  combate. Vale já para a preparação em andamento; o detalhe de
+                  cada dificuldade está na aba <b>Regras</b>.
                 </p>
                 <div
                   className="difficulty-row left"
@@ -123,13 +124,6 @@ export function SettingsMenu() {
                     </button>
                   ))}
                 </div>
-                <ul className="diff-list">
-                  {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (
-                    <li key={d} className={difficulty === d ? 'active' : ''}>
-                      <b>{DIFFICULTY_LABEL[d]}</b> — {DIFF_DESC[d]}
-                    </li>
-                  ))}
-                </ul>
               </section>
             )}
 
@@ -317,6 +311,87 @@ export function SettingsMenu() {
               </section>
             )}
 
+            {tab === 'regras' && (
+              <section>
+                <h3>Regras</h3>
+                <div className="rules-book">
+                  <div>
+                    <h4>Fusão</h4>
+                    <p>
+                      Arraste uma criatura sobre a outra na arena para movê-la
+                      ou fundi-las. Toda fusão consome <b>duas criaturas do
+                      mesmo nível</b> e produz 1 do nível seguinte: 2×Nv.1 →
+                      1×Nv.2 → … até Nv.5 (Nv.5 não funde). Fusões são{' '}
+                      <b>grátis</b>. Espécies diferentes só fundem a partir do
+                      Nv.5, e apenas quando existe receita na árvore elemental
+                      — a Enciclopédia mostra as receitas descobertas.
+                    </p>
+                  </div>
+                  <div>
+                    <h4>Preparação e loja</h4>
+                    <p>
+                      Monte o exército na fase de preparação: a loja só
+                      funciona aí e fecha quando o combate começa. Ela vende
+                      apenas puros Nv.1 por <b>100 moedas</b>, e a sua arena
+                      tem 12 slots.
+                    </p>
+                  </div>
+                  <div>
+                    <h4>Lixeira (venda)</h4>
+                    <p>
+                      Arraste uma criatura sua até a lixeira para vendê-la:
+                      você recebe de volta exatamente o que ela custou para
+                      existir (Nv.2 devolve 200, Nv.3 devolve 400…; espécies
+                      da árvore valem o dobro do nível).
+                    </p>
+                  </div>
+                  <div>
+                    <h4>Inimigo e dificuldade</h4>
+                    <p>
+                      O exército inimigo é calculado e convocado{' '}
+                      <b>na hora em que o combate começa</b>, escalado pelo
+                      valor do seu time × a dificuldade escolhida:
+                    </p>
+                    <ul className="diff-list">
+                      {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (
+                        <li key={d} className={difficulty === d ? 'active' : ''}>
+                          <b>{DIFFICULTY_LABEL[d]}</b> — {DIFF_DESC[d]}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4>Recompensa e time persistente</h4>
+                    <p>
+                      Vitória <b>+100</b>, derrota/empate <b>+50</b>, uma
+                      recompensa por partida — e o saldo persiste entre
+                      partidas. Na vitória, todo o seu time volta para a
+                      próxima partida, inclusive quem caiu em combate. Na
+                      derrota, o time inteiro também volta (as moedas gastas,
+                      não). No empate, só voltam os sobreviventes; se o time
+                      zerou, vale a regra da derrota. Ficam de fora os
+                      fundidos (o filho carrega o valor deles) e os vendidos.
+                    </p>
+                    <p>
+                      O time guardado volta <b>nos mesmos buracos</b> em que
+                      estava quando o combate começou: a luta espalha as
+                      criaturas pelo campo, mas a formação que você montou na
+                      preparação é o que é salvo — na partida seguinte o
+                      tabuleiro já vem pronto.
+                    </p>
+                  </div>
+                  <div>
+                    <h4>Enciclopédia</h4>
+                    <p>
+                      Espécies da árvore elemental aparecem seladas (???) até
+                      você descobri-las numa fusão; aí a receita e os
+                      atributos da espécie são revelados.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            )}
+
             {tab === 'debug' && (
               <section>
                 <h3>Depuração</h3>
@@ -351,7 +426,9 @@ export function SettingsMenu() {
                 <p className="hint">
                   Campanha: {stats.matchesPlayed} partidas · {stats.wins}{' '}
                   vitórias · {stats.losses} derrotas · {stats.draws} empates.
-                  {retainedCount > 0 && <> Time guardado: {retainedCount} criatura(s).</>}
+                  {retainedCount > 0 && (
+                    <> Time guardado: {retainedCount} criatura(s), nos mesmos buracos.</>
+                  )}
                 </p>
                 {confirmReset ? (
                   <div className="confirm">

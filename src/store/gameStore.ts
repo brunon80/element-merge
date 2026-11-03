@@ -70,6 +70,12 @@ interface GameStoreState {
   units: UiUnit[];
   selectedId: number | null;
   pendingDrag: { id: number; x: number; y: number } | null;
+  /**
+   * Imprensa num card para abrir o inspetor: a seleção só se confirma no
+   * soltar, e morre no meio do caminho se o gesto virar arraste (mover/fundir)
+   * ou órbita de câmera — nada de abrir o menu de estatísticas ao arrastar.
+   */
+  tapCandidate: { id: number; x: number; y: number } | null;
   dragId: number | null;
   dragHover: DragHover | null;
   /** posição do ponteiro no chão enquanto arrasta (para o destaque de destino) */
@@ -108,6 +114,9 @@ interface GameStoreActions {
   selectUnit: (id: number | null) => void;
   beginDragCandidate: (id: number, x: number, y: number) => void;
   tryPromoteDrag: (x: number, y: number) => boolean;
+  beginTapCandidate: (id: number, x: number, y: number) => void;
+  trackTap: (x: number, y: number) => void;
+  commitTap: (x: number, y: number) => void;
   hoverWorld: (x: number, z: number) => void;
   endDrag: () => void;
   clearPointerState: () => void;
@@ -139,6 +148,10 @@ export type GameStore = GameStoreState & GameStoreActions;
 let engine: GameEngine | null = null;
 let save: SaveData = loadSave();
 let toastSeq = 1;
+
+/** mínimo de movimento (px de tela) para a imprensa virar arraste; o toque que
+ *  abre o inspetor usa a MESMA régua — ou vira drag junto com a câmera */
+const DRAG_PROMOTE_PX = 9;
 
 export function getEngine(): GameEngine | null {
   return engine;
@@ -287,12 +300,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       //  • EMPATE com sobreviventes: só sobreviventes, como sempre — perder
       //    unidades no empate faz parte do acordo do empate. O empate com o
       //    tabuleiro zerado cai na regra anti-softlock (time inteiro de volta).
-      const survivors = engine
-        .aliveUnits('player')
-        .map((u) => ({ species: u.species, level: u.level }));
+      // O `tile` de cada entrada é o buraco que a criatura ocupava quando o
+      // combate começou (retrato tirado pelo motor no startBattle): na próxima
+      // partida o time volta montado exatamente como o jogador deixou, sem
+      // precisar reorganizar o tabuleiro.
+      const survivors = engine.aliveUnits('player');
       const roster =
         summary.result === 'draw' && survivors.length > 0
-          ? survivors.slice(0, TILES_PER_SIDE)
+          ? engine.restoredRoster('player', true)
           : engine.restoredRoster('player');
       save.retainedRoster = roster;
       persistSoon();
@@ -304,6 +319,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     set({
       lastSummary: save.lastSummary ?? summary,
       coins: save.coins,
+      // a campanha também é lida pela tela de resultado e pelo menu: sem isso,
+      // a partida terminada só aparece nas contas depois de recarregar a página
+      stats: { ...save.stats },
       phase: summary.result,
       retainedCount: save.retainedRoster.length,
       activeArenaScene,
@@ -332,6 +350,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     units: [],
     selectedId: null,
     pendingDrag: null,
+    tapCandidate: null,
     dragId: null,
     dragHover: null,
     dragPointer: null,
@@ -385,9 +404,11 @@ export const useGameStore = create<GameStore>((set, get) => {
       save.lastArenaScene = activeArenaScene;
       persistSoon();
       newEngine();
-      // Time persistido volta automaticamente, sem custo.
+      // Time persistido volta automaticamente, sem custo e NO MESMO BURACO
+      // que ocupava quando o combate anterior começou (se o buraco estiver
+      // ocupado por outra criatura do time, entra no primeiro livre).
       for (const r of save.retainedRoster) {
-        engine!.addRetainedUnit(r.species, r.level);
+        engine!.addRetainedUnit(r.species, r.level, r.tile);
       }
       set({
         screen: 'game',
@@ -401,6 +422,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         battleTime: 0,
         selectedId: null,
         pendingDrag: null,
+        tapCandidate: null,
         dragId: null,
         dragHover: null,
         dragPointer: null,
@@ -431,6 +453,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         units: [],
         selectedId: null,
         pendingDrag: null,
+        tapCandidate: null,
         dragId: null,
         dragHover: null,
         dragPointer: null,
@@ -480,9 +503,29 @@ export const useGameStore = create<GameStore>((set, get) => {
       const pd = get().pendingDrag;
       if (!pd) return false;
       const d = Math.hypot(x - pd.x, y - pd.y);
-      if (d < 9) return false;
+      if (d < DRAG_PROMOTE_PX) return false;
       set({ dragId: pd.id, pendingDrag: null });
       return true;
+    },
+
+    beginTapCandidate(id: number, x: number, y: number): void {
+      set({ tapCandidate: { id, x, y } });
+    },
+
+    trackTap(x: number, y: number): void {
+      // o dedo andou: era arraste/órbita, não toque — o inspetor não abre
+      const tc = get().tapCandidate;
+      if (tc && Math.hypot(x - tc.x, y - tc.y) >= DRAG_PROMOTE_PX) {
+        set({ tapCandidate: null });
+      }
+    },
+
+    commitTap(x: number, y: number): void {
+      const tc = get().tapCandidate;
+      set({ tapCandidate: null });
+      if (!tc) return;
+      if (Math.hypot(x - tc.x, y - tc.y) >= DRAG_PROMOTE_PX) return;
+      set({ selectedId: tc.id });
     },
 
     clearPointerState(): void {

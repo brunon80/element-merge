@@ -75,6 +75,7 @@ export function BattleScene({
 
     const onMove = (e: PointerEvent) => {
       const st = useGameStore.getState();
+      st.trackTap(e.clientX, e.clientY);
       if (st.pendingDrag) st.tryPromoteDrag(e.clientX, e.clientY);
       if (st.dragId !== null) {
         st.setSellHover(isOverSellBin(e.clientX, e.clientY));
@@ -82,18 +83,27 @@ export function BattleScene({
         if (p) st.hoverWorld(p[0], p[1]);
       }
     };
-    const onUp = () => {
+    const onUp = (e: PointerEvent) => {
       const st = useGameStore.getState();
       if (st.dragId !== null) st.endDrag();
       else if (st.pendingDrag) st.clearPointerState();
+      // só abre o inspetor se a imprensa virou TOQUE (pouco movimento);
+      // arraste/órbita já mataram o tapCandidate no trackTap
+      st.commitTap(e.clientX, e.clientY);
+    };
+    const onCancel = () => {
+      const st = useGameStore.getState();
+      if (st.dragId !== null) st.endDrag();
+      else if (st.pendingDrag) st.clearPointerState();
+      useGameStore.setState({ tapCandidate: null }); // cancelamento não é toque
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('pointercancel', onCancel);
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('pointercancel', onCancel);
     };
   }, [camera, gl, dragTools]);
 

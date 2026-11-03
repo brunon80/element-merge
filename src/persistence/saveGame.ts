@@ -1,5 +1,6 @@
 import { DEFAULT_STARTING_COINS } from '../data/balance';
 import { ALL_SPECIES_IDS, getSpecies, speciesAllowsLevel } from '../data/monsters';
+import { TILES_PER_SIDE } from '../game/types';
 import type {
   Difficulty,
   ArenaScene,
@@ -10,8 +11,8 @@ import type {
 } from '../game/types';
 
 export const SAVE_KEY = 'elemental-merge-save-v1';
-/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som; v9: volume da música. */
-export const SAVE_VERSION = 9;
+/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som; v9: volume da música; v10: posição do time guardado no tabuleiro. */
+export const SAVE_VERSION = 10;
 export const DEFAULT_BLOOM_INTENSITY = 20;
 export const MAX_BLOOM_INTENSITY = 100;
 export const DEFAULT_SCENERY_BLOOM_INTENSITY = 30;
@@ -32,10 +33,16 @@ const LEGACY_HYBRID_MAP: Record<string, SpeciesId> = {
 /** Unidade do time do jogador que volta automaticamente para a próxima partida.
  *  Na vitória e na derrota volta todo o time plantado (vivas e mortas em
  *  combate — na derrota sem reembolso: o prejuízo financeiro fica); no empate
- *  com sobreviventes, só quem sobreviveu. Fusões e vendas ficam de fora. */
+ *  com sobreviventes, só quem sobreviveu. Fusões e vendas ficam de fora.
+ *
+ *  `tile` (desde a v10) é o buraco que a criatura ocupava quando o combate
+ *  começou: é essa organização que volta na próxima partida, para o jogador não
+ *  precisar montar o tabuleiro de novo. Saves antigos não têm o campo — nesse
+ *  caso a criatura entra no primeiro buraco livre. */
 export interface RetainedUnit {
   species: SpeciesId;
   level: MonsterLevel;
+  tile?: number;
 }
 
 export interface SettingsData {
@@ -169,16 +176,17 @@ export function loadSave(): SaveData {
       // Níveis fora da janela da espécie (puro 1..5, árvore nível fixo) são corrigidos
       // para o nível válido mais próximo; se a espécie é da árvore, sempre o nível fixo.
       const def = getSpecies(next);
+      let fixedLevel = level;
       if (!speciesAllowsLevel(next, level)) {
-        if (def.levelMin === def.levelMax) {
-          retainedRoster.push({ species: next, level: def.levelMin as MonsterLevel });
-        } else {
-          const fixed = Math.min(def.levelMax, Math.max(def.levelMin, level)) as MonsterLevel;
-          retainedRoster.push({ species: next, level: fixed });
-        }
-      } else {
-        retainedRoster.push({ species: next, level });
+        fixedLevel =
+          def.levelMin === def.levelMax
+            ? (def.levelMin as MonsterLevel)
+            : (Math.min(def.levelMax, Math.max(def.levelMin, level)) as MonsterLevel);
       }
+      const entry: RetainedUnit = { species: next, level: fixedLevel };
+      const tile = validTile(r.tile);
+      if (tile !== null) entry.tile = tile; // saves antigos voltam no primeiro buraco livre
+      retainedRoster.push(entry);
     }
     coins = coins0 + refund;
     const difficulty: Difficulty =
@@ -267,6 +275,13 @@ export function loadSave(): SaveData {
 
 function num(v: unknown): number {
   return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
+}
+
+/** Buraco do tabuleiro só é aceito se for inteiro e estiver dentro do lado do jogador. */
+function validTile(v: unknown): number | null {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < TILES_PER_SIDE
+    ? v
+    : null;
 }
 
 export function persistSave(data: SaveData): void {

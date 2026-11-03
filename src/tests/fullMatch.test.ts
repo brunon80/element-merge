@@ -121,8 +121,10 @@ describe('Time que volta para a próxima partida (regra da vitória)', () => {
     const roster = eng.restoredRoster('player');
     // O zephyr caiu e mesmo assim volta: vencer paga o time inteiro, e evoluir
     // deixa de ser uma aposta com a morte da unidade na partida vencida.
-    expect(roster).toContainEqual({ species: 'zephyr', level: 1 });
-    expect(roster).toContainEqual({ species: 'ignis', level: 2 }); // o filho do par fundido
+    // Cada entrada carrega o buraco que a criatura ocupava no começo do combate
+    // (o zephyr estava no 3 e o filho da fusão, no 1 — o do alvo).
+    expect(roster).toContainEqual({ species: 'zephyr', level: 1, tile: 3 });
+    expect(roster).toContainEqual({ species: 'ignis', level: 2, tile: 1 }); // o filho do par fundido
     expect(roster).not.toContainEqual({ species: 'nereia', level: 1 }); // vendida
     // os dois ignis Nv.1 não reaparecem: quem carrega o valor deles é o Nv.2
     expect(roster.filter((r) => r.species === 'ignis')).toHaveLength(1);

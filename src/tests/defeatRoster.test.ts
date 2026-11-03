@@ -50,6 +50,15 @@ describe('Time que volta na derrota (regra anti-softlock)', () => {
     runUntilSummary();
     expect(eng.world.summary!.result).toBe('defeat');
 
+    // as contas da campanha entram no store junto com o resultado: a tela de
+    // resultado e o menu mostram a partida recém-terminada sem recarregar a página
+    expect(useGameStore.getState().stats).toEqual({
+      wins: 0,
+      losses: 1,
+      draws: 0,
+      matchesPlayed: 1,
+    });
+
     // o time inteiro volta: 5 caíram em combate e as 5 voltam Nv.1
     expect(getSave().retainedRoster).toHaveLength(5);
     expect(
@@ -120,7 +129,7 @@ describe('Time que volta na derrota (regra anti-softlock)', () => {
 
     const roster = getSave().retainedRoster;
     expect(roster).toHaveLength(1);
-    expect(roster).toContainEqual({ species: 'golem', level: 1 });
-    expect(roster).not.toContainEqual({ species: 'zephyr', level: 1 });
+    expect(roster).toEqual([expect.objectContaining({ species: 'golem', level: 1 })]);
+    expect(roster).not.toContainEqual(expect.objectContaining({ species: 'zephyr' }));
   });
 });

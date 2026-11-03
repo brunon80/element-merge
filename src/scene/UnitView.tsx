@@ -335,9 +335,12 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
     const st = useGameStore.getState();
     const live = getEngine()?.getUnit(unitId);
     if (!live || !live.alive) return;
-    st.selectUnit(unitId);
+    const ne = e.nativeEvent;
+    // o inspetor abre no SOLTA (commitTap na bridge de ponteiro), não aqui:
+    // se o gesto virar arraste (mover/fundir) ou órbita de câmera, o toque
+    // morre no trackTap e nada de card de stats pipocando no meio do arraste
+    st.beginTapCandidate(unitId, ne.clientX, ne.clientY);
     if (live.side === 'player') {
-      const ne = e.nativeEvent;
       st.beginDragCandidate(unitId, ne.clientX, ne.clientY);
     }
   };

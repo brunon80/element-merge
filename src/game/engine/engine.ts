@@ -94,6 +94,15 @@ interface DeployedRecord {
   species: SpeciesId;
   level: MonsterLevel;
   fate: UnitFate;
+  /** Buraco em que a unidade está agora (acompanha os deslocamentos do combate). */
+  tile: TileIndex;
+  /**
+   * Buraco que a unidade ocupava no instante em que o combate começou — null
+   * para quem nasceu durante a luta (filho de fusão). É essa organização que
+   * volta na próxima partida: o jogador não precisa reorganizar o tabuleiro só
+   * porque as criaturas se mexeram enquanto atiravam.
+   */
+  battleTile: TileIndex | null;
 }
 
 /**
@@ -330,7 +339,15 @@ export class GameEngine {
     this.world.units.push(unit);
     this.byId.set(unit.id, unit);
     this.world.occupancy[side][tile] = unit.id;
-    this.deployed.push({ unitId: unit.id, side, species, level: safeLevel, fate: 'alive' });
+    this.deployed.push({
+      unitId: unit.id,
+      side,
+      species,
+      level: safeLevel,
+      fate: 'alive',
+      tile,
+      battleTile: null,
+    });
     return unit;
   }
 
@@ -349,6 +366,8 @@ export class GameEngine {
     unit.tile = tile;
     unit.pos = tileGroundPosition(side, tile);
     this.world.occupancy[side][tile] = unit.id;
+    const rec = this.deployed.find((d) => d.unitId === unitId);
+    if (rec) rec.tile = tile;
     this.emit({ type: 'move', unitId, tile });
     return { ok: true };
   }
@@ -388,6 +407,12 @@ export class GameEngine {
     const createdIds: number[] = [];
     const created = this.createUnit(side, outcome.species, outcome.level, destTile);
     createdIds.push(created.id);
+    // O filho herda o buraco de combate do par: a fusão não embaralha a
+    // organização que o jogador montou antes da luta.
+    const recKid = this.deployed.find((d) => d.unitId === created.id);
+    const recA = this.deployed.find((d) => d.unitId === aId);
+    const recB = this.deployed.find((d) => d.unitId === bId);
+    if (recKid) recKid.battleTile = recB?.battleTile ?? recA?.battleTile ?? destTile;
 
     this.emit({ type: 'mergeStart', side, aId, bId, outcome });
     this.emit({ type: 'mergeDone', side, createdIds, outcome });
@@ -438,19 +463,49 @@ export class GameEngine {
   }
 
   /**
+   * Retrato do tabuleiro no instante em que o combate começa: grava em cada
+   * unidade o buraco que ela ocupava quando a luta começou. É esse retrato que
+   * volta na próxima partida — durante o combate as criaturas andam pelo campo,
+   * e devolver o time na posição bagunçada do final obrigaria o jogador a
+   * montar tudo de novo a cada partida.
+   */
+  private snapshotBattleTiles(): void {
+    for (const u of this.world.units) {
+      if (!u.alive) continue;
+      const rec = this.deployed.find((d) => d.unitId === u.id);
+      if (rec) rec.battleTile = u.tile;
+    }
+  }
+
+  /**
    * Time que volta para a próxima partida: todo mundo que este lado pôs em
-   * campo e chegou ao fim da rodada em jogo — vivas OU mortas em combate.
+   * campo e chegou ao fim da rodada em jogo — vivas OU mortas em combate
+   * (`onlyAlive=true` é o caso do empate: só quem sobreviveu).
    * Ficam de fora as unidades FUNDIDAS (o filho no nível seguinte já é a elas)
    * e as VENDIDAS na lixeira (o jogador sacou o valor delas em moedas).
    * Níveis altos primeiro: se o time passar dos 12 buracos do tabuleiro, o que
    * sobra é o que custa mais caro recriar na loja.
+   *
+   * Cada entrada carrega o `tile` que a criatura ocupava quando o combate
+   * começou — é a organização que o jogador montou na preparação, não o
+   * resultado da bagunça do combate. Assim a próxima partida já começa com o
+   * time nos mesmos buracos e ninguém precisa montar tudo de novo. Quem nasceu
+   * durante a luta (filho de fusão) herda o buraco do par e, na falta dele, o
+   * buraco onde terminou.
    */
-  restoredRoster(side: Side): { species: SpeciesId; level: MonsterLevel }[] {
+  restoredRoster(
+    side: Side,
+    onlyAlive = false,
+  ): { species: SpeciesId; level: MonsterLevel; tile: TileIndex }[] {
     return this.deployed
-      .filter((d) => d.side === side && (d.fate === 'alive' || d.fate === 'dead'))
+      .filter(
+        (d) =>
+          d.side === side &&
+          (onlyAlive ? d.fate === 'alive' : d.fate === 'alive' || d.fate === 'dead'),
+      )
       .sort((a, b) => b.level - a.level)
       .slice(0, TILES_PER_SIDE)
-      .map((d) => ({ species: d.species, level: d.level }));
+      .map((d) => ({ species: d.species, level: d.level, tile: d.battleTile ?? d.tile }));
   }
 
   /**
@@ -493,6 +548,7 @@ export class GameEngine {
     this.world.phase = 'combat';
     this.world.battleStarted = true;
     this.world.battleTime = 0;
+    this.snapshotBattleTiles();
     // O exército inimigo é calculado e montado AQUI: orçamento =
     // dificuldade × valor do time do jogador, com níveis/híbridos da regra.
     if (this.generateTeamOnStart) this.generateEnemyTeam();
