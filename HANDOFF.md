@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
 > Estado verificado em **03/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **357 testes / 34 arquivos, todos
+> `npx tsc --noEmit` OK · `npx vitest run` **360 testes / 34 arquivos, todos
 > verdes** · `npm run build` OK · git em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -26,6 +26,24 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | **astral** | 9 | ✅ figurino próprio + testes (espiral barrada de ONZE braços, plantado por onze raízes de gravidade) |
 | **colosso** | 9 | ✅ figurino próprio + testes (montanha eterna que virou LUA: planetóide de regolito claro com anel inclinado de treze matacões) |
 | **primordial** | 10 | ✅ figurino próprio + testes (quasar supermassivo com disco de acreção PINTADO em shader com **BLOOM gateado**; rajada de energia do furo do horizonte; DNA DEZESSETE EM TUDO) |
+
+> **REWORK artístico do PRIMORDIAL pedido pelo usuário em 03/nov (próximo loop,
+> ainda NÃO feito):** o monstro deve ser APENAS o QUASAR — derrubar a base
+> rochosa/cantaria e o corpo "tronco com cabeça" (templo, torres, garras, pátio,
+> entulho, coroa, lunetas, cometa segurado ficam de fora); o centro passa a ser
+> uma **ESFERA NEGRA** (geometria esfera no breu, não só o furo pintado do
+> shader); o disco de acreção (que ficou bom) deve ser **MAIOR**, na cor
+> **amarelada → esbranquiçada**, girando **BEM mais rápido** que hoje; e a
+> silhueta superior E inferior do disco deve aparecer arqueando sobre a esfera
+> (a lente gravacional estilo Gargantua de Interestelar — a imagem de referência
+> que o usuário colou no chat é esse look). Consequências amarradas pra quando
+> for feito: o envelope/familyRadius/`MEDIDO.primordial` mudam (o quasar fica
+> mais LARGO que alto), as contagens de dezessete do templo somem do figurino
+> (avaliar se o DNA 17 continua em algo — disco/spark/ring têm 17), os testes de
+> `primordialProgression.test.ts` de peças do templo e do plano varrido vão junto,
+> e a paleta (pin motor↔rig↔proj↔FX) troca o azó frio por ouro-quasar. O
+> commit+push do FIX do quadrado preto (03/nov) fecha ANTES disso — ver lesson
+> item 4 da seção iOS/WebKit.
 
 **Último monstro melhorado: PRIMORDIAL (Nv.10 — astral+colosso: A ENTIDADE
 PRIMORDIAL, o QUASAR SUPERMASSIVO com DISCO DE ACREFÃO inclinado — o ÚLTIMO da
@@ -698,6 +716,44 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
    painel `.gl-missing` ("3D indisponível … atualize para o iOS 15 ou mais novo")
    em vez de tela preta. Sem WebGL2 os viewers do bestiário também não montam
    (ficam com o aviso `.beast-model-hint`).
+4. **NaN na cena HDR → quadrado preto via bloom (corrigido em 03/nov — NÃO
+   reverter).** Report do usuário no iPhone: "o monstro inteiro e seus ataques são
+   quadrados pretos". A causa NÃO era pipeline/msaa/clear/blend — era o JATO do
+   Primordial escrevendo NaN: `along = vUv.y` passa de 1,0 em ULPs (interpolação
+   perspectiva), `pow(1.0 - along, 1.35)` com base negativa é **INDEFINIDO em GLSL
+   (= NaN no ANGLE/D3D11 e no Metal do WebKit)**, e `if (a <= 0.002) discard` é
+   FALSO pra NaN — o texel podre PASSA e escreve. Seis texels bastam: o highpass
+   do bloom os pesca e CADA borrão da escada de mips MULTIPLICA a mancha (6 → 91 →
+   912 → 6.992 → 48.096 → 309.132 texels), o compósito somatório do
+   `UnrealBloomPass` devolve pro buffer da cena e a cópia final **amostra NaN como
+   preto puro** — um retângulo sólido de exatos 560x556 px (a caixa do mip
+   contaminado), meio eixo-alinhado, que nenhum scissor/viewport/blit explica.
+   Corrigido na RAIZ (clamp do `along` + discard invertido `if (!(a > x))` — NaN
+   não passa em NENHUMA comparação — no `JET_FRAG`/`DISK_FRAG` do
+   `PrimordialRig.tsx`; o anel `exp(-pow(d,2.0))` virou `exp(-d*d)` porque pow de
+   base negativa é indefinido mesmo com expoente inteiro) e de CINTO no composer:
+   o pass de resolve do multisample virou `SANITIZE_SHADER` (cópia + zero de
+   não-finito + teto 65504 = máx do HalfFloat), no primeiro
+   leitura-depois-da-cena do pipeline, gateado junto com o bloom. A/B no MESMO
+   frame doente (mesmos uniforms, só o shader do slot trocado): rt2 NaN 311.360 →
+   0. Mediações: `probe-nansource.mjs` cena NaN 0/20 tentativas;
+   `probe-frozen.mjs` 0/14 blocos; `probe-blackfix.mjs none` 0/20 blocos;
+   `audit-bestiary webkit` CONSOLE 0; e o usuário confirmou no navegador.
+   Curiosidade medida: com `NoBlending` o ANGLE **clampa** o fragment output
+   não-finito na escrita; é com `AdditiveBlending` (o caso do jato) que o NaN
+   fura pro buffer float. Pino estático (jsdom não roda WebGL): os três testes
+   `?raw` no fim de `primordialProgression.test.ts` (discard ao natural proibido,
+   base de pow clampada, `SANITIZE_SHADER` + `samples: 4` no composer). As sondas
+   que carregam a lição ficaram em `qa/`: `probe-nansource.mjs` (congela o
+   composer e caça o autor do NaN por ablação/bissecção com uniforms parados),
+   `probe-frozen.mjs` (leitura float exata de cada buffer da cadeia + print do
+   frame congelado), `probe-blackfix.mjs` (A/B de bloco preto no print por
+   variante do pipeline), `probe-blockshape.mjs` (geometria do retângulo em
+   qualquer PNG, offline). Locais com pow de subtração SEM clamp, auditados e
+   LATENTES (sem NaN medido; o cinto só roda com o quasar vivo): `waterShaders.ts`
+   (ndv cru em `pow(1.0 - ndv, …)`), `flameShaders.ts:93`, `windShaders.ts:108`,
+   `lightningShaders.ts:329`, `iceShaders.ts:136` — ao mexer nesses rigs, clampar
+   antes do pow é a regra.
 
 ---
 

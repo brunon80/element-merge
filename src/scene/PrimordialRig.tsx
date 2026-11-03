@@ -890,6 +890,9 @@ void main() {
   float ang = atan(c.y, c.x);
   // rotação DIFERENCIAL: ω ∝ ρ^−1,5 ancorada no horizonte; o ângulo é o
   // acumulado do rig (uSpin), então a carga acelerando o disco nunca dá salto
+  // de fase. A base do pow vem do rho que o discard acima crava em ≥ uInner > 0, então
+  // ela é sempre ≥ 1: pow com base NEGATIVA é INDEFINIDO em GLSL (vira NaN no
+  // ANGLE/D3D11 do WebKit — lesson do quadrado preto no HANDOFF)
   float rate = pow(rho / uInner, -1.5);
   float b = ang + uSpin * rate;
   // gás em duas famílias de bandas (sem noise: senão o print engordura o disco)
@@ -901,14 +904,18 @@ void main() {
   col = mix(col, uEmber, smoothstep(2.0, 2.16, rho));
   // o ANEL DE FÓTONS: uma volta HDR rente ao horizonte (é o que segura o bloom
   // pra leitura de quasar) com o feixe doppler — um lado do anel vem de frente
-  float ring = exp(-pow((rho - (uInner + 0.045)) / 0.055, 2.0));
+  float drho = (rho - (uInner + 0.045)) / 0.055;
+  // o quadrado é feito com multiplicação, NÃO com pow: a base passa por negativa
+  // dentro do anel e pow(base<0, x) é INDEFINIDO em GLSL (= NaN no WebKit);
+  // x*x é exato e não tem caso indefinido nenhum
+  float ring = exp(-drho * drho);
   float beam = 1.0 + 0.45 * cos(ang - 1.0);
   col += uHot * ring * (1.4 + 0.5 * sin(ang * 7.0 + uTime * 1.7)) * beam;
   // na afinação o disco todo esquenta; no sopro ele infla
   col *= 1.0 + uCharge * 0.5 + uJet * 0.8;
   float edge = smoothstep(uInner, uInner + 0.04, rho) * smoothstep(uOuter, uOuter - 0.12, rho);
   float a = dens * edge * uAlpha * 0.5;
-  if (a <= 0.002) discard;
+  if (!(a > 0.002)) discard; // discard à prova de NaN (ver JET_FRAG)
   gl_FragColor = vec4(col, a);
 }
 `;
@@ -934,12 +941,25 @@ uniform vec3 uHot;
 uniform vec3 uCool;
 varying vec2 vUv;
 void main() {
-  float along = vUv.y; // 0 = boca do buraco (estreita), 1 = ponta (larga)
+  // 0 = boca do buraco (estreita), 1 = ponta (larga). O vUv vem interpolado com
+  // correção de perspectiva: nas bordas do cone ele passa de 1,0 em alguns ULPs.
+  // SEM o clamp, a base "1.0 - along" fica NEGATIVA e pow(base negativa,
+  // fração) é INDEFINIDO em GLSL -> NaN. É um punhado de texels por frame (6-10), mas o
+  // highpass do bloom os pesca e CADA borrão da escada de mips MULTIPLICA a
+  // área contaminada (91 -> 912 -> 6.992 -> 48.096 -> 309.132 texels), e o
+  // compósito somatório devolve essa mancha pro buffer da cena — onde a cópia
+  // final amostra NaN como PRETO PURO. Foi assim que "o monstro inteiro e seus
+  // ataques viraram quadrados pretos" no iOS/WebKit (02/nov): a caixa medida na
+  // sonda tinha exatos 560x556 px, e esconder só ESTE mesh zerava o NaN da cena.
+  float along = clamp(vUv.y, 0.0, 1.0);
   float fall = pow(1.0 - along, 1.35); // aceso na boca, desbotando na ponta
   float core = pow(1.0 - abs(along - 0.0), 2.0);
   vec3 col = mix(uHot, uCool, along) * (1.0 + core * 1.2);
   float a = fall * uJet * uAlpha * 0.85;
-  if (a <= 0.002) discard;
+  // discard À PROVA DE NaN: "a <= 0.002" é FALSO pra NaN, então a comparação
+  // escrita "ao natural" deixa o texel podre PASSAR e escrever no buffer.
+  // Invertida ("!(a > 0.002)"), ela captura NaN/Inf junto e descarta.
+  if (!(a > 0.002)) discard;
   gl_FragColor = vec4(col, a);
 }
 `;

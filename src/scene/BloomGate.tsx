@@ -83,9 +83,60 @@ export const ARENA_BG = '#0b1020';
 const BLOOM_STRENGTH = 0.62;
 const BLOOM_RADIUS = 0.5;
 const BLOOM_THRESHOLD = 0.8;
+
+/**
+ * DESVIOS DE QA (só dev, por URL): bisectar pipeline sem picotar o fonte.
+ * `?qtNoBloom=1` liga o pass de bloom pra nunca (o resto do composer fica);
+ * `?qtNoComposer=1` tira o composer do caminho e devolve o `gl.render` nu de
+ * sempre (fundo pelo `WebGLBackground`, sem patch de cor) — é o A/B de pixel da
+ * arena e a sonda de bug de pós (`qa/probe-blackfix.mjs` usa os dois).
+ */
+const QA_FLAGS = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
+const QA_NO_BLOOM = !!import.meta.env.DEV && QA_FLAGS?.get('qtNoBloom') === '1';
+const QA_NO_COMPOSER = !!import.meta.env.DEV && QA_FLAGS?.get('qtNoComposer') === '1';
 /** a rampa (por segundo): ~0,25 s acendendo quando o quasar nasce, ~0,25 s
  *  apagando quando ele morre — ninguém merece pop de pós-processamento */
 const BLOOM_RAMP = 2.5;
+
+/**
+ * O CINTO ANTI-NÃO-FINITO (2026/11, lesson do "quadrado preto" no iOS/WebKit).
+ * O `renderTarget1` é HDR (HalfFloat): o anel de fótons escreve >1 ali de
+ * propósito. Qualquer texel NaN/Inf que caia nesse buffer é pescado pelo
+ * highpass do bloom e CADA borrão da escada de mips MULTIPLICA a contaminação
+ * (medido: 6 texels -> 91 -> 912 -> 6.992 -> 48.096 -> 309.132), o compósito
+ * somatório devolve a mancha pro buffer da cena e a cópia final amostra NaN como
+ * PRETO PURO — foi assim que o Primordial inteiro virou um quadrado preto de
+ * 560x556 px no iPhone. A raiz foi consertada no fonte (clamp + discard à prova
+ * de NaN no JET_FRAG/DISK_FRAG do rig — qa/probe-nansource.mjs provou o
+ * paralelismo 1:1 `cenaNaN>0 ⟺ BLOCO`), mas este pass fica de cinto: ele é o
+ * primeiro leitura-depois-da-cena do pipeline, então zerar não-finito AQUI
+ * custa um texel a texel numa passada só e protege a cadeia inteira de qualquer
+ * rig futuro. O teto 65504 é o máx do HalfFloat: acima disso o texel já seria
+ * Inf no próprio buffer.
+ */
+const SANITIZE_SHADER = {
+  uniforms: { tDiffuse: { value: null as THREE.Texture | null } },
+  vertexShader: /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+`,
+  fragmentShader: /* glsl */ `
+uniform sampler2D tDiffuse;
+varying vec2 vUv;
+void main() {
+  vec4 c = texture2D( tDiffuse, vUv );
+  // comparação invertida de propósito: NaN não passa em NENHUMA comparação de
+  // "maior-igual", então um canal podre derruba o texel inteiro pra zero (texel
+  // podre não tem cor digna de guardar metade)
+  vec3 rgb = c.r >= 0.0 && c.g >= 0.0 && c.b >= 0.0 ? c.rgb : vec3( 0.0 );
+  float a = c.a >= 0.0 && c.a <= 1.0 ? c.a : 0.0;
+  gl_FragColor = vec4( min( rgb, vec3( 65504.0 ) ), a );
+}
+`,
+};
 
 /** os dois pedaços de GLSL que devolvem ao material embutido a conta que o
  *  three faria se estivesse desenhando no canvas (verbatim dos chunks r169,
@@ -202,11 +253,26 @@ export function BloomGate() {
       { type: THREE.HalfFloatType, samples: 4 },
     );
     const composer = new EffectComposer(gl, rt);
+    // Higiene de plumbing (NÃO é o conserto do quadrado preto — esse conserto
+    // é o NaN na raiz dos shaders do rig + o cinto logo abaixo; ver lesson no
+    // HANDOFF): o `EffectComposer` clona o RT do construtor, então o
+    // `renderTarget2` herdaria `samples: 4`, e o `UnrealBloomPass` compõe de
+    // volta DE FORMA aditiva no `readBuffer` — escrevendo num framebuffer
+    // multisample que o three teria que resolver de novo pra cópia final ler
+    // (resolve duplo no mesmo frame). Com o rt2 simples, o buffer multisample
+    // é lido UMA vez e o bloom só mexe num HalfFloat simples.
+    composer.renderTarget2.samples = 0;
     // fundo pelo RenderPass: o setClearColor dele roda com o canvas ainda
     // vinculado, então o three codifica pro espaço do framebuffer e o RT
     // recebe o hex cru — fechando a convenção display-referred (ver o doc do
     // topo)
     const renderPass = new RenderPass(scene, camera, null, new THREE.Color(ARENA_BG));
+    // resolve do multisample + cinto anti-Não-Finito: cópia do buffer
+    // multisample pro simples com a sanificação do SANITIZE_SHADER no mesmo
+    // draw. Só entra com o quasar vivo (o mesmo gate do bloom) — sem primordial
+    // o caminho é exatamente o de hoje, um resolve só
+    const resolve = new ShaderPass(SANITIZE_SHADER);
+    resolve.enabled = false;
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(rt.width, rt.height),
       0, // strength: a rampa decide (começa apagado)
@@ -217,10 +283,11 @@ export function BloomGate() {
     const copy = new ShaderPass(CopyShader); // a cópia pura SEM codificação — é
     // ela que fecha a conta: o buffer já vale "o que o framebuffer mostra"
     composer.addPass(renderPass);
+    composer.addPass(resolve);
     composer.addPass(bloom);
     composer.addPass(copy);
     composer.setSize(size.width, size.height); // crava CSS px + _pixelRatio certo
-    return { composer, bloom, copy, renderPass };
+    return { composer, bloom, copy, renderPass, resolve };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, scene, camera]);
 
@@ -228,9 +295,10 @@ export function BloomGate() {
   const strength = useRef(0);
   useEffect(() => {
     // o fundo do scene sai de cena (literalmente): quem pinta é o clearColor do
-    // RenderPass, do contrário o WebGLBackground limparia o RT em linear
+    // RenderPass, do contrário o WebGLBackground limparia o RT em linear. Com o
+    // desvio `qtNoComposer` é o inverso: devolve o fundo ao WebGLBackground.
     const prev = scene.background;
-    scene.background = null;
+    scene.background = QA_NO_COMPOSER ? new THREE.Color(ARENA_BG) : null;
     return () => {
       scene.background = prev;
     };
@@ -241,6 +309,7 @@ export function BloomGate() {
       stack.composer.dispose();
       stack.bloom.dispose();
       stack.copy.dispose();
+      stack.resolve.dispose();
       stack.renderPass.dispose();
       unpatchBuiltins(scene);
     };
@@ -251,16 +320,41 @@ export function BloomGate() {
   }, [stack, size.width, size.height]);
 
   useFrame((_, dt) => {
+    // cabo da cena para as sondas de QA (só dev): varre a cena atrás de NaN e
+    // lê de volta os RTs HalfFloat — qa/probe-nansource.mjs, qa/probe-frozen.mjs,
+    // qa/probe-blackfix.mjs (o `composer` no cabo é o que congela o pipeline)
+    if (import.meta.env.DEV) {
+      (window as unknown as { __QT?: unknown }).__QT = { scene, camera, gl, THREE, composer: stack.composer };
+    }
+    if (QA_NO_COMPOSER) {
+      // desvio de QA: volta o `gl.render` nu de sempre — tone map + sRGB pelo
+      // three no framebuffer, fundo pelo WebGLBackground, nenhum RT no meio e
+      // NENHUM patch de cor (o patch é exatamente o que o three faz sozinho aqui)
+      gl.setRenderTarget(null);
+      gl.render(scene, camera);
+      return;
+    }
     patchBuiltins(scene); // material novo que spawnou no meio da partida
-    const target = primAlive ? BLOOM_STRENGTH : 0;
+    const target = primAlive && !QA_NO_BLOOM ? BLOOM_STRENGTH : 0;
     const cur = strength.current;
     if (cur !== target) {
       const step = BLOOM_RAMP * dt;
       strength.current = target > cur ? Math.min(target, cur + step) : Math.max(target, cur - step);
     }
     const v = strength.current;
+    // o gate: bloom e o cinto de sanificação (que também resolve o multisample)
+    // entram juntos — sem quasar o caminho é o de sempre, um resolve só
     stack.bloom.enabled = v > 0.004;
+    stack.resolve.enabled = v > 0.004;
     stack.bloom.strength = v;
+    // PAPEL FIXO nos dois buffers: a cena SEMPRE cai no renderTarget1
+    // (multisample) e o pós SEMPRE no renderTarget2 (simples). O
+    // `EffectComposer` troca esses ponteiros a cada pass com `needsSwap`, então
+    // sem travar aqui o frame seguinte jogaria a cena no buffer sem multisample
+    // (o MSAA piscaria) e o bloom escreveria de novo num framebuffer multisample
+    // — resolve duplo no mesmo frame, o plumbing que o rt2 `samples = 0` evita
+    stack.composer.readBuffer = stack.composer.renderTarget1;
+    stack.composer.writeBuffer = stack.composer.renderTarget2;
     stack.composer.render(Math.min(dt, 0.05));
   }, 1); // >0: o R3F deixa de desenhar sozinho e quem desenha é o composer
 

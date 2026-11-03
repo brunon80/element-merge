@@ -49,6 +49,11 @@ import {
   PRIMORDIAL_RAY_CORE_LOOK,
   PRIMORDIAL_SPARK_LOOK,
 } from '../scene/ProjectileField';
+// o TEXTO cru dos dois arquivos do pipeline (vite `?raw`): é assim que o pin
+// estático do lesson WebKit lê os shaders sem rodar WebGL (vite/client declara
+// `*?raw`)
+import RigSource from '../scene/PrimordialRig.tsx?raw';
+import GateSource from '../scene/BloomGate.tsx?raw';
 import { makeEngine, mustSummon, partsEnvelope, runSeconds } from './helpers';
 import type { MonsterLevel, Projectile } from '../game/types';
 
@@ -464,5 +469,38 @@ describe('Primordial: quasar supermassivo com disco de acreção (Nv.10)', () =>
     expect(PRIMORDIAL_SPARK_LOOK.crack).toBe(PRIMORDIAL_QUASAR);
     expect(PRIMORDIAL_SPARK_LOOK.rockA).toBe('#7fb0dd');
     expect(luma(PRIMORDIAL_SPARK_LOOK.rockA)).toBeLessThan(luma(QUASAR_PLASMA.white)); // a cauda de gelo nunca clareia mais que o miolo
+  });
+});
+
+/**
+ * LESSON DO "QUADRADO PRETO" (nov/2026, iOS/WebKit — qa/probe-frozen|nansource|blackfix.mjs):
+ * `pow(base<0, fração)` em GLSL é INDEFINIDO -> punhado de texels NaN na cena HDR; a
+ * escada de mips do UnrealBloomPass AMPLIFICA a contaminação (medido: 6 -> 912 -> 309.132
+ * texels) e o compósito somatório devolve a mancha pro buffer da cena — amostrada pela
+ * cópia final como PRETO PURO, um quadrado fixo de 560x556 px na tela. O jsdom não roda
+ * WebGL, então a rede é o TEXTO da fonte: o rig escreve discard à prova de NaN e base de
+ * pow clampada, e o composer segura o cinto de sanificação com o MSAA `samples: 4` vivo.
+ */
+describe('lesson WebKit: a cena HDR não escreve NaN e o composer tem cinto anti-não-finito', () => {
+  const rig = RigSource;
+  const gate = GateSource;
+
+  test('discard nenhum do rig é "ao natural" (NaN escapa de `x <= c`; invertido ele captura)', () => {
+    expect(rig).not.toMatch(/if \([a-z][\w.]* <= [0-9.]+\) discard/);
+    expect(rig).toMatch(/if \(!\(a > 0\.002\)\) discard;/); // jato
+    expect(rig.match(/\bdiscard;/g)!.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('as bases de pow do rig têm sinal garantido: o jato CLAMPA o along, o anel quadrado é multiplicação', () => {
+    expect(rig).toMatch(/float along = clamp\(vUv\.y, 0\.0, 1\.0\);/);
+    expect(rig).toMatch(/exp\(-drho \* drho\)/); // pow(base<0, 2.0) também é INDEFINIDO
+    expect(rig).not.toMatch(/exp\(-pow\(/);
+  });
+
+  test('o composer tem o cinto de sanificação no slot do resolve e o MSAA continua samples 4', () => {
+    expect(gate).toContain('new ShaderPass(SANITIZE_SHADER)');
+    expect(gate).toContain('65504.0');
+    expect(gate).toContain('samples: 4');
+    expect(gate).toContain('composer.renderTarget2.samples = 0');
   });
 });
