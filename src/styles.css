@@ -540,6 +540,163 @@ button {
 .scenario-hint {
   margin-top: 4px;
 }
+.scenario-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 460px;
+}
+.scenario-option {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 7px;
+  aspect-ratio: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+.scenario-option:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(140, 170, 230, 0.38);
+}
+.scenario-option:active {
+  transform: scale(0.99);
+}
+.scenario-option.active {
+  border-color: #72a5ff;
+  background: linear-gradient(100deg, rgba(43, 92, 255, 0.24), rgba(124, 58, 237, 0.12));
+  box-shadow: inset 0 0 0 1px rgba(114, 165, 255, 0.18);
+}
+.scenario-preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(220, 238, 255, 0.2);
+  border-radius: 8px;
+  background-color: #18304a;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.35);
+}
+.scenario-preview::before,
+.scenario-preview::after {
+  position: absolute;
+  content: '';
+  pointer-events: none;
+}
+.scenario-preview::before {
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(245, 248, 255, 0.72) 0 2%, transparent 3%),
+    linear-gradient(155deg, transparent 0 47%, rgba(8, 17, 29, 0.58) 48% 100%),
+    linear-gradient(25deg, transparent 0 50%, rgba(8, 17, 29, 0.4) 51% 100%);
+}
+.scenario-preview-court {
+  position: absolute;
+  z-index: 1;
+  left: 24%;
+  bottom: 8%;
+  width: 52%;
+  height: 25%;
+  border: 1px solid rgba(205, 239, 255, 0.76);
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 24%, rgba(219, 244, 255, 0.24) 25% 26%, transparent 27% 100%),
+    linear-gradient(135deg, rgba(113, 210, 238, 0.36), rgba(24, 53, 88, 0.62));
+  transform: perspective(35px) rotateX(17deg);
+  box-shadow: 0 0 8px rgba(121, 218, 255, 0.3);
+}
+.scenario-preview-arcane {
+  background:
+    radial-gradient(ellipse at 50% 42%, #a67aff 0 3%, transparent 5%),
+    linear-gradient(180deg, #1d2850 0%, #475183 56%, #30314c 100%);
+}
+.scenario-preview-forest {
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(255, 233, 159, 0.62), transparent 25%),
+    linear-gradient(180deg, #526e65 0%, #83916a 53%, #354a36 100%);
+}
+.scenario-preview-forest::before {
+  background:
+    linear-gradient(75deg, transparent 0 14%, #27372e 15% 19%, transparent 20% 79%, #27372e 80% 84%, transparent 85%),
+    linear-gradient(180deg, transparent 0 44%, rgba(19, 38, 29, 0.64) 45% 100%);
+}
+.scenario-preview-ice {
+  background:
+    radial-gradient(ellipse at 50% 33%, rgba(199, 244, 255, 0.75), transparent 29%),
+    linear-gradient(180deg, #8ec7df 0%, #447d9b 55%, #193c58 100%);
+}
+.scenario-preview-ice::before {
+  background:
+    linear-gradient(72deg, transparent 0 15%, #163b56 16% 21%, transparent 22% 76%, #163b56 77% 82%, transparent 83%),
+    linear-gradient(180deg, transparent 0 48%, rgba(12, 35, 54, 0.52) 49% 100%);
+}
+.scenario-preview-volcanic {
+  background:
+    radial-gradient(ellipse at 50% 42%, #ff8c35 0 3%, transparent 7%),
+    linear-gradient(180deg, #3c2427 0%, #542d27 58%, #1c1518 100%);
+}
+.scenario-preview-volcanic::before {
+  background:
+    linear-gradient(75deg, transparent 0 25%, #f05b24 26% 29%, transparent 30% 67%, #e84d20 68% 71%, transparent 72%),
+    linear-gradient(180deg, transparent 0 55%, rgba(13, 10, 13, 0.7) 56% 100%);
+}
+.scenario-preview-underwater {
+  background:
+    radial-gradient(ellipse at 50% 5%, rgba(106, 232, 235, 0.75), transparent 38%),
+    linear-gradient(180deg, #237c89 0%, #14516a 55%, #102d45 100%);
+}
+.scenario-preview-underwater::before {
+  background:
+    radial-gradient(ellipse at 20% 58%, #a1c9a3 0 3%, transparent 4%),
+    radial-gradient(ellipse at 82% 55%, #c093b3 0 3%, transparent 4%),
+    linear-gradient(180deg, transparent 0 58%, rgba(8, 32, 47, 0.48) 59% 100%);
+}
+.scenario-preview-random {
+  background: linear-gradient(135deg, #687245 0%, #43839a 34%, #583335 67%, #27345f 100%);
+}
+.scenario-option-name {
+  display: -webkit-box;
+  min-width: 0;
+  min-height: 2.4em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: break-word;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.scenario-option-indicator {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  border: 1px solid rgba(191, 210, 243, 0.5);
+  border-radius: 50%;
+}
+.scenario-option.active .scenario-option-indicator {
+  border-color: #9dc0ff;
+  background: #5485f6;
+  box-shadow: inset 0 0 0 4px #18254a;
+}
+@media (max-width: 520px) {
+  .scenario-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .difficulty-row.left {
   justify-content: flex-start;
 }

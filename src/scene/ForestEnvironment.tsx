@@ -22,6 +22,8 @@ interface Instance {
 
 interface ForestLayout {
   trunks: Instance[];
+  distantTrunks: Instance[];
+  distantCrowns: Instance[];
   roots: Instance[];
   branches: Instance[];
   crowns: Instance[];
@@ -64,6 +66,8 @@ function createForestLayout(): ForestLayout {
   };
   const layout: ForestLayout = {
     trunks: [],
+    distantTrunks: [],
+    distantCrowns: [],
     roots: [],
     branches: [],
     crowns: [],
@@ -195,6 +199,27 @@ function createForestLayout(): ForestLayout {
     }
   }
 
+  for (let i = 0; i < 36; i++) {
+    const angle = (i / 36) * Math.PI * 2 + (random() - 0.5) * 0.14;
+    const radius = TREE_RING_INNER_RADIUS + TREE_RING_WIDTH + 6 + random() * 6;
+    const height = 17 + random() * 10;
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const width = 0.55 + random() * 0.55;
+    layout.distantTrunks.push({
+      position: [x, groundY + height * 0.46, z],
+      rotation: [0, angle, 0],
+      scale: [width, height, width],
+      color: ['#493b2b', '#57432e', '#66503a'][i % 3],
+    });
+    layout.distantCrowns.push({
+      position: [x, groundY + height * 0.87, z],
+      rotation: [0, random() * Math.PI, 0],
+      scale: [6 + random() * 4, 5 + random() * 4, 6 + random() * 4],
+      color: ['#29452b', '#355b32', '#486c38'][i % 3],
+    });
+  }
+
   for (let i = 0; i < 110; i++) {
     const angle = random() * Math.PI * 2;
     const radius = ARENA_R + 1.5 + random() * 34;
@@ -268,6 +293,8 @@ function applyInstances(mesh: THREE.InstancedMesh | null, instances: Instance[])
 export function ForestEnvironment() {
   const layout = useMemo(createForestLayout, []);
   const trunkRef = useRef<THREE.InstancedMesh>(null);
+  const distantTrunkRef = useRef<THREE.InstancedMesh>(null);
+  const distantCrownRef = useRef<THREE.InstancedMesh>(null);
   const rootRef = useRef<THREE.InstancedMesh>(null);
   const branchRef = useRef<THREE.InstancedMesh>(null);
   const crownRef = useRef<THREE.InstancedMesh>(null);
@@ -277,6 +304,8 @@ export function ForestEnvironment() {
 
   useLayoutEffect(() => {
     applyInstances(trunkRef.current, layout.trunks);
+    applyInstances(distantTrunkRef.current, layout.distantTrunks);
+    applyInstances(distantCrownRef.current, layout.distantCrowns);
     applyInstances(rootRef.current, layout.roots);
     applyInstances(branchRef.current, layout.branches);
     applyInstances(crownRef.current, layout.crowns);
@@ -304,6 +333,22 @@ export function ForestEnvironment() {
       <instancedMesh ref={trunkRef} args={[undefined, undefined, layout.trunks.length]} castShadow receiveShadow>
         <cylinderGeometry args={[0.48, 0.82, 1, 7]} />
         <meshStandardMaterial roughness={0.92} flatShading />
+      </instancedMesh>
+      <instancedMesh
+        ref={distantTrunkRef}
+        args={[undefined, undefined, layout.distantTrunks.length]}
+        castShadow
+      >
+        <cylinderGeometry args={[0.48, 0.82, 1, 7]} />
+        <meshStandardMaterial roughness={0.92} flatShading />
+      </instancedMesh>
+      <instancedMesh
+        ref={distantCrownRef}
+        args={[undefined, undefined, layout.distantCrowns.length]}
+        castShadow
+      >
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>
       <instancedMesh ref={rootRef} args={[undefined, undefined, layout.roots.length]} castShadow receiveShadow>
         <cylinderGeometry args={[0.16, 0.34, 1, 6]} />

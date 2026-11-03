@@ -8,7 +8,7 @@ export const ICE_BG = '#132b40';
 const TREE_CANOPY_RADIUS = 7.5;
 const TREE_RING_WIDTH = 12;
 const TREE_RING_INNER_RADIUS = ARENA_R + TREE_CANOPY_RADIUS + 2;
-const GROUND_RADIUS = TREE_RING_INNER_RADIUS + TREE_RING_WIDTH + 14;
+const GROUND_RADIUS = TREE_RING_INNER_RADIUS + TREE_RING_WIDTH + 32;
 const GROUND_Y = -1.53;
 
 interface Instance {
@@ -24,6 +24,7 @@ interface IceLayout {
   snowCaps: Instance[];
   rocks: Instance[];
   spires: Instance[];
+  ridges: Instance[];
 }
 
 function createIceLayout(): IceLayout {
@@ -38,10 +39,11 @@ function createIceLayout(): IceLayout {
     snowCaps: [],
     rocks: [],
     spires: [],
+    ridges: [],
   };
 
-  for (let i = 0; i < 22; i++) {
-    const angle = Math.PI + (i / 21) * Math.PI + (random() - 0.5) * 0.12;
+  for (let i = 0; i < 32; i++) {
+    const angle = (i / 32) * Math.PI * 2 + (random() - 0.5) * 0.12;
     const radius = TREE_RING_INNER_RADIUS + Math.sqrt(random()) * TREE_RING_WIDTH;
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
@@ -99,6 +101,19 @@ function createIceLayout(): IceLayout {
       color: ['#65b9d5', '#8bd5e8', '#b8ecf5'][i % 3],
     });
   }
+
+  for (let i = 0; i < 22; i++) {
+    const angle = (i / 22) * Math.PI * 2 + (random() - 0.5) * 0.18;
+    const radius = ARENA_R + 30 + random() * 21;
+    const height = 10 + random() * 12;
+    const width = 9 + random() * 10;
+    layout.ridges.push({
+      position: [Math.cos(angle) * radius, GROUND_Y + height * 0.42, Math.sin(angle) * radius],
+      rotation: [(random() - 0.5) * 0.12, angle, (random() - 0.5) * 0.12],
+      scale: [width, height, width * (0.72 + random() * 0.4)],
+      color: ['#587d90', '#668da0', '#739bac', '#82aebe'][i % 4],
+    });
+  }
   return layout;
 }
 
@@ -145,6 +160,7 @@ export function IceEnvironment() {
   const snowCapRef = useRef<THREE.InstancedMesh>(null);
   const rockRef = useRef<THREE.InstancedMesh>(null);
   const spireRef = useRef<THREE.InstancedMesh>(null);
+  const ridgeRef = useRef<THREE.InstancedMesh>(null);
 
   useLayoutEffect(() => {
     applyInstances(trunkRef.current, layout.trunks);
@@ -152,6 +168,7 @@ export function IceEnvironment() {
     applyInstances(snowCapRef.current, layout.snowCaps);
     applyInstances(rockRef.current, layout.rocks);
     applyInstances(spireRef.current, layout.spires);
+    applyInstances(ridgeRef.current, layout.ridges);
   }, [layout]);
 
   useFrame((_, delta) => {
@@ -196,6 +213,10 @@ export function IceEnvironment() {
       <instancedMesh ref={spireRef} args={[undefined, undefined, layout.spires.length]} castShadow receiveShadow>
         <octahedronGeometry args={[1]} />
         <meshStandardMaterial roughness={0.72} metalness={0.08} flatShading />
+      </instancedMesh>
+      <instancedMesh ref={ridgeRef} args={[undefined, undefined, layout.ridges.length]} castShadow receiveShadow>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>
 
       <group position={[0, ARENA_R * 1.4, -ARENA_R * 1.35]}>

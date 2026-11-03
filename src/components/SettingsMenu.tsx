@@ -15,13 +15,15 @@ const SCENARIOS: { id: ScenarioChoice; label: string }[] = [
   { id: 'forest', label: 'Floresta' },
   { id: 'ice', label: 'Gélido' },
   { id: 'volcanic', label: 'Inferno Vulcânico' },
+  { id: 'underwater', label: 'Subaquático' },
   { id: 'random', label: 'Aleatório' },
 ];
 
-type TabId = 'match' | 'economy' | 'progress' | 'debug';
+type TabId = 'match' | 'scenario' | 'economy' | 'progress' | 'debug';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'match', label: '⚔ Partida' },
+  { id: 'scenario', label: '🌄 Cenário' },
   { id: 'economy', label: '🪙 Economia' },
   { id: 'progress', label: '📊 Progresso' },
   { id: 'debug', label: '🐞 Depuração' },
@@ -116,9 +118,18 @@ export function SettingsMenu() {
                     </li>
                   ))}
                 </ul>
-                <h3 className="scenario-heading">Cenário</h3>
+              </section>
+            )}
+
+            {tab === 'scenario' && (
+              <section>
+                <h3>Cenário</h3>
+                <p className="hint">
+                  Escolha o ambiente da arena. A seleção é aplicada imediatamente.
+                  Aleatório sorteia novamente a cada nova partida.
+                </p>
                 <div
-                  className="difficulty-row left"
+                  className="scenario-list"
                   role="radiogroup"
                   aria-label="Cenário da arena"
                 >
@@ -128,17 +139,20 @@ export function SettingsMenu() {
                       role="radio"
                       aria-checked={scenario === option.id}
                       data-testid={`scenario-${option.id}`}
-                      className={`diff-btn ${scenario === option.id ? 'active' : ''}`}
+                      className={`scenario-option ${scenario === option.id ? 'active' : ''}`}
                       onClick={() => setScenario(option.id)}
                     >
-                      {option.label}
+                      <span
+                        className={`scenario-preview scenario-preview-${option.id}`}
+                        aria-hidden="true"
+                      >
+                        <span className="scenario-preview-court" />
+                      </span>
+                      <span className="scenario-option-name">{option.label}</span>
+                      <span className="scenario-option-indicator" aria-hidden="true" />
                     </button>
                   ))}
                 </div>
-                <p className="hint scenario-hint">
-                  A escolha é aplicada imediatamente. Aleatório escolhe um cenário agora
-                  e sorteia novamente a cada nova partida.
-                </p>
               </section>
             )}
 

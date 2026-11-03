@@ -91,9 +91,31 @@ beforeEach(() => {
 });
 
 describe('Cenário da arena', () => {
+  test('apresenta cenários em grade com preview acima dos nomes', () => {
+    renderAll();
+    act(() => useGameStore.getState().setSettings(true));
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((tab) => tab.getAttribute('data-testid'))).toEqual(
+      expect.arrayContaining(['settings-tab-match', 'settings-tab-scenario']),
+    );
+    expect(tabs.findIndex((tab) => tab.getAttribute('data-testid') === 'settings-tab-scenario')).toBe(
+      tabs.findIndex((tab) => tab.getAttribute('data-testid') === 'settings-tab-match') + 1,
+    );
+    fireEvent.click(screen.getByTestId('settings-tab-scenario'));
+
+    const scenarioList = screen.getByRole('radiogroup', { name: 'Cenário da arena' });
+    expect(scenarioList).toHaveClass('scenario-list');
+    for (const id of ['arcane', 'forest', 'ice', 'volcanic', 'underwater', 'random']) {
+      const option = screen.getByTestId(`scenario-${id}`);
+      expect(option.firstElementChild).toHaveClass('scenario-preview');
+      expect(option.children[1]).toHaveClass('scenario-option-name');
+    }
+  });
+
   test('aplica a escolha imediatamente durante uma partida', () => {
     renderAll();
     act(() => useGameStore.getState().setSettings(true));
+    fireEvent.click(screen.getByTestId('settings-tab-scenario'));
 
     fireEvent.click(screen.getByTestId('scenario-forest'));
     expect(useGameStore.getState().screen).toBe('game');
@@ -105,11 +127,14 @@ describe('Cenário da arena', () => {
     fireEvent.click(screen.getByTestId('scenario-volcanic'));
     expect(useGameStore.getState().activeArenaScene).toBe('volcanic');
 
+    fireEvent.click(screen.getByTestId('scenario-underwater'));
+    expect(useGameStore.getState().activeArenaScene).toBe('underwater');
+
     fireEvent.click(screen.getByTestId('scenario-arcane'));
     expect(useGameStore.getState().activeArenaScene).toBe('arcane');
 
     fireEvent.click(screen.getByTestId('scenario-random'));
-    expect(['arcane', 'forest', 'ice', 'volcanic']).toContain(
+    expect(['arcane', 'forest', 'ice', 'volcanic', 'underwater']).toContain(
       useGameStore.getState().activeArenaScene,
     );
   });

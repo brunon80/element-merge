@@ -23,6 +23,7 @@ interface VolcanicLayout {
   spires: Instance[];
   trunks: Instance[];
   branches: Instance[];
+  mountains: Instance[];
 }
 
 interface Volcano {
@@ -209,6 +210,7 @@ function createVolcanicLayout(): VolcanicLayout {
     spires: [],
     trunks: [],
     branches: [],
+    mountains: [],
   };
 
   for (let i = 0; i < 140; i++) {
@@ -237,6 +239,19 @@ function createVolcanicLayout(): VolcanicLayout {
       rotation: [(random() - 0.5) * 0.2, random() * Math.PI, (random() - 0.5) * 0.2],
       scale: [width, height, width * (0.55 + random() * 0.5)],
       color: ['#171515', '#241b1a', '#33211d', '#42271f'][i % 4],
+    });
+  }
+
+  for (let i = 0; i < 22; i++) {
+    const angle = (i / 22) * Math.PI * 2 + (random() - 0.5) * 0.18;
+    const radius = ARENA_R + 52 + random() * 23;
+    const height = 8 + random() * 9;
+    const width = 9 + random() * 11;
+    layout.mountains.push({
+      position: [Math.cos(angle) * radius, GROUND_Y + height * 0.48, Math.sin(angle) * radius],
+      rotation: [(random() - 0.5) * 0.08, angle, (random() - 0.5) * 0.08],
+      scale: [width, height, width * (0.72 + random() * 0.42)],
+      color: ['#302321', '#392723', '#422b25', '#4a3028'][i % 4],
     });
   }
 
@@ -332,6 +347,7 @@ export function VolcanicEnvironment() {
   const spireRef = useRef<THREE.InstancedMesh>(null);
   const trunkRef = useRef<THREE.InstancedMesh>(null);
   const branchRef = useRef<THREE.InstancedMesh>(null);
+  const mountainRef = useRef<THREE.InstancedMesh>(null);
   const flameRefs = useRef<THREE.Mesh[]>([]);
   const eruptionRefs = useRef<THREE.Group[]>([]);
 
@@ -340,6 +356,7 @@ export function VolcanicEnvironment() {
     applyInstances(spireRef.current, layout.spires);
     applyInstances(trunkRef.current, layout.trunks);
     applyInstances(branchRef.current, layout.branches);
+    applyInstances(mountainRef.current, layout.mountains);
   }, [layout]);
 
   useFrame((state, delta) => {
@@ -421,6 +438,15 @@ export function VolcanicEnvironment() {
       </instancedMesh>
       <instancedMesh ref={branchRef} args={[undefined, undefined, layout.branches.length]} castShadow>
         <cylinderGeometry args={[0.2, 0.34, 1, 5]} />
+        <meshStandardMaterial roughness={1} flatShading />
+      </instancedMesh>
+      <instancedMesh
+        ref={mountainRef}
+        args={[undefined, undefined, layout.mountains.length]}
+        castShadow
+        receiveShadow
+      >
+        <coneGeometry args={[1, 1, 7]} />
         <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>
 

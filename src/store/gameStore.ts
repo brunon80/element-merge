@@ -145,7 +145,7 @@ function resolveArenaScene(
   previousScene?: ArenaScene | null,
 ): ArenaScene {
   if (scenario !== 'random') return scenario;
-  const choices: ArenaScene[] = ['arcane', 'forest', 'ice', 'volcanic'];
+  const choices: ArenaScene[] = ['arcane', 'forest', 'ice', 'volcanic', 'underwater'];
   const available = previousScene
     ? choices.filter((scene) => scene !== previousScene)
     : choices;

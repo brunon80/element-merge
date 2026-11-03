@@ -60,6 +60,7 @@ export const CAMERA_MAX_DISTANCE = ARENA_R * 2.76;
 export const SCENIC_CAMERA_MAX_DISTANCE = ARENA_R * 1.6;
 export const ICE_CAMERA_MAX_DISTANCE = ARENA_R * 2.55;
 export const VOLCANIC_CAMERA_MAX_DISTANCE = ARENA_R * 2.15;
+export const UNDERWATER_CAMERA_MAX_DISTANCE = ARENA_R * 2.45;
 
 /**
  * ENQUADRAMENTO DA CÂMERA — regra dura: o chão dos 24 buracos tem que ficar

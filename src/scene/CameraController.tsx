@@ -7,6 +7,7 @@ import {
   ICE_CAMERA_MAX_DISTANCE,
   ORBIT_TARGET,
   SCENIC_CAMERA_MAX_DISTANCE,
+  UNDERWATER_CAMERA_MAX_DISTANCE,
   VOLCANIC_CAMERA_MAX_DISTANCE,
 } from '../game/board';
 import { useGameStore } from '../store/gameStore';
@@ -29,24 +30,29 @@ export function CameraController({
   const forest = sceneVariant === 'forest';
   const icy = sceneVariant === 'ice';
   const volcanic = sceneVariant === 'volcanic';
+  const underwater = sceneVariant === 'underwater';
   const { camera } = useThree();
   const dragActive = useGameStore(
     (s) => s.dragId !== null || s.pendingDrag !== null,
   );
 
   useEffect(() => {
-    if (icy || volcanic) {
-      const distance = icy ? ICE_CAMERA_MAX_DISTANCE : VOLCANIC_CAMERA_MAX_DISTANCE;
+    if (icy || volcanic || underwater) {
+      const distance = icy
+        ? ICE_CAMERA_MAX_DISTANCE
+        : volcanic
+          ? VOLCANIC_CAMERA_MAX_DISTANCE
+          : UNDERWATER_CAMERA_MAX_DISTANCE;
       camera.position.set(
         0,
-        ORBIT_TARGET[1] + distance * (icy ? 0.46 : 0.4),
-        ORBIT_TARGET[2] + distance * (icy ? 0.89 : 0.92),
+        ORBIT_TARGET[1] + distance * (volcanic ? 0.4 : 0.46),
+        ORBIT_TARGET[2] + distance * (volcanic ? 0.92 : 0.89),
       );
     } else {
       camera.position.set(...CAMERA_POS);
     }
     camera.lookAt(...ORBIT_TARGET);
-  }, [camera, icy, volcanic]);
+  }, [camera, icy, volcanic, underwater]);
 
   return (
     <OrbitControls
@@ -67,6 +73,8 @@ export function CameraController({
             ? ICE_CAMERA_MAX_DISTANCE
             : volcanic
               ? VOLCANIC_CAMERA_MAX_DISTANCE
+              : underwater
+                ? UNDERWATER_CAMERA_MAX_DISTANCE
             : CAMERA_MAX_DISTANCE
       } // dá para ler a ilha inteira de uma vez
       minPolarAngle={0.35}

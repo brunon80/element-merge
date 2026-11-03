@@ -17,6 +17,7 @@ import { ARENA_BG, BloomGate } from '../scene/BloomGate';
 import { FOREST_BG } from '../scene/ForestEnvironment';
 import { ICE_BG } from '../scene/IceEnvironment';
 import { VOLCANIC_BG } from '../scene/VolcanicEnvironment';
+import { UNDERWATER_BG } from '../scene/UnderwaterEnvironment';
 import { BattleScene } from '../scene/BattleScene';
 import { useGameStore } from '../store/gameStore';
 import { GLBoundary } from './GLBoundary';
@@ -35,6 +36,8 @@ export function App() {
         ? ICE_BG
         : activeArenaScene === 'volcanic'
           ? VOLCANIC_BG
+          : activeArenaScene === 'underwater'
+            ? UNDERWATER_BG
         : ARENA_BG;
   const scenic = activeArenaScene !== 'arcane';
 
@@ -61,6 +64,8 @@ export function App() {
                   ? 7.5
                   : activeArenaScene === 'volcanic'
                     ? 6.2
+                    : activeArenaScene === 'underwater'
+                      ? 5.4
                     : scenic
                       ? 5.5
                       : 6.26),
