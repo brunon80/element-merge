@@ -79,7 +79,8 @@ import { useGameStore } from '../store/gameStore';
 export const ARENA_BG = '#0b1020';
 
 /** os três números do florecer do disco: intensidade, espalhamento e o limiar
- *  (0,8 no display-referred = perto do branco; só o azó do horizonte passa) */
+ *  (0,8 no display-referred = perto do branco; só o branco-quasar do horizonte
+ *  e o HDR do anel de fótons passam — o ouro do disco fica abaixo) */
 const BLOOM_STRENGTH = 0.62;
 const BLOOM_RADIUS = 0.5;
 const BLOOM_THRESHOLD = 0.8;

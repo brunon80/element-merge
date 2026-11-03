@@ -686,7 +686,11 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     levelMin: 10,
     levelMax: 10,
     formStartLevel: 10,
-    formTops: [6.2],
+    // topo autoral 4,9 — a coroa do arco de LENTE sobre a esfera negra (o quasar
+    // é largo, não alto: o disco varre 3,0 de raio). O valor casa formMuzzleY
+    // (1,05 + (4,9−1,93)·0,45 = 2,39) com o plano do disco (2,4) — a rajada sai
+    // da barriga da esfera, onde mora o horizonte
+    formTops: [4.9],
     formNames: ['entidade primordial'],
     blurb: 'Antes dos quatro elementos, havia um só. Astral e Colosso devolvem ao mundo a entidade que precede tudo — fogo que congela, mar que queima, pedra que voa e vento que pesa.',
     base: {
@@ -699,7 +703,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
       moveSpeed: 0,
       targeting: 'lowestHp',
       damageElement: 'water',
-      projectileColor: '#e8f6ff',
+      projectileColor: '#ffeccb',
       resist: { fire: 0.25, water: 0.25, earth: 0.25, air: 0.25 },
       abilities: [
         { kind: 'pierce', factor: 2 },

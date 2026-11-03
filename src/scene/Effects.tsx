@@ -43,13 +43,13 @@ import {
   COLOSSO_MAGMA,
   COLOSSO_TALC,
 } from './ColossoRig';
-// paleta do PRIMORDIAL (a lasca de gelo que estilhaça no impacto é a MESMA
-// geobruta e o MESMO azó do quasar — identidade boca→rajada→impacto amarrada
-// em teste; ver PrimordialRig)
+// paleta do PRIMORDIAL (a lasca VITRIFICADA que estilhaça no impacto é a
+// MESMA escória do projétil e o MESMO branco-quasar do anel de fótons —
+// identidade boca→rajada→impacto amarrada em teste; ver PrimordialRig)
 import {
-  GEOBRUTA_LOOK,
+  SINTER_LOOK,
   PRIMORDIAL_QUASAR,
-  PRIMORDIAL_ICE,
+  PRIMORDIAL_GOLD,
   PRIMORDIAL_EMBER,
   PRIMORDIAL_DEEP,
 } from './PrimordialRig';
@@ -537,26 +537,26 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
     );
     return { geo, mats };
   }, []);
-  // ...e as LASCAS DE GEOBRUTA da rajada partida do PRIMORDIAL: a lança de
-  // DEZESSETE FACES do projétil (e o fuso do figurino, e tudo aqui) estilhaça
-  // em farpa bicuda de DEZESSETE faces — o MESMO gelo bruto do templo com o
-  // veio de luz-de-azo da cor do motor (#e8f6ff, identidade amarrada em teste).
-  // Física própria: farpa de BROCA — leve, gira muito (o jato é disco girando)
-  // e quica a geada (mola miúda), o oposto do talco pesado do Colosso: os dois
-  // titãs da fusura se separam na física do caco de propósito
+  // ...e as LASCAS VITRIFICADAS da rajada partida do PRIMORDIAL: a lança de
+  // DEZESSETE FACES do projétil estilhaça em farpa bicuda de DEZESSETE faces —
+  // a MESMA MATÉRIA VITRIFICADA do projétil com o veio de luz-de-quasar da cor
+  // do motor (#ffeccb, identidade amarrada em teste). Física própria: farpa de
+  // BROCA — leve, gira muito (o jato é disco girando) e quica o vítro dourado
+  // (mola miúda), o oposto do talco pesado do Colosso: os dois titãs da fusura
+  // se separam na física do caco de propósito
   const shardQuasar = useMemo(() => {
     const geo = new THREE.CylinderGeometry(0.015, 0.05, 0.3, 17, 1); // farpa bicuda de 17 faces (o primo dezessete)
     const mats = Array.from({ length: SHARD_CAP }, (_, i) =>
       makeStoneMaterial({
-        rockA: GEOBRUTA_LOOK.rockA, // O MESMO gelo bruto do templo/projétil
-        rockB: GEOBRUTA_LOOK.rockB,
+        rockA: SINTER_LOOK.rockA, // O MESMA escória vitrificada do projétil
+        rockB: SINTER_LOOK.rockB,
         crack: PRIMORDIAL_QUASAR, // = a cor do motor (identidade amarrada em teste)
         amp: 0.007, // aresta viva: lasca de broca não arredonda
         crackGlow: 1.25, // lasca fresca: acabou de sair do núcleo de horizonte (o veio mais aceso da árvore)
         crackScale: 3.0, // lasca miúda: o ruído é lido no espaço LOCAL
         crackWidth: 0.05,
         crackBoost: 1.0,
-        speck: 0.9, // geada cristalina
+        speck: 0.9, // vítreo salpicado
         seed: 16.4 + i * 2.2,
         breath: 0.4,
       }),
@@ -916,11 +916,12 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
       // quica. É o espelho exato da lasca de cometa do Astral (leve, saltando,
       // girando), e por isso os dois Nv.9/10 se separam na física do caco
       const moon = kind === 'moonShard';
-      // a farpa do PRIMORDIAL é BROCA DE GEADA (a lança de dezessete faces
+      // a farpa do PRIMORDIAL é BROCA VITRIFICADA (a lança de dezessete faces
       // partida no alvo): leve e GIRO RÁPIDO (o jato é disco de acreção girando
-      // — a lasca sai rodando como saiu voando), com inércia de pedra gelada
+      // — a lasca sai rodando como saiu voando), com inércia de vítro dourado
       // (não entra no `fast` nervoso do gelo/vidro): sai no tier do osso/cometa
-      // e sobe um degrau acima do breu do cometa porque o azó a empurra
+      // e sobe um degrau acima do breu do cometa porque o plasma do poço a
+      // empurra
       const quasar = kind === 'quasarShard';
       const fast = ice || glass || prism || star;
       const s =
@@ -1538,34 +1539,36 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               speed: 1.7,
             });
           } else if (ev.species === 'primordial') {
-            // a RAJADA DE AZÓ detona no alvo e o que arrebenta é o gelo da
-            // lança: farpa bicuda de DEZESSETE FACES (pool `quasarShard` — a
-            // MESMA GEOBRUTA do templo com o veio de azó do motor #e8f6ff,
-            // identidade boca→rajada→FX amarrada em teste) voando como BROCA
-            // partida: leve, gira muito e quica a geada. A onda de choque é a
-            // mais LARGA da árvore (`splash 2,5` — o Colosso é 2,2 e o Vulcânico
-            // 2,0): anel de queimadura AZO lavrado no piso com a franja EMBER
-            // esfriando (#ff7a3c) POR FORA — a borda do disco de acreção gravada
-            // na arena. Estouram DEZESSETE grãos de gelo SUSPENSOS subindo (as
-            // lunetas — o DNA em partícula), o breu fundo da haste cai reto, o
-            // azó vitrifica no piso (o `burn 0,4` + `slow 0,4` escritos em FX)
-            // e a fumaça é PÓ DE ESTRELA ENGOLE: heat 0,08 — abaixo do pó de
-            // lua do Colosso (0,12): gás quase frio, o que sobrou do grão
+            // a RAJADA DE PLASMA detona no alvo e o que arrebenta é a escória
+            // vitrificada da lança: farpa bicuda de DEZESSETE FACES (pool
+            // `quasarShard` — a MESMA MATÉRIA VITRIFICADA do projétil com o
+            // veio branco-quasar do motor #ffeccb, identidade boca→rajada→FX
+            // amarrada em teste) voando como BROCA partida: leve, gira muito e
+            // quica o vítro dourado. A onda de choque é a mais LARGA da árvore
+            // (`splash 2,5` — o Colosso é 2,2 e o Vulcânico 2,0): anel de
+            // queimadura OURO-QUASAR lavrado no piso com a franja EMBER
+            // esfriando (#ff7a3c) POR FORA — a borda do disco de acreção
+            // gravada na arena. Estouram DEZESSETE grãos de OURO SUSPENSOS
+            // subindo (o plasma do disco — o DNA em partícula), o breu fundo da
+            // haste cai reto, o ouro vitrifica no piso (o `burn 0,4` + `slow
+            // 0,4` escritos em FX) e a fumaça é VAPOR VITRIFICADO: heat 0,22 —
+            // plasma arrancado do disco esfriando em vidro (o pó de lua do
+            // Colosso, 0,12, é frio; aqui a matéria saiu acesa do poço)
             const lv = Math.max(10, Math.min(10, ev.level ?? 10));
             const k = 1 + (lv - 10) * 0.14;
             // três das dezessete lascas da lança partida (pool: 3)
             for (let i = 0; i < 3; i++) spawnBurst(x, y, z, 0.3, 'quasarShard', 0.9);
-            spawnParticles(x, y, z, PRIMORDIAL_QUASAR, 12, 2.8, 0.55, 1.0, 0.5); // o MOTOR estourando (azo, cai arrastando)
-            spawnParticles(x, y, z, PRIMORDIAL_ICE, 17, 2.0, 0.85, -1.2, 0.45); // DEZESSETE grãos de GELO suspensos subindo (as lunetas — o DNA em partícula)
+            spawnParticles(x, y, z, PRIMORDIAL_QUASAR, 12, 2.8, 0.55, 1.0, 0.5); // o MOTOR estourando (branco-quasar, cai arrastando)
+            spawnParticles(x, y, z, PRIMORDIAL_GOLD, 17, 2.0, 0.85, -1.2, 0.45); // DEZESSETE grãos de OURO suspensos subindo (o plasma do disco — o DNA em partícula)
             spawnParticles(x, y, z, PRIMORDIAL_EMBER, 8, 1.5, 0.7, -0.8, 0.4); // o ember esfriando sobe devagar (a franja do disco — o único quente da espécie)
             spawnParticles(x, y, z, PRIMORDIAL_DEEP, 9, 3.0, 0.5, 3.3, 0.35); // chuva de breu do fundo da haste (pesada, cai reto)
-            spawnParticles(x, y - 0.1, z, PRIMORDIAL_QUASAR, 7, 1.0, 0.4, 0.6, 0.1); // o azó vitrificando no piso (o burn assentando)
-            spawnRing(x, 0.1, z, PRIMORDIAL_QUASAR, 3.7 * k); // a mais LARGA da árvore (splash 2,5): queimadura de azó
-            spawnRing(x, 0.18, z, PRIMORDIAL_EMBER, 2.0 * k); // franja EMBER POR FORA do azó: a borda do disco no piso (a ordem quente-dentro/ember-fora é Nv.10 e só dele)
-            spawnRing(x, 0.28, z, '#f2f9ff', 0.75); // flash MIÚDO do caroço de horizonte (nunca bola de fogo)
+            spawnParticles(x, y - 0.1, z, PRIMORDIAL_QUASAR, 7, 1.0, 0.4, 0.6, 0.1); // o branco-quasar vitrificando no piso (o burn assentando)
+            spawnRing(x, 0.1, z, PRIMORDIAL_QUASAR, 3.7 * k); // a mais LARGA da árvore (splash 2,5): queimadura de luz-de-quasar
+            spawnRing(x, 0.18, z, PRIMORDIAL_EMBER, 2.0 * k); // franja EMBER POR FORA do ouro: a borda do disco no piso (a ordem clara-dentro/ember-fora é Nv.10 e só dele)
+            spawnRing(x, 0.28, z, '#fff4d9', 0.75); // flash MIÚDO do caroço de horizonte (quente, nunca bola de fogo)
             spawnSmoke(x, y, z, 17, {
               size: 0.11,
-              heat: 0.08, // PÓ DE ESTRELA ENGOLE: azó quase frio (o pó de lua do Colosso é 0,12)
+              heat: 0.22, // VAPOR VITRIFICADO: plasma do disco esfriando em vidro
               life: 1.2,
               speed: 1.5,
             });
@@ -1663,7 +1666,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           }
           spawnRing(x, 0.12, z, '#ffffff', 4.2);
           spawnRing(x, 0.16, z, '#ffd76a', 3.0);
-          spawnRing(x, 0.2, z, '#9ad0ff', 2.0);
+          spawnRing(x, 0.2, z, '#ff7a3c', 2.0); // o terceiro anel é o EMBER da borda do disco (o anel azo antigo morreu com o templo)
           spawnSmoke(x, y + 0.8, z, 8, { size: 0.14, heat: 0.5, life: 2.0, speed: 1.4 });
           usePopup(x, y + 1.6, z, 'PRIMORDIAL', '#ffd76a');
           break;
@@ -1777,12 +1780,13 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               // a cadeia do PRIMORDIAL é o JATO SE PARTINDO em três: o elo é o
               // traço mais RETO da árvore (amp 0,06 — jato relativístico não
               // ferve, nem gravidade nem relâmpago) vestido com o INVERSO do
-              // astral: cauda GELO com miolo LUZ-DE-AZO #e8f6ff (o pai Nv.9 é
-              // âmbar com geada; o filho Nv.10 é azo com gelo — é assim que um
-              // print separa os dois). No destino arrebenta outra farpa de
-              // broca (pool `quasarShard`: a MESMA geobruta, dezessete faces) e
-              // grava o disco em miniatura: azo POR DENTRO, ember POR FORA — a
-              // mesma ordem do impacto grande, a assinatura repetida em cada elo
+              // astral: cauda OURO com miolo BRANCO-QUASAR #ffeccb (o pai Nv.9
+              // é âmbar com geada; o filho Nv.10 é branco-ouro — é assim que
+              // um print separa os dois). No destino arrebenta outra farpa de
+              // broca (pool `quasarShard`: a MESMA matéria vitrificada,
+              // dezessete faces) e grava o disco em miniatura: claro POR
+              // DENTRO, ember POR FORA — a mesma ordem do impacto grande, a
+              // assinatura repetida em cada elo
               const ax = ev.pos2[0] - x;
               const ay = ev.pos2[1] + 0.7 - (y + 0.7);
               const az = ev.pos2[2] - z;
@@ -1796,13 +1800,13 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
                 0.06, // o traço mais RETO da árvore: o elo é um jato, não um arco
                 0.16,
                 0.95,
-                0.15, // quase sem ouro: a corrente do quasar é fria, o azó segura sozinho
-                { tail: PRIMORDIAL_ICE, core: PRIMORDIAL_QUASAR }, // gelo com azó (o inverso do astral)
+                0.25, // um pouco de ouro: a corrente do quasar é branco-ourada e segura o elo sozinha
+                { tail: PRIMORDIAL_GOLD, core: PRIMORDIAL_QUASAR }, // ouro com branco incandescente (o inverso do astral: âmbar com geada)
               );
               spawnBurst(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], 0.26, 'quasarShard', 0.9);
-              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], PRIMORDIAL_QUASAR, 7, 1.8, 0.35, 1.0, 0.5); // o motor espalhando (azo, cai arrastando)
-              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], PRIMORDIAL_ICE, 5, 2.0, 0.5, -1.2, 0.45); // gelo SUBINDO no elo (o acento leve)
-              spawnRing(ev.pos2[0], 0.12, ev.pos2[2], PRIMORDIAL_QUASAR, 1.2); // o azó do elo
+              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], PRIMORDIAL_QUASAR, 7, 1.8, 0.35, 1.0, 0.5); // o motor espalhando (branco-quasar, cai arrastando)
+              spawnParticles(ev.pos2[0], ev.pos2[1] + 0.7, ev.pos2[2], PRIMORDIAL_GOLD, 5, 2.0, 0.5, -1.2, 0.45); // ouro SUBINDO no elo (o plasma leve do disco)
+              spawnRing(ev.pos2[0], 0.12, ev.pos2[2], PRIMORDIAL_QUASAR, 1.2); // a luz-de-quasar do elo
               spawnRing(ev.pos2[0], 0.18, ev.pos2[2], PRIMORDIAL_EMBER, 0.65); // ember POR FORA (a miniatura do disco — só do Nv.10)
             } else if (ev.species === 'raio' || ev.species === 'tempestade') {
               // respingo da corrente: salto em ARCO JAGADO — no Raio, azul
@@ -2075,13 +2079,14 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           // lugar onde caiu, não escorrega pelo piso como o lodo nem quica como
           // a pedra seca do golem
           const moonrock = d.kind === 'moon';
-          // a GEOBRUTA do PRIMORDIAL quica a GEADA: mola miúda (menos que a
-          // pedra seca do golem, muito mais que o talco morto do Colosso) e
-          // espalha um pouco — a lasca de broca ainda roda quando bate
-          const geada = d.kind === 'quasar';
-          d.vy = Math.abs(d.vy) * (wet ? 0.08 : pumice ? 0.2 : moonrock ? 0.15 : geada ? 0.3 : 0.38);
-          d.vx *= wet ? 0.45 : pumice ? 0.55 : moonrock ? 0.5 : geada ? 0.6 : 0.72;
-          d.vz *= wet ? 0.45 : pumice ? 0.55 : moonrock ? 0.5 : geada ? 0.6 : 0.72;
+          // a MATÉRIA VITRIFICADA do PRIMORDIAL quica o VÍTRO dourado: mola
+          // miúda (menos que a pedra seca do golem, muito mais que o talco
+          // morto do Colosso) e espalha um pouco — a lasca de broca ainda roda
+          // quando bate
+          const vitro = d.kind === 'quasar';
+          d.vy = Math.abs(d.vy) * (wet ? 0.08 : pumice ? 0.2 : moonrock ? 0.15 : vitro ? 0.3 : 0.38);
+          d.vx *= wet ? 0.45 : pumice ? 0.55 : moonrock ? 0.5 : vitro ? 0.6 : 0.72;
+          d.vz *= wet ? 0.45 : pumice ? 0.55 : moonrock ? 0.5 : vitro ? 0.6 : 0.72;
         }
         mesh.rotation.x += d.rx * dt;
         mesh.rotation.y += d.ry * dt;
