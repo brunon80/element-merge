@@ -13,6 +13,7 @@ import { ToastLayer } from '../components/ToastLayer';
 import { useGameDriver } from '../hooks/useGameDriver';
 import { ARENA_R, CAMERA_POS } from '../game/board';
 import { BestiaryStage } from '../scene/BestiaryStage';
+import { ARENA_BG, BloomGate } from '../scene/BloomGate';
 import { BattleScene } from '../scene/BattleScene';
 import { useGameStore } from '../store/gameStore';
 import { GLBoundary } from './GLBoundary';
@@ -35,11 +36,14 @@ export function App() {
           camera={{ position: CAMERA_POS, fov: 42 }}
           onPointerMissed={() => selectUnit(null)}
         >
-          <color attach="background" args={['#0b1020']} />
           {/* o fog começa logo além da borda inimiga da ilha (o tabuleiro em si
               fica limpo) e engole o vazio — as duas distâncias saem de ARENA_R */}
-          <fog attach="fog" args={['#0b1020', ARENA_R * 2.36, ARENA_R * 6.26]} />
+          <fog attach="fog" args={[ARENA_BG, ARENA_R * 2.36, ARENA_R * 6.26]} />
           <BattleScene key={matchKey ?? `menu-${seed}`} menuMode={!inGame} />
+          {/* o bloom do quasar: o pipeline de pós é permanente e só o pass de
+              bloom é gateado (o fundo do scene sai daqui e passa ao clearColor
+              do RenderPass — ver BloomGate) */}
+          <BloomGate />
         </Canvas>
       </GLBoundary>
 

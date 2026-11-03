@@ -1,7 +1,7 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
-> Estado verificado em **02/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **347 testes / 32 arquivos, todos
+> Estado verificado em **03/nov/2026** por inspeção direta + suíte rodando:
+> `npx tsc --noEmit` OK · `npx vitest run` **357 testes / 34 arquivos, todos
 > verdes** · `npm run build` OK · git em `main` (repo público
 > `brunon80/element-merge`, CI → GitHub Pages).
 
@@ -25,9 +25,89 @@ QA por screenshots (Playwright) e **um commit+push por monstro**.
 | **vulcânico** | 8 | ✅ figurino próprio + testes |
 | **astral** | 9 | ✅ figurino próprio + testes (espiral barrada de ONZE braços, plantado por onze raízes de gravidade) |
 | **colosso** | 9 | ✅ figurino próprio + testes (montanha eterna que virou LUA: planetóide de regolito claro com anel inclinado de treze matacões) |
-| **primordial** | 10 | ⬜ pendente (ÚNICO que falta) — quasar supermassivo com disco de acreção com **BLOOM** (decisão do usuário: usar bloom no disco, via postprocessing do three, gateado quando houver um primordial em cena), grande, ataque em rajada de energia. **O usuário mandou PARAR no colosso — não iniciar o primordial sem novo sinal verde.** |
+| **primordial** | 10 | ✅ figurino próprio + testes (quasar supermassivo com disco de acreção PINTADO em shader com **BLOOM gateado**; rajada de energia do furo do horizonte; DNA DEZESSETE EM TUDO) |
 
-**Último monstro melhorado: COLOSSO (Nv.9 — geodo+vulcânico: a MONTANHA ETERNA
+**Último monstro melhorado: PRIMORDIAL (Nv.10 — astral+colosso: A ENTIDADE
+PRIMORDIAL, o QUASAR SUPERMASSIVO com DISCO DE ACREFÃO inclinado — o ÚLTIMO da
+árvore e o único monstro com pós-processamento; caça `lowestHp`, rajada `#e8f6ff`
+no projétil MAIS RÁPIDO da árvore (12), `pierce 2` + `chain 3` + o `splash` MAIS
+LARGO (2,5) + `burn/slow 0,4` + `regen 0,05`, hp 130 / dmg 30, e é o ÚNICO com os
+QUATRO elementos resistidos (0,25 cada — ele os precede); DNA DEZESSETE EM TUDO —
+todo `cyl`/`cone` tem DEZESSETE faces (`rod17`/`spike17`; nenhum outro figurino
+usa dezessete: Geodo CINCO, Cristal SEIS, Abissal SETE, Cósmico OITO, Vulcânico
+NOVE, Astral ONZE, Colosso TREZE) e o dezessete manda nas CONTAGENS: dezessete
+almofadas + dezessete pilares geobruta + dezessete arcobotantes + dezessete lages
+da corte, torres nos flancos k 4 e 13 (k e 17−k: o ÚNICO par de um polígono de 17
+lados espelhado no Z — o berço `mz` das garras); ASSINATURA = o DISCO DE ACREFÃO
+— UMA só peça `ring` (0,62→2,28, 96 segs) com shader próprio DISK_FRAG: máscara
+de horizonte (o ASTRO NÃO TEM GEOMETRIA — o furo ρ<0,62 é vazio e a luz é
+pintura), anel de fótons em HDR rente ao horizonte com feixe doppler (é o que
+alimenta o BLOOM) e bandas de gás SEM noise com ω ∝ ρ^−1,5 arrastadas pelo ângulo
+ACUMULADO `uSpin` (o wrapper do rig SÓ INCLINA no pivô = centro do anel,
+`PRIMORDIAL_DISK_PIVOT`; o spin diferencial mora no SHADER; tilt descanso 0,46, o
+rig oscila 0,42–0,50); A FÍSICA DO PLANO VARRIDO MANDA A PLANTA (pino de teste):
+com o tilt no máximo toda peça ou fica TODA no furo (fuso/cubo/tampa, ρ ≤ 0,60 <
+0,62), ou TODA abaixo do arco (corte/entulho: tope 1,48 vs arco 1,70 na borda), ou
+TODA acima do teto (coroa/lunetas/orbe), ou TODA fora da borda (torres ρ 2,62,
+cauda do cometa segurado ρ 2,34) — folga ≥ 0,15 de `tan(0,5)` amarrada; as garras
+giram no eixo VERTICAL da torre (`primTowerPivot`, lado espelhado com β NEGADO; β
+máx do rig 0,26+0,012) e o varrido amostrado não fura a borda; GOELA DO BURACO:
+colarinho de breu + saia-funil + fuso de dezessete faces SEMPRE no furo + tampa
+glow (a única luz com geometria no furo) — a RAJADA SAI DO FURO
+(`PRIMORDIAL_MUZZLE` [0, 2,95, 0,55], no plano do disco); o COMETA SEGURADO
+MURCHA na afinação (`arm.core`/`arm.tail` apagam com o charge — matéria engolida
+pelo horizonte) e o disco infla em flare no sopro; PALETA = GEOBRUTA `#d8e4f2` (a
+pedra MAIS CLARA da árvore — passa o talco do Colosso; é o que faz o print ler
+templo de quasar) + breu-ROXO `#241f33` (o mais FUNDO da árvore) + veio de azó
+`#e8f6ff` em TODA pedra, CONTIDO (glow 0,3 × boost 0,6 = 0,18: com o disco inteiro
+aceso em HDR, veio solto viraria lanterna) + gelo-das-lunetas `#9ad0ff` + franja
+ember `#ff7a3c` na borda esfriando do disco; identidade motor↔figurino↔rig↔
+projétil↔FX amarrada em teste pelo HEX; COREOGRAFIA: janela 0,94 (entre astral
+0,74 e colosso 1,25; a cadência do Nv.10 é interval 1,5) com 60% SÓ DE COLETA
+(`gather` gira o braco na torre β, templo tomba −0,6, cometa afunda, disco
+esquenta), jato que IGNORA DO ZERO no frame do corte (continuidade gather/lean/
+charge amarrada; só o `flare` da tampa é impulso declarado — convenção do poço do
+Colosso), ESTOURA em pico de seno no meio do sopro e ASSENTA em 0 aos 87% (nada
+de jato aceso no frame em que a pose vira zero); projétil = cone GEOMBRUTA de
+dezessete faces em voo com o MESMO plasma do horizonte no núcleo ico na boca +
+rabo de DEZESSETE fagulhas de gelo com veio de azó (rolo de broca 3,4 rad/s, halo
+1,3); impacto = pool de farpas de BROCA `shardQuasar` (física 'quasar': tier
+comet, spin 17, quique de geada vy·0,3 / vx·0,6) + anéis QUASAR 3,7·k (o MAIS
+LARGO da árvore, espelhando o splash 2,5) + EMBER 2,0·k POR FORA (a ordem
+azo-dentro/ember-fora é SÓ do Nv.10; os pais são o contrário) + flash `#f2f9ff` +
+17 puffs de pó frio heat 0,08; CHAIN = o traço mais RETO da árvore (amp 0,06 —
+jato relativístico não ferve) vestido com o INVERSO do pai astral: cauda de gelo
+com miolo azó (âmbar+geada do pai → azó+gelo do filho — é assim que um print
+separa os dois Nv.9/Nv.10) + burst `quasarShard` + miniatura do disco no destino
+(azo dentro, ember fora); BLOOM (autorizado pelo usuário SÓ pro disco,
+`src/scene/BloomGate.tsx`): o pipeline do Canvas de batalha é PERMANENTE (composer
+montado desde o frame 1: RenderPass com clearColor `ARENA_BG` + RT HalfFloat
+`samples: 4` devolvendo o MSAA do canvas nu + UnrealBloomPass GATEADO por "existe
+um primordial VIVO em cena" com rampa 2,5/s — strength 0,62 / radius 0,5 /
+threshold 0,8 — + pass final de CÓPIA PURA) e os três cuidados de cor que isso
+exige em three r169: (1) o three PULA o tone map e FORÇA LinearSRGB nos materiais
+embutidos quando desenha em render target (three.module.js L30509), enquanto os
+shaders crus do repo são display-referred → `patchBuiltins` devolve ACES+sRGB aos
+embutidos material a material via `onBeforeCompile` (chunks verbatim do three,
+cache key `qtBloomEncode`, idempotente, traverse por frame pega rig que spawnou
+no meio da partida, unpatch no desmonte); (2) `scene.background = null` (o
+WebGLBackground limparia o RT em LINEAR — quem pinta o fundo é o `clearColor` do
+RenderPass, que chama `setClearColor` ANTES de vincular o RT e recebe o hex cru
+como o framebuffer recebe hoje; o App tirou o `<color attach>` e o `<fog>` lê o
+`ARENA_BG` exportado); (3) NADA de `OutputPass` — o pass final CODIFICARIA DE
+NOVO os ~90% da cena que já chegam display-referred. Envolucro medido halfX 2,429
+/ halfZ 3,130 / minY 0,170 (o templo PAIRA: almofadas a ~0,17 do piso) / maxY
+6,195 com formTop 6,2; `MEDIDO.primordial {x: 2,43, z: 3,13}` → familyRadius
+3,21, slotFit 0,779 (o UnitView REDUZ o quasar 0,78 — diff board 0,08); **145
+peças / 9.060 vértices / 10.450 triângulos** — o disco é PINTURA: o Nv.10 é mais
+LEVE em malha que o pai Colosso (221 peças) porque o céu work é do HDR) e 7
+testes em `src/tests/primordialProgression.test.ts`) — commit mais recente de
+`main` (`git log -1`). WIP do próprio: figurino+footprints `5c271b4`, HANDOFF
+`3b8c1a6`, anti-softlock `1808274`. Anteriores: colosso `a96bccb`, astral
+`488fc40`, vulcânico `e4b4463`, abissal `e38d018`, geodo `8ae1176`, cósmico
+`5a11c80`, cristal `f48e789`, névoa/plasma `9d7a881`.
+
+**O COLOSSO (Nv.9 — geodo+vulcânico: a MONTANHA ETERNA
 QUE VIROU LUA, o planetóide de regolito claro com ANEL INCLINADO de treze
 matacões, plantado por treze contrafortes: caça `closest`, o projétil MAIS LENTO
 da árvore (7), o `splash` MAIS LARGO (2,2), `heavy` + `regen 0,04`, hp 132 /
@@ -73,10 +153,9 @@ arremesso MAIS LONGA da árvore (1,25 s; windup 0,66 = 0,825 s só com o braço
 indo atrás) e TODOS os canais assentam no zero antes do fim da janela;
 invólucro medido halfX 2,545 / halfZ 2,315 / minY 0,010 / maxY 4,249 com
 formTop 5,6; **221 peças / 40.538 vértices / 23.270 triângulos** e 7 testes em
-`src/tests/colossoProgression.test.ts`) — commit mais recente de `main`
-(`git log -1`). Anteriores: astral `488fc40`, vulcânico `e4b4463`, abissal
-`e38d018`, geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
-`9d7a881`.
+`src/tests/colossoProgression.test.ts`) — commit `a96bccb`. Anteriores: astral
+`488fc40`, vulcânico `e4b4463`, abissal `e38d018`, geodo `8ae1176`, cósmico
+`5a11c80`, cristal `f48e789`, névoa/plasma `9d7a881`.
 
 **O VULCANICO (Nv.8 — plasma+obsidiana: o VULCÃO DE
 NOVE ESTRATOS plantado na própria cacta de escória, a `catástrofe andante`:
@@ -114,18 +193,18 @@ de basalto + brasa subindo + farpas de pedra-pomes; 183 peças / 12.380 vértice
 abissal `e38d018`, geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
 `9d7a881`.
 
-**PARADA ATUAL (decisão do usuário): o loop PARA no colosso — NÃO iniciar o
-primordial sem novo sinal verde.** Só falta ele: **PRIMORDIAL (Nv.10)** na ordem
-da tabela, ainda o placeholder `primordial:` em `speciesModels.ts` (~L3290) com
-rig genérico. RULING DO USUÁRIO: tem que parecer um **QUASAR SUPERMASSIVO com
-disco de acreção**, grande, ataque em rajada de energia — e desta vez o disco
-de acreção deve usar **BLOOM** (o usuário autorizou pós-processamento para o
-brilho do disco, em vez de só polígonos): `EffectComposer` + `RenderPass` +
-`UnrealBloomPass` + `OutputPass` de `three/examples/jsm/postprocessing`,
-**gateado** — o composer só entra em ação quando houver um primordial em cena
-(a arena inteira não pode trocar de pipeline por causa de uma unidade; cuidado
-com o `outputColorSpace`/tone mapping ao plugar o `OutputPass`). `projectileColor`
-da spec no motor: `#e8f6ff`.
+**PARADA ATUAL: o loop da ÁRVORE ESTÁ COMPLETO.** Todas as 22 espécies da árvore
+têm figurino próprio, rig, projétil-assinatura, FX de impacto e testes de
+progressão. O PRIMORDIAL (Nv.10) fechou a árvore com a decisão do BLOOM registrada
+no bloco dele (pipeline PERMANENTE no canvas de batalha + só o
+`UnrealBloomPass` gateado por primordial vivo + `patchBuiltins` devolvendo
+ACES+sRGB aos embutidos no RT + cópia final SEM encode; proibido meter
+`OutputPass`). Lição do QA de pipeline: diff de frame inteiro NÃO é sinal limpo
+(câmera/tempo/times animam) — o A/B honesto é baseline same-code (`git stash -u`
+dos arquivos de pipeline → run → pop → run; no teste do gelo o diff saiu < 1/255,
+pipeline pixel-clean; o "piso 30% mais escuro" era o baseline VELHO, pré-`15f1c3e`
+da arena grande, não o composer). Se vier trabalho visual novo, é só polimento —
+nenhum monstro pendente.
 
 ### Regras do loop (valem para cada monstro)
 
@@ -788,7 +867,7 @@ alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
   deslocado para o jogador — 24/24 buracos alcançáveis pelo ponteiro), câmera
   orbital 360° (dist 3–`ARENA_R×2,76`, polar 0,35–1,32) e fog/luz derivados de
   `ARENA_R`. Loja com `max-width: 400px` no CSS para o dock não cobrir o board.
-- **QA visual automatizado** (laço Playwright descrito acima), 347 testes/32.
+- **QA visual automatizado** (laço Playwright descrito acima), 357 testes/34.
 
 ## Arquitetura (regras de sempre)
 
@@ -815,7 +894,7 @@ alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
 
 ```
 npx tsc --noEmit          # tipos
-npx vitest run            # 347 testes, 32 arquivos
+npx vitest run            # 357 testes, 34 arquivos
 npm run build             # tsc + build de produção
 npm run dev               # http://localhost:5173/element-merge/ (HMR; hard refresh ao mexer shaders)
 node qa/inspect-species.mjs <especie> [aliada]

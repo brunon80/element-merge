@@ -22,6 +22,7 @@ import { AbissalRig } from './AbissalRig';
 import { VulcanRig } from './VulcanRig';
 import { AstralRig } from './AstralRig';
 import { ColossoRig } from './ColossoRig';
+import { PrimordialRig } from './PrimordialRig';
 import type { SmokePool } from './smokePool';
 
 export interface SpeciesRigProps {
@@ -81,8 +82,14 @@ export interface SpeciesRigProps {
  * entulho rasteiro e as brasas do chapéu, coroa de treze espinhos de ametista no
  * polo e a cara do homem-da-lua numa caloura escura com a goela de treze faces
  * cospidando os matacões que os dois braços arremessam)
- * já têm figurino próprio; só a Nv.10 (Primordial) ainda usa o rig padrão: a
- * busca é por espécie e o fallback é o rig padrão.
+ * e Primordial (o quasar supermassivo que precede os quatro elementos: templo
+ * de geada bruta plantado pela corte dos dezessete pilares, DISCO DE ACREÇÃO
+ * inclinado pintado num shader próprio — anel de fótons em HDR, bandas de gás
+ * com ω ∝ ρ^−1,5 e franja ember na borda, sem astro com geometria — fuso de
+ * dezessete faces no furo do horizonte, coroa ascendente por cima do arco do
+ * disco, as duas torres nos flancos k 4/k 13 com garras por fora da borda e o
+ * jato de azó saindo do buraco na cadência de 0,94 s)
+ * já têm figurino próprio; a busca é por espécie e o fallback é o rig padrão.
  */
 export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigProps>>> = {
   ignis: FlameRig,
@@ -107,4 +114,5 @@ export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigPro
   vulcanico: VulcanRig,
   astral: AstralRig,
   colosso: ColossoRig,
+  primordial: PrimordialRig,
 };

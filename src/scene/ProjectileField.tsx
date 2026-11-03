@@ -43,6 +43,15 @@ import {
   HEARTH_COLOSSO_LOOK,
   REGOLITO_COLOSSO_LOOK,
 } from './ColossoRig';
+// o PRIMORDIAL cospe a RAJADA de azó: a geobruta, o gelo e a luz-de-azo vêm
+// todos do figurino (ver PrimordialRig) — a identidade amarrada em teste do
+// motor ao projétil ao impacto
+import {
+  GEOBRUTA_LOOK,
+  ICESTONE_LOOK,
+  QUASAR_PLASMA,
+  PRIMORDIAL_QUASAR,
+} from './PrimordialRig';
 
 const MAX_PER_ELEMENT = 56;
 const ELEMENTS_ORDER: ElementId[] = ['fire', 'water', 'earth', 'air'];
@@ -249,6 +258,28 @@ export const COLOSSO_CHIP_LOOK = {
   speck: 0.9,
 };
 
+/** PRIMORDIAL: a LANÇA de dezessete faces da rajada (o corpo do tiro) é a
+ *  GEOBRUTA do figurino lida em voo — a haste de pedra do templo com a trinca
+ *  de luz-de-azo do MOTOR (#e8f6ff) correndo por dentro; o núcleo é o plasma
+ *  do horizonte (o MESMO da tampa do fuso) e as dezessete fagulhas da cauda
+ *  são o gelo das lunetas com o veio de azó — paleta única pinada
+ *  motor↔rig↔projétil↔FX */
+export const PRIMORDIAL_RAY_CORE_LOOK = {
+  gold: QUASAR_PLASMA.gold, // = a cor do motor (identidade boca→rajada→FX)
+  white: QUASAR_PLASMA.white,
+  cool: QUASAR_PLASMA.cool,
+  amp: 0.03,
+};
+export const PRIMORDIAL_SPARK_LOOK = {
+  ...ICESTONE_LOOK,
+  rockA: '#7fb0dd', // gelo das lunetas, um degrau mais claro que a pedra accent
+  crack: PRIMORDIAL_QUASAR, // o azó do motor na lasca de gelo
+  crackScale: 3.2, // lasca miúda: ruído lido no espaço LOCAL
+  crackWidth: 0.05,
+  crackGlow: 0.9,
+  speck: 1.1,
+};
+
 /** Névoa: a pluma de bruma do bafo (hot = a GEADA do motor, a mesma cor do
  *  rig/veios/FX) e a semente de geada que vai na cabeça dela. O crack da
  *  semente é a VARIAÇÃO MIÚDA #d2e9f4: visualmente a mesma geada, mas a sonda
@@ -399,6 +430,9 @@ export function ProjectileField() {
   const blkRef = useRef<THREE.InstancedMesh | null>(null);
   const blkLRef = useRef<THREE.InstancedMesh | null>(null);
   const blkRRef = useRef<THREE.InstancedMesh | null>(null);
+  const rayRef = useRef<THREE.InstancedMesh | null>(null);
+  const rayCRef = useRef<THREE.InstancedMesh | null>(null);
+  const rayTRef = useRef<THREE.InstancedMesh | null>(null);
 
   const geos = useMemo(() => {
     return {
@@ -1381,14 +1415,83 @@ export function ProjectileField() {
     return { geo, mat, seeds };
   }, []);
 
+  const primordialRay = useMemo(() => {
+    // a LANÇA da rajada (o `pierce 2` + `chain 3` + `burn` do motor em
+    // silhueta): haste de DEZESSETE FACES (o DNA — o Geodo arranca matacões de
+    // CINCO, o Abissal ganchos de SETE, o Vulcânico bombas de NOVE, o Astral
+    // cometas de ONZE, o Colosso arremessa TUDO em TREZE; o Primordial é o
+    // DEZESSETE em tudo) de GEOBRUTA com a trinca de azó do MOTOR. Afiada e
+    // COMPRIDA como o cometa do pai Astral (o tiro é rajada de energia, 12
+    // u/s, não bloco): pedra do templo virando dardo de luz
+    const geo = new THREE.ConeGeometry(0.2, 0.66, 17, 2);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: GEOBRUTA_LOOK.rockA,
+      rockB: GEOBRUTA_LOOK.rockB,
+      crack: GEOBRUTA_LOOK.crack, // = a cor do motor (identidade boca→rajada→FX)
+      amp: 0.016, // régua do relevo: haste de 0,2 de raio (0,2·0,25 = 0,05 de teto)
+      crackGlow: GEOBRUTA_LOOK.crackGlow * 1.8, // a lança é LIGHT-DO-MOTOR: veio mais aceso que a pedra do chão
+      crackScale: GEOBRUTA_LOOK.crackScale,
+      crackWidth: GEOBRUTA_LOOK.crackWidth,
+      crackBoost: GEOBRUTA_LOOK.crackBoost * 1.3,
+      speck: GEOBRUTA_LOOK.speck,
+      seed: 6.1,
+      breath: 0.5,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const primordialRayCore = useMemo(() => {
+    // o CAROÇO de horizonte saltando pela boca da lança: é o MESMO plasma da
+    // tampa do fuso do figurino (gold = azó do motor #e8f6ff) — a cabeça acesa
+    // é o que se reparte em três alvos (o `chain 3`) e o que incendeia o alvo
+    // (o `burn 0,4`)
+    const geo = new THREE.IcosahedronGeometry(0.15, 1);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeCoreMaterial({
+      gold: PRIMORDIAL_RAY_CORE_LOOK.gold, // = a cor do motor
+      white: PRIMORDIAL_RAY_CORE_LOOK.white,
+      cool: PRIMORDIAL_RAY_CORE_LOOK.cool, // gelo no fresnel: o templo contorna a luz
+      amp: PRIMORDIAL_RAY_CORE_LOOK.amp,
+      seed: 9.2,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
+  const primordialSpark = useMemo(() => {
+    // as DEZESSETE fagulhas de gelo que a rajada arrasta (o rasto do `pierce`
+    // e do `slow 0,4` escrito no ar): lasquinhas de octaedro do GELO das
+    // lunetas com o veio de azó do motor. Miúdas: cauda de grão desenhando a
+    // órbita, nunca envelope cheio (a régua do cometa)
+    const geo = new THREE.OctahedronGeometry(0.08, 0);
+    const seeds = seedsAttr();
+    geo.setAttribute('aSeed', seeds);
+    const mat = makeStoneMaterial({
+      rockA: PRIMORDIAL_SPARK_LOOK.rockA,
+      rockB: PRIMORDIAL_SPARK_LOOK.rockB,
+      crack: PRIMORDIAL_SPARK_LOOK.crack,
+      amp: 0.008,
+      crackGlow: PRIMORDIAL_SPARK_LOOK.crackGlow,
+      crackScale: PRIMORDIAL_SPARK_LOOK.crackScale,
+      crackWidth: PRIMORDIAL_SPARK_LOOK.crackWidth,
+      crackBoost: PRIMORDIAL_SPARK_LOOK.crackBoost,
+      speck: PRIMORDIAL_SPARK_LOOK.speck,
+      seed: 4.4,
+      breath: 0.45,
+    });
+    return { geo, mat, seeds };
+  }, []);
+
   useEffect(() => {
     return () => {
-      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail, colossoBlock, colossoLamp, colossoChip]) {
+      for (const x of [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail, colossoBlock, colossoLamp, colossoChip, primordialRay, primordialRayCore, primordialSpark]) {
         x.geo.dispose();
         x.mat.dispose();
       }
     };
-  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail, colossoBlock, colossoLamp, colossoChip]);
+  }, [flame, rock, blade, drop, bolt, boltCore, seedPod, lavaBoulder, lavaHeart, iceSpike, steamJet, jetCore, sandBlast, sandCore, stormBolt, stormCore, stormHail, obsFlake, mudGlob, mudPust, mudDrip, plasmaLance, plasmaSabot, fogBlast, frostNub, cristalPrism, cristalSliver, cosmicoStar, cosmicoFlare, geodoBoulder, geodoChip, abyssalGlob, abyssalCore, abyssalHook, vulcanBomb, vulcanHeart, vulcanCinder, astralComet, astralCometCore, astralTail, colossoBlock, colossoLamp, colossoChip, primordialRay, primordialRayCore, primordialSpark]);
 
   useFrame((state) => {
     const eng = getEngine();
@@ -1431,6 +1534,9 @@ export function ProjectileField() {
     let blkN = 0;
     let blkL = 0;
     let blkR = 0;
+    let rayN = 0;
+    let rayC = 0;
+    let rayT = 0;
 
     // fervor/time dos materiais compartilhados
     flame.mat.uniforms.uTime.value = time;
@@ -1541,6 +1647,14 @@ export function ProjectileField() {
     colossoLamp.mat.uniforms.uCharge.value = 0.85 + 0.15 * Math.sin(time * 3.7);
     colossoChip.mat.uniforms.uTime.value = time;
     colossoChip.mat.uniforms.uCharge.value = 0.45 + 0.15 * Math.sin(time * 4.6);
+    primordialRay.mat.uniforms.uTime.value = time;
+    // a lança voa com o veio de azó a pleno horizonte (a rajada é luz do motor
+    // atravessando a pedra do templo — veio mais aceso que a cantaria do chão)
+    primordialRay.mat.uniforms.uCharge.value = 0.7 + 0.2 * Math.sin(time * 5.2);
+    primordialRayCore.mat.uniforms.uTime.value = time;
+    primordialRayCore.mat.uniforms.uCharge.value = 0.9 + 0.1 * Math.sin(time * 6.8);
+    primordialSpark.mat.uniforms.uTime.value = time;
+    primordialSpark.mat.uniforms.uCharge.value = 0.6 + 0.2 * Math.sin(time * 8.7);
     cosmicoFlare.mat.uniforms.uTime.value = time;
     cosmicoFlare.mat.uniforms.uCharge.value = 0.8 + 0.12 * Math.sin(time * 8.1);
     // pluga o cubemap real da arena no cristal (captura feita uma vez pelo
@@ -1583,6 +1697,7 @@ export function ProjectileField() {
         const isVulc = p.species === 'vulcanico';
         const isAstral = p.species === 'astral';
         const isColosso = p.species === 'colosso';
+        const isPrim = p.species === 'primordial';
 
         dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
         let haloScale = 0.75;
@@ -2319,6 +2434,77 @@ export function ProjectileField() {
             haloScale = scale * 0.9;
             signature = true;
           }
+        } else if (isPrim) {
+          // o PRIMORDIAL cospe a RAJADA de azó pelo furo do horizonte (o
+          // `pierce 2` + `chain 3` + `burn` + `slow` do motor): lança de
+          // GEOBRUTA de DEZESSETE FACES voando PONTA-FRIA e RETA como o cometa
+          // do pai Astral (rajada de energia a 12 u/s não tomba cambalhota: ela
+          // RISCA o rumo) e só dá rolo no próprio eixo — broca de dezessete
+          // faces, é isso que as faz piscar no voo sem desandar a pontaria. O
+          // caroço de horizonte salta pela boca (o `chain` se reparte em três
+          // alvos e os incendeia — o `burn 0,4`) e DEZESSETE fagulhas de gelo
+          // pontilhadas atrás são o rasto do `slow 0,4` escrito no ar
+          dir.set(p.vel[0], p.vel[1], p.vel[2]);
+          if (dir.lengthSq() > 1e-6) {
+            dir.normalize();
+            tmpQuat.setFromUnitVectors(up, dir);
+            dummy.quaternion.copy(tmpQuat);
+            // rolo de BROCA (mais rápido que o do cometa — o jato é disco de
+            // acreção girando: 3,4 rad/s no eixo do voo)
+            dummy.rotateOnAxis(up, time * 3.4 + p.id * 0.9);
+          }
+          const launch = Math.min(1, 0.3 + p.age / 0.12); // a rajada já sai quase a 12 u/s
+          if (rayN < MAX_PER_ELEMENT) {
+            const scale = (0.95 + 0.08 * (lv - 9)) * launch;
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
+            dummy.scale.setScalar(scale);
+            dummy.updateMatrix();
+            rayRef.current?.setMatrixAt(rayN, dummy.matrix);
+            primordialRay.seeds.setX(rayN, ((p.id * 53) % 83) / 6.7);
+            rayN++;
+            if (rayC < MAX_PER_ELEMENT) {
+              // o caroço de horizonte na BASE da haste (a boca do cone fica em
+              // y local −0,33; o plug vai a −0,31, encostado): a cabeça da
+              // rajada tem que ser o ponto MAIS aceso do print — geada atrás,
+              // azó na frente (a MESMA identidade da tampa do fuso do figurino)
+              dir.set(0, -0.31, 0).applyQuaternion(dummy.quaternion).multiplyScalar(scale);
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              dummy.scale.setScalar(scale * (1 + 0.14 * Math.sin(time * 8.2 + p.id * 1.9)));
+              dummy.updateMatrix();
+              rayCRef.current?.setMatrixAt(rayC, dummy.matrix);
+              primordialRayCore.seeds.setX(rayC, ((p.id * 19) % 71) / 5.7);
+              rayC++;
+              dummy.position.set(p.pos[0], p.pos[1], p.pos[2]);
+            }
+            // DEZESSETE fagulhas de gelo em CAUDA (2π/17 = 21,2° por fagulha):
+            // PONTILHADA — o passo (0,26) é maior que a lasca (0,16); passo
+            // apertado costura um cone branco contínuo e o tiro lê seta de
+            // papel (a régua do cometa paga de novo). Abre (0,05 → 0,43) e a
+            // ponta afina (escala 1 → 0,5)
+            dir.set(p.vel[0], p.vel[1], p.vel[2]);
+            if (dir.lengthSq() < 1e-6) dir.set(0, 1, 0);
+            tmpQuat.setFromUnitVectors(up, dir.normalize()); // +Y local = o rumo; a cauda vai no −Y
+            for (let k = 0; k < 17; k++) {
+              if (rayT >= MAX_PER_ELEMENT) break;
+              const th = k * 0.3696 + time * 2.0 + p.id * 1.2; // 21,2°: o dezessete
+              const atras = 0.36 + k * 0.26;
+              const abertura = 0.05 + k * 0.024;
+              dir
+                .set(Math.cos(th) * abertura, -atras, Math.sin(th) * abertura)
+                .applyQuaternion(tmpQuat);
+              dummy.position.set(p.pos[0] + dir.x, p.pos[1] + dir.y, p.pos[2] + dir.z);
+              dummy.quaternion.copy(tmpQuat);
+              dummy.rotateOnAxis(up, th + time * 2.8); // cada lasca gira no próprio eixo
+              dummy.scale.setScalar(scale * (1 - k / 34));
+              dummy.updateMatrix();
+              rayTRef.current?.setMatrixAt(rayT, dummy.matrix);
+              primordialSpark.seeds.setX(rayT, ((p.id * 43 + k * 13) % 77) / 5.9 + k * 0.5);
+              rayT++;
+            }
+            dummy.position.set(p.pos[0], p.pos[1], p.pos[2]); // devolve o centro p/ o halo
+            haloScale = scale * 1.3; // halo do jato inteiro (o azó do motor no billboard)
+            signature = true;
+          }
         }
 
         if (!signature) {
@@ -2412,6 +2598,9 @@ export function ProjectileField() {
       [blkRef.current, blkN, colossoBlock.seeds],
       [blkLRef.current, blkL, colossoLamp.seeds],
       [blkRRef.current, blkR, colossoChip.seeds],
+      [rayRef.current, rayN, primordialRay.seeds],
+      [rayCRef.current, rayC, primordialRayCore.seeds],
+      [rayTRef.current, rayT, primordialSpark.seeds],
     ] as const) {
       if (!mesh) continue;
       mesh.count = n;
@@ -2840,6 +3029,37 @@ export function ProjectileField() {
           blkRRef.current = m;
         }}
         args={[colossoChip.geo, colossoChip.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Primordial: a LANÇA de dezessete faces da rajada — geobruta com a
+          trinca de azó do motor (o `pierce 2` do voo em silhueta: dardo de
+          pedra do templo furando o ar ponta-fria, o mais rápido da árvore
+          depois do cometa) */}
+      <instancedMesh
+        ref={(m) => {
+          rayRef.current = m;
+        }}
+        args={[primordialRay.geo, primordialRay.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Primordial: o caroço de horizonte pulsando na boca da lança (o `chain
+          3` e o `burn 0,4` do motor moram aqui — o mesmo plasma azo da tampa do
+          fuso do figurino, o ponto mais aceso do tiro) */}
+      <instancedMesh
+        ref={(m) => {
+          rayCRef.current = m;
+        }}
+        args={[primordialRayCore.geo, primordialRayCore.mat, MAX_PER_ELEMENT]}
+        frustumCulled={false}
+      />
+      {/* Primordial: as DEZESSETE fagulhas de gelo pontilhando a cauda (o rasto
+          do `slow 0,4` e do `pierce`), sempre no gelo das lunetas com o veio de
+          azó do motor */}
+      <instancedMesh
+        ref={(m) => {
+          rayTRef.current = m;
+        }}
+        args={[primordialSpark.geo, primordialSpark.mat, MAX_PER_ELEMENT]}
         frustumCulled={false}
       />
     </group>

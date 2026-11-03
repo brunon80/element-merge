@@ -18,6 +18,13 @@ vi.mock('../scene/BattleScene', () => ({
   ),
 }));
 
+// o bloom do quasar é cenário puro (composer + gate): no smoke jsdom ele não
+// tem WebGL, e o App só precisa do ARENA_BG (o fog)
+vi.mock('../scene/BloomGate', () => ({
+  ARENA_BG: '#0b1020',
+  BloomGate: () => null,
+}));
+
 import { App } from '../app/App';
 import { getEngine, useGameStore } from '../store/gameStore';
 
