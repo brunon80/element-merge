@@ -1,5 +1,6 @@
 import { computeDamage } from '../game/combat/damage';
 import { applyStatus, effectiveInterval, tickStatuses } from '../game/combat/status';
+import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import {
   collectEvents,
   makeEngine,
@@ -345,6 +346,34 @@ describe('Condições terminais', () => {
     expect(eng.aliveCount('player')).toBe(0);
     expect(eng.world.phase).toBe('defeat');
     expect(eng.world.summary!.result).toBe('defeat');
+  });
+
+  test('6e) o fim espera o desvanecimento do último monstro (tela nunca por cima do corpo)', () => {
+    const eng = makeEngine({ playerCoins: 500, aiCoins: 1000, seed: 81 });
+    mustSummon(eng, 'nereia', 'ai', playerTile(0, 0));
+    mustSummon(eng, 'nereia', 'ai', playerTile(0, 1));
+    mustSummon(eng, 'zephyr', 'ai', playerTile(1, 0));
+    const z = mustSummon(eng, 'zephyr', 'player', playerTile(0, 0));
+    eng.startBattle();
+    let guard = 0;
+    while (eng.aliveCount('player') > 0 && eng.world.summary === null && guard++ < 60 * 60) {
+      eng.update(1 / 60);
+    }
+    expect(eng.aliveCount('player')).toBe(0);
+    // recém-morto: o resultado ainda NÃO foi confirmado — o mundo continua
+    // ticando para o desvanecimento terminar antes de qualquer tela de resultado
+    expect(eng.world.summary).toBeNull();
+    const corpse = eng.getUnit(z)!;
+    expect(corpse.alive).toBe(false);
+    expect(corpse.diedAt).not.toBeNull();
+    eng.update(1 / 60);
+    expect(eng.world.summary).toBeNull();
+    expect(eng.world.units.some((u) => u.id === z)).toBe(true); // corpo ainda no mundo, em fade
+    runSeconds(eng, DEATH_ANIMATION_WINDOW + 0.1);
+    expect(eng.world.summary).not.toBeNull();
+    expect(eng.world.summary!.result).toBe('defeat');
+    // corpo e tela somem/aparecem juntos: nenhum cadáver pendurado sob o menu
+    expect(eng.world.units.some((u) => !u.alive)).toBe(false);
   });
 
   test('6c) limite de duração resolve a partida sem travar (empate/vida restante)', () => {

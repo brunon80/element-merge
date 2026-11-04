@@ -134,6 +134,16 @@ export class GameEngine {
     player: false,
     ai: false,
   };
+  /**
+   * Resultado já decidido esperando a animação de morte terminar. Quando a
+   * condição terminal dispara pode haver cadáver em desvanecimento (o rig some
+   * o corpo ao longo de DEATH_ANIMATION_WINDOW a partir de `diedAt`) — se
+   * `summary` nascer imediatamente, o relógio do mundo para e a tela de
+   * resultado aparece POR CIMA do monstro congelado no meio do fade. O finale
+   * trava o resultado, deixa o mundo ticar (fade avança, cadáver é purgado) e
+   * só então emite `matchEnd`.
+   */
+  private finale: { result: MatchResult; at: number } | null = null;
   private onEvent: ((e: EngineEvent) => void) | null = null;
 
   constructor(input: MatchConfigInput) {
@@ -581,10 +591,18 @@ export class GameEngine {
     } else if (phase === 'combat') {
       this.world.battleTime += clamped;
       this.combatTick(clamped);
-      this.checkEndConditions();
+      if (this.finale) this.extendFinale();
+      else this.checkEndConditions();
     }
 
     this.purgeCorpses();
+    // o desfecho vira tela de resultado só quando o último desvanecimento
+    // terminou (purge acima remove o cadáver exatamente no horizonte do finale)
+    if (this.finale && this.world.time >= this.finale.at) {
+      const result = this.finale.result;
+      this.finale = null;
+      this.endMatch(result);
+    }
   }
 
   drainFx(): FxEvent[] {
@@ -1015,24 +1033,53 @@ export class GameEngine {
     const aiOut = aiAlive === 0 && this.everHadUnits.ai;
 
     if (playerOut && aiOut) {
-      this.endMatch('draw');
+      this.armFinale('draw');
       return;
     }
     if (playerOut) {
-      this.endMatch('defeat');
+      this.armFinale('defeat');
       return;
     }
     if (aiOut) {
-      this.endMatch('victory');
+      this.armFinale('victory');
       return;
     }
     if (world.battleTime >= world.maxBattleTime) {
       const pf = this.healthFraction('player');
       const af = this.healthFraction('ai');
-      if (Math.abs(pf - af) < 0.05) this.endMatch('draw');
-      else if (pf > af) this.endMatch('victory');
-      else this.endMatch('defeat');
+      if (Math.abs(pf - af) < 0.05) this.armFinale('draw');
+      else if (pf > af) this.armFinale('victory');
+      else this.armFinale('defeat');
     }
+  }
+
+  /**
+   * Trava o resultado AGORA (nobody joga mais com a condição terminal
+   * atingida), mas só o confirma quando o desvanecimento dos cadáveres em
+   * curso terminar — sem cadáver em fade, `at` é o instante atual e o fim
+   * sai no mesmo tick.
+   */
+  private armFinale(result: MatchResult): void {
+    if (this.world.summary || this.finale) return;
+    this.finale = { result, at: this.corpsesHorizon() };
+  }
+
+  /** O combate continua durante o finale: mortes novas estendem o horizonte. */
+  private extendFinale(): void {
+    if (!this.finale) return;
+    const at = this.corpsesHorizon();
+    if (at > this.finale.at) this.finale.at = at;
+  }
+
+  /** Instante em que o último cadáver em desvanecimento sai do mundo. */
+  private corpsesHorizon(): number {
+    let at = this.world.time;
+    for (const u of this.world.units) {
+      if (!u.alive && u.diedAt !== null) {
+        at = Math.max(at, u.diedAt + DEATH_ANIMATION_WINDOW);
+      }
+    }
+    return at;
   }
 
   private healthFraction(side: Side): number {
