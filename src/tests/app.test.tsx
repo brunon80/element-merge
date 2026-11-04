@@ -102,15 +102,19 @@ describe('App (smoke)', () => {
     fireEvent.click(screen.getByTestId('open-settings'));
     expect(screen.getByTestId('settings-menu')).toBeInTheDocument();
 
-    // três grupos na sidebar
+    // grupos na sidebar
     expect(screen.getByTestId('settings-tab-match')).toBeInTheDocument();
     expect(screen.getByTestId('settings-tab-graphics')).toBeInTheDocument();
-    expect(screen.getByTestId('settings-tab-economy')).toBeInTheDocument();
     expect(screen.getByTestId('settings-tab-progress')).toBeInTheDocument();
+    // "Economia" deixou de ser aba própria — virou seção dentro de Progresso
+    expect(screen.queryByTestId('settings-tab-economy')).toBeNull();
+    expect(screen.getByTestId('settings-tab-match').textContent).toContain('Dificuldade');
 
-    // economia: moedas iniciais configuráveis
-    fireEvent.click(screen.getByTestId('settings-tab-economy'));
+    // progresso: moedas iniciais (herança da economia) + recompensa configurável
+    fireEvent.click(screen.getByTestId('settings-tab-progress'));
     expect(screen.getByText(/Moedas iniciais/i)).toBeInTheDocument();
+    expect(screen.getByTestId('reward-mode-fixed')).toBeInTheDocument();
+    expect(screen.getByTestId('reward-mode-bounty')).toBeInTheDocument();
 
     // partida: dificuldade muda o store e a engine da partida em andamento
     fireEvent.click(screen.getByTestId('settings-tab-match'));
@@ -127,6 +131,34 @@ describe('App (smoke)', () => {
     expect(screen.queryByTestId('settings-menu')).toBeNull();
 
     useGameStore.getState().setDifficulty('normal');
+  });
+
+  test('recompensa configurável: fixo até 400, caça-recompensa, default 100', () => {
+    render(<App />);
+    fireEvent.click(screen.getByTestId('open-settings'));
+    fireEvent.click(screen.getByTestId('settings-tab-progress'));
+
+    // default: modo fixo com 100 — a regra clássica (+100 vitória, +50 derrota)
+    expect(useGameStore.getState().rewardModeCfg).toBe('fixed');
+    expect(useGameStore.getState().matchRewardCfg).toBe(100);
+    expect(screen.getByTestId('reward-value').textContent).toBe('100');
+
+    // stepper sobe de 50 em 50 e para no teto de 400
+    fireEvent.click(screen.getByTestId('reward-inc'));
+    expect(useGameStore.getState().matchRewardCfg).toBe(150);
+    for (let i = 0; i < 10; i++) fireEvent.click(screen.getByTestId('reward-inc'));
+    expect(useGameStore.getState().matchRewardCfg).toBe(400);
+    for (let i = 0; i < 20; i++) fireEvent.click(screen.getByTestId('reward-dec'));
+    expect(useGameStore.getState().matchRewardCfg).toBe(50);
+
+    // caça-recompensa: esconde o stepper de valor (a recompensa vem dos abates)
+    fireEvent.click(screen.getByTestId('reward-mode-bounty'));
+    expect(useGameStore.getState().rewardModeCfg).toBe('bounty');
+    expect(screen.queryByTestId('reward-value')).toBeNull();
+
+    // volta ao default para não contaminar os próximos testes
+    fireEvent.click(screen.getByTestId('reward-mode-fixed'));
+    useGameStore.getState().setMatchReward(100);
   });
 
   test('sem cronômetro: botão exige criaturas, inimigo nasce no início do combate', () => {

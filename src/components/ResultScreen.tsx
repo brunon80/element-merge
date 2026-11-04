@@ -22,6 +22,12 @@ export function ResultScreen() {
         <div className="reward-chip" data-testid="reward-chip">
           <CoinIcon size={22} /> +{summary.reward} moedas
         </div>
+        {summary.rewardMode === 'bounty' && (
+          <p className="result-note" data-testid="reward-bounty-detail">
+            Caça-recompensa: metade dos {summary.enemyKillCost ?? 0} moedas em
+            criaturas inimigas destruídas.
+          </p>
+        )}
         <div className="balance-lines">
           <div>
             <span>Saldo anterior</span>

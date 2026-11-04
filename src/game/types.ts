@@ -325,6 +325,17 @@ export const TERMINAL_PHASES: readonly MatchPhase[] = ['victory', 'defeat', 'dra
 
 export type MatchResult = 'victory' | 'defeat' | 'draw';
 
+/**
+ * Modo da recompensa de fim de partida (configurável em Configurações →
+ * Progresso):
+ *  • 'fixed'  — a vitória ganha o valor configurado (padrão 100), derrota e
+ *               empate ganham a metade (como sempre foi com o valor padrão);
+ *  • 'bounty' — garante METADE do custo de somar toda unidade inimiga
+ *               destruída no combate, vença ou perca. Ex.: abateu inimigos
+ *               que custaram 1200 ao todo → recebe +600 no fim da partida.
+ */
+export type MatchRewardMode = 'fixed' | 'bounty';
+
 export interface MatchConfig {
   matchId: string;
   seed: number;
@@ -334,6 +345,10 @@ export interface MatchConfig {
   difficulty: Difficulty;
   /** O exército da IA é calculado e montado no início do combate. */
   generateEnemyTeam: boolean;
+  /** Política de recompensa de fim de partida (padrão 'fixed'). */
+  rewardMode: MatchRewardMode;
+  /** Valor do modo 'fixed' (50–400): vitória ganha isto, derrota/empate a metade. */
+  matchReward: number;
 }
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
@@ -346,6 +361,10 @@ export interface MatchSummary {
   balanceAfter: number;
   duration: number;
   difficulty: Difficulty;
+  /** Modo de recompensa usado na partida (ausente em summaries de saves antigos). */
+  rewardMode?: MatchRewardMode;
+  /** Custo total das unidades inimigas destruídas — a base do modo 'bounty'. */
+  enemyKillCost?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -359,6 +378,11 @@ export const VICTORY_REWARD = 100;
 /** Recompensa fixa por derrota (e por empate, ver regra de empate). */
 export const DEFEAT_REWARD = 50;
 export const DRAW_REWARD = DEFEAT_REWARD;
+/** Janela do valor configurável do modo 'fixed': vitória ganha `matchReward`,
+ *  derrota/empate ganham a metade. O padrão (100) reproduz as regras antigas. */
+export const DEFAULT_MATCH_REWARD = VICTORY_REWARD;
+export const MIN_MATCH_REWARD = 50;
+export const MAX_MATCH_REWARD = 400;
 
 export interface EconomyState {
   /** Saldo persistente do jogador (mesmo saldo entre partidas). */

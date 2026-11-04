@@ -13,7 +13,7 @@ import { getSpecies } from '../../data/monsters';
 import { computeDamage } from '../combat/damage';
 import { pickTarget } from '../combat/targeting';
 import { applyStatus, effectiveInterval, tickStatuses } from '../combat/status';
-import { rewardFor, sellValue, trySpendSummonCost } from '../economy/economy';
+import { matchRewardFor, sellValue, trySpendSummonCost } from '../economy/economy';
 import { checkFusion } from '../fusion/fusionRules';
 import { TANKY_SPECIES, composeEnemyTeam } from '../ai/teamComposer';
 import { tileGroundPosition } from '../board';
@@ -28,6 +28,7 @@ import type {
   MatchConfig,
   MatchPhase,
   MatchResult,
+  MatchRewardMode,
   MatchSummary,
   MonsterLevel,
   Projectile,
@@ -59,6 +60,19 @@ export interface World {
   difficulty: Difficulty;
   maxBattleTime: number;
   summary: MatchSummary | null;
+  /**
+   * Política de recompensa de fim de partida — vem da configuração, mora no
+   * mundo (como `difficulty`) para que mexer nas Configurações no meio de uma
+   * partida valha para o próximo fim de combate.
+   */
+  rewardMode: MatchRewardMode;
+  matchRewardFixed: number;
+  /**
+   * Soma do custo (o que custou para existir — mesma régua da venda) de toda
+   * unidade INIMIGA morta em combate nesta partida. É a base do modo
+   * 'bounty': a recompensa garante metade desse valor no fim da partida.
+   */
+  enemyKillCost: number;
 }
 
 export interface SummonResult {
@@ -169,6 +183,9 @@ export class GameEngine {
       difficulty: config.difficulty,
       maxBattleTime: config.maxBattleTime,
       summary: null,
+      rewardMode: config.rewardMode,
+      matchRewardFixed: config.matchReward,
+      enemyKillCost: 0,
     };
     this.emit({ type: 'matchStart', matchId: config.matchId });
   }
@@ -991,6 +1008,13 @@ export class GameEngine {
     unit.alive = false;
     unit.diedAt = this.world.time;
     this.setFate(unit.id, 'dead');
+    if (unit.side === 'ai') {
+      // A caça paga: toda unidade inimiga que morre em combate entra no
+      // bolo do modo 'bounty' pelo seu custo de existência (mesma régua da
+      // venda). Como IA não ataca IA nem vende as suas, morte de inimigo em
+      // combate é sempre abate do jogador.
+      this.world.enemyKillCost += sellValue(unit.species, unit.level);
+    }
     if (this.world.occupancy[unit.side][unit.tile] === unit.id) {
       this.world.occupancy[unit.side][unit.tile] = null;
     }
@@ -1098,7 +1122,15 @@ export class GameEngine {
   /** A recompensa só existe quando a condição terminal é confirmada. */
   private endMatch(result: MatchResult): void {
     if (this.world.summary) return;
-    const reward = rewardFor(result);
+    // A recompensa respeita o modo configurado (mundo mutável, como a
+    // dificuldade): 'fixed' paga o valor ajustado na vitória e metade na
+    // derrota/empate; 'bounty' paga metade do custo acumulado dos abates.
+    const reward = matchRewardFor(
+      result,
+      this.world.rewardMode,
+      this.world.matchRewardFixed,
+      this.world.enemyKillCost,
+    );
     const balanceBefore = this.world.playerCoins;
     const summary: MatchSummary = {
       matchId: this.world.matchId,
@@ -1108,6 +1140,8 @@ export class GameEngine {
       balanceAfter: balanceBefore + reward,
       duration: Math.round(this.world.battleTime),
       difficulty: this.world.difficulty,
+      rewardMode: this.world.rewardMode,
+      enemyKillCost: this.world.enemyKillCost,
     };
     this.world.summary = summary;
     this.world.phase = result;

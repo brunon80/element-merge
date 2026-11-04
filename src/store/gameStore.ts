@@ -20,6 +20,7 @@ import type {
   ArenaScene,
   EngineEvent,
   MatchPhase,
+  MatchRewardMode,
   MatchSummary,
   MonsterLevel,
   ScenarioChoice,
@@ -28,7 +29,13 @@ import type {
   StatusType,
   TileIndex,
 } from '../game/types';
-import { MAX_LEVEL, SUMMON_COST, TILES_PER_SIDE } from '../game/types';
+import {
+  MAX_LEVEL,
+  MAX_MATCH_REWARD,
+  MIN_MATCH_REWARD,
+  SUMMON_COST,
+  TILES_PER_SIDE,
+} from '../game/types';
 
 /** Unidade espelhada para a UI (dado discreto; posições vivem no motor). */
 export interface UiUnit {
@@ -96,6 +103,10 @@ interface GameStoreState {
   activeArenaScene: ArenaScene;
   lastMatchArenaScene: ArenaScene | null;
   startingCoinsCfg: number;
+  /** Modo da recompensa de fim de partida (configurável no Progresso). */
+  rewardModeCfg: MatchRewardMode;
+  /** Valor do modo 'fixed' (50–400): vitória ganha isto; derrota/empate a metade. */
+  matchRewardCfg: number;
   /** Depuração ativável nas configurações: criar qualquer espécie no campo. */
   debugMode: boolean;
   lastSummary: MatchSummary | null;
@@ -133,6 +144,8 @@ interface GameStoreActions {
   setSfxVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
   setStartingCoins: (n: number) => void;
+  setRewardMode: (mode: MatchRewardMode) => void;
+  setMatchReward: (n: number) => void;
   setDebugMode: (on: boolean) => void;
   /** Depuração: coloca a espécie no slot livre mais à esquerda (só na preparação). */
   spawnDebugUnit: (species: SpeciesId, level: MonsterLevel) => boolean;
@@ -268,9 +281,11 @@ export const useGameStore = create<GameStore>((set, get) => {
   }
 
   function finishMatch(summary: MatchSummary): void {
-    // Recompensa idempotente por matchId (recarregar não duplica).
+    // Recompensa idempotente por matchId (recarregar não duplica). O VALOR
+    // vem do motor — que já aplicou o modo configurado (fixo/bounty) — e não
+    // mais da tabela fixa clássica.
     const ledger = save as unknown as { processedMatchIds: string[]; coins: number };
-    const applied = grantMatchReward(ledger, summary.matchId, summary.result);
+    const applied = grantMatchReward(ledger, summary.matchId, summary.result, summary.reward);
     if (applied) {
       save.coins = summary.balanceAfter;
       save.stats.matchesPlayed += 1;
@@ -335,6 +350,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       maxBattleTime: MAX_BATTLE_TIME,
       difficulty: save.settings.difficulty,
       generateEnemyTeam: true,
+      rewardMode: save.settings.rewardMode,
+      matchReward: save.settings.matchReward,
     });
     engine.setEventCallback(handleEngineEvent);
   }
@@ -368,6 +385,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     activeArenaScene: resolveArenaScene(save.settings.scenario, save.lastArenaScene),
     lastMatchArenaScene: save.lastArenaScene,
     startingCoinsCfg: save.settings.startingCoins,
+    rewardModeCfg: save.settings.rewardMode,
+    matchRewardCfg: save.settings.matchReward,
     debugMode: save.settings.debugMode,
     lastSummary: save.lastSummary,
     showBestiary: false,
@@ -394,6 +413,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         activeArenaScene: resolveArenaScene(save.settings.scenario, save.lastArenaScene),
         lastMatchArenaScene: save.lastArenaScene,
         startingCoinsCfg: save.settings.startingCoins,
+        rewardModeCfg: save.settings.rewardMode,
+        matchRewardCfg: save.settings.matchReward,
         debugMode: save.settings.debugMode,
         lastSummary: save.lastSummary,
       });
@@ -716,6 +737,26 @@ export const useGameStore = create<GameStore>((set, get) => {
       save.settings.startingCoins = value;
       persistSoon();
       set({ startingCoinsCfg: value });
+    },
+
+    setRewardMode(mode: MatchRewardMode): void {
+      const value = mode === 'bounty' ? 'bounty' : 'fixed';
+      save.settings.rewardMode = value;
+      // como a dificuldade: mexer aqui no meio de uma partida vale para o
+      // próximo fim de combate
+      if (engine) engine.world.rewardMode = value;
+      persistSoon();
+      set({ rewardModeCfg: value });
+    },
+
+    setMatchReward(n: number): void {
+      const value = Number.isFinite(n)
+        ? Math.min(MAX_MATCH_REWARD, Math.max(MIN_MATCH_REWARD, Math.round(n)))
+        : save.settings.matchReward;
+      save.settings.matchReward = value;
+      if (engine) engine.world.matchRewardFixed = value;
+      persistSoon();
+      set({ matchRewardCfg: value });
     },
 
     setDebugMode(on: boolean): void {

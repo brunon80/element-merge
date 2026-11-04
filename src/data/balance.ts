@@ -1,4 +1,13 @@
-import type { BaseStats, Difficulty, MatchConfig, MonsterLevel } from '../game/types';
+import {
+  DEFAULT_MATCH_REWARD,
+  MAX_MATCH_REWARD,
+  MIN_MATCH_REWARD,
+  type BaseStats,
+  type Difficulty,
+  type MatchConfig,
+  type MatchRewardMode,
+  type MonsterLevel,
+} from '../game/types';
 
 /**
  * Parâmetros globais de balanceamento. Fonte única de verdade:
@@ -127,10 +136,17 @@ export const TEAM_RULES: Record<Difficulty, TeamDifficultyParams> = {
   },
 };
 
-export type MatchConfigInput = Omit<MatchConfig, 'matchId' | 'seed' | 'generateEnemyTeam'> & {
+export type MatchConfigInput = Omit<
+  MatchConfig,
+  'matchId' | 'seed' | 'generateEnemyTeam' | 'rewardMode' | 'matchReward'
+> & {
   matchId?: string;
   seed?: number;
   generateEnemyTeam?: boolean;
+  /** Modo da recompensa de fim de partida (padrão 'fixed' = a regra clássica). */
+  rewardMode?: MatchRewardMode;
+  /** Valor do modo 'fixed'; recortado a 50–400 (padrão 100). */
+  matchReward?: number;
 };
 
 let matchCounter = 0;
@@ -145,5 +161,9 @@ export function buildMatchConfig(input: MatchConfigInput): MatchConfig {
     aiCoins: input.aiCoins,
     difficulty: input.difficulty,
     generateEnemyTeam: input.generateEnemyTeam ?? true,
+    rewardMode: input.rewardMode === 'bounty' ? 'bounty' : 'fixed',
+    matchReward: Number.isFinite(input.matchReward)
+      ? Math.min(MAX_MATCH_REWARD, Math.max(MIN_MATCH_REWARD, Math.round(input.matchReward ?? 0)))
+      : DEFAULT_MATCH_REWARD,
   };
 }

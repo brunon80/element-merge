@@ -1,9 +1,15 @@
 import { DEFAULT_STARTING_COINS } from '../data/balance';
 import { ALL_SPECIES_IDS, getSpecies, speciesAllowsLevel } from '../data/monsters';
 import { TILES_PER_SIDE } from '../game/types';
+import {
+  DEFAULT_MATCH_REWARD,
+  MAX_MATCH_REWARD,
+  MIN_MATCH_REWARD,
+} from '../game/types';
 import type {
   Difficulty,
   ArenaScene,
+  MatchRewardMode,
   MatchSummary,
   MonsterLevel,
   ScenarioChoice,
@@ -11,8 +17,8 @@ import type {
 } from '../game/types';
 
 export const SAVE_KEY = 'elemental-merge-save-v1';
-/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som; v9: volume da música; v10: posição do time guardado no tabuleiro. */
-export const SAVE_VERSION = 10;
+/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som; v9: volume da música; v10: posição do time guardado no tabuleiro; v11: recompensa de fim de partida configurável. */
+export const SAVE_VERSION = 11;
 export const DEFAULT_BLOOM_INTENSITY = 20;
 export const MAX_BLOOM_INTENSITY = 100;
 export const DEFAULT_SCENERY_BLOOM_INTENSITY = 30;
@@ -56,6 +62,14 @@ export interface SettingsData {
   musicVolume: number;
   /** Parâmetro configurável do saldo inicial. */
   startingCoins: number;
+  /**
+   * Recompensa de fim de partida: 'fixed' = a vitória ganha `matchReward`,
+   * derrota/empate ganham a metade (padrão; com 100 é a regra clássica);
+   * 'bounty' = metade do custo de toda unidade INIMIGA destruída no combate.
+   */
+  rewardMode: MatchRewardMode;
+  /** Valor configurável do modo 'fixed': 50–400 (padrão 100). */
+  matchReward: number;
   /** Depuração: permite criar qualquer criatura do bestiário direto na arena. */
   debugMode: boolean;
 }
@@ -97,6 +111,8 @@ export function defaultSave(): SaveData {
       sfxVolume: DEFAULT_SFX_VOLUME,
       musicVolume: DEFAULT_MUSIC_VOLUME,
       startingCoins: DEFAULT_STARTING_COINS,
+      rewardMode: 'fixed',
+      matchReward: DEFAULT_MATCH_REWARD,
       debugMode: false,
     },
     stats: { wins: 0, losses: 0, draws: 0, matchesPlayed: 0 },
@@ -239,6 +255,18 @@ export function loadSave(): SaveData {
       parsed.settings.startingCoins >= 0
         ? Math.floor(parsed.settings.startingCoins)
         : base.settings.startingCoins;
+    // v11: recompensa de fim de partida configurável (saves antigos caem na
+    // regra clássica: modo fixo, valor 100 → +100 vitória, +50 derrota/empate).
+    const rewardMode: MatchRewardMode =
+      parsed.settings?.rewardMode === 'bounty' ? 'bounty' : 'fixed';
+    const matchReward =
+      typeof parsed.settings?.matchReward === 'number' &&
+      Number.isFinite(parsed.settings.matchReward)
+        ? Math.min(
+            MAX_MATCH_REWARD,
+            Math.max(MIN_MATCH_REWARD, Math.round(parsed.settings.matchReward)),
+          )
+        : base.settings.matchReward;
     const stats: StatsData = {
       wins: num(parsed.stats?.wins),
       losses: num(parsed.stats?.losses),
@@ -261,6 +289,8 @@ export function loadSave(): SaveData {
         sfxVolume,
         musicVolume,
         startingCoins,
+        rewardMode,
+        matchReward,
         debugMode: !!parsed.settings?.debugMode,
       },
       stats,

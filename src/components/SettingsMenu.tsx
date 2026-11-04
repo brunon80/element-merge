@@ -21,14 +21,13 @@ const SCENARIOS: { id: ScenarioChoice; label: string }[] = [
   { id: 'random', label: 'Aleatório' },
 ];
 
-type TabId = 'match' | 'scenario' | 'graphics' | 'audio' | 'economy' | 'progress' | 'regras' | 'debug';
+type TabId = 'match' | 'scenario' | 'graphics' | 'audio' | 'progress' | 'regras' | 'debug';
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'match', label: '⚔ Partida' },
+  { id: 'match', label: '⚔ Dificuldade' },
   { id: 'scenario', label: '🌄 Cenário' },
   { id: 'graphics', label: '✨ Gráficos' },
   { id: 'audio', label: '🔊 Som' },
-  { id: 'economy', label: '🪙 Economia' },
   { id: 'progress', label: '📊 Progresso' },
   { id: 'regras', label: '📜 Regras' },
   { id: 'debug', label: '🐞 Depuração' },
@@ -56,6 +55,10 @@ export function SettingsMenu() {
   const setMusicVolume = useGameStore((s) => s.setMusicVolume);
   const startingCoinsCfg = useGameStore((s) => s.startingCoinsCfg);
   const setStartingCoins = useGameStore((s) => s.setStartingCoins);
+  const rewardModeCfg = useGameStore((s) => s.rewardModeCfg);
+  const setRewardMode = useGameStore((s) => s.setRewardMode);
+  const matchRewardCfg = useGameStore((s) => s.matchRewardCfg);
+  const setMatchReward = useGameStore((s) => s.setMatchReward);
   const debugMode = useGameStore((s) => s.debugMode);
   const setDebugMode = useGameStore((s) => s.setDebugMode);
   const resetProgress = useGameStore((s) => s.resetProgress);
@@ -101,7 +104,7 @@ export function SettingsMenu() {
           <div className="settings-content" role="tabpanel">
             {tab === 'match' && (
               <section>
-                <h3>Partida</h3>
+                <h3>Dificuldade</h3>
                 <p className="hint">
                   Define como o exército inimigo é calculado no início do
                   combate. Vale já para a preparação em andamento; o detalhe de
@@ -291,27 +294,6 @@ export function SettingsMenu() {
               </section>
             )}
 
-            {tab === 'economy' && (
-              <section>
-                <h3>Economia</h3>
-                <p className="hint">
-                  Regras fixas: cada invocação custa <b>100</b>, fusões são
-                  grátis; vitória <b>+100</b>, derrota/empate <b>+50</b>, uma
-                  recompensa por partida. Saldo atual <CoinIcon size={13} />{' '}
-                  {coins}.
-                </p>
-                <label>
-                  Moedas iniciais (novo progresso)
-                  <div className="coin-stepper">
-                    <button onClick={() => setStartingCoins(startingCoinsCfg - 100)}>−</button>
-                    <span>{startingCoinsCfg}</span>
-                    <button onClick={() => setStartingCoins(startingCoinsCfg + 100)}>+</button>
-                  </div>
-                </label>
-                <p className="hint">Aplicado ao reiniciar o progresso.</p>
-              </section>
-            )}
-
             {tab === 'regras' && (
               <section>
                 <h3>Regras</h3>
@@ -364,14 +346,18 @@ export function SettingsMenu() {
                   <div>
                     <h4>Recompensa e time persistente</h4>
                     <p>
-                      Vitória <b>+100</b>, derrota/empate <b>+50</b>, uma
-                      recompensa por partida — e o saldo persiste entre
-                      partidas. Na vitória, todo o seu time volta para a
-                      próxima partida, inclusive quem caiu em combate. Na
-                      derrota, o time inteiro também volta (as moedas gastas,
-                      não). No empate, só voltam os sobreviventes; se o time
-                      zerou, vale a regra da derrota. Ficam de fora os
-                      fundidos (o filho carrega o valor deles) e os vendidos.
+                      Uma recompensa por partida — e o saldo persiste entre
+                      partidas. No modo padrão (valor fixo), vitória{' '}
+                      <b>+100</b> e derrota/empate <b>+50</b>; em
+                      Configurações → Progresso dá para mudar o valor (até{' '}
+                      <b>400</b>) ou trocar para <b>caça-recompensa</b>: metade
+                      do custo de cada unidade inimiga destruída no combate. Na
+                      vitória, todo o seu time volta para a próxima partida,
+                      inclusive quem caiu em combate. Na derrota, o time
+                      inteiro também volta (as moedas gastas, não). No empate,
+                      só voltam os sobreviventes; se o time zerou, vale a
+                      regra da derrota. Ficam de fora os fundidos (o filho
+                      carrega o valor deles) e os vendidos.
                     </p>
                     <p>
                       O time guardado volta <b>nos mesmos buracos</b> em que
@@ -443,6 +429,78 @@ export function SettingsMenu() {
                     <> Time guardado: {retainedCount} criatura(s), nos mesmos buracos.</>
                   )}
                 </p>
+
+                {/* antigo grupo "Economia" — mora aqui agora */}
+                <h4>Economia</h4>
+                <p className="hint">
+                  Regras fixas: cada invocação custa <b>100</b> e fusões são
+                  grátis; uma recompensa por partida, e o saldo persiste entre
+                  partidas. Saldo atual <CoinIcon size={13} /> {coins}.
+                </p>
+                <label>
+                  Moedas iniciais (novo progresso)
+                  <div className="coin-stepper">
+                    <button onClick={() => setStartingCoins(startingCoinsCfg - 100)}>−</button>
+                    <span>{startingCoinsCfg}</span>
+                    <button onClick={() => setStartingCoins(startingCoinsCfg + 100)}>+</button>
+                  </div>
+                </label>
+                <p className="hint">Aplicado ao reiniciar o progresso.</p>
+
+                <h4>Recompensa de fim de partida</h4>
+                <div
+                  className="difficulty-row left"
+                  role="radiogroup"
+                  aria-label="Modo da recompensa de fim de partida"
+                >
+                  <button
+                    role="radio"
+                    aria-checked={rewardModeCfg === 'fixed'}
+                    data-testid="reward-mode-fixed"
+                    className={`diff-btn ${rewardModeCfg === 'fixed' ? 'active' : ''}`}
+                    onClick={() => setRewardMode('fixed')}
+                  >
+                    Valor fixo
+                  </button>
+                  <button
+                    role="radio"
+                    aria-checked={rewardModeCfg === 'bounty'}
+                    data-testid="reward-mode-bounty"
+                    className={`diff-btn ${rewardModeCfg === 'bounty' ? 'active' : ''}`}
+                    onClick={() => setRewardMode('bounty')}
+                  >
+                    Caça-recompensa
+                  </button>
+                </div>
+                {rewardModeCfg === 'fixed' ? (
+                  <>
+                    <label>
+                      Recompensa por vitória
+                      <div className="coin-stepper">
+                        <button data-testid="reward-dec" onClick={() => setMatchReward(matchRewardCfg - 50)}>
+                          −
+                        </button>
+                        <span data-testid="reward-value">{matchRewardCfg}</span>
+                        <button data-testid="reward-inc" onClick={() => setMatchReward(matchRewardCfg + 50)}>
+                          +
+                        </button>
+                      </div>
+                    </label>
+                    <p className="hint">
+                      A vitória ganha <CoinIcon size={13} /> {matchRewardCfg}; derrota
+                      e empate pagam a metade (<CoinIcon size={13} />{' '}
+                      {Math.floor(matchRewardCfg / 2)}). Máximo {400}.
+                    </p>
+                  </>
+                ) : (
+                  <p className="hint">
+                    Você recebe <b>metade</b> do custo de cada unidade inimiga
+                    destruída — vença ou perca. Ex.: abater inimigos que somam{' '}
+                    <CoinIcon size={13} /> 1200 rende <CoinIcon size={13} /> 600 no
+                    fim da partida.
+                  </p>
+                )}
+
                 {confirmReset ? (
                   <div className="confirm">
                     Apagar moedas, criaturas guardadas, descobertas e estatísticas?

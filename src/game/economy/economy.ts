@@ -5,6 +5,7 @@ import {
   SUMMON_COST,
   VICTORY_REWARD,
   type MatchResult,
+  type MatchRewardMode,
   type SpeciesId,
 } from '../types';
 
@@ -46,6 +47,31 @@ export function rewardFor(result: MatchResult): number {
   }
 }
 
+/**
+ * Recompensa de fim de partida no modo configurado pelo jogador:
+ *  • 'fixed': a vitória ganha `fixedReward` (padrão 100 — com esse valor a
+ *      regra sai IDÊNTICA à clássica: +100 vitória, +50 derrota/empate);
+ *      derrota e empate ficam com a METADE, arredondada para baixo.
+ *  • 'bounty': metade do custo total das unidades inimigas destruídas no
+ *      combate (o acumulado do motor), vencendo ou perdendo — a recompensa
+ *      "garantida" por abate.
+ */
+export function matchRewardFor(
+  result: MatchResult,
+  mode: MatchRewardMode,
+  fixedReward: number,
+  enemyKillCost: number,
+): number {
+  if (mode === 'bounty') return Math.floor(Math.max(0, enemyKillCost) / 2);
+  switch (result) {
+    case 'victory':
+      return Math.max(0, Math.round(fixedReward));
+    case 'defeat':
+    case 'draw':
+      return Math.floor(Math.max(0, fixedReward) / 2);
+  }
+}
+
 /** Resultado de uma tentativa de pagamento. */
 export type SpendResult =
   | { ok: true; coins: number }
@@ -71,11 +97,14 @@ export interface RewardLedger {
  * Concede a recompensa de forma idempotente por matchId.
  * Retorna true se a recompensa foi aplicada; false se aquela partida
  * já foi recompensada anteriormente (recarregar a tela não duplica).
+ * `reward` é o valor calculado para a partida (modos configuráveis); sem ele,
+ * usa a regra clássica rewardFor(result) — o comportamento histórico.
  */
 export function grantMatchReward(
   ledger: RewardLedger,
   matchId: string,
   result: MatchResult,
+  reward: number = rewardFor(result),
 ): boolean {
   if (!matchId) return false;
   if (ledger.processedMatchIds.includes(matchId)) return false;
@@ -84,6 +113,6 @@ export function grantMatchReward(
   if (ledger.processedMatchIds.length > 50) {
     ledger.processedMatchIds.splice(0, ledger.processedMatchIds.length - 50);
   }
-  ledger.coins += rewardFor(result);
+  ledger.coins += Math.max(0, Math.round(reward));
   return true;
 }
