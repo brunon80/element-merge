@@ -31,6 +31,20 @@ body,
   color: var(--text);
 }
 
+/* O jogo inteiro é manipulação por ponteiro. No celular, o arraste de um
+   monstro é um toque longo: sem isto, o toque-longo SELECIONAVA texto do HUD
+   e disparava o callout de copiar do iOS — o menu de contexto engolia o gesto
+   e o arraste morria no meio. Não há texto útil para selecionar aqui (os
+   únicos inputs do app são sliders range), então a seleção vai embora no
+   app inteiro, junto com o callout. */
+html,
+body,
+#root {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 .app-shell {
   position: fixed;
   inset: 0;
