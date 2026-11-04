@@ -3,8 +3,9 @@ import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
 import { MathUtils, type PerspectiveCamera } from 'three';
 import {
-  CAMERA_POS,
+  ARENA_R,
   CAMERA_MAX_DISTANCE,
+  CAMERA_POS,
   ICE_CAMERA_MAX_DISTANCE,
   ORBIT_TARGET,
   PLATFORM,
@@ -73,7 +74,35 @@ export function CameraController({
         ORBIT_TARGET[1] + distance * (volcanic ? 0.4 : 0.46),
         ORBIT_TARGET[2] + distance * (volcanic ? 0.92 : 0.89),
       );
+    } else if (
+      // só entra no enquadro baixo onde o rodapé comporta a linha frontal:
+      // >=1100px de largura mantém o buraco do canto fora da loja de 200px
+      // (em janelas menores a folga some); as aspas de altura/aspecto são as
+      // do @media compacto do styles.css, abaixo das quais o dock é faixa
+      // full-width e não há onde pousar a linha frontal
+      size.width >= 1100 &&
+      size.height > 560 &&
+      size.width / Math.max(1, size.height) >= 1.7
+    ) {
+      // Enquadro inicial do desktop (o da imagem de referência): câmera BAIXA
+      // (~30° da horizontal) e PERTO — a borda frontal da plataforma invade o
+      // rodapé, a linha de buracos mais próxima pousa a ~91% da altura e o
+      // corpo celeste grande coroa o topo. Os números vieram da sonda (custo
+      // contra 93%/230px da referência): é o mais baixo/perto que ainda deixa
+      // os 24 buracos livres do DOM em TODAS as janelas do ramo (1100×640 é a
+      // mais apertada, folga de ~12px entre o buraco e a loja de 200px).
+      const dist = ARENA_R * 1.316;
+      const pitch = 0.52; // rad; a órbita livre continua nos limites de sempre
+      camera.position.set(
+        0,
+        ORBIT_TARGET[1] + dist * Math.sin(pitch),
+        ORBIT_TARGET[2] + dist * Math.cos(pitch),
+      );
     } else {
+      // Celular/tablet/janela estreita: o enquadro antigo calibrado pelas
+      // sondas — a sonda de alcançabilidade passou 24/24 com EXATAMENTE estas
+      // coordenadas, e a folga entre a última linha e a loja é de ~1px;
+      // qualquer "melhoria" aqui derruba buraco para baixo do dock.
       camera.position.set(...CAMERA_POS);
     }
     camera.lookAt(...ORBIT_TARGET);

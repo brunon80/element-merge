@@ -251,8 +251,12 @@ button {
   right: 12px;
   bottom: 12px;
   display: flex;
+  /* cantos opostos: loja no rodapé esquerdo, iniciar combate no direito, e o
+     MEIO fica vazio e clicável através — foi o que liberou a linha frontal da
+     quadra para pousar no rodapé com a câmera baixa do desktop (24/24) */
+  justify-content: space-between;
   gap: 12px;
-  align-items: stretch;
+  align-items: flex-end;
   z-index: 20;
   pointer-events: none;
 }
@@ -265,9 +269,12 @@ button {
   padding: 10px 12px;
   /** O painel não pode esticar por causa da nota: num flex row, `max-content` da
    *  nota alargava a loja até cobrir os buracos da esquerda do tabuleiro — e
-   *  painel DOM engole o ponteiro. Largura travada + nota com quebra própria. */
+   *  painel DOM engole o ponteiro. Largura travada + nota com quebra própria.
+   *  Em desktop a trava é 200px: com a câmera baixa o buraco do canto esquerda
+   *  da linha frontal pousa a ~234px da borda e a loja não pode encostar nele
+   *  (24/24 na sonda em todas as janelas do ramo largo). */
   min-width: 0;
-  max-width: 400px;
+  max-width: 200px;
 }
 .shop-title {
   font-size: 12px;
@@ -320,9 +327,11 @@ button {
 }
 .shop-cards {
   /** grade e não linha: os 4 cards esticam por toda a largura do painel
-   *  (no flex com card travado em 84px sobrava buraco morto à direita) */
+   *  (no flex com card travado em 84px sobrava buraco morto à direita).
+   *  Em desktop o painel é estreito (200px), então a grade é 2×2; as janelas
+   *  compactas voltam para 4 numa linha com o painel em largura total. */
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .shop-card {
@@ -1436,6 +1445,9 @@ input[type='range'] {
   }
   .shop-cards {
     gap: 8px;
+    /* painel em largura total no compacto: volta pra 4 cards numa linha
+       (a grade 2×2 do desktop travaria o dock em altura demais) */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .shop-card {
     padding: 7px 4px;
