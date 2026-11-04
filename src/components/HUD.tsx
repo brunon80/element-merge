@@ -22,7 +22,6 @@ export function HUD() {
   const battleTime = useGameStore((s) => s.battleTime);
   const difficulty = useGameStore((s) => s.difficulty);
   const units = useGameStore((s) => s.units);
-  const setBestiary = useGameStore((s) => s.setBestiary);
   const setSettings = useGameStore((s) => s.setSettings);
   const returnToMenu = useGameStore((s) => s.returnToMenu);
   const fullscreen = useFullscreen();
@@ -77,14 +76,6 @@ export function HUD() {
             {fullscreen.active ? '🗗' : '⛶'}
           </button>
         )}
-        <button
-          className="btn ghost small"
-          data-testid="open-bestiary"
-          title="Bestiário"
-          onClick={() => setBestiary(true)}
-        >
-          📖
-        </button>
         <button
           className="btn ghost small"
           data-testid="open-settings"

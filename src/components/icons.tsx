@@ -33,6 +33,27 @@ export function ElementIcon({ el, size = 18 }: { el: ElementId; size?: number })
   );
 }
 
+/** Livro aberto: o glifo da enciclopédia (botão flutuante). */
+export function BookIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      className="book-glyph"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 6.4C10.2 4.9 7 4.3 4.2 4.9v13.4c2.8-.6 6 0 7.8 1.5 1.8-1.5 5-2.1 7.8-1.5V4.9C17 4.3 13.8 4.9 12 6.4z" />
+      <path d="M12 6.4v13.4" />
+    </svg>
+  );
+}
+
 export function CoinIcon({ size = 16 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} className="coin-glyph" aria-hidden>

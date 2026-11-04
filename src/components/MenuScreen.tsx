@@ -1,5 +1,6 @@
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useGameStore } from '../store/gameStore';
+import { CodexFab } from './CodexFab';
 import { CoinIcon } from './icons';
 import { RESULT_LABEL } from './labels';
 
@@ -9,7 +10,6 @@ import { RESULT_LABEL } from './labels';
  */
 export function MenuScreen() {
   const startNewMatch = useGameStore((s) => s.startNewMatch);
-  const setBestiary = useGameStore((s) => s.setBestiary);
   const setSettings = useGameStore((s) => s.setSettings);
   const stats = useGameStore((s) => s.stats);
   const lastSummary = useGameStore((s) => s.lastSummary);
@@ -36,9 +36,6 @@ export function MenuScreen() {
         </button>
 
         <div className="menu-row">
-          <button className="btn ghost" data-testid="open-bestiary" onClick={() => setBestiary(true)}>
-            📖 Enciclopédia
-          </button>
           <button
             className="btn ghost"
             data-testid="open-settings"
@@ -63,6 +60,10 @@ export function MenuScreen() {
           derrotas · {stats.draws} empates
         </div>
       </div>
+
+      {/* a entrada da enciclopédia vive fora do card: é o destaque da tela,
+          não mais um botãozinho da lista */}
+      <CodexFab />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 import { unlockAudio } from '../audio/core';
 import { Bestiary } from '../components/Bestiary';
 import { BattleControls } from '../components/BattleControls';
+import { CodexFab } from '../components/CodexFab';
 import { DiscoveryOverlay } from '../components/DiscoveryOverlay';
 import { HUD } from '../components/HUD';
 import { InspectorPanel } from '../components/InspectorPanel';
@@ -98,6 +99,7 @@ export function App() {
       {inGame && (
         <>
           <HUD />
+          <CodexFab />
           <InspectorPanel />
           <div className="dock">
             <ShopPanel />
