@@ -66,6 +66,34 @@ describe('App (smoke)', () => {
     expect(screen.queryByTestId('bestiary')).toBeNull();
   });
 
+  test('a enciclopédia aparece também dentro da partida (e pelas configurações)', () => {
+    render(<App />);
+    fireEvent.click(screen.getByTestId('play'));
+    // o livro flutuante mora no menu E na partida — como sempre morou
+    expect(screen.getByTestId('open-bestiary')).toBeInTheDocument();
+    // entrada alternativa: configurações → regras (testid próprio, sem duplicar)
+    fireEvent.click(screen.getByTestId('open-settings'));
+    fireEvent.click(screen.getByTestId('settings-tab-regras'));
+    fireEvent.click(screen.getByTestId('open-bestiary-settings'));
+    expect(screen.queryByTestId('settings-menu')).toBeNull(); // cede o palco ao bestiário
+    expect(screen.getByTestId('bestiary')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('close-bestiary'));
+    expect(screen.queryByTestId('bestiary')).toBeNull();
+  });
+
+  test('a barra do jogo não repete rótulos: só saldo, cronômetro e botões', () => {
+    render(<App />);
+    fireEvent.click(screen.getByTestId('play'));
+    expect(screen.getByTestId('coins')).toBeInTheDocument();
+    expect(screen.queryByTestId('prep-status')).toBeNull();
+    expect(screen.queryByTestId('enemy-count')).toBeNull();
+    expect(screen.getByTestId('hud').textContent).not.toContain('Elemental');
+    expect(screen.getByTestId('hud').textContent).not.toContain('Inimigo');
+    // "Menu" virou "Início" (o testid continua quit — contrato das sondas);
+    // a casinha em SVG não gera texto, mas o espaço JSX antes do rótulo gera
+    expect(screen.getByTestId('quit').textContent?.trim()).toBe('Início');
+  });
+
   test('menu de configurações: grupos na sidebar, conteúdo à direita', () => {
     render(<App />);
     // a tela inicial não expõe mais as configs diretamente (nada de radio ali)
@@ -104,7 +132,6 @@ describe('App (smoke)', () => {
   test('sem cronômetro: botão exige criaturas, inimigo nasce no início do combate', () => {
     render(<App />);
     fireEvent.click(screen.getByTestId('play'));
-    expect(screen.getByTestId('prep-status')).toBeInTheDocument();
 
     const startBtn = screen.getByTestId('start-battle') as HTMLButtonElement;
     expect(startBtn.disabled).toBe(true); // ainda sem criaturas na arena
@@ -119,7 +146,8 @@ describe('App (smoke)', () => {
 
     expect(screen.queryByTestId('start-battle')).toBeNull();
     expect(screen.getByTestId('timer-battle')).toBeInTheDocument();
-    expect(screen.getByTestId('enemy-count').textContent).toContain('criaturas');
+    // o exército inimigo nasce no início do combate (antes da barra mostrar
+    // qualquer coisa — a frase "Inimigo: N criaturas" saiu da tela)
     expect(useGameStore.getState().units.some((u) => u.side === 'ai')).toBe(true);
   });
 });

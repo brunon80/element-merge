@@ -128,8 +128,8 @@ button {
   gap: 10px;
 }
 .hud-logo {
-  font-weight: 700;
-  letter-spacing: 0.4px;
+  font-size: 20px;
+  color: var(--violet);
 }
 .hud-diff {
   color: var(--muted);
@@ -159,28 +159,62 @@ button {
   align-items: center;
   gap: 12px;
 }
+/* o saldo é o número que decide cada jogada na loja — virou pílula dourada,
+   o item mais vivo da barra */
 .hud-coins {
-  color: var(--gold);
-  font-size: 17px;
+  color: #2a2008;
+  background: linear-gradient(140deg, #ffd97a, var(--gold) 60%, #d9a63c);
+  border: 1px solid rgba(255, 235, 190, 0.55);
+  border-radius: 999px;
+  padding: 5px 16px;
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
+  box-shadow: 0 3px 16px rgba(245, 196, 81, 0.35);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
 }
-.hud-ai-coins {
-  color: var(--muted);
-  font-size: 12px;
+/* a moeda tem tom proprio: ambar ESCURO sobre o dourado claro da pilula —
+   herdava o currentColor quase preto do numero e afundava no fundo */
+.hud-coins .coin-glyph {
+  color: #8f6512;
+}
+/* botões de serviço da barra (tela cheia / engrenagem / Início): pastilhas
+   sólidas, legíveis de relance — antes afogavam no .ghost */
+.hud-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  border: 1px solid rgba(140, 170, 230, 0.4);
+  background: rgba(140, 170, 230, 0.16);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: var(--text);
+}
+.hud-btn:hover {
+  background: rgba(140, 170, 230, 0.3);
+}
+/* os glifos dos botões do header eram texto corrido do botão (14px) e sumiam
+   na correria do combate — agora cada ícone tem corpo próprio (18px) */
+.hud-btn-glyph {
+  font-size: 18px;
+  line-height: 1;
+}
+.hud-btn .house-glyph {
+  width: 18px;
+  height: 18px;
 }
 
 /* ---------------- Enciclopédia: botão flutuante ---------------- */
 /* A enciclopédia é o painel de progresso do jogo — a entrada dela é um livro
-   flutuante fixo, não um botãozinho na barra. No desktop largo (aspecto
-   ≥1,7) ele mora na borda esquerda, no meio da altura: medido, os 24 buracos
-   do tabuleiro começam em px≈500 nessa configuração, então o FAB nunca fica
-   na frente de um slot. O z-index fica acima do HUD/dock (20) e abaixo dos
-   overlays (40) — abrir a própria enciclopédia o cobre. */
+   flutuante fixo, no MENU e também dentro da partida. No desktop largo
+   (aspecto ≥1,7) ele mora na borda esquerda, no meio da altura: medido, os 24
+   buracos do tabuleiro começam em px≈500 nessa configuração, então o FAB
+   nunca fica na frente de um slot. O z-index fica acima do HUD/dock (20) e
+   abaixo dos overlays (40) — abrir a própria enciclopédia o cobre. */
 .codex-fab {
   position: absolute;
   left: 14px;
@@ -227,13 +261,15 @@ button {
    câmera enche a largura (fov cresce abaixo de 1,78) e os buracos colados na
    esquerda chegam a px≈31; no menu, os botões do card full-width também
    atravessam a faixa central esquerda. O FAB sobe para o canto superior
-   esquerdo — a única zona livre medida (faixa do HUD, y≈10..62, enquanto os
-   buracos começam em py≈334) — e encolhe para 52px. A HUD compacta já começa
-   em left:70px, então o livro fica à esquerda dela, sem briga. */
+   esquerdo — a única zona livre medida (faixa do HUD, y≈8..60, enquanto os
+   buracos começam em py≈334) — e encolhe para 52px. A HUD compacta começa em
+   left:70px, então o livro fica à esquerda dela, sem briga — e os dois
+   DIVIDEM A MESMA LINHA: mesmo topo e mesma altura (52px), o canto esquerdo
+   e a barra do jogo formam uma fileira só, não dois flutuantes tortos. */
 @media (max-aspect-ratio: 17/10), (max-width: 760px), (max-height: 560px) {
   .codex-fab {
     left: 10px;
-    top: calc(10px + env(safe-area-inset-top));
+    top: calc(8px + env(safe-area-inset-top));
     transform: none;
     width: 52px;
     height: 52px;
@@ -252,9 +288,14 @@ button {
     font-size: 10px;
   }
   /* janela estreita que não é "celular" (ex.: 900×700): o canto esquerdo é do
-     livro — a HUD larga começa depois dele */
+     livro — a HUD larga começa depois dele, na MESMA fileira do FAB: mesmo
+     topo (8px) e altura mínima 52px (border-box), assim o painel encosta em
+     cima e embaixo do círculo do livro */
   .hud {
     left: 70px;
+    top: calc(8px + env(safe-area-inset-top));
+    padding: 4px 12px;
+    min-height: 52px;
   }
 }
 
@@ -1414,25 +1455,27 @@ input[type='range'] {
   /* HUD compacto: mais arena livre e nada por baixo da barra de status.
      O canto esquerdo (x<70) fica livre para o FAB da enciclopédia, que em
      tela baiana/estreita mora no topo-esquerdo — fora do painel, sobre o céu
-     da arena. */
+     da arena. A fileira é uma só: topo 8px e altura 52px iguais às do FAB. */
   .hud {
     top: calc(8px + env(safe-area-inset-top));
     left: 70px;
     right: 8px;
-    padding: 6px 10px;
+    padding: 5px 10px;
     gap: 8px;
+    min-height: 52px;
   }
-  .hud-logo-name,
   .hud-diff,
-  .prep-sub,
-  .enemy-label {
+  .hud-btn-text {
     display: none;
   }
   .hud-coins {
-    font-size: 15px;
+    font-size: 16px;
+    padding: 3px 11px;
+    gap: 6px;
   }
-  .hud-ai-coins {
-    font-size: 11px;
+  .hud-btn {
+    padding: 6px 11px;
+    font-size: 13px;
   }
   .hud-timer b {
     font-size: 16px;

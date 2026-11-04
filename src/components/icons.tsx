@@ -54,6 +54,28 @@ export function BookIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+/** Casinha: botão "Início" da barra (voltar ao menu). */
+export function HouseIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      className="house-glyph"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3.5 11.2 12 4l8.5 7.2" />
+      <path d="M5.5 9.8V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.8" />
+      <path d="M9.8 20v-5.4h4.4V20" />
+    </svg>
+  );
+}
+
 export function CoinIcon({ size = 16 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} className="coin-glyph" aria-hidden>

@@ -41,6 +41,7 @@ const TABS: { id: TabId; label: string }[] = [
 export function SettingsMenu() {
   const open = useGameStore((s) => s.showSettings);
   const setOpen = useGameStore((s) => s.setSettings);
+  const setBestiary = useGameStore((s) => s.setBestiary);
   const difficulty = useGameStore((s) => s.difficulty);
   const setDifficulty = useGameStore((s) => s.setDifficulty);
   const scenario = useGameStore((s) => s.scenario);
@@ -387,6 +388,18 @@ export function SettingsMenu() {
                       você descobri-las numa fusão; aí a receita e os
                       atributos da espécie são revelados.
                     </p>
+                    {/* entrada alternativa ao livro flutuante: a enciclopédia
+                        também abre por aqui no meio de uma partida */}
+                    <button
+                      className="btn ghost"
+                      data-testid="open-bestiary-settings"
+                      onClick={() => {
+                        setOpen(false);
+                        setBestiary(true);
+                      }}
+                    >
+                      Abrir enciclopédia
+                    </button>
                   </div>
                 </div>
               </section>

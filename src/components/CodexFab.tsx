@@ -10,8 +10,9 @@ import { BookIcon } from './icons';
  *
  * Vive num `data-testid="open-bestiary"` ÚNICO por tela: o App monta este
  * FAB ou no card do menu (MenuScreen) ou na partida (junto com o HUD), nunca
- * nos dois ao mesmo tempo — os botões antigos (📖 da barra e 📖 do menu)
- * saíram de cena para o testid não se duplicar.
+ * nos dois ao mesmo tempo. Dentro da partida existe ainda uma entrada
+ * alternativa em Configurações → Regras → "Abrir enciclopédia"
+ * (`open-bestiary-settings`), testid diferente, que nunca duplica o livro.
  */
 export function CodexFab() {
   const setBestiary = useGameStore((s) => s.setBestiary);
