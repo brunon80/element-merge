@@ -57,7 +57,13 @@ PLATFORM.centerZ = (PLATFORM.frontZ + PLATFORM.backZ) / 2;
  *  cresce, a ilha, o enquadramento e o fog acompanham sozinhos. */
 export const ARENA_R = Math.hypot(PLATFORM.halfX, PLATFORM.backZ) + 2.3;
 export const CAMERA_MAX_DISTANCE = ARENA_R * 2.76;
-export const SCENIC_CAMERA_MAX_DISTANCE = ARENA_R * 1.6;
+/** Teto de zoom da floresta. Ficava em ARENA_R×1.6 — MUITO mais fechado que os
+ *  outros cenários (gelo 2.55, submarino 2.45, vulcânico 2.15) e ainda puxava
+ *  o CAMERA_POS inicial (d=2.33×R) para dentro do clamp, quebrando o enquadro
+ *  em janelas estreitas. Agora é o mesmo teto do gelo: o anel de árvores da
+ *  FlorestaEnvironment é calculado a partir desta constante, então a parede de
+ *  árvores se afasta junto e nunca entra na frente da câmera. */
+export const SCENIC_CAMERA_MAX_DISTANCE = ARENA_R * 2.55;
 export const ICE_CAMERA_MAX_DISTANCE = ARENA_R * 2.55;
 export const VOLCANIC_CAMERA_MAX_DISTANCE = ARENA_R * 2.15;
 export const UNDERWATER_CAMERA_MAX_DISTANCE = ARENA_R * 2.45;
