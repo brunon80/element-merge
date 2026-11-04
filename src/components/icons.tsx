@@ -91,3 +91,35 @@ export function CoinIcon({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
+
+/** Coração cheio: o glifo de VIDA (chip do bônus de cenário no HUD). */
+export function HeartIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} className="heart-glyph" aria-hidden>
+      <path
+        d="M12 20.7 3.9 12.6a5.2 5.2 0 1 1 7.4-7.3l.7.7.7-.7a5.2 5.2 0 1 1 7.4 7.3z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Espadas cruzadas CHEIAS: o glifo de ATAQUE/DANO (chip do bônus de cenário no
+ *  HUD). Silhueta sólida igual aos demais glifos do chip — uma espada vertical
+ *  (ponta em cima, guarda, empunhadura e pomo) repetida com giro de ±45°. */
+export function SwordsIcon({ size = 12 }: { size?: number }) {
+  const sword = (
+    <>
+      <path d="M12 1.4 13.7 4.1v9.3h-3.4V4.1z" />
+      <rect x="7.2" y="13.7" width="9.6" height="1.9" rx="0.95" />
+      <rect x="11" y="15.6" width="2.1" height="4.9" rx="1.05" />
+      <circle cx="12" cy="21.6" r="1.55" />
+    </>
+  );
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} className="swords-glyph" fill="currentColor" aria-hidden>
+      <g transform="rotate(45 12 12)">{sword}</g>
+      <g transform="rotate(-45 12 12)">{sword}</g>
+    </svg>
+  );
+}

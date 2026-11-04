@@ -50,8 +50,8 @@ describe('Custo de reposição derivado das regras de fusão', () => {
 describe('Orçamento e legalidade da composição', () => {
   test('orçamento = coeff × valor do time, arredondado a 100', () => {
     expect(plan('easy', 1).budget).toBe(400); // 0.6×700 = 420 → 400
-    expect(plan('normal', 1).budget).toBe(700); // 1.0×700
-    expect(plan('hard', 1).budget).toBe(1000); // 1.4×700 = 980 → 1000
+    expect(plan('normal', 1).budget).toBe(700); // 1.05×700 = 735 → 700
+    expect(plan('hard', 1).budget).toBe(800); // 1.15×700 = 805 → 800
   });
 
   test('gasto nunca ultrapassa o orçamento (100 seeds por dificuldade)', () => {
@@ -149,7 +149,12 @@ describe('Dificuldade escala tamanho, nível e árvore elemental', () => {
       spendHard += plan('hard', seed).spent;
     }
     expect(spendEasy).toBeLessThan(spendNormal);
-    expect(spendNormal).toBeLessThan(spendHard);
+    // com o teto de nível relativo ao time do jogador (pureCap), normal e
+    // difícil podem empatar no gasto de times médios — a identidade do difícil
+    // está no orçamento (coeficiente), na árvore elemental e na leitura de
+    // duelo, amarradas nos testes vizinhos.
+    expect(spendNormal).toBeLessThanOrEqual(spendHard);
+    expect(plan('hard', 1).budget).toBeGreaterThan(plan('normal', 1).budget);
   });
 
   test('escala com o poder do time do jogador: time forte → inimigo maior', () => {
@@ -173,16 +178,41 @@ describe('Dificuldade escala tamanho, nível e árvore elemental', () => {
     expect(unitsBig).toBeGreaterThan(unitsSmall);
     expect(levelBig).toBeGreaterThanOrEqual(3);
   });
+  test('difícil alcança puras Nv.4 quando o jogador permite; normal para no Nv.3', () => {
+    const big: { species: SpeciesId; level: MonsterLevel }[] = [
+      { species: 'ignis', level: 5 },
+      { species: 'golem', level: 5 },
+      { species: 'nereia', level: 5 },
+      { species: 'zephyr', level: 5 },
+    ]; // valor 6400; teto relativo (playerMax) libera Nv.4 só no difícil
+    let l4Hard = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      for (const u of plan('hard', seed, big).units) {
+        const def = getSpecies(u.species);
+        if (def.levelMin !== def.levelMax && u.level === 4) l4Hard++;
+      }
+      for (const u of plan('normal', seed, big).units) {
+        const def = getSpecies(u.species);
+        if (def.levelMin !== def.levelMax) expect(u.level).toBeLessThanOrEqual(3);
+      }
+    }
+    expect(l4Hard).toBeGreaterThan(0);
+  });
 });
 
 describe('Contra-escolha e posicionamento', () => {
-  test('difícil contra-escolhe fraquezas: time de Gólem (terra) atrai dano de fogo', () => {
+  test('difícil lê o DUELO, não só o gráfico: Gólem atrai espelho E fogo', () => {
     const players: { species: SpeciesId; level: MonsterLevel }[] = [
       { species: 'golem', level: 2 },
       { species: 'golem', level: 2 },
       { species: 'golem', level: 2 },
-    ]; // fraqueza de terra: fogo (-15%)
+    ];
+    // O gráfico diz que fogo fura terra (−15%), mas no duelo de números o
+    // Gólem vence o Ignis (mesmo custo, 220/20 vs 130/14): a contra-escolha
+    // honesta mescla o espelho (vantagem real de duelo) com o counter de
+    // gráfico — e o counterChance do difícil mantém sementes variadas.
     let fireUnits = 0;
+    let mirrorUnits = 0;
     let total = 0;
     for (let seed = 1; seed <= 40; seed++) {
       const p = composeEnemyTeam({
@@ -194,9 +224,13 @@ describe('Contra-escolha e posicionamento', () => {
       for (const u of p.units) {
         total++;
         if (getSpecies(u.species).base.damageElement === 'fire') fireUnits++;
+        if (u.species === 'golem') mirrorUnits++;
       }
     }
-    expect(fireUnits / total).toBeGreaterThan(0.5);
+    expect(total).toBeGreaterThan(0);
+    expect(fireUnits / total).toBeGreaterThan(0.2);
+    expect(mirrorUnits / total).toBeGreaterThan(0.2);
+    expect(mirrorUnits / total).toBeLessThan(0.9); // nem estátua de espelho
   });
 
   test('posicionamento inteligente (normal/difícil): tanques na frente, frágeis atrás', () => {
@@ -237,7 +271,7 @@ describe('Motor: inimigos montados no startBattle', () => {
 
   test('startBattle monta o exército com eventos de summon e níveis válidos', () => {
     const eng = makeEngine({ generateTeam: true, difficulty: 'hard', seed: 77 });
-    for (let i = 0; i < 4; i++) mustSummon(eng, 'golem'); // valor 400 → orçamento 600
+    for (let i = 0; i < 4; i++) mustSummon(eng, 'golem'); // valor 400 → orçamento 500 (1,15×400)
     const events = collectEvents(eng);
     eng.startBattle();
     const aiUnits = eng.aliveUnits('ai');
@@ -248,6 +282,6 @@ describe('Motor: inimigos montados no startBattle', () => {
     // orçamento conferido e gasto legal (nunca negativo)
     expect(eng.world.aiCoins).toBeGreaterThanOrEqual(0);
     const spent = aiUnits.reduce((s, u) => s + unitCoinCost(u.species, u.level), 0);
-    expect(spent).toBeLessThanOrEqual(600);
+    expect(spent).toBeLessThanOrEqual(500);
   });
 });

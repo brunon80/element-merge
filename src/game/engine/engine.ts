@@ -37,6 +37,8 @@ import type {
   TileIndex,
 } from '../types';
 import { BOARD_COLS, MAX_LEVEL, TILES_PER_SIDE } from '../types';
+import type { ArenaScene } from '../types';
+import { TERRAIN_BONUS, terrainBonusFor } from '../../data/terrainBonuses';
 
 interface PendingShot {
   ownerId: number;
@@ -73,6 +75,13 @@ export interface World {
    * 'bounty': a recompensa garante metade desse valor no fim da partida.
    */
   enemyKillCost: number;
+  /**
+   * Cenário da partida — define o bônus de terreno aplicado às unidades no
+   * nascimento (ver data/terrainBonuses.ts). Mora no mundo como `difficulty`:
+   * trocar o cenário nas Configurações no meio da partida vale para quem
+   * nascer depois; quem já está em campo mantém o bônus que embutiu.
+   */
+  scene: ArenaScene;
 }
 
 export interface SummonResult {
@@ -186,6 +195,7 @@ export class GameEngine {
       rewardMode: config.rewardMode,
       matchRewardFixed: config.matchReward,
       enemyKillCost: 0,
+      scene: config.scene,
     };
     this.emit({ type: 'matchStart', matchId: config.matchId });
   }
@@ -334,6 +344,13 @@ export class GameEngine {
       Math.max(def.levelMin, level),
     ) as MonsterLevel;
     const stats = scaledStats(def.base, safeLevel);
+    // BÔNUS DE TERRENO: espécie cuja linhagem contém o elemento do cenário
+    // ganha +TERRAIN_BONUS de vida e dano AQUI — único ponto por onde toda
+    // unidade passa (invocação, time persistido, exército da IA e filhos de
+    // fusão). O marcador `terrainBoost` deixa a UI honesta sobre o número.
+    const terrainBoost = terrainBonusFor(this.world.scene, species);
+    const terrainMult = terrainBoost ? 1 + TERRAIN_BONUS : 1;
+    const boostedHp = Math.round(stats.hp * terrainMult);
     const pos = tileGroundPosition(side, tile);
     const unit: CombatUnit = {
       id: this.nextUnitId++,
@@ -342,9 +359,9 @@ export class GameEngine {
       level: safeLevel,
       tile,
       pos: [pos[0], pos[1], pos[2] + 0],
-      hp: stats.hp,
-      maxHp: stats.hp,
-      damage: stats.damage,
+      hp: boostedHp,
+      maxHp: boostedHp,
+      damage: Math.round(stats.damage * terrainMult),
       range: stats.range,
       interval: stats.interval,
       projectileSpeed: stats.projectileSpeed,
@@ -354,6 +371,7 @@ export class GameEngine {
       resist: stats.resist,
       abilities: stats.abilities,
       damageElement: stats.damageElement,
+      terrainBoost,
       cooldown: stats.reload,
       statuses: [],
       alive: true,

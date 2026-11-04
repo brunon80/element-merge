@@ -244,6 +244,12 @@ export interface CombatUnit {
   resist: ResistTable;
   abilities: AbilityDef[];
   damageElement: ElementId;
+  /**
+   * Elemento do cenário que deu bônus a esta unidade no nascimento
+   * (+TERRAIN_BONUS de vida e dano, ver data/terrainBonuses.ts). Ausente =
+   * unidade sem vantagem de terreno; presente = o número dela JÁ embute o bônus.
+   */
+  terrainBoost?: ElementId;
   cooldown: number;
   statuses: StatusEffect[];
   alive: boolean;
@@ -349,6 +355,11 @@ export interface MatchConfig {
   rewardMode: MatchRewardMode;
   /** Valor do modo 'fixed' (50–400): vitória ganha isto, derrota/empate a metade. */
   matchReward: number;
+  /**
+   * Cenário da partida — define o bônus de terreno aplicado a cada unidade no
+   * nascimento (ver data/terrainBonuses.ts). 'arcane' é o terreno neutro.
+   */
+  scene: ArenaScene;
 }
 
 export type Difficulty = 'easy' | 'normal' | 'hard';

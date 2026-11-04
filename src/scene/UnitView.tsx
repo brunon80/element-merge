@@ -2,9 +2,16 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
+import { ELEMENTS } from '../data/elements';
 import { getEngine, useGameStore } from '../store/gameStore';
 import type { SpeciesId, Side } from '../game/types';
-import { flameIconTexture, getGeometry, poisonIconTexture, slowIconTexture } from './assets';
+import {
+  flameIconTexture,
+  getGeometry,
+  poisonIconTexture,
+  slowIconTexture,
+  terrainIconTexture,
+} from './assets';
 import { MODELS, VISUALS, partsForLevel, type MatRole } from './speciesModels';
 import { SPECIES_RIGS } from './speciesRigs';
 import type { SmokePool } from './smokePool';
@@ -58,6 +65,8 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
   const slowIconRef = useRef<THREE.Sprite>(null!);
   const poisonIconRef = useRef<THREE.Sprite>(null!);
   const selRingRef = useRef<THREE.Mesh>(null!);
+  const bonusRingRef = useRef<THREE.Mesh>(null!);
+  const bonusIconRef = useRef<THREE.Sprite>(null!);
   const pipRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   const visuals = species ? VISUALS[species] : VISUALS.ignis;
@@ -163,10 +172,29 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
     if (!engine) return;
     const u = engine.getUnit(unitId);
     if (!u) return;
-    const time = engine.world.time;
-    const st = useGameStore.getState();
     const root = rootRef.current;
     if (!root) return;
+    // TRAVA anti-congelamento: os refs abaixo são digitados `null!` (o figurino
+    // costuma montar inteiro). Se QUALQUER mesh faltar — commit interrompido,
+    // módulo obsoleto de HMR, ou script externo pilotando o loop de frames com
+    // uma cópia velha do código — o useFrame jogaria TypeError TODO frame e o
+    // r3f nunca chegaria no `gl.render()`: a tela congela com o console em
+    // chamas. O guard aborta só o frame daquela unidade; nada muda no caminho
+    // saudável (os refs ficam anexados junto com o primeiro commit).
+    if (
+      !modelRef.current ||
+      !barFillRef.current ||
+      !barGroupRef.current ||
+      !burnIconRef.current ||
+      !slowIconRef.current ||
+      !poisonIconRef.current ||
+      !bonusRingRef.current ||
+      !bonusIconRef.current ||
+      !selRingRef.current
+    )
+      return;
+    const time = engine.world.time;
+    const st = useGameStore.getState();
 
     // ---- posição: enquanto o ponteiro está segurando a criatura, ela PERSEGUE
     // o cursor (não fica presa no slot até o soltar); limites: sua metade da plataforma ----
@@ -316,6 +344,23 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       poisonIconRef.current.scale.setScalar(s);
     }
 
+    // ---- bônus de terreno: anel no chão + ícone ▲, ambos na cor do elemento
+    // favorecido pelo cenário (o jogador vê VANTAGEM sem abrir o inspetor) ----
+    const boosted = !!u.terrainBoost && u.alive;
+    bonusRingRef.current.visible = boosted;
+    bonusIconRef.current.visible = boosted;
+    if (boosted) {
+      const ring = bonusRingRef.current;
+      ring.rotation.z -= dt * 0.7;
+      ring.scale.setScalar(
+        ((footR + 0.26) / 0.86) * (1 + 0.04 * Math.sin(time * 2.2 + phaseSeed)),
+      );
+      const rm = ring.material as THREE.MeshBasicMaterial;
+      rm.color.set(ELEMENTS[u.terrainBoost!].color);
+      rm.opacity = 0.5 + 0.22 * Math.sin(time * 2.2 + phaseSeed);
+      bonusIconRef.current.scale.setScalar(0.4 * (1 + 0.1 * Math.sin(time * 3.2)));
+    }
+
     // ---- anel de seleção ----
     selRingRef.current.visible =
       u.alive && (st.selectedId === unitId || mergeTarget || dragging);
@@ -446,6 +491,20 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       >
         <spriteMaterial map={poisonIconTexture()} transparent depthWrite={false} />
       </sprite>
+      <sprite
+        ref={bonusIconRef}
+        position={[footR + 0.55, Math.max(1.05, topY - 0.75), 0]}
+        scale={0.4}
+        visible={false}
+      >
+        <spriteMaterial
+          map={terrainIconTexture(
+            unit?.terrainBoost ? ELEMENTS[unit.terrainBoost].color : '#7d8aa8',
+          )}
+          transparent
+          depthWrite={false}
+        />
+      </sprite>
 
       <mesh
         ref={selRingRef}
@@ -457,6 +516,19 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
         visible={false}
       >
         <meshBasicMaterial color="#3ce9a4" transparent opacity={0.9} />
+      </mesh>
+
+      {/* anel do bônus de cenário (cor do elemento favorecido; pulsa devagar) */}
+      <mesh
+        ref={bonusRingRef}
+        name="bonusring"
+        geometry={getGeometry('torus', [0.86, 0.035, 6, 40])}
+        rotation={[Math.PI / 2, 0, 0]}
+        position={[0, 0.02, 0]}
+        scale={(footR + 0.26) / 0.86}
+        visible={false}
+      >
+        <meshBasicMaterial transparent opacity={0.7} />
       </mesh>
 
       {/* área de captura para ponteiro (cresce com o nível da criatura) */}

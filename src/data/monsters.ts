@@ -67,9 +67,9 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
       moveSpeed: 0,
       targeting: 'closest',
       damageElement: 'water',
-      resist: { water: 0.25, air: -0.15 },
+      resist: { water: 0.25, air: -0.25 },
       abilities: [
-        { kind: 'slow', chance: 0.5, duration: 3, slowFactor: 0.6 },
+        { kind: 'slow', chance: 0.35, duration: 3, slowFactor: 0.6 },
       ],
     },
     // fusões do mesmo elemento levantam a maré: gotinha → tsunami
@@ -85,8 +85,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     levelMax: 5,
     blurb: 'Colosso de pedra antiga. Projéteis rochosos devastadores, porém lentos. Caça o alvo mais ferido.',
     base: {
-      hp: 220,
-      damage: 20,
+      hp: 185,
+      damage: 18,
       range: 8,
       interval: 2.1,
       projectileSpeed: 7,

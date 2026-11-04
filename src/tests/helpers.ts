@@ -61,6 +61,7 @@ export function makeEngine(opts?: {
   matchId?: string;
   difficulty?: 'easy' | 'normal' | 'hard';
   generateTeam?: boolean;
+  scene?: import('../game/types').ArenaScene;
 }): GameEngine {
   const eng = new GameEngine({
     playerCoins: opts?.playerCoins ?? 500,
@@ -69,6 +70,7 @@ export function makeEngine(opts?: {
     difficulty: opts?.difficulty ?? 'normal',
     seed: opts?.seed ?? 1234,
     generateEnemyTeam: opts?.generateTeam ?? false,
+    ...(opts?.scene ? { scene: opts.scene } : {}),
     ...(opts?.matchId ? { matchId: opts.matchId } : {}),
   });
   return eng;

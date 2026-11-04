@@ -18,6 +18,7 @@ import {
 import type {
   Difficulty,
   ArenaScene,
+  ElementId,
   EngineEvent,
   MatchPhase,
   MatchRewardMode,
@@ -48,6 +49,8 @@ export interface UiUnit {
   maxHp: number;
   statuses: StatusType[];
   dying: boolean;
+  /** Elemento do cenário que deu bônus a esta unidade (indício p/ o Inspetor). */
+  terrainBoost?: ElementId;
 }
 
 export interface DragHover {
@@ -343,7 +346,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     });
   }
 
-  function newEngine(): void {
+  function newEngine(scene: ArenaScene): void {
     engine = new GameEngine({
       playerCoins: save.coins,
       aiCoins: 0,
@@ -352,6 +355,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       generateEnemyTeam: true,
       rewardMode: save.settings.rewardMode,
       matchReward: save.settings.matchReward,
+      scene,
     });
     engine.setEventCallback(handleEngineEvent);
   }
@@ -424,7 +428,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       const activeArenaScene = get().activeArenaScene;
       save.lastArenaScene = activeArenaScene;
       persistSoon();
-      newEngine();
+      newEngine(activeArenaScene);
       // Time persistido volta automaticamente, sem custo e NO MESMO BURACO
       // que ocupava quando o combate anterior começou (se o buraco estiver
       // ocupado por outra criatura do time, entra no primeiro livre).
@@ -684,6 +688,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       const activeArenaScene = resolveArenaScene(scenario, previousScene);
       save.settings.scenario = scenario;
       if (current.screen === 'game') save.lastArenaScene = activeArenaScene;
+      // o bônus de terreno mora no mundo (como a dificuldade): trocar de cenário
+      // no meio da partida vale para as unidades que NASCEREM depois; quem já
+      // está em campo mantém o bônus que embutiu no nascimento.
+      if (engine) engine.world.scene = activeArenaScene;
       persistSoon();
       set({
         scenario,
@@ -833,6 +841,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           maxHp: u.maxHp,
           statuses: u.statuses.map((s) => s.type),
           dying: !u.alive,
+          terrainBoost: u.terrainBoost,
         });
       }
       const prev = get();

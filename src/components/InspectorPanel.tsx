@@ -1,5 +1,6 @@
 import { ELEMENTS } from '../data/elements';
 import { scaledStats } from '../data/balance';
+import { TERRAIN_BONUS } from '../data/terrainBonuses';
 import { getSpecies } from '../data/monsters';
 import { useGameStore } from '../store/gameStore';
 import { ElementTag } from './HUD';
@@ -17,6 +18,11 @@ export function InspectorPanel() {
   const def = getSpecies(u.species);
   const stats = scaledStats(def.base, u.level);
   const resEntries = Object.entries(def.base.resist) as [keyof typeof ELEMENTS, number][];
+  // Bônus de terreno: o motor embute o multiplicador no nascimento; o espelho
+  // UiUnit traz o marcador e a vida REAL (u.maxHp) — dano vem da mesma fórmula.
+  const terrainMult = u.terrainBoost ? 1 + TERRAIN_BONUS : 1;
+  const shownHp = Math.round(u.maxHp);
+  const shownDamage = Math.round(stats.damage * terrainMult);
 
   return (
     <div className="inspector panel" data-testid="inspector">
@@ -39,12 +45,12 @@ export function InspectorPanel() {
         <div>
           <span>Vida</span>
           <b>
-            {u.hp}/{stats.hp}
+            {u.hp}/{shownHp}
           </b>
         </div>
         <div>
           <span>Dano</span>
-          <b>{stats.damage}</b>
+          <b>{shownDamage}</b>
         </div>
         <div>
           <span>Alcance</span>
@@ -74,6 +80,17 @@ export function InspectorPanel() {
               {ELEMENTS[el].name} {v > 0 ? `+${Math.round(v * 100)}%` : `${Math.round(v * 100)}%`}
             </span>
           ))}
+        </div>
+      )}
+      {u.terrainBoost && (
+        <div className="insp-line" data-testid="terrain-bonus-row">
+          <span className="insp-label">Bônus do cenário</span>{' '}
+          <span
+            className="terrain-chip"
+            style={{ borderColor: ELEMENTS[u.terrainBoost].color, color: ELEMENTS[u.terrainBoost].color }}
+          >
+            ▲ {ELEMENTS[u.terrainBoost].name}: +{Math.round(TERRAIN_BONUS * 100)}% de dano e vida
+          </span>
         </div>
       )}
       <div className="insp-abilities">

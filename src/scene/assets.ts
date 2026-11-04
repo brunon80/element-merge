@@ -249,6 +249,39 @@ export function poisonIconTexture(): THREE.Texture {
   return poisonTex;
 }
 
+/**
+ * Ícone de BÔNUS DE TERRENO (triângulo ▲ para cima = "vantagem"), na cor do
+ * elemento favorecido pelo cenário. Um canvas memoizado por elemento — os quatro
+ * bônus possíveis (fogo/água/terra/ar) compartilham o desenho.
+ */
+const terrainIconCache = new Map<string, THREE.Texture>();
+export function terrainIconTexture(colorKey: string): THREE.Texture {
+  const hit = terrainIconCache.get(colorKey);
+  if (hit) return hit;
+  const [c, ctx] = makeCanvas(64);
+  ctx.strokeStyle = colorKey;
+  ctx.lineWidth = 6;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(32, 8);
+  ctx.lineTo(56, 50);
+  ctx.lineTo(8, 50);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.fillStyle = colorKey;
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  ctx.moveTo(32, 20);
+  ctx.lineTo(46, 44);
+  ctx.lineTo(18, 44);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(c);
+  terrainIconCache.set(colorKey, tex);
+  return tex;
+}
+
 /** Desenha texto (número de dano) num canvas de sprite. */
 export function drawPopupText(
   ctx: CanvasRenderingContext2D,

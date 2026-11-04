@@ -2,6 +2,7 @@ import {
   DEFAULT_MATCH_REWARD,
   MAX_MATCH_REWARD,
   MIN_MATCH_REWARD,
+  type ArenaScene,
   type BaseStats,
   type Difficulty,
   type MatchConfig,
@@ -105,6 +106,15 @@ export interface TeamDifficultyParams {
   treeMaxLevel: number;
   /** Contra-escolhe espécies conforme as fraquezas do time do jogador. */
   counterPick: boolean;
+  /**
+   * Fração das escolhas que REALMENTE contra-escolhe (0–1). O resto sai
+   * aleatório do pool. Essa rolagem por semente é o que garante que NENHUM
+   * modo seja impossível contra um time fixo: sempre há sementes em que a IA
+   * monta uma combinação pior e o time vence — o que muda entre fácil/normal/
+   * difícil é a FREQUÊNCIA dessas combinações, nunca o abismo (calibração em
+   * tests/difficultyCalibration.test.ts).
+   */
+  counterChance: number;
   /** Tanques na linha de frente, frágeis no fundo. */
   smartPlacement: boolean;
 }
@@ -116,29 +126,32 @@ export const TEAM_RULES: Record<Difficulty, TeamDifficultyParams> = {
     hybridChance: 0.0,
     treeMaxLevel: 0,
     counterPick: false,
+    counterChance: 0,
     smartPlacement: false,
   },
   normal: {
-    coeff: 1.0,
+    coeff: 1.05,
     maxLevel: 3,
     hybridChance: 0.3,
     treeMaxLevel: 7,
     counterPick: true,
+    counterChance: 0.75,
     smartPlacement: true,
   },
   hard: {
-    coeff: 1.4,
+    coeff: 1.15,
     maxLevel: 4,
     hybridChance: 0.6,
     treeMaxLevel: 10,
     counterPick: true,
+    counterChance: 0.5,
     smartPlacement: true,
   },
 };
 
 export type MatchConfigInput = Omit<
   MatchConfig,
-  'matchId' | 'seed' | 'generateEnemyTeam' | 'rewardMode' | 'matchReward'
+  'matchId' | 'seed' | 'generateEnemyTeam' | 'rewardMode' | 'matchReward' | 'scene'
 > & {
   matchId?: string;
   seed?: number;
@@ -147,6 +160,8 @@ export type MatchConfigInput = Omit<
   rewardMode?: MatchRewardMode;
   /** Valor do modo 'fixed'; recortado a 50–400 (padrão 100). */
   matchReward?: number;
+  /** Cenário da partida (padrão 'arcane' = terreno neutro, sem bônus). */
+  scene?: ArenaScene;
 };
 
 let matchCounter = 0;
@@ -165,5 +180,6 @@ export function buildMatchConfig(input: MatchConfigInput): MatchConfig {
     matchReward: Number.isFinite(input.matchReward)
       ? Math.min(MAX_MATCH_REWARD, Math.max(MIN_MATCH_REWARD, Math.round(input.matchReward ?? 0)))
       : DEFAULT_MATCH_REWARD,
+    scene: input.scene ?? 'arcane',
   };
 }

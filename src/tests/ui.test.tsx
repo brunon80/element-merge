@@ -209,7 +209,7 @@ describe('Regras reunidas nas configurações', () => {
     expect(panel.textContent).toContain('duas criaturas do mesmo nível'); // fusão
     expect(panel.textContent).toContain('a loja só funciona aí'); // preparação
     expect(panel.textContent).toContain('lixeira'); // venda
-    expect(panel.textContent).toContain('contra-escolhas cirúrgicas'); // dificuldades
+    expect(panel.textContent).toContain('contra-escolhas que leem o duelo'); // dificuldades
     expect(panel.textContent).toContain('+100'); // recompensa
   });
 });
@@ -599,6 +599,25 @@ describe('HUD e inspetor', () => {
     st.trackTap(140, 130);
     st.commitTap(140, 130);
     expect(useGameStore.getState().selectedId).toBeNull();
+  });
+
+  test('chip do cenário no HUD diz ONDE o bônus incide (♥/⚔ + tooltip por extenso)', () => {
+    renderAll();
+    act(() => useGameStore.getState().setScenario('ice'));
+    try {
+      const chip = screen.getByTestId('terrain-hint');
+      // o chip é o glifo do elemento + o percentual (os corações/espadas são SVG);
+      // a frase completa mora no title (tooltip desktop / acessibilidade)
+      expect(chip.textContent).toContain('+12%');
+      expect(chip.querySelector('.heart-glyph')).toBeInTheDocument();
+      expect(chip.querySelector('.swords-glyph')).toBeInTheDocument();
+      const tip = chip.getAttribute('title') ?? '';
+      expect(tip).toContain('Gélido');
+      expect(tip).toContain('água');
+      expect(tip).toContain('dano e vida');
+    } finally {
+      act(() => useGameStore.getState().setScenario('random'));
+    }
   });
 });
 

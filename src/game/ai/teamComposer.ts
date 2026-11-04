@@ -1,4 +1,4 @@
-import { TEAM_RULES, type TeamDifficultyParams } from '../../data/balance';
+import { TEAM_RULES, scaledStats, type TeamDifficultyParams } from '../../data/balance';
 import {
   PURE_SPECIES_IDS,
   TREE_SPECIES_IDS,
@@ -98,7 +98,45 @@ function offenseScore(species: SpeciesId, players: readonly UnitSpec[]): number 
   return sum / players.length;
 }
 
-/** Escolhe a melhor espécie dentro do pool (contra-escolha opcional). */
+/**
+ * Estimativa 1×1 HONESTA do duelo: em quantos segundos cada lado mataria o
+ * outro, lendo atributos escalados, resistências e habilidades sustentadas
+ * (queimadura acelera o dano; lentidão reduz o do alvo). Só a tabela de
+ * fraquezas NÃO basta: o Gólem toma +15% de dano de fogo mas mata o Ignis
+ * na troca (220/20 vs 130/14 no mesmo custo) — uma IA que lê só o gráfico
+ * escolhe "counter de fachada" e a calibração mostrou o difícil virando
+ * passeio contra times de Gólem e parede contra times de água.
+ * Vantagem > 0 = a candidata vence o duelo (folga em segundos).
+ */
+function duelAdvantage(ai: SpeciesId, aiLevel: MonsterLevel, target: UnitSpec): number {
+  const defA = getSpecies(ai);
+  const a = scaledStats(defA.base, Math.min(aiLevel, defA.levelMax) as MonsterLevel);
+  const defT = getSpecies(target.species);
+  const t = scaledStats(defT.base, Math.min(target.level, defT.levelMax) as MonsterLevel);
+  const burn = (def: { abilities: { kind: string }[] }) =>
+    def.abilities.some((ab) => ab.kind === 'burn') ? 1.15 : 1;
+  const slow = (def: { abilities: { kind: string }[] }) =>
+    def.abilities.some((ab) => ab.kind === 'slow') ? 0.75 : 1; // ≈65% de uptime ×40% de corte
+  const aOut =
+    (a.damage / a.interval) * burn(a) * slow(t) * damageMultiplier(t.resist, a.damageElement);
+  const tOut =
+    (t.damage / t.interval) * burn(t) * slow(a) * damageMultiplier(a.resist, t.damageElement);
+  const aiKillSec = t.hp / Math.max(aOut, 0.01);
+  const targetKillSec = a.hp / Math.max(tOut, 0.01);
+  return (targetKillSec - aiKillSec) / Math.max(aiKillSec, targetKillSec);
+}
+
+/** Vantagem média de duelo da candidata contra o time inteiro do jogador. */
+function duelScore(species: SpeciesId, level: MonsterLevel, players: readonly UnitSpec[]): number {
+  if (players.length === 0) return 0;
+  const def = getSpecies(species);
+  const lv = (def.levelMin === def.levelMax ? def.levelMin : level) as MonsterLevel;
+  let sum = 0;
+  for (const p of players) sum += duelAdvantage(species, lv, p);
+  return sum / players.length;
+}
+
+/** Escolhe a melhor espécie dentro do pool (contra-escolha probabilística). */
 function pickFromPool(
   pool: readonly SpeciesId[],
   players: readonly UnitSpec[],
@@ -106,18 +144,31 @@ function pickFromPool(
   difficulty: Difficulty,
   rand: () => number,
   countsSeen: Map<SpeciesId, number>,
+  levelHint: MonsterLevel,
 ): SpeciesId {
   if (pool.length === 0) return PURE_SPECIES_IDS[0];
-  if (!rules.counterPick) {
+  // A contra-escolha NÃO é determinística: uma fração (1 − counterChance) das
+  // peças sai aleatória do pool. É essa rolagem por semente que garante que
+  // nenhum modo seja impossível para um time fixo — sempre há sementes em que
+  // o exército inimigo se monta pior. O que muda com a dificuldade é a
+  // frequência da leitura certa, nunca o abismo.
+  if (!rules.counterPick || rand() > rules.counterChance) {
     return pool[Math.floor(rand() * pool.length)] ?? pool[0];
   }
   let best = pool[0];
   let bestScore = -Infinity;
   for (const s of pool) {
-    let score = 1.5 * offenseScore(s, players);
+    const def = getSpecies(s);
+    const lv = (
+      def.levelMin === def.levelMax ? def.levelMin : Math.min(levelHint, def.levelMax)
+    ) as MonsterLevel;
+    let score = 1.5 * duelScore(s, lv, players);
     const seen = countsSeen.get(s) ?? 0;
     // Puras ímpares na mesa permitem fusões verticais depois; árvore não empilha.
-    if (getSpecies(s).levelMin !== getSpecies(s).levelMax && seen % 2 === 1) score += 0.4;
+    if (def.levelMin !== def.levelMax && seen % 2 === 1) score += 0.4;
+    // sem estátua de uma espécie só: o espelho do time do jogador é counter
+    // legítimo, mas a IA diversifica para não virar padrão previsível.
+    if (seen > 0) score -= 0.12 * seen;
     score += (rand() - 0.5) * (difficulty === 'hard' ? 0.08 : 0.35);
     if (score > bestScore) {
       bestScore = score;
@@ -179,6 +230,19 @@ export function composeEnemyTeam(input: TeamPlanInput): TeamPlan {
     Math.round((rules.coeff * value) / SUMMON_COST) * SUMMON_COST,
   );
 
+  // TETO DE NÍVEL DAS PURAS: a IA nunca invoca puras ACIMA do maior nível do
+  // time do jogador. Valor de orçamento não é tier: uma Nv.4 "concentra" os
+  // 800 de valor em HP/dano ~10× maiores que 8 Nv.1 e o modo vira parede
+  // matemática — a calibração exige que nenhum modo seja impossível para um
+  // time fixo (mudam as frequências de derrota×vitória, não o abismo).
+  // A identidade do difícil segue intacta: orçamento maior, contra-escolha
+  // cirúrgica, posicionamento e acesso à árvore quando o valor paga.
+  const playerMax = input.playerUnits.reduce(
+    (m, u) => Math.max(m, Math.min(u.level, getSpecies(u.species).levelMax)),
+    0,
+  );
+  const pureCap = Math.min(rules.maxLevel, playerMax);
+
   const tiles: TileIndex[] = [...input.freeTiles];
   const units: PlannedUnit[] = [];
   const countsSeen = new Map<SpeciesId, number>();
@@ -207,9 +271,10 @@ export function composeEnemyTeam(input: TeamPlanInput): TeamPlan {
       }
     }
 
-    // 2) Puras com a distribuição de níveis da dificuldade.
+    // 2) Puras com a distribuição de níveis da dificuldade (respeitando o
+    //    teto relativo ao time do jogador — ver pureCap acima).
     for (const [lv, w] of LEVEL_WEIGHTS[input.difficulty]) {
-      if (lv > rules.maxLevel) continue;
+      if (lv > pureCap) continue;
       const level = lv as MonsterLevel;
       const cost = unitCoinCost(PURE_SPECIES_IDS[0], level);
       if (cost > remaining) continue;
@@ -219,9 +284,11 @@ export function composeEnemyTeam(input: TeamPlanInput): TeamPlan {
     }
 
     if (candidates.length === 0) {
-      // Piso: se ainda nenhum inimigo foi montado e há saldo, ao menos
-      // uma criatura Nv.1 (garante combate real mesmo com times pequenos).
-      if (units.length === 0 && remaining >= SUMMON_COST) {
+      // Piso: enquanto houver saldo para uma invocação, Nv.1 entram no pool —
+      // sem isso, contra times de nível baixo (teto = Nv.1) a dificuldade que
+      // só pesa níveis altos montaria UMA criatura e o "modo difícil" virava
+      // presentinho. O piso gasta o resto do orçamento de forma honesta.
+      if (remaining >= SUMMON_COST) {
         candidates.push({ species: PURE_SPECIES_IDS[0], level: 1, weight: 1 });
       } else {
         break;
@@ -249,7 +316,15 @@ export function composeEnemyTeam(input: TeamPlanInput): TeamPlan {
       const pool = chosenIsTree
         ? treeCandidates(rules, remaining)
         : [...PURE_SPECIES_IDS];
-      const swap = pickFromPool(pool, input.playerUnits, rules, input.difficulty, rand, countsSeen);
+      const swap = pickFromPool(
+        pool,
+        input.playerUnits,
+        rules,
+        input.difficulty,
+        rand,
+        countsSeen,
+        level,
+      );
       const swapDef = getSpecies(swap);
       const swapLevel = (
         swapDef.levelMin === swapDef.levelMax

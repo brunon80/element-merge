@@ -767,6 +767,125 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
 
 ---
 
+## 📲 PWA instalável (novidade de 04/nov/2026 — NÃO reverter)
+
+O jogo virou app instalável (desktop/Android via manifest+Service Worker; iOS
+via `apple-touch-icon` 180 + metas `apple-mobile-web-app-*`; instalar do
+Safari ≥ 16.4 com Compartilhar → Adicionar à Tela de Início). Peças e regras:
+
+- `public/manifest.webmanifest`: `start_url`/`scope` **relativos** (`"./"`) —
+  resolvem para `/element-merge/` no GitHub Pages; caminhos absolutos
+  quebrariam o subcaminho. `display: standalone`, tema/bg `#0a0e1a`, ícones
+  192/512 `any` + `maskable-512` (losango a 78% = safe-zone do mask).
+- `public/sw.js`: **escrito à mão** (sem Workbox nem `vite-plugin-pwa` — o
+  build gera hashes e o runtime cache resolve sozinho). Navegação é
+  network-first (deploy novo entra na hora) com fallback offline no shell
+  `./`; GETs same-origin são stale-while-revalidate (o jogo inteiro entra no
+  cache na primeira partida online e roda depois sem rede). Mexeu no SW →
+  **subir o `CACHE`** (`ebma-v1` → `ebma-v2`); o `activate` purga versões
+  antigas.
+- Registro no `src/main.tsx` com gate `!import.meta.env.DEV`: **SW NUNCA em
+  dev** — SW servindo módulos no dev server é a armadilha do transform
+  obsoleto que envenena silenciosamente as sondas `qa/` (lição de 03/nov).
+  Em produção o caminho vem de `import.meta.env.BASE_URL + 'sw.js'`.
+- Favicon/ícones: `favicon.svg` (donut de fusão: meio-fogo/meio-água, costura
+  dourada) + PNGs rasterizados do SVG (one-off com Playwright; script
+  descartado). `index.html`: `icon` SVG + `alternate icon` PNG + `manifest` +
+  `theme-color` + metas iOS. (O 404 de `/favicon.ico` no console das sondas
+  morreu junto.)
+- Verificado no Chrome real (chrome-devtools MCP) servindo `vite preview`:
+  SW `activated` controlando o escopo `/element-merge/`, manifest parseia
+  com os 3 ícones e **recarga OFFLINE carregou o menu do cache `ebma-v1`**
+  (7 entradas: shell, CSS+JS com hash, ícones, manifest). Em dev (5173) o
+  gate foi verificado: NENHUM SW registrado.
+
+---
+
+## 🌄 Bônus de cenário + trava anti-congelamento do UnitView (04/nov/2026 — NÃO reverter)
+
+**Bônus de terreno:** cada cenário favorece um elemento de linhagem
+(`src/data/terrainBonuses.ts`): vulcânico→fogo, floresta→terra, gélido→água,
+subaquático→água, fim-do-universo→ar, ilha arcana→nenhum. `TERRAIN_BONUS =
+0.12` é aplicado num ponto único — `GameEngine.createUnit` — então invocação,
+time persistido, exército da IA e filhos de fusão entram todos pela mesma
+porta. A marcação mora na unidade (`CombatUnit.terrainBoost`) e é espelhada no
+store (`UiUnit.terrainBoost`) para o Inspetor mostrar os números honestos. A
+troca de cenário no meio da partida é hot-swap (`setScenario` escreve
+`engine.world.scene`): vale para quem NASCER depois; quem já está em campo
+mantém o bônus que embutiu no nascimento. UI: chip de cenário (`terrain-hint`)
+é FILLED e mora FORA do painel do header — filho absoluto do `<header>`
+pendurado logo abaixo e alinhado à borda esquerda do painel (nunca dentro do
+flex do header: dentro ele disputava largura com moedas/botões e estourava o
+lado direito no iPad retrato — 768px, que ficava exatamente de fora do compacto
+≤760 — e no celular). Conteúdo: `⬡elemento +12% ♥/⚔` (glifos SVG
+`HeartIcon`/`SwordsIcon` CHEIOS e simétricos, todos herdando a tinta do chip —
+o override `.hud-terrain .el-glyph { color: inherit }` é essencial, senão o
+`.el-*` pinta o ícone com a MESMA cor do fill e ele some); fundo = cor do
+elemento, tinta escolhida por luminância (`inkOn` no HUD: branca em fogo/água,
+escura em terra/ar); a frase por extenso mora só no `title`. Header responsivo
+regra nova: `@media (max-width: 900px)` esconde `.hud-btn-text` (botões viram
+ícone — cobre o iPad retrato que antes quebrava); no compacto ≤760 escondem-se
+também `.hud-logo`, a pílula de dificuldade quando a partida está de pé
+(`.hud--live .hud-diff`) e o rótulo "Combate" do timer (`.hud-timer-label`,
+só o número fica), e o toast desceu para 100px para não cobrir o chip.
+**NÃO reverter:** o chip fora do header + o ≤900 de botões-ícone foram
+medidos no Chrome (390 emulação mobile, 768 retrato, 1024 paisagem, 1280):
+tudo dentro da borda e sem scroll horizontal. linha no Inspetor, badges no
+menu Cenário, anel colorido no chão + ícone ▲ no figurino
+(`terrainIconTexture`, cache por cor).
+
+**O congelamento (bug reportado pelo usuário):** `useFrame` do `UnitView`
+dereferencia todos os meshes com `useRef(null!)` — se QUALQUER mesh faltar
+num frame (commit parcial, módulo obsoleto de HMR, ou script externo tipo
+userscript pilotando o loop de frames com uma cópia velha do código — o
+stack trace do usuário mostrava `window.__frameLoop` do Tampermonkey
+"elemental-merge-save-editor" dirigindo os callbacks), o callback joga
+`TypeError: Cannot set properties of null (setting 'visible')` TODO frame e
+o r3f nunca chega no `gl.render()` — a tela congela com o console em chamas.
+**Fix:** um único guard no topo do `useFrame` aborta o frame daquela unidade
+se qualquer ref obrigatório estiver ausente (ver comentário "TRAVA
+anti-congelamento" em `src/scene/UnitView.tsx`). Verificado no Chrome real:
+4 ciclos partida↔menu com invocações, fusões em combate e status (burn/slow)
+rodando = zero erros no console, ~76fps.
+
+---
+
+## 🎚️ Calibração de dificuldade — estado e dívida aberta (04/nov/2026)
+
+Objetivo da linha: **nenhum modo pode ser impossível** — o MESMO time do
+jogador acaba vencendo em todas as dificuldades; o que muda é a FREQUÊNCIA de
+vitórias por modo.Harness novo: `src/tests/difficultyCalibration.test.ts`
+(SEEDS=16, guard `while (!eng.world.summary && guard++ < 5200) eng.update(1/30)`).
+
+**Medições que mandam (foram o chão das decisões, não intuição):**
+- Só ler o gráfico mente: o valor real da carta é `dps×hp` — golem ≈ 2096,
+  ignis ≈ 1547, nereia ≈ 1371, zephyr ≈ 900. O motor luta em formação estática
+  com gate de alcance, então o golem precisa de compensação de stats (hoje
+  185/18 nos dados; a varredura sugere ~200/18).
+- Orçamento de time é quantizado: `budget = round(coeff×valor/100)×100`. Com
+  coeff ≥ ~1.09 em valor 600 vira 700 → entra **+1 unidade** — para times
+  pequenos isso é um muro imbatível, não um ajuste.
+- `duelScore` (escolha ciente do duelo) e `counterChance` (variância por seed)
+  já implementados no composer.
+
+**Veredito da varredura v2 (n1.0/cc.65 + h1.08/cc.85, G185/200/210×dmg18):**
+difícil nunca fica 0 para naive (1–5w+e) nem espec (1w), MAS `misto4x3`,
+`board12x1` e `terra12x1` perdem TODAS em normal E difícil nas 4 combinações —
+a árvore da IA é eficiente demais em valor (base ≈1.3× vs puro) e esmaga boards
+grandes puros. Conclusão: os 3 pins de faixa NÃO verdeiam só assando
+coeficiente — precisa de decisão no modelo de valor do teamComposer (ou
+identidade de posicionamento) antes de assar `TEAM_RULES` em `balance.ts`.
+
+**Estado atual:** os 3 pins dependentes dessa decisão estão `test.skip` com
+comentário apontando para esta seção (normal-faixa, difícil-faixa, cenário
+fogo×pedra saturado 20×20). Candidatos de coeficientes: normal 1.0/0.65,
+difícil 1.08/0.85 (se fechar em 1.08, ajustar o pin de orçamento 500→400 no
+`ai.test` e o DIFF_DESC do SettingsMenu). O harness temporário de varredura
+(`zz-probe.test.ts`) foi apagado depois de registrar as tabelas aqui —
+recria-se da seção da tarefa quando necessário.
+
+---
+
 ## 🏟️ Arena, encaixe e regras de partida (reescrito em 02/nov/2026 — NÃO reverter)
 
 Seis regras novas, todas com pino de teste (unitário ou sonda). Elas nasceram de

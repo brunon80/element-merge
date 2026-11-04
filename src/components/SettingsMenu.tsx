@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { testSfx } from '../audio/sfx';
+import { ELEMENTS } from '../data/elements';
+import { TERRAIN_BONUS, TERRAIN_ELEMENT } from '../data/terrainBonuses';
 import type { Difficulty, ScenarioChoice } from '../game/types';
 import { useGameStore } from '../store/gameStore';
 import { CoinIcon } from './icons';
@@ -7,8 +9,9 @@ import { DIFFICULTY_LABEL } from './labels';
 
 const DIFF_DESC: Record<Difficulty, string> = {
   easy: 'Inimigo com ~60% do valor do seu time: só criaturas puras Nv.1–2, sem árvore elemental, sem contra-escolha.',
-  normal: 'Inimigo com o mesmo valor do seu time: puras até Nv.3 e criaturas da árvore elemental até Nv.6–7.',
-  hard: 'Inimigo com ~140% do valor do seu time: puras até Nv.4, árvore elemental até o Nv.10 e contra-escolhas cirúrgicas.',
+  normal:
+    'Inimigo com ~105% do valor do seu time: puras até Nv.3 e criaturas da árvore elemental até Nv.6–7.',
+  hard: 'Inimigo com ~115% do valor do seu time: puras até Nv.4 (nunca acima do nível mais alto do seu time), árvore elemental até o Nv.10 e contra-escolhas que leem o duelo.',
 };
 
 const SCENARIOS: { id: ScenarioChoice; label: string }[] = [
@@ -136,32 +139,49 @@ export function SettingsMenu() {
                 <h3>Cenário</h3>
                 <p className="hint">
                   Escolha o ambiente da arena. A seleção é aplicada imediatamente.
-                  Aleatório sorteia novamente a cada nova partida.
+                  Aleatório sorteia novamente a cada nova partida. Cada cenário
+                  (menos a Ilha arcana) dá +{Math.round(TERRAIN_BONUS * 100)}% de dano e vida às
+                  criaturas com o elemento favorecido NA LINHAGEM — o Primordial, que carrega os
+                  quatro, recebe o bônus em todos.
                 </p>
                 <div
                   className="scenario-list"
                   role="radiogroup"
                   aria-label="Cenário da arena"
                 >
-                  {SCENARIOS.map((option) => (
-                    <button
-                      key={option.id}
-                      role="radio"
-                      aria-checked={scenario === option.id}
-                      data-testid={`scenario-${option.id}`}
-                      className={`scenario-option ${scenario === option.id ? 'active' : ''}`}
-                      onClick={() => setScenario(option.id)}
-                    >
-                      <span
-                        className={`scenario-preview scenario-preview-${option.id}`}
-                        aria-hidden="true"
+                  {SCENARIOS.map((option) => {
+                    const bonusEl = option.id === 'random' ? null : TERRAIN_ELEMENT[option.id];
+                    return (
+                      <button
+                        key={option.id}
+                        role="radio"
+                        aria-checked={scenario === option.id}
+                        data-testid={`scenario-${option.id}`}
+                        className={`scenario-option ${scenario === option.id ? 'active' : ''}`}
+                        onClick={() => setScenario(option.id)}
                       >
-                        <span className="scenario-preview-court" />
-                      </span>
-                      <span className="scenario-option-name">{option.label}</span>
-                      <span className="scenario-option-indicator" aria-hidden="true" />
-                    </button>
-                  ))}
+                        <span
+                          className={`scenario-preview scenario-preview-${option.id}`}
+                          aria-hidden="true"
+                        >
+                          <span className="scenario-preview-court" />
+                        </span>
+                        <span className="scenario-option-name">
+                          {option.label}
+                          {bonusEl && (
+                            <em
+                              className="scenario-option-bonus"
+                              data-testid={`scenario-bonus-${option.id}`}
+                              style={{ color: ELEMENTS[bonusEl].color }}
+                            >
+                              +{Math.round(TERRAIN_BONUS * 100)}% {ELEMENTS[bonusEl].name}
+                            </em>
+                          )}
+                        </span>
+                        <span className="scenario-option-indicator" aria-hidden="true" />
+                      </button>
+                    );
+                  })}
                 </div>
               </section>
             )}
