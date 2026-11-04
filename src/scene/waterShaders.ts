@@ -103,7 +103,9 @@ ${NOISE_GLSL}
 void main() {
   vec3 n = normalize(vNrm);
   vec3 vd = normalize(vView);
-  float ndv = max(0.0, dot(n, vd));
+  // clamp nos DOIS lados: dot de vetor normalizado pode passar de 1.0 em
+  // ULPs — pow de base negativa é INDEFINIDO e no WebKit/Metal desenha preto
+  float ndv = clamp(dot(n, vd), 0.0, 1.0);
 
   // corpo SEMPRE azul: gradiente vertical (base escura, topo mais claro)
   // com correntes de leve — a cor é ALBEDO OPACO, igual ao rig de pedra

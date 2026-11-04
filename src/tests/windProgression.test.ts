@@ -4,6 +4,12 @@ import { formName, formTop, hasForms } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { SPECIES_RIGS } from '../scene/speciesRigs';
 import { autoGrow, makeEngine, mustSummon, partsEnvelope } from './helpers';
+// o TEXTO cru do shader do vento e do rig (vite `?raw`): é assim que o pin
+// garante a regra anti-NaN do WebKit sem rodar WebGL (jsdom) — ver a lição 4
+// de "Compatibilidade iOS/WebKit" no HANDOFF e o pino homólogo em
+// primordialProgression.test.ts
+import WindShaderSource from '../scene/windShaders.ts?raw';
+import WindRigSource from '../scene/WindRig.tsx?raw';
 
 /**
  * Progressão visual do vento (fusões do mesmo elemento): cada fusão muda a
@@ -142,5 +148,28 @@ describe('Projétil acompanha o nível do vendaval', () => {
     expect(small!.level).toBe(1);
     // o tornado cospe do alto da coluna (~1,2 acima do sopro)
     expect(shot!.y - small!.y).toBeGreaterThan(1);
+  });
+});
+
+describe('lesson WebKit: o material do vento tem sinal garantido antes do pow e discard anti-NaN', () => {
+  // report do usuário (iOS): os anéis/lâminas ("espinhos") do zéfiro desenhavam
+  // PRETO no WebKit. Causa: em face normal, abs(dot(normalized)) passa de 1.0
+  // em ULPs → pow(1.0 - abs, 1.5) com base negativa é INDEFINIDO (= NaN no
+  // Metal do WebKit e no ANGLE/D3D11), e o discard "ao natural" deixa o NaN
+  // escrever. Regras do HANDOFF (lição 4): clamp antes do pow; discard invertido.
+  test('o fresnel do WIND_FRAG CLAMPA o dot — nenhuma base de pow pode ser negativa', () => {
+    expect(WindShaderSource).toMatch(/clamp\(dot\(normalize\(vNrm\), vd\), -1\.0, 1\.0\)/);
+    expect(WindShaderSource).not.toMatch(/pow\(1\.0 - abs\(dot\(/);
+    expect(WindShaderSource).not.toMatch(/pow\(1\.0 - max\(0\.0, dot\(/);
+  });
+
+  test('o discard do vento é invertido (NaN escapa de `a <= c`; !(a > c) captura)', () => {
+    expect(WindShaderSource).toMatch(/if \(!\(a > 0\.002\)\) discard;/);
+    expect(WindShaderSource).not.toMatch(/if \(a <= [0-9.]+\) discard/);
+  });
+
+  test('os estilhaços (aditivos — o caso que fura pro buffer float) também descartam NaN', () => {
+    expect(WindRigSource).toMatch(/if \(!\(m > 0\.001 && vA > 0\.001\)\) discard;/);
+    expect(WindRigSource).not.toMatch(/if \(m <= 0\.001 \|\| vA <= 0\.001\) discard/);
   });
 });

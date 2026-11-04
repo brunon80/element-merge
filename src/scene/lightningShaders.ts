@@ -98,7 +98,7 @@ void main() {
   // cavidade do núcleo: limiar móvel do ruído abre um buraco irregular no
   // peito; o plasma dourado (renderizado aditivo, por dentro) aparece aqui
   float cav = fbm(vLocal * 2.4 + vec3(0.0, uTime * 0.35, 0.0));
-  if (cav > uCoreCut) discard;
+  if (!(cav <= uCoreCut)) discard; // anti-NaN: NaN não passa em nenhuma comparação
   float holeGlow = smoothstep(uCoreCut - 0.10, uCoreCut - 0.01, cav) * 1.0;
   // casca: duas tonalidades + faíscas minerais
   float mottle = fbm(vLocal * 2.2);
@@ -128,7 +128,7 @@ void main() {
 
   // aro na cor da equipe + aro dourado elétrico por cima; o aro FRIO azul é a
   // assinatura da corrente (o azul elétrico da referência, o ouro como acento)
-  float rim = pow(1.0 - max(0.0, dot(n, vd)), 2.2);
+  float rim = pow(1.0 - clamp(dot(n, vd), 0.0, 1.0), 2.2); // clamp p/ pow (ULP>1 → NaN no WebKit)
   col += uTeamColor * rim * 0.26;
   col += uCore * rim * (0.06 + uCharge * 0.2);
   col += uCool * rim * (0.12 + uCharge * 0.4);
@@ -243,7 +243,7 @@ void main() {
   float coolMix = uCoolAmt * (0.55 + 0.45 * core);
   col = mix(col, mix(uCool, uWhite, core * 0.8), coolMix);
   float a = (0.12 + 0.55 * dash) * uAlpha * (1.0 + uCharge * 0.4);
-  if (a <= 0.01) discard;
+  if (!(a > 0.01)) discard; // anti-NaN (regra do jato do Primordial: nunca 'a <= x')
   gl_FragColor = vec4(col * (1.0 + uCharge * 0.25), min(1.0, a));
 }
 `;
@@ -326,7 +326,7 @@ void main() {
   float boil = fbm(vLocal * 5.0 + vec3(uTime * 2.2));
   float pulse = 0.82 + 0.12 * sin(uTime * 9.0 + uSeed);
   vec3 vd = normalize(vView);
-  float fres = pow(1.0 - abs(dot(normalize(vNrm), vd)), 1.5);
+  float fres = pow(1.0 - abs(clamp(dot(normalize(vNrm), vd), -1.0, 1.0)), 1.5); // clamp p/ pow (ULP>1 → NaN no WebKit)
   vec3 col = mix(uGold, uWhite, clamp(boil * 0.62 - 0.28, 0.0, 0.38));
   // núcleo quente e legível, com apenas um contorno azul elétrico discreto
   col = col * pulse + uCool * fres * 0.16;

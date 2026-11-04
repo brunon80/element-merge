@@ -114,7 +114,7 @@ void main() {
   col += uKeyColor * pow(max(0.0, dot(n, hv)), 24.0) * 0.1;
 
   // aro na cor da equipe (as luzes pontuais da arena)
-  float rim = pow(1.0 - max(0.0, dot(n, vd)), 2.2);
+  float rim = pow(1.0 - clamp(dot(n, vd), 0.0, 1.0), 2.2); // clamp p/ pow (ULP>1 → NaN no WebKit)
   col += uTeamColor * rim * 0.28;
 
   col = mix(vec3(1.0), col, 1.0 - uHurt * 0.5);

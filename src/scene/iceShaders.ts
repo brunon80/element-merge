@@ -133,7 +133,7 @@ void main() {
   float vein = abs(vw * 2.0 - 1.0);
   float w = uCrackWidth;
   float seg = smoothstep(0.32, 0.66, fbm(vLocal * 6.5 * uCrackScale + 11.3));
-  float crack = pow(1.0 - smoothstep(0.0, w, vein), 1.6) * seg;
+  float crack = pow(clamp(1.0 - smoothstep(0.0, w, vein), 0.0, 1.0), 1.6) * seg; // clamp p/ pow (regra HANDOFF #4)
   float pulse = 0.55 + 0.2 * sin(uTime * 1.2 + uSeed) + uCharge * 1.6;
   col += uCrackCol * crack * uCrackGlow * pulse;
 
@@ -165,7 +165,7 @@ void main() {
   // 3.0 devolve vec4 — sem o .rgb o driver barra "vec4 → vec3")
   vec3 envReal = textureCube(uEnv, refl).rgb;
   vec3 env = mix(iceEnv, envReal, uEnvMix);
-  float fres = pow(1.0 - max(0.0, dot(n, vd)), 3.0); // rasante espelha quase tudo
+  float fres = pow(1.0 - clamp(dot(n, vd), 0.0, 1.0), 3.0); // rasante espelha quase tudo (clamp: ULP>1 → NaN no WebKit)
   col = mix(col, env, fres * 0.62);
   // aro reflexivo na frente (o fresnel do tutorial com a nossa leitura)
   col += uTeamColor * fres * 0.20;

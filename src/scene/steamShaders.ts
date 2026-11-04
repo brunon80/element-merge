@@ -113,14 +113,14 @@ void main() {
   // dispersão na casca (o limbo da nuvem acende de leve, SEM virar aro de
   // aquário). SEM tint da equipe: vapor escaldante é branco-pêssego sempre
   // (a lição do halo de geada — de raspão o fresnel puxava pra cor do time)
-  float fres = pow(1.0 - max(0.0, dot(n, vd)), 2.2);
+  float fres = pow(1.0 - clamp(dot(n, vd), 0.0, 1.0), 2.2); // clamp p/ pow (ULP>1 → NaN no WebKit)
   col += uSkyColor * fres * 0.3;
 
   // ALFA ao contrário do objeto sólido: nuvem é densa de frente e FIAPA no
   // limbo — a silhueta se desfaz (com alfa alta no rasante vira bola de vidro)
   float a = uAlpha * den * (1.06 - 0.5 * fres) * (1.0 + uCharge * 0.25);
   a = clamp(a, 0.0, 0.94);
-  if (a < 0.03) discard;
+  if (!(a >= 0.03)) discard; // anti-NaN (nunca 'a < x': NaN passaria e desenharia preto)
 
   col = mix(vec3(1.0), col, 1.0 - uHurt * 0.4);
   gl_FragColor = vec4(col, a);

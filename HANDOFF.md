@@ -763,7 +763,27 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
    LATENTES (sem NaN medido; o cinto só roda com o quasar vivo): `waterShaders.ts`
    (ndv cru em `pow(1.0 - ndv, …)`), `flameShaders.ts:93`, `windShaders.ts:108`,
    `lightningShaders.ts:329`, `iceShaders.ts:136` — ao mexer nesses rigs, clampar
-   antes do pow é a regra.
+   antes do pow é a regra. (**04/nov: todos clampeados**, ver lição 5 abaixo.)
+5. **Zéfiro: anéis e lâminas pretos no iPhone (04/nov — NÃO reverter).** Print do
+   usuário no iOS: os anéis (toros) e as lâminas cônicas ("espinhos") do zéfiro
+   desenhavam PRETO. O site é exatamente um dos LATENTES acima — `windShaders.ts`
+   com `pow(1.0 - abs(dot(normalized…)), 1.5)`: em face de frente o `abs(dot)`
+   estoura 1.0 em ULPs → base negativa → NaN no Metal → o discard ao natural é
+   FALSO pra NaN → texel podre escreve → bloom amplifica → preto. Sanado em
+   FAMÍLIA (11 bases de pow clampeadas: wind, water, flame, lightning×2, ice×2,
+   stone, sand, wood, steam; 5 discards invertidos: wind, lightning×2, steam e
+   o dos estilhaços em `WindRig.tsx`). Pinos estáticos novos em
+   `windProgression.test.ts` (`?raw`, padrão dos do primordial).
+   **Medição nova que muda o QA:** `probe-powsemantics.mjs` prova que o WebKit E
+   o Chromium do Windows (ANGLE/SwiftShader) CLAMPAM `pow(base<0, fracionário)`
+   para 0.0 — `step(c,c)=1`, o discard ao natural nem dispara. O NaN preto é
+   EXCLUSIVO do Metal do iPhone; nenhum gate daqui (console 0, print headless,
+   injeção de eps com `probe-windnan.mjs` via `__QT` — a malha continua
+   colorida) consegue reproduzir ou confirmar esta classe de defeito. A defesa
+   local é o pino ESTÁTICO; a confirmação visual vem do aparelho do usuário.
+   **Regra de casa nova: backtick NUNCA dentro de comentário de template literal
+   GLSL** — ele fecha a string JS e o build quebra (`esbuild: Expected ";"`);
+   ao escrever lições no texto desses shaders, use aspas simples.
 
 ---
 

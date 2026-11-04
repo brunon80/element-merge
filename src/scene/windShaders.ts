@@ -105,7 +105,12 @@ varying vec3 vView;
 ${NOISE_GLSL}
 void main() {
   vec3 vd = normalize(vView);
-  float rim = pow(1.0 - abs(dot(normalize(vNrm), vd)), 1.5);
+  // clamp ANTES do pow: em face normal, abs(dot) pode passar de 1.0 em ULPs e
+  // pow de base negativa é INDEFINIDO em GLSL — no WebKit/Metal sai NaN e o
+  // objeto desenha PRETO (report do usuário: anéis/lâminas do zéfiro pretos no
+  // iOS). A regra do HANDOFF #4: clampar antes do pow.
+  float ndv = clamp(dot(normalize(vNrm), vd), -1.0, 1.0);
+  float rim = pow(1.0 - abs(ndv), 1.5);
 
   // fitas de vento: faixas que sobem pela superfície (varrem com o tempo).
   // um único passo de ruído + uma faixa senoidal viajante — barato o bastante
@@ -136,7 +141,9 @@ void main() {
   a *= mix(1.0, smoothstep(0.0, 0.1, vU), uSoft);
   a *= gl_FrontFacing ? 1.0 : 0.45;
   a *= uAlphaMul * uAlpha;
-  if (a <= 0.002) discard;
+  // discard ANTI-NaN (nunca 'a <= x' — NaN passa em toda comparação '<=' e o
+  // texel podre escreve preto; ver a lição do jato do Primordial no HANDOFF)
+  if (!(a > 0.002)) discard;
   gl_FragColor = vec4(col, a);
 }
 `;

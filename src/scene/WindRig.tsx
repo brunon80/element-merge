@@ -527,7 +527,7 @@ varying vec3 vC;
 void main() {
   vec2 d = gl_PointCoord - 0.5;
   float m = smoothstep(0.5, 0.1, length(d));
-  if (m <= 0.001 || vA <= 0.001) discard;
+  if (!(m > 0.001 && vA > 0.001)) discard; // anti-NaN: aditivo + NaN = mancha preta via bloom
   gl_FragColor = vec4(vC, m * vA * 0.8);
 }
 `;

@@ -115,7 +115,7 @@ void main() {
   float ndl = max(0.0, dot(n, uKeyDir));
   col *= (amb * 1.15 + uKeyColor * (0.35 + 0.65 * ndl));
   // rim seco de vento (leve, sem virar aro)
-  float fres = pow(1.0 - max(0.0, dot(n, vd)), 2.4);
+  float fres = pow(1.0 - clamp(dot(n, vd), 0.0, 1.0), 2.4); // clamp p/ pow (ULP>1 → NaN no WebKit)
   col += uSkyColor * fres * 0.22;
 
   col = mix(vec3(1.0), col, 1.0 - uHurt * 0.45);

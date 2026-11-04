@@ -90,7 +90,9 @@ varying vec3 vNrm;
 varying vec3 vView;
 void main() {
   vec3 vd = normalize(vView);
-  float rim = pow(1.0 - abs(dot(normalize(vNrm), vd)), 1.6);
+  // clamp antes do pow (regra HANDOFF #4: base de pow nunca negativa — WebKit
+  // produz NaN e desenha preto; ULPs de dot normalizado estouram 1.0)
+  float rim = pow(1.0 - abs(clamp(dot(normalize(vNrm), vd), -1.0, 1.0)), 1.6);
   // calor: base incandescente, topo esfriando; ruído mancha o gradiente
   float heat = clamp(1.18 - vH * 1.15 + (vN1 - 0.5) * 0.5, 0.0, 1.0);
   vec3 col = mix(uMid, uHot, smoothstep(0.6, 0.98, heat));
