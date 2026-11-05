@@ -61,7 +61,7 @@ export function App() {
       <GLBoundary>
         <Canvas
           shadows
-          dpr={ecoActive ? [1, 1.25] : [1, 2]}
+          dpr={ecoActive ? (inGame ? [1, 1.25] : [1, 1]) : [1, 2]}
           frameloop={ecoActive ? 'demand' : 'always'}
           camera={{ position: CAMERA_POS, fov: 42 }}
           onPointerMissed={() => selectUnit(null)}

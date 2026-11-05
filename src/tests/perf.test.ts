@@ -62,11 +62,20 @@ describe('detecção do aparelho (função pura, sem navegador)', () => {
 
 describe('App: a economia entra pelo Canvas', () => {
   test('dpr, frameloop e batimento de 30 Hz; o DOM declara o eco', () => {
-    expect(AppSource).toContain('dpr={ecoActive ? [1, 1.25] : [1, 2]}');
+    // dpr econômico split: MENU [1,1] (a ilha estática some atrás do overlay
+    // quase-opaco do menu — é onde o celular fica olhando parado), COMBATE
+    // [1,1.25] (o jogo jogado ainda tem nitidez). Cheio [1,2] como sempre.
+    expect(AppSource).toContain('dpr={ecoActive ? (inGame ? [1, 1.25] : [1, 1]) : [1, 2]}');
     expect(AppSource).toContain("frameloop={ecoActive ? 'demand' : 'always'}");
     expect(AppSource).toContain('<EcoHeartbeat hz={30} />');
     expect(AppSource).toContain("data-eco={ecoActive ? 'on' : 'off'}");
     expect(EcoHeartbeatSource).toContain('window.setInterval(() => invalidate(), 1000 / hz)');
+    // 🔋 no ECONÔMICO o canvas é demand + setInterval: ao contrário do cheio (rAF
+    // congela sozinho no background), ele seguiria acordando a GPU/CPU com a aba
+    // escondida. Os dois loops de tempo param em visibilitychange.
+    expect(EcoHeartbeatSource).toContain("document.addEventListener('visibilitychange'");
+    expect(EcoHeartbeatSource).toContain('document.hidden');
+    expect(DriverSource).toContain("document.addEventListener('visibilitychange'");
     // Duas rotas de escape do teto de 30 Hz, ambas fechadas (sonda mediu
     // 62 → 53,5 fps antes, 28 fps depois): o showcase auto-rotate do menu
     // (cada giro dispara 'change' → invalidate) e a cauda da INÉRCIA — a

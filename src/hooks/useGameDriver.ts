@@ -31,8 +31,32 @@ export function useGameDriver(): void {
     };
 
     if (ecoActive) {
-      const id = window.setInterval(() => step(performance.now()), 1000 / 30);
-      return () => window.clearInterval(id);
+      // 🔋 em segundo plano o passo do motor PARA, igual ao modo cheio (cujo rAF
+      // congela sozinho no background). No econômico o passo é setInterval e
+      // seguiria rodando a 30 Hz (ou espremido a ~1/s pelo navegador) enquanto a
+      // aba está escondida — acordando a CPU à toa. Ao voltar, `last` é zerado
+      // para o passo não emendar o tempo parado num dt gigante (o teto de 0,05 s
+      // já protege, mas isso mantém a cadência limpa).
+      let id = 0;
+      const start = () => {
+        if (!id) {
+          last = performance.now();
+          id = window.setInterval(() => step(performance.now()), 1000 / 30);
+        }
+      };
+      const stop = () => {
+        if (id) {
+          window.clearInterval(id);
+          id = 0;
+        }
+      };
+      const onVisibility = () => (document.hidden ? stop() : start());
+      if (!document.hidden) start();
+      document.addEventListener('visibilitychange', onVisibility);
+      return () => {
+        stop();
+        document.removeEventListener('visibilitychange', onVisibility);
+      };
     }
 
     let raf = 0;

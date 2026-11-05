@@ -939,6 +939,57 @@ AUTO, com override manual em Configurações → Gráficos.
   do turbo agora monta um time de 3 ignis (um ignis sozinho morria antes do fim
   do ciclo e derrubava o clip do FAB; a ordem spawn→descoberta→spawn foi
   consertada com o overlay fechado entre spawns).
+- **🔋 Rodada de 05/nov (2) — "melhorar ainda mais" (a cobrança do usuário:
+  "investigue se é possível melhorar ainda mais a otimização").** O diagnóstico
+  achou dois freios ainda vivos no eco (o modo cheio continua byte-idêntico):
+  1. **Pausa em segundo plano (`visibilitychange`)** — no modo CHEIO o motor já
+     congela sozinho em background (o rAF do navegador para), mas no ECONÔMICO o
+     canvas é `frameloop="demand"` + `setInterval` (o batimento do `EcoHeartbeat`
+     e o passo do `useGameDriver`), que seguem acordando CPU/GPU com a aba/app
+     ESCONDIDA — um dreno real quando o usuário troca de app sem fechar o jogo.
+     Os dois loops agora param em `document.hidden` e retomam ao voltar (no
+     driver, `last` é zerado para o passo não emendar o tempo parado num dt — o
+     teto de 0,05 s já protege, mas isso mantém a cadência limpa). Zero mudança
+     visual/enquanto visível.
+  2. **dpr do MENU econômico cai a `[1,1]`** (era `[1,1.25]`); o COMBATE eco
+     continua `[1,1.25]`. No menu o palco é ESTÁTICO (o auto-rotate do showcase
+     já dorme no eco) e a canvas fica atrás do overlay quase-opaco do menu
+     (`--panel` 0,82, `elementFromPoint` entrega `.menu-card` em todo canto) — é
+     exatamente onde o celular fica parado olhando. A ~39% de pixels a menos não
+     se vê ali. Fiação em `App.tsx`: `dpr={ecoActive ? (inGame ? [1,1.25] :
+     [1,1]) : [1,2]}`.
+  - **Verificação:** novos pinos em `perf.test.ts` (a expressão split do dpr +
+     `visibilitychange`/`document.hidden` no heartbeat e no driver) e
+     `qa/probe-eco.mjs` atualizado: `ecoMenu` espera dpr `clamp(winDpr,1,1)`,
+     `combateNoEco` espera dpr `clamp(winDpr,1,1.25)`. Run ao vivo:
+     **tudoVerde:true, CONSOLE 0** (cheio menu 495 fps headless → eco menu
+     27,5, sombra do menu eco `autoUpdate:false`, combate eco `autoUpdate:true`,
+     razão cheio→eco ok, órbita cap 28 fps, UA iPhone acende eco). ⚠️ **o split de
+     dpr NÃO é medível em headless**: lá `window.devicePixelRatio` é 1 (o
+     `deviceScaleFactor` do Playwright não vira `devicePixelRatio`), então
+     `clamp(1,1,1.25)=clamp(1,1,1)=1` — menu e combate dão o MESMO 1. O split só
+     pega num aparelho real (winDpr 2–3): menu 1,0 × combate 1,25. Confirmado
+     estaticamente (pino da expressão + clamp padrão do r3f no mesmo prop `dpr`
+     que já casa `[1,1.25]`/`[1,2]`); reconfirmar na mão no iPhone.
+  - **Alavancas AVALIADAS e REJEITADAS (por que não fiz):** sombra 512² no eco →
+     serrilhado visível na ilha; `BasicShadowMap` (sem PCF) → dureza feia no
+     vidro; desacoplar a cadência da sombra da do render (sombra a 15 Hz × frame
+     a 30 Hz) → sombra atrasa a criatura que anda; baixar o batimento do menu
+     para ~12–20 Hz → o headless dá ~fps da própria Hz e a sonda (janela 20–36)
+     fica instável + a anim ambiente da ilha (motes/cristais) fica em saltos;
+     cortar draw calls dos rigs → risco alto ao figurino autoral, custo/benefício
+     ruim sem profiler real no aparelho. O ganho real que sobra para a próxima
+     rodada é **orçamento adaptativo por fps** (dpr/dinâmico quando o quadro
+     estoura) — exige um profiler no iPhone, não da headless.
+  - 🪤 **NOTA DE AMBIENTE (não é regressão):** em `vitest run` LOCAL com **Node
+     26** aparecem ~74 falhas em 7 arquivos de UI/persistência, todas
+     `localStorage` → `Cannot read properties of undefined (reading 'clear')`.
+     Causa: o Node 26 traz um `localStorage` global nativo que exige
+     `--localstorage-file` (o warning "localStorage is not available because
+     --localstorage-file was not provided" aparece) e o jsdom recusa `localStorage`
+     em origem opaca. Em CI (Node 20/22) e com `--localstorage-file` passa. As
+     suítes relevantes para esta tarefa estão verdes isoladas: `perf` 21, `fog`
+     5, `turbo` 11. Não é do código de otimização.
 - **Pipeline dev (GitHub Pages) — a versão ingênua FALHOU e foi corrigida:** a
   primeira leitura achou que o `deploy-pages` transformava push de branch em
   "deploy de preview" com URL própria. **Não existe**: o parâmetro `preview` da

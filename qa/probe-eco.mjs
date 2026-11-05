@@ -252,10 +252,17 @@ const okCheio =
 const okEcoMenu =
   eco.menu.fps >= 20 &&
   eco.menu.fps <= 36 &&
-  eco.menu.dpr === clampDpr(eco.menu.winDpr, 1, 1.25) &&
+  eco.menu.dpr === clampDpr(eco.menu.winDpr, 1, 1) &&
   eco.menu.autoUpdate === false;
 const okEcoMenorQueCheio = eco.menu.fps < cheio.menu0.fps * 0.85;
-const okCombateEco = eco.combate.fps >= 20 && eco.combate.fps <= 36 && eco.shadowCombate.autoUpdate === true;
+const okCombateEco =
+  eco.combate.fps >= 20 &&
+  eco.combate.fps <= 36 &&
+  // 🔋 o dpr econômico é SPLIT: menu [1,1] (atrás do overlay), combate [1,1.25]
+  // (o jogo jogado mantém nitidez). No headless winDpr=1, então ambos saem 1 —
+  // é num aparelho real (winDpr 2) que o teto 1,25 do combate aparece.
+  eco.combate.dpr === clampDpr(eco.combate.winDpr, 1, 1.25) &&
+  eco.shadowCombate.autoUpdate === true;
 const okVoltaCheia = cheio.combate.fps >= eco.combate.fps * 1.4;
 const okToggleUi = ecoHintCheio === 0 && ecoHintEco === 1;
 const okUA = uaEco.dataEco === 'on';
