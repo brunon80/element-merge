@@ -40,14 +40,27 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build main (raiz do site)
-        run: npm run build -- --outDir dist-main
+        run: |
+          set -o pipefail
+          npm run build -- --outDir dist-main 2>&1 | tee /tmp/build-main.log | tail -25
         env:
           VITE_BASE: /element-merge/
       - uses: actions/checkout@v4
         with:
           ref: dev
+          # ARMADILHA (custou 4 deploys quebrados em silêncio): com o padrão
+          # clean: true, o segundo checkout roda `git clean -ffdx` — o -x
+          # APAGA os ignorados: node_modules/ (instalado no npm ci) E o
+          # dist-main/ recém-construído somem; o build da dev então morre em
+          # "sh: 1: tsc: not found" (exit 1 sem erro de código — por isso o
+          # log era inútil). Aqui a limpeza é DESLIGADA: o checkout só troca
+          # os arquivos rastreados para o ref dev; node_modules e dist-main
+          # sobrevivem de propósito.
+          clean: false
       - name: Build dev (preview em /dev/)
-        run: npm run build -- --outDir dist-dev
+        run: |
+          set -o pipefail
+          npm run build -- --outDir dist-dev 2>&1 | tee /tmp/build-dev.log | tail -25
         env:
           VITE_BASE: /element-merge/dev/
       - name: Montar o site (main na raiz, dev em /dev/)
@@ -55,6 +68,18 @@ jobs:
           mkdir -p dist/dev
           cp -r dist-main/. dist/
           cp -r dist-dev/. dist/dev/
+      - name: 🔬 Logs no sumário da execução (só quando falha)
+        if: failure()
+        run: |
+          {
+            echo '<details><summary>🔬 build logs</summary><pre>'
+            echo "run $GITHUB_RUN_ID — node $(node --version), npm $(npm --version)"
+            echo '--- build-main.log ---'
+            tail -60 /tmp/build-main.log 2>/dev/null || echo '(main: não rodou)'
+            echo '--- build-dev.log ---'
+            tail -60 /tmp/build-dev.log 2>/dev/null || echo '(dev: não rodou)'
+            echo '</pre></details>'
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
