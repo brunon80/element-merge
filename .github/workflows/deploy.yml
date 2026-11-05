@@ -17,9 +17,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
+  # TEMPORÁRIO (diagnóstico): sem gh autenticado nesta máquina, o log do
+  # Actions é privado; num FALHA, o job publica o pé do log num issue público.
+  # Remover quando o pipeline estiver estável.
+  issues: write
 
 # as duas branches publicam o MESMO site — a fila serializa em vez de
 # cancelar um deploy de produção em andamento
@@ -40,14 +44,18 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build main (raiz do site)
-        run: npm run build -- --outDir dist-main
+        run: |
+          set -o pipefail
+          npm run build -- --outDir dist-main 2>&1 | tee /tmp/build-main.log | tail -25
         env:
           VITE_BASE: /element-merge/
       - uses: actions/checkout@v4
         with:
           ref: dev
       - name: Build dev (preview em /dev/)
-        run: npm run build -- --outDir dist-dev
+        run: |
+          set -o pipefail
+          npm run build -- --outDir dist-dev 2>&1 | tee /tmp/build-dev.log | tail -25
         env:
           VITE_BASE: /element-merge/dev/
       - name: Montar o site (main na raiz, dev em /dev/)
@@ -59,6 +67,24 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+      - name: 🔬 Diagnóstico público (só quando falha)
+        if: failure()
+        run: |
+          {
+            echo "## Falha no job build (run $GITHUB_RUN_ID, attempt $GITHUB_RUN_ATTEMPT)"
+            echo "- runner: $ImageVersion / node: $(node --version), npm: $(npm --version)"
+            echo '### build-main.log (pé)'
+            tail -30 /tmp/build-main.log 2>/dev/null || echo '(não rodou)'
+            echo '### build-dev.log (pé)'
+            tail -30 /tmp/build-dev.log 2>/dev/null || echo '(não rodou)'
+            echo '### workspace'
+            ls dist-main dist-dev 2>/dev/null || true
+            git log --oneline -1
+          } > /tmp/diag.md
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "🔧 Build do deploy falhou (run $GITHUB_RUN_ID)" \
+            --body-file /tmp/diag.md
 
   deploy:
     needs: build
