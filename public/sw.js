@@ -14,7 +14,7 @@
  * Ao mexer neste arquivo, suba o CACHE (ex.: ebma-v2) para purgar versões
  * antigas no activate.
  */
-const CACHE = 'ebma-v2'; // 05/nov: purga o shell pré-turbo que travou em aparelhos
+const CACHE = 'ebma-v3'; // 05/nov (2º bump): purga o shell pré-fog adaptivo que serviria o bundle antigo no aparelho
 
 self.addEventListener('install', () => self.skipWaiting());
 

@@ -976,7 +976,9 @@ Safari ≥ 16.4 com Compartilhar → Adicionar à Tela de Início). Peças e reg
   vivo pinchados: FAB no combate, ciclo 1×→3×→5×→1× e posições medidas pela
   sonda `probe-turbo` contra a URL de produção); o culpado provável é o shell
   antigo pré-turbo que o cache do aparelho revalida devagar. O `activate` do v2
-  varre os caches velhos na primeira visita online.)
+  varre os caches velhos na primeira visita online. **05/nov: bump ebma-v2→
+  ebma-v3 feito junto do fog adaptivo** — `sw.js` inalterado não gera diff de
+  bytes e o aparelho seguiria servindo o shell pré-fog; o v3 purga isso.)
 - Registro no `src/main.tsx` com gate `!import.meta.env.DEV`: **SW NUNCA em
   dev** — SW servindo módulos no dev server é a armadilha do transform
   obsoleto que envenena silenciosamente as sondas `qa/` (lição de 03/nov).
