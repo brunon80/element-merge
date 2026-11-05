@@ -15,7 +15,8 @@ import { ToastLayer } from '../components/ToastLayer';
 import { TurboFab } from '../components/TurboFab';
 import { useGameDriver } from '../hooks/useGameDriver';
 import { useMusicTrack } from '../hooks/useMusicTrack';
-import { ARENA_R, CAMERA_POS } from '../game/board';
+import { CAMERA_POS } from '../game/board';
+import { AdaptiveFog } from '../scene/AdaptiveFog';
 import { BestiaryStage } from '../scene/BestiaryStage';
 import { ARENA_BG, BloomGate } from '../scene/BloomGate';
 import { FOREST_BG } from '../scene/ForestEnvironment';
@@ -50,7 +51,6 @@ export function App() {
             : activeArenaScene === 'universe-end'
               ? UNIVERSE_END_BG
         : ARENA_BG;
-  const scenic = activeArenaScene !== 'arcane';
 
   const inGame = screen === 'game';
 
@@ -63,26 +63,12 @@ export function App() {
           camera={{ position: CAMERA_POS, fov: 42 }}
           onPointerMissed={() => selectUnit(null)}
         >
-          {/* o fog começa logo além da borda inimiga da ilha (o tabuleiro em si
-              fica limpo) e engole o vazio — as duas distâncias saem de ARENA_R */}
+          {/* fog adaptivo (ver scene/AdaptiveFog.tsx): começa sempre logo após
+              a última linha do tabuleiro — QUALQUER fase/janela/zoom mantém a
+              linha inimiga limpa — e tem comprimento por cenário; o antigo fog
+              fixo engolia a vegetação do anel no enquadre do celular */}
           {activeArenaScene !== 'universe-end' && (
-            <fog
-              attach="fog"
-              args={[
-                sceneBackground,
-                ARENA_R * (scenic ? 2 : 2.36),
-                ARENA_R *
-                  (activeArenaScene === 'ice'
-                    ? 7.5
-                    : activeArenaScene === 'volcanic'
-                      ? 6.2
-                      : activeArenaScene === 'underwater'
-                        ? 5.4
-                        : scenic
-                          ? 5.5
-                          : 6.26),
-              ]}
-            />
+            <AdaptiveFog color={sceneBackground} variant={activeArenaScene} />
           )}
           <BattleScene
             key={matchKey ?? `menu-${seed}`}

@@ -677,7 +677,17 @@ gradientes, zonas medidas da rail em três janelas — 1200×700, 1280×610 e
 390×844 — com o check FAB×loja sem sobreposição) e pincha o conteúdo do
 `styles.css` via
 `fetch('src/styles.css?raw')` — relativo à página porque o servidor tem base
-`/element-merge/`.
+`/element-merge/`. A sexta, `qa/probe-fog.mjs [webkit|chromium] [saidaDir]`
+(dev server + `QA_URL`), é a sonda do fog adaptivo: collector de cena via
+`__THREE_DEVTOOLS__` montado com `addInitScript` ANTES do bundle (three só
+registra a Scene; a câmera sai de qualquer filho via `o.__r3f.root.getState()`,
+a cena com mais descendentes é a da batalha), varre as matrizes de instância
+dos ambientes na faixa r∈(R+4, R+104) com −2<y<26 (lua/céu começam a y 32),
+projeta na direção da câmera e aponta a PIOR folha (t=1 some no fog) em cada
+cenário nas três calibrações — retrato 390×844, desktop-janela-larga 1600×900 e
+zoom máximo (empurra a câmera além do teto; o OrbitControls a puxa de volta no
+`maxDistance` do cenário = pior caso real). Meta: pior t ≤ 0,55; prints para
+aprovação visual.
 
 ---
 
@@ -837,6 +847,48 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
      sonda vale como saúde de API/console no motor; quem pincha o contrato
      do iOS é o fake da política nos testes. **Confirmação no iPhone do usuário: FEITA em 05/nov** — o som funcionou
      perfeitamente no aparelho após o deploy (`d720741` no GitHub Pages).
+
+---
+
+## 🌫️ Fog adaptivo (novidade de 05/nov/2026 — NÃO reverter)
+
+Report do usuário: "o FOG nas árvores está muito forte, no mobile nem é
+possível ver árvore nenhuma". Causa: o fog era **FIXO** (near 2–2,36×ARENA_R,
+far 5,5–7,5×) e as distâncias do fog são medidas a partir da **CÂMERA** — o
+mesmo cenário tinha densidades incompatíveis entre as calibrações: o desktop de
+janela larga começa a câmera BAIXA a 1,316R, enquanto o celular começa a ~2,3R
+(`CAMERA_POS`) e a órbita sobe até 2,55R; a vegetação do anel externo afundava
+em 60–100% de neblina (a muralha da floresta media 0,82–1,0 no enquadre do
+celular = invisível). Radii REAIS medidos na cena viva: muralha da floresta r
+86,5–116,5 (`TREE_RING_INNER` sai do teto de zoom + copa 24 + folga 3 —
+desenho antigo preservado; É a vegetação mais distante do jogo), conos do
+vulcão r 75–98, recife subaquático r 61–83, anel de gelo r 53–74.
+
+- **Componente:** `src/scene/AdaptiveFog.tsx` substitui o `<fog attach>` estático
+  do App (import de `ARENA_R` e a flag `scenic` saíram do App). O fog acompanha
+  a câmera a cada frame: `near = dist(câmera→ORBIT_TARGET) + 0,4R` — a linha
+  inimiga do tabuleiro (a ~0,37R além do alvo) fica limpa em QUALQUER
+  fase/janela/zoom — e `far = near + ARENA_R * FOG_SPAN[variante]`. Spans
+  CALIBRADOS pela sonda (personalidade por medição, não intuição): subaquático
+  5,0 (a névoa mais densa), arcana 4,6 (sem vegetação; só o vazio esmaece),
+  gelo 5,5, vulcão 6,0, floresta 8,0 (bruma leve POR UNIDADE porque a muralha é
+  muito longe); fim-do-universo segue SEM fog (guarda do App + span 0).
+- **Armadilha do TypeScript:** `scene.fog` é tipado `Fog | FogExp2` (FogExp2 não
+  tem near/far) e o React re-renderiza ao trocar `variant` sem re-rodar o
+  effect — a instância própria mora em `useRef` (`ownRef`), criada/destruída no
+  `useEffect([scene, color])`.
+- **Verificação:** `src/tests/fog.test.ts` (5 testes) — pinos de near/far que
+  seguem a câmera, spans pinados nos números medidos, ciclo de vida do fog e o
+  pino de regressão "o fog fixo morreu" (App não contém `<fog` nem
+  `ARENA_R * número`). Densidade VIVA: `qa/probe-fog.mjs` (WebKit, duas rodadas
+  para vencer o layout aleatório): floresta 0,41/0,49/**0,54**, subaquático
+  0,50/0,50/**0,54**, gelo 0,43–0,47, vulcão 0,51–0,53, arcana 0,18–0,25,
+  fim-do-universo sem fog — mobile/desktop/zoom, **CONSOLE 0**, tudo ≤ 0,55.
+  A sonda também revela o teto de câmera por cenário (gelo/vulcão/subaquático já
+  COMEÇAM no maxDistance). Prints aprovados: `/tmp/opencode/fog/fog-*-390.png`,
+  `fog-forest-1600.png` e a muralha legível no pior caso `fog-forest-390-
+  horizonte.png`. Lição: spans curtos (≤4R) afundam a muralha — o span tem de
+  cobrir o OFFSET câmera→vegetação (até ~2,55R + 5R), não só o raio da cena.
 
 ---
 
@@ -1193,7 +1245,7 @@ alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
   deslocado para o jogador — 24/24 buracos alcançáveis pelo ponteiro), câmera
   orbital 360° (dist 3–`ARENA_R×2,76`, polar 0,35–1,32) e fog/luz derivados de
   `ARENA_R`. Loja com `max-width: 400px` no CSS para o dock não cobrir o board.
-- **QA visual automatizado** (laço Playwright descrito acima), 357 testes/34.
+- **QA visual automatizado** (laço Playwright descrito acima), 361 testes/35.
 
 ## Arquitetura (regras de sempre)
 
