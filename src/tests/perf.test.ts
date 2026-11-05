@@ -67,9 +67,12 @@ describe('App: a economia entra pelo Canvas', () => {
     expect(AppSource).toContain('<EcoHeartbeat hz={30} />');
     expect(AppSource).toContain("data-eco={ecoActive ? 'on' : 'off'}");
     expect(EcoHeartbeatSource).toContain('window.setInterval(() => invalidate(), 1000 / hz)');
-    // o showcase auto-rotate do menu derruba o teto de 30 Hz em demand (cada
-    // giro dispara 'change' → invalidate); no eco ele dorme, no cheio continua
+    // Duas rotas de escape do teto de 30 Hz, ambas fechadas (sonda mediu
+    // 62 → 53,5 fps antes, 28 fps depois): o showcase auto-rotate do menu
+    // (cada giro dispara 'change' → invalidate) e a cauda da INÉRCIA — a
+    // damping continua disparando 'change' depois que o dedo sai da tela.
     expect(CameraSource).toContain('autoRotate={menuMode && !ecoActive}');
+    expect(CameraSource).toContain('enableDamping={!ecoActive}');
   });
 
   test('o loop de simulação do motor também cai para 30 Hz no eco', () => {
@@ -176,9 +179,13 @@ describe('desbaste econômico da vegetação de preenchimento (desktop intacto)'
 });
 
 describe('deploy: o cache do SW é isolado por local de instalação', () => {
-  test('main (./) e preview de branch (ex.: /dev/) têm caches com nomes diferentes', () => {
+  test('main (raiz) e preview dev (/dev/) têm caches diferentes e o activate purga só a própria família', () => {
     expect(SwSource).toContain('const SITE_DIR =');
     expect(SwSource).toContain('new URL(\'./\', self.location)');
-    expect(SwSource).toContain('ebma-${SITE_DIR}-v4');
+    expect(SwSource).toContain('ebma-${SITE_DIR}-v5');
+    // caches são compartilhados por ORIGEM: com produção e preview no mesmo
+    // domínio, o activate não pode apagar o cache do outro mundo
+    expect(SwSource).toContain('k.startsWith(`ebma-${SITE_DIR}-`)');
+    expect(SwSource).toContain('/^ebma-v\\d+$/');
   });
 });

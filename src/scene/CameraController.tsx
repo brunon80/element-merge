@@ -125,7 +125,13 @@ export function CameraController({
       makeDefault
       target={ORBIT_TARGET}
       enablePan={false}
-      enableDamping
+      // 🔋 no eco a inércia MORRE: a damping do OrbitControls continua
+      // disparando 'change' depois que o dedo sai do vidro, e cada 'change'
+      // revalida o canvas demand — a sonda mediu 53,5 fps na cauda de 2 s
+      // pós-arraste (o teto de 30 só valia com a cena parada). Sem damping a
+      // câmera responde 1:1 com o dedo e a cauda não existe. No cheio, a
+      // suavidade de sempre (e o showcase auto-rotate) continua.
+      enableDamping={!ecoActive}
       dampingFactor={0.08}
       enableRotate={!dragActive}
       // 🔋 no MENU o palco gira sozinho (showcase) — mas em demand cada giro

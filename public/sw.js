@@ -15,10 +15,13 @@
  * antigas no activate.
  */
 /**
- * O nome do cache carrega o DIRETÓRIO onde o SW foi instalado: o site de
- * produção (./) e o preview de uma branch (ex.: .../dev/) convivem no MESMO
- * domínio github.io sem disputar cache — cada um purga só a si mesmo.
- * (Lição do botão sumido: shell velho no cache do aparelho.)
+ * O nome do cache carrega o DIRETÓRIO onde o SW foi instalado: a produção
+ * (ebma-element-merge-v5) e o preview da dev (ebma-dev-v5) convivem no MESMO
+ * domínio github.io. ARMADILHA (descoberta 05/nov ao instalar o preview em
+ * subpasta): caches são compartilhados por ORIGEM, então o activate de um SW
+ * que apaga "tudo que não é ele" destrói o cache offline do OUTRO mundo. A
+ * purga é limitada à família do próprio diretório (+ os nomes legados sem
+ * diretório, ebma-v2/v3). (Lição do botão sumido: shell velho no cache.)
  */
 const SITE_DIR =
   new URL('./', self.location).pathname
@@ -26,7 +29,7 @@ const SITE_DIR =
     .split('/')
     .filter(Boolean)
     .pop() || 'root';
-const CACHE = `ebma-${SITE_DIR}-v4`; // 05/nov: purga os ebma-v* antigos (pré-modo econômico)
+const CACHE = `ebma-${SITE_DIR}-v5`; // 05/nov (3º bump): purga por diretório, não por origem
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -34,7 +37,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      // purga SÓ a família deste diretório de instalação (+ legados ebma-vN
+      // sem diretório); o cache do outro mundo (produção ↔ preview /dev/) é
+      // intocável — same-origin não é same-site
+      const mine = (k) => k.startsWith(`ebma-${SITE_DIR}-`) || /^ebma-v\d+$/.test(k);
+      await Promise.all(keys.filter((k) => mine(k) && k !== CACHE).map((k) => caches.delete(k)));
       const cache = await caches.open(CACHE);
       if (!(await cache.match('./'))) {
         try {

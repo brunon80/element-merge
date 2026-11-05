@@ -31,6 +31,8 @@ const COLLECTOR = () => {
 const MEASURE = () =>
   window.__measure();
 
+const CAMPOS = () => window.__camPos();
+
 function installMeasure(page) {
   return page.evaluate(() => {
     window.__measure = async (ms = 2000) => {
@@ -66,6 +68,31 @@ function installMeasure(page) {
         shadows: gl.shadowMap.enabled,
         autoUpdate: gl.shadowMap.autoUpdate,
       };
+    };
+    // posição da câmera viva (para a sonda provar que o arraste girou MESMO)
+    window.__camPos = () => {
+      const scenes = (window.__scenes || []).filter((s) => s && s.isScene);
+      let scene = null;
+      let best = -1;
+      for (const s of scenes) {
+        let n = 0;
+        s.traverse(() => n++);
+        if (n > best) {
+          best = n;
+          scene = s;
+        }
+      }
+      if (!scene) return null;
+      let cam = null;
+      scene.traverse((o) => {
+        if (!cam && o.__r3f) {
+          try {
+            const st = o.__r3f.root.getState();
+            if (st && st.camera) cam = st.camera;
+          } catch (e) {}
+        }
+      });
+      return cam ? [+cam.position.x.toFixed(3), +cam.position.y.toFixed(3), +cam.position.z.toFixed(3)] : null;
     };
   });
 }
@@ -154,6 +181,33 @@ eco.shadowCombate = await page.evaluate(() => {
   return { fpsFabVivo: true, autoUpdate: gl.shadowMap.autoUpdate };
 });
 
+// ── vazão de órbita no COMBATE: o teto de 30 Hz do demand precisa valer
+// DEPOIS do giro ── no menu mobile a canvas fica COBERTA pelos painéis do
+// menu (elementFromPoint entrega .menu-card em todo canto), então a órbita
+// é medida onde a canvas manda: o céu aberto do tabuleiro de combate.
+// A inércia (damping) do OrbitControls continua emitindo 'change' depois que
+// o ponteiro sai, e cada 'change' invalida o canvas demand — se a cauda
+// renderizar a 60 Hz, o teto econômico só valia enquanto a cena estava quieta.
+const flickPoint = [300, 260];
+const flickHit = await page.evaluate(
+  ([x, y]) => {
+    const el = document.elementFromPoint(x, y);
+    return el ? `${el.tagName}.${String(el.className).slice(0, 30)}` : 'null';
+  },
+  flickPoint,
+);
+const cam0 = await page.evaluate(CAMPOS);
+await page.mouse.move(flickPoint[0], flickPoint[1]);
+await page.mouse.down();
+for (let i = 1; i <= 14; i++) {
+  await page.mouse.move(flickPoint[0] - i * 11, flickPoint[1]);
+  await page.waitForTimeout(40);
+}
+await page.mouse.up();
+const cam1 = await page.evaluate(CAMPOS);
+const camDelta = cam0 && cam1 ? Math.hypot(cam0[0] - cam1[0], cam0[1] - cam1[1], cam0[2] - cam1[2]) : 0;
+const flick = await page.evaluate(MEASURE); // cauda de ~2 s com o dedo já fora da tela
+
 // volta ao cheio no meio do combate: o fps sobe de novo
 await page.click('[data-testid="open-settings"]');
 await page.click('[data-testid="settings-tab-graphics"]');
@@ -205,6 +259,9 @@ const okCombateEco = eco.combate.fps >= 20 && eco.combate.fps <= 36 && eco.shado
 const okVoltaCheia = cheio.combate.fps >= eco.combate.fps * 1.4;
 const okToggleUi = ecoHintCheio === 0 && ecoHintEco === 1;
 const okUA = uaEco.dataEco === 'on';
+// o arraste tem que ter girado a câmera DE VERDADE (senão a medição seguinte
+// não diria nada) e a cauda pós-soltar tem que respeitar o teto de 30 Hz
+const okOrbitCap = camDelta > 0.3 && flick.fps <= 36;
 
 const veredito = {
   cheioMenu: okCheio,
@@ -213,8 +270,14 @@ const veredito = {
   voltaAoCheioSobeFps: okVoltaCheia,
   toggleNoPainel: okToggleUi,
   iPhoneUaLigaEcoSozinho: okUA,
-  tudoVerde: okCheio && okEcoMenu && okEcoMenorQueCheio && okCombateEco && okVoltaCheia && okToggleUi && okUA,
+  orbitCapMantido: okOrbitCap,
+  tudoVerde:
+    okCheio && okEcoMenu && okEcoMenorQueCheio && okCombateEco && okVoltaCheia &&
+    okToggleUi && okUA && okOrbitCap,
 };
-console.log('ECO', JSON.stringify({ cheio, eco, uaEco, ecoHintCheio, ecoHintEco, veredito }, null, 1));
+console.log(
+  'ECO',
+  JSON.stringify({ cheio, eco, flick: { ...flick, camDelta, hit: flickHit }, uaEco, ecoHintCheio, ecoHintEco, veredito }, null, 1),
+);
 console.log('CONSOLE:', msgs.length);
 for (const m of msgs) console.log(' ', m);

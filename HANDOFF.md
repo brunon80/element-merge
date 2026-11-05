@@ -690,9 +690,12 @@ zoom máximo (empurra a câmera além do teto; o OrbitControls a puxa de volta n
 aprovação visual. A sétima, `qa/probe-eco.mjs [saidaDir]` (dev server +
 `QA_URL`), é a sonda do modo econômico: mede fps REAL via contagem
 `gl.info.render.frame` do renderer achado no `__r3f`, dpr efetivo, flags de
-`shadowMap.autoUpdate`, o radiogroup do painel Gráficos e — com Chromium
-emulando UA de iPhone — se o AUTO acende o eco sozinho. O headless não tem o
-teto de 60 Hz do vsync: vale a RAZÃO cheio→eco e os flags exatos.
+`shadowMap.autoUpdate`, o radiogroup do painel Gráficos, o flick de câmera no
+combate (o teto de 30 Hz precisa valer TAMBÉM na cauda pós-arraste; no menu
+mobile a canvas é coberta pela UI, então a órbita ali não existe para medir)
+e — com Chromium emulando UA de iPhone — se o AUTO acende o eco sozinho. O
+headless não tem o teto de 60 Hz do vsync: vale a RAZÃO cheio→eco e os flags
+exatos.
 
 ---
 
@@ -880,7 +883,17 @@ AUTO, com override manual em Configurações → Gráficos.
      (metade do frame). ARMADILHA achada na sonda: o showcase `autoRotate` do
      menu disparava `'change'` no OrbitControls a cada giro, que invalidava o
      frame e derrubava o teto (menu eco media 62 fps em vez de 30) — no eco o
-     auto-rotate do menu dorme (`autoRotate={menuMode && !ecoActive}`);
+     auto-rotate do menu dorme (`autoRotate={menuMode && !ecoActive}`).
+     ARMADILHA 2 (cobrada pelo usuário no desktop: "leve ficou a 60 fps"): a
+     INÉRCIA do OrbitControls (`enableDamping`, factor 0,08) continua
+     emitindo `'change'` depois que o dedo SAI da tela, e cada 'change'
+     revalida o canvas demand — a sonda mediu **53,5 fps na cauda de 2 s
+     pós-arraste** no combate (o teto só valia com a cena parada). No eco a
+     damping morre (`enableDamping={!ecoActive}`): câmera 1:1 com o dedo e
+     cauda nenhuma — re-medido **28 fps**. FATO do menu mobile: a canvas fica
+     COBERTA pela UI do menu (elementFromPoint entrega `.menu-card` em todo
+     canto), então a órbita do menu não existe e a sonda mede o flick no céu
+     aberto do tabuleiro em combate;
   3. **motor** (`useGameDriver`): `setInterval` de 30 Hz no eco (dt real, mesmo
      teto 0,05 s) no lugar do rAF de 60 Hz;
   4. **bloom**: o COMPOSER INTEIRO sai do caminho no eco (`BloomGate`:
@@ -913,29 +926,45 @@ AUTO, com override manual em Configurações → Gráficos.
   `qa/probe-eco.mjs [saidaDir]` mede o VIVO (WebKit render real + Chromium
   emulando UA de iPhone): cheio menu 511 fps headless → **eco menu 28 fps**,
   dpr efetivo = clamp(window dpr, eco 1,25), `shadowMap.autoUpdate` false no
-  menu eco / true no combate eco, voltar ao cheio sobe o fps ≥1,4×, UA de iPhone
-  acende o eco SOZINHO (`data-eco='on'` no shell), radiogroup funciona
-  (`perf-eco-active` some no cheio, aparece no eco) — **CONSOLE 0**. ⚠️ o
+  menu eco / true no combate eco, voltar ao cheio sobe o fps ≥1,4×, UA de
+  iPhone acende o eco SOZINHO (`data-eco='on'` no shell), radiogroup funciona
+  (`perf-eco-active` some no cheio, aparece no eco) e a sonda FLEXIONA a
+  câmera no combate (arraste na canvas, `camDelta` ≈ 40) medindo a cauda de
+  2 s pós-soltar: **53,5 → 28 fps** com a damping morta no eco — **CONSOLE 0**
+  (os avisos `GL Driver Message / GPU stall due to ReadPixels` são do readback
+  do próprio Playwright nos screenshots, filtrados: não são do jogo). ⚠️ o
   headless não tem o teto de 60 Hz do vsync: lá 'cheio' sai com centenas de
   fps; no iPhone real cheio=60, eco≈30 — a sonda confere a razão (eco ≤
   0,85×) e os flags. `probe-fog` e `probe-turbo` reconfirmados verdes; a sonda
   do turbo agora monta um time de 3 ignis (um ignis sozinho morria antes do fim
   do ciclo e derrubava o clip do FAB; a ordem spawn→descoberta→spawn foi
   consertada com o overlay fechado entre spawns).
-- **Pipeline dev (GitHub Pages):** `.github/workflows/deploy.yml` agora aceita
-  push nas branches **main e dev** (+ `workflow_dispatch`): main publica como
-  produção em `/element-merge/` (base fixa), dev publica como **deploy de
-  branch (preview)** do Pages — deploy-pages reconhece branch não-produção e
-  devolve URL própria via output `page_url`, impresso no step "Publicado" do
-  job Deploy (resumo da execução na aba Actions). Como o diretório do preview
-  só existe depois do primeiro deploy, o build da branch usa `VITE_BASE=./`
-  (vite.config lê a env; base RELATIVA funciona em qualquer diretório) e os
-  links do index.html (ícones/manifest) ficaram relativos por causa disso. O
-  cache do Service Worker isolou os dois mundos: `ebma-${SITE_DIR}-v4` onde
-  SITE_DIR é o diretório da instalação (`ebma-element-merge-v4` na produção —
-  que no caminho também purga os ebma-v2/v3 velhos dos aparelhos — e
-  `ebma-<preview>-v4` no preview). Preview expira com o tempo do GitHub; reative
-  com novo push ou Run workflow na branch dev.
+- **Pipeline dev (GitHub Pages) — a versão ingênua FALHOU e foi corrigida:** a
+  primeira leitura achou que o `deploy-pages` transformava push de branch em
+  "deploy de preview" com URL própria. **Não existe**: o parâmetro `preview` da
+  action está em alpha FECHADO para repositórios públicos (action.yml diz
+  "not available to the public"; discussões da comunidade até nov/2025
+  confirmam), e por padrão QUALQUER branch que roda o workflow vira o site de
+  produção — o push da dev **sobrescreveu a main no mesmo endereço** (cobrança
+  do usuário, 05/nov). O GitHub Pages tem UM site por repositório, então o
+  preview foi lavrado DENTRO dele: cada execução faz os DOIS builds e monta um
+  único artifact — `main` na raiz `/element-merge/` (`VITE_BASE=/element-merge/`)
+  e `dev` na subpasta `/element-merge/dev/` (`VITE_BASE=/element-merge/dev/`,
+  builds via `npm run build -- --outDir dist-main|dist-dev`, checkout explícito
+  `ref: main` + `ref: dev` no MESMO job). A raiz nunca é construída a partir de
+  branch de feature, e um push na main reimplanta o preview da dev junto (o
+  artifact é um só). Concurrency agora é o grupo único `pages` com
+  `cancel-in-progress: false` (fila, não cancelamento: as duas branches publicam
+  o mesmo site). O step "Publicado" imprime as DUAS URLs no sumário da execução:
+  produção e `…/element-merge/dev/` (preview estável, não expira).
+- **SW com dois mundos no MESMO domínio:** caches são compartilhados por
+  ORIGEM, então o activate que apaga "tudo que não é o próprio cache" destrói
+  o cache offline do outro (produção ↔ preview). O `activate` do sw.js purga só
+  a família do diretório de instalação (`ebma-${SITE_DIR}-*`, SITE_DIR = último
+  segmento do caminho: `element-merge` na produção, `dev` no preview) mais os
+  legados sem diretório (`/^ebma-v\d+$/` = ebma-v2/v3). CACHE subiu para
+  `ebma-${SITE_DIR}-v5` (3º bump), o que também expulsa os ebma-element-merge-v4
+  que os aparelhos pegaram durante o incidente.
 
 ---
 
