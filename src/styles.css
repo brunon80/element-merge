@@ -282,6 +282,57 @@ button {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
+/* ---------------- Turbo de combate (⏩) ---------------- */
+/* Segunda peça da MESMA rail esquerda do livro. Desktop: logo abaixo do livro
+   — o livro ocupa 50%±36px e o turbo começa em 50%+52px (centro em +84); os
+   buracos do tabuleiro só chegam a px≈500 e o inspetor mora à direita, então
+   o rail esquerdo é céu livre de cima a baixo. Compacto: desce para baixo da
+   faixa do toast (top≈100..150 medida) e acima dos buracos (py≈334) — zona
+   livre conhecida da mesma família do codex. z 35: igual ao livro (acima do
+   HUD/dock, abaixo dos overlays). */
+.turbo-fab {
+  position: absolute;
+  left: 14px;
+  top: calc(50% + 84px);
+  transform: translateY(-50%);
+  z-index: 35;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: linear-gradient(135deg, #3a4763, #1d2742); /* 1×: relógio discreto à espera */
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.18s ease;
+}
+.turbo-fab[data-on='true'] {
+  background: linear-gradient(135deg, var(--gold), var(--fire)); /* 3×: acelera em ouro */
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    0 0 26px rgba(255, 209, 84, 0.4);
+}
+.turbo-fab:hover {
+  transform: translateY(-50%) scale(1.08);
+}
+.turbo-fab:active {
+  transform: translateY(-50%) scale(0.95);
+}
+.turbo-fab .clock-glyph {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+.turbo-fab-count {
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
 /* Janelas estreitas — retrato de celular, tablet em pé, tela baixinha: a
    câmera enche a largura (fov cresce abaixo de 1,78) e os buracos colados na
    esquerda chegam a px≈31; no menu, os botões do card full-width também
@@ -310,6 +361,29 @@ button {
     height: 20px;
   }
   .codex-fab-count {
+    font-size: 10px;
+  }
+  /* ⏩ turbo: a rail esquerda desce — o livro fica no topo (8..60), o turbo
+     entra abaixo da faixa do toast (top≈100..150) e acima dos buracos
+     (py≈334), na MESMA coluna e mesma largura 52px do livro. */
+  .turbo-fab {
+    left: 10px;
+    top: calc(164px + env(safe-area-inset-top));
+    transform: none;
+    width: 52px;
+    height: 52px;
+  }
+  .turbo-fab:hover {
+    transform: scale(1.06);
+  }
+  .turbo-fab:active {
+    transform: scale(0.95);
+  }
+  .turbo-fab .clock-glyph {
+    width: 20px;
+    height: 20px;
+  }
+  .turbo-fab-count {
     font-size: 10px;
   }
   /* janela estreita que não é "celular" (ex.: 900×700): o canto esquerdo é do

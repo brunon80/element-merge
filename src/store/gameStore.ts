@@ -112,6 +112,9 @@ interface GameStoreState {
   matchRewardCfg: number;
   /** Depuração ativável nas configurações: criar qualquer espécie no campo. */
   debugMode: boolean;
+  /** ⏩ Turbo de combate ativo (×3 na cadência dos tiros). Vale só na partida
+   *  atual: nasce desligado e cada nova partida recomeça em 1×. */
+  turbo: boolean;
   lastSummary: MatchSummary | null;
   showBestiary: boolean;
   showSettings: boolean;
@@ -150,6 +153,8 @@ interface GameStoreActions {
   setRewardMode: (mode: MatchRewardMode) => void;
   setMatchReward: (n: number) => void;
   setDebugMode: (on: boolean) => void;
+  /** ⏩ liga/desliga o turbo de combate (×3 na cadência; só na partida atual). */
+  setTurbo: (on: boolean) => void;
   /** Depuração: coloca a espécie no slot livre mais à esquerda (só na preparação). */
   spawnDebugUnit: (species: SpeciesId, level: MonsterLevel) => boolean;
   resetProgress: () => void;
@@ -392,6 +397,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     rewardModeCfg: save.settings.rewardMode,
     matchRewardCfg: save.settings.matchReward,
     debugMode: save.settings.debugMode,
+    turbo: false,
     lastSummary: save.lastSummary,
     showBestiary: false,
     showSettings: false,
@@ -454,6 +460,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         sellHover: false,
         lastSummary: null,
         units: [],
+        turbo: false, // cada partida começa em 1×; o turbo é alívio da partida atual
       });
       get().syncUi();
     },
@@ -777,6 +784,12 @@ export const useGameStore = create<GameStore>((set, get) => {
           ? 'Modo debug ligado: no bestiário, use "Criar no campo" para ver qualquer criatura na arena.'
           : 'Modo debug desligado.',
       );
+    },
+
+    setTurbo(on: boolean): void {
+      // não persiste: turbo é alívio da partida em curso, não preferência salva
+      set({ turbo: on });
+      engine?.setTurbo(on);
     },
 
     spawnDebugUnit(species: SpeciesId, level: MonsterLevel): boolean {

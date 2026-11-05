@@ -123,3 +123,23 @@ export function SwordsIcon({ size = 12 }: { size?: number }) {
     </svg>
   );
 }
+
+/** Relógio: o glifo do TURBO DE COMBATE (botão flutuante). Aro com disco
+ *  sombreado e ponteiros — o mesmo desenho de aro do CoinIcon, na tinta do
+ *  FAB (currentColor). */
+export function ClockIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} className="clock-glyph" aria-hidden>
+      <circle cx="12" cy="12" r="9.5" fill="currentColor" opacity="0.25" />
+      <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M12 6.2v5.1l3.5 2.3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

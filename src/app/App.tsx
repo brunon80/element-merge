@@ -12,6 +12,7 @@ import { ResultScreen } from '../components/ResultScreen';
 import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
 import { ToastLayer } from '../components/ToastLayer';
+import { TurboFab } from '../components/TurboFab';
 import { useGameDriver } from '../hooks/useGameDriver';
 import { useMusicTrack } from '../hooks/useMusicTrack';
 import { ARENA_R, CAMERA_POS } from '../game/board';
@@ -100,6 +101,7 @@ export function App() {
         <>
           <HUD />
           <CodexFab />
+          <TurboFab />
           <InspectorPanel />
           <div className="dock">
             <ShopPanel />
