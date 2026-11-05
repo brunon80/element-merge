@@ -1,10 +1,19 @@
 name: Deploy no GitHub Pages
 
-# Toda versão publicada na main é buildada e enviada ao Pages
-# (build_type=workflow no Pages; também dá para disparar manualmente).
+# O GitHub Pages tem UM site de produção por repositório — o parâmetro
+# `preview` do deploy-pages continua em alpha FECHADO para repositórios
+# públicos (confirmado 05/nov/2026 na action.yml e nas discussões da
+# comunidade), e por padrão QUALQUER branch que roda o workflow vira o site:
+# foi assim que a dev sobrescreveu a main no mesmo endereço. A correção é
+# lavrar o preview da dev DENTRO do site: cada execução monta os DOIS builds
+# num único artifact —
+#   main → raiz  https://…/element-merge/        (sempre o build da main)
+#   dev  → subpasta https://…/element-merge/dev/ (preview da branch)
+# Assim nenhum push de branch consegue trocar o conteúdo da raiz: a raiz é
+# sempre o build da main, e um push na main reimplanta o preview da dev junto.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -12,21 +21,40 @@ permissions:
   pages: write
   id-token: write
 
+# as duas branches publicam o MESMO site — a fila serializa em vez de
+# cancelar um deploy de produção em andamento
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Build main (raiz do site)
+        run: npm run build -- --outDir dist-main
+        env:
+          VITE_BASE: /element-merge/
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+      - name: Build dev (preview em /dev/)
+        run: npm run build -- --outDir dist-dev
+        env:
+          VITE_BASE: /element-merge/dev/
+      - name: Montar o site (main na raiz, dev em /dev/)
+        run: |
+          mkdir -p dist/dev
+          cp -r dist-main/. dist/
+          cp -r dist-dev/. dist/dev/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -41,3 +69,7 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Publicado
+        run: |
+          echo "🔗 Produção (main): ${{ steps.deployment.outputs.page_url }}" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "🧪 Preview (dev): ${{ steps.deployment.outputs.page_url }}dev/" | tee -a "$GITHUB_STEP_SUMMARY"
