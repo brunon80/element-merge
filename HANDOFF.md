@@ -957,6 +957,20 @@ AUTO, com override manual em Configurações → Gráficos.
   `cancel-in-progress: false` (fila, não cancelamento: as duas branches publicam
   o mesmo site). O step "Publicado" imprime as DUAS URLs no sumário da execução:
   produção e `…/element-merge/dev/` (preview estável, não expira).
+- **🪤 ARMADILHA do segundo `actions/checkout` (custou 4 deploys quebrados em
+  silêncio):** com o padrão `clean: true`, o checkout da dev roda
+  `git clean -ffdx` no mesmo diretório — e o `-x` APAGA IGNORADOS: o
+  `node_modules/` instalado pelo `npm ci` some (o build da dev morre em
+  `sh: 1: tsc: not found`, exit 1 SEM mensagem de erro de código — só
+  "Process completed with exit code 1", por isso o log público era inútil) e o
+  `dist-main/` recém-construído também iriam embora. Visto no fonte do action
+  v4 (`git-directory-helper.ts`: `if (settings.clean) flags.push('--force')`
+  com `-ffdx`). Localmente NUNCA reproduz: `git checkout <ref>` comum não apaga
+  ignorados. Correção: `clean: false` no checkout da dev (o checkout só troca
+  os rastreados; `node_modules` e `dist-main` sobrevivem de propósito). Run
+  verde da dev: 42124161513 (sha `40cc006`). ⚠️ O mesmo bug estava no
+  deploy.yml da main no commit `c3609b2` (run 42115822657 falhou); a main só
+  fica verde depois do port do workflow corrigido.
 - **SW com dois mundos no MESMO domínio:** caches são compartilhados por
   ORIGEM, então o activate que apaga "tudo que não é o próprio cache" destrói
   o cache offline do outro (produção ↔ preview). O `activate` do sw.js purga só
