@@ -283,19 +283,23 @@ button {
 }
 
 /* ---------------- Turbo de combate (⏩) ---------------- */
-/* Segunda peça da MESMA rail esquerda do livro. Desktop: logo abaixo do livro
-   — o livro ocupa 50%±36px e o turbo começa em 50%+52px (centro em +84); os
-   buracos do tabuleiro só chegam a px≈500 e o inspetor mora à direita, então
-   o rail esquerdo é céu livre de cima a baixo. Compacto: desce para baixo da
-   faixa do toast (top≈100..150 medida) e acima dos buracos (py≈334) — zona
-   livre conhecida da mesma família do codex. z 35: igual ao livro (acima do
-   HUD/dock, abaixo dos overlays). Estados: 1× discreto, 3× ouro, 5× ouro→
-   perigo (ciclo do TurboFab). */
+/* Segunda peça da MESMA rail esquerda do livro, mas ACIMA dele: no desktop a
+   rail é HUD+chip no topo, livro no centro e a LOJA no canto inferior
+   esquerdo — entre o livro e a loja não cabe um degrau em janelas comuns
+   (folga H/2−289; os 64px+folga do FAB só caberiam a partir de ~740px de
+   altura — abaixo dos ~700 reais de janela, e a sobreposição morde o canto do
+   painel; cobrado pelo usuário em 05/nov). Acima do livro é céu livre em toda
+   altura desktop: topo em 50%−150 (≈130..250 na faixa 560..800) fica abaixo
+   do chip do header (bottom≈104) e 50px acima do topo do livro (50%−36).
+   Compacto (≤760/≤560): a loja é fileira no rodapé e a rail esquerda é céu —
+   o turbo desce para baixo da faixa do toast (top≈100..150 medida) e acima
+   dos buracos (py≈334), zona livre medida no iPhone. z 35: igual ao livro
+   (acima do HUD/dock, abaixo dos overlays). Estados: 1× discreto, 3× ouro,
+   5× ouro→perigo (ciclo do TurboFab). */
 .turbo-fab {
   position: absolute;
   left: 14px;
-  top: calc(50% + 84px);
-  transform: translateY(-50%);
+  top: calc(50% - 150px);
   z-index: 35;
   width: 64px;
   height: 64px;
@@ -327,10 +331,10 @@ button {
     0 0 30px rgba(255, 93, 115, 0.55);
 }
 .turbo-fab:hover {
-  transform: translateY(-50%) scale(1.08);
+  transform: scale(1.08);
 }
 .turbo-fab:active {
-  transform: translateY(-50%) scale(0.95);
+  transform: scale(0.95);
 }
 .turbo-fab .clock-glyph {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));

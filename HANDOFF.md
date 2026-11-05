@@ -673,7 +673,9 @@ server: `qa/probe-audio-webkit.mjs [webkit|chromium]` — dois fluxos de autopla
 com gate estrito quando o WebKit não está na máquina. A quinta,
 `qa/probe-turbo.mjs [webkit|chromium] [saidaDir]` (dev server + `QA_URL`), é a
 sonda do botão de turbo: mede o FAB vivo (só no combate, ciclo 1×→3×→5×→1×,
-gradientes, zonas medidas da rail) e pincha o conteúdo do `styles.css` via
+gradientes, zonas medidas da rail em três janelas — 1200×700, 1280×610 e
+390×844 — com o check FAB×loja sem sobreposição) e pincha o conteúdo do
+`styles.css` via
 `fetch('src/styles.css?raw')` — relativo à página porque o servidor tem base
 `/element-merge/`.
 
@@ -866,11 +868,17 @@ fixa).
   resultado não tem partida), testid `turbo-fab`, cada toque avança o degrau em
   `TURBO_STEPS = [1,3,5]`; estado por `data-on` (>1) + `data-scale` +
   `aria-pressed` + contador `1×`/`3×`/`5×`. Montado no App ao lado do CodexFab.
-  CSS `.turbo-fab` é a segunda peça da MESMA rail do livro: desktop `left:14px;
-  top:calc(50% + 84px)` 64px (caixa medida 14,402 — abaixo do livro, céu livre
-  até os buracos em px≈500); compacto ≤760 `left:10px; top:calc(164px +
-  env(safe-area-inset-top))` 52px (caixa medida 10,164 — abaixo da faixa do
-  toast ~100–150 e acima dos buracos ~334). Estados: 1× discreto; 3× acende no
+  `.turbo-fab` é a segunda peça da MESMA rail do livro, mas ACIMA dele: desktop
+  `left:14px; top:calc(50% - 150px)` 64px — a loja mora no canto INFERIOR
+  esquerdo (na janela 1280×610 do usuário, painel começa em y≈256) e a versão
+  antiga "abaixo do livro" (centro em 50%+84) MORDIA o canto da loja em janelas
+  comuns (folga livro→loja = H/2−289; só caberia um FAB a partir de ~740px de
+  altura) — sobreposição cobrada pelo usuário em 05/nov. Medido novo: clock
+  14,155..219 · chip do header até ≈95 · livro 14,269..341 · loja 12,256 (sem
+  toque em nada; idem em 1200×700: clock 14,200, livro 14,314, loja 12,346).
+  Compacto ≤760 `left:10px; top:calc(164px + env(safe-area-inset-top))` 52px
+  (caixa medida 10,164 — abaixo da faixa do toast ~100–150, debaixo do livro
+  no topo da coluna e longe da loja do rodapé ~655 — zona medida no iPhone). Estados: 1× discreto; 3× acende no
   ouro do tema (`var(--gold), var(--fire)`); 5× esquenta do ouro para o
   perigo (`var(--gold), var(--danger)` — regra `[data-scale='5']` escrita
   DEPOIS da do 3×: mesma especificidade, a ordem vence) — a escalada de calor
@@ -886,9 +894,12 @@ fixa).
   RELATIVO à página — o servidor tem base `/element-merge/`, absoluto dá 404)
   e mede o FAB vivo. Rodou no WebKit: 0 FABs na preparação, FAB no combate,
   ciclo 1×→3×→5×→1× confirmado nos atributos e nos gradientes calculados
-  (escuro↔ouro↔ouro-perigo), os quatro pinos de CSS verdes, zonas medidas
-  desktop/compacto conferindo com o CSS, **CONSOLE 0**. Prints aprovados do
-  FAB: `/tmp/opencode/turbo/turbo-{off,3,5}.png`.
+  (escuro↔ouro↔ouro-perigo), os quatro pinos de CSS verdes, e a rail conferida
+  SEM sobreposição em três janelas (1200×700, 1280×610 e 390×844): FAB×loja
+  nunca se tocam, FAB abaixo do chip do header e acima do livro no desktop
+  (debaixo dele no compacto), na coluna esquerda — **CONSOLE 0**. Prints
+  aprovados do FAB: `/tmp/opencode/turbo3/turbo-{off,3,5}.png` + a coluna
+  inteira `rail-1280x610.png`.
 
 ---
 

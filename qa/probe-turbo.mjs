@@ -66,13 +66,41 @@ if (await page.locator('[data-testid="close-bestiary"]').isVisible().catch(() =>
 await page.waitForSelector('[data-testid="shop"]');
 
 const fabLoc = page.locator('[data-testid="turbo-fab"]');
+const codexLoc = page.locator('[data-testid="open-bestiary"]');
+const shopLoc = page.locator('[data-testid="shop"]');
 const fabPrep = await fabLoc.count(); // preparação: o FAB NÃO pode existir
 
 await page.click('[data-testid="start-battle"]');
 await page.waitForSelector('[data-testid="turbo-fab"]', { timeout: 8000 });
 
-const fabBoxDesktop = await fabLoc.boundingBox();
-const codexBoxDesktop = await page.locator('[data-testid="open-bestiary"]').boundingBox();
+// zonas da rail esquerda em duas janelas desktop reais. O FAB mora ACIMA do
+// livro (entre o chip do header e o livro); a loja é vizinha só por coluna —
+// sobreposição FAB×loja é o defeito que o usuário cobrou no desktop.
+const railBoxes = async () => ({
+  fab: await fabLoc.boundingBox(),
+  codex: await codexLoc.boundingBox(),
+  shop: await shopLoc.boundingBox().catch(() => null),
+  chip: await page.locator('.hud-terrain').boundingBox().catch(() => null),
+});
+const overlaps = (a, b) =>
+  !!a && !!b &&
+  a.x < b.x + b.width && b.x < a.x + a.width &&
+  a.y < b.y + b.height && b.y < a.y + a.height;
+const railChecks = (b) => ({
+  fabAcimaDoLivro: !!b.fab && !!b.codex && b.fab.y + b.fab.height + 6 <= b.codex.y,
+  fabAbaixoDoChip: !b.chip || (!!b.fab && b.fab.y >= b.chip.y + b.chip.height + 6),
+  fabSemLoja: !overlaps(b.fab, b.shop),
+  fabNaColunaEsquerda: !!b.fab && b.fab.x < 90,
+});
+const boxesTall = await railBoxes();
+const railDesktop = railChecks(boxesTall);
+// 1280×610 = janela do usuário (chrome de navegador come ~110px de 720)
+await page.setViewportSize({ width: 1280, height: 610, deviceScaleFactor: 1 });
+await page.waitForTimeout(400);
+const boxesShort = await railBoxes();
+const railShort = railChecks(boxesShort);
+await page.setViewportSize({ width: 1200, height: 700, deviceScaleFactor: 1 });
+await page.waitForTimeout(300);
 
 // pino de conteúdo do CSS, lido do dev server como texto puro — SEMPRE
 // relativo à página (o servidor tem base /element-merge/; caminhos
@@ -83,7 +111,7 @@ const css = await page.evaluate(() =>
 const cssPins = {
   stateGold: css.includes(".turbo-fab[data-on='true']") && css.includes('var(--gold), var(--fire)'),
   stateRed: css.includes(".turbo-fab[data-scale='5']") && css.includes('var(--gold), var(--danger)'),
-  desktopRail: css.includes('left: 14px') && css.includes('calc(50% + 84px)'),
+  desktopRail: css.includes('left: 14px') && css.includes('calc(50% - 150px)'),
   compactRail: css.includes('164px + env(safe-area-inset-top)'),
 };
 
@@ -123,30 +151,28 @@ const bgGold3 = /rgb\(245,\s*196,\s*81\)/.test(s3?.bg ?? '') && /rgb\(255,\s*122
 const bgRed5 = /rgb\(245,\s*196,\s*81\)/.test(s5?.bg ?? '') && /rgb\(255,\s*93,\s*115\)/.test(s5?.bg ?? '');
 
 // compacto (390×844 = celular): o FAB cai para a coluna esquerda abaixo do
-// toast e continua debaixo do codex em qualquer largura
+// toast e acima dos buracos; ABAIXO do livro, e a loja compacta mora no
+// rodapé — o check "acima do livro" do desktop não vale aqui
 await page.setViewportSize({ width: 390, height: 844, deviceScaleFactor: 2 });
 await page.waitForTimeout(500);
-const fabBoxMobile = await fabLoc.boundingBox();
-const codexBoxMobile = await page.locator('[data-testid="open-bestiary"]').boundingBox();
+const boxesMobile = await railBoxes();
+const railOkMobile =
+  boxesMobile.fab !== null &&
+  boxesMobile.fab.x < 70 &&
+  boxesMobile.fab.y >= 150 && // abaixo da faixa do toast
+  boxesMobile.codex !== null &&
+  boxesMobile.fab.y >= boxesMobile.codex.y + boxesMobile.codex.height + 6 &&
+  !overlaps(boxesMobile.fab, boxesMobile.shop);
 
 await browser.close();
 
-const railOkDesktop =
-  fabBoxDesktop !== null &&
-  fabBoxDesktop.x < 90 &&
-  codexBoxDesktop !== null &&
-  fabBoxDesktop.y >= codexBoxDesktop.y + codexBoxDesktop.height + 6;
-const railOkMobile =
-  fabBoxMobile !== null &&
-  fabBoxMobile.x < 70 &&
-  fabBoxMobile.y >= 150 && // abaixo da faixa do toast
-  codexBoxMobile !== null &&
-  fabBoxMobile.y >= codexBoxMobile.y + codexBoxMobile.height + 6;
+const railOkDesktop = Object.values(railDesktop).every(Boolean);
+const railOkShort = Object.values(railShort).every(Boolean); // 1280×610 = a janela cobrada pelo usuário
 
 console.log('TURBO', JSON.stringify({
   engine: ENGINE,
   fabNaPreparacao: fabPrep, // deve ser 0
-  fabNoCombate: fabBoxDesktop !== null,
+  fabNoCombate: boxesTall.fab !== null,
   s1,
   s3,
   s5,
@@ -160,10 +186,14 @@ console.log('TURBO', JSON.stringify({
   bgRed5,
   bgDistintos: s1?.bg !== s3?.bg && s3?.bg !== s5?.bg && s1?.bg !== s5?.bg,
   cssPins,
+  railDesktop,
   railOkDesktop,
+  railShort,
+  railOkShort,
   railOkMobile,
-  fabBoxDesktop,
-  fabBoxMobile,
+  boxesTall,
+  boxesShort,
+  boxesMobile,
 }, null, 1));
 console.log('CONSOLE:', msgs.length);
 for (const m of msgs) console.log(' ', m);

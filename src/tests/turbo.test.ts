@@ -202,8 +202,9 @@ describe('pinos estáticos da feature', () => {
   test('styles: o pino visual mora na sonda do navegador real', () => {
     // vitest stubbeia CSS (?raw devolve vazio), então o pino de conteúdo/visual
     // do turbo mora em qa/probe-turbo.mjs: ele busca styles.css?raw do dev
-    // server e mede o FAB vivo (data-on/data-scale, gradiente de ouro no 3× e
-    // de perigo no 5×, ciclo 1×→3×→5×→1×) num WebKit/Chromium real.
+    // server e mede o FAB vivo (data-on/data-scale, gradientes dos três estados,
+    // ciclo 1×→3×→5×→1× e a rail SEM sobreposição FAB×loja na janela 1280×610
+    // cobrada pelo usuário) num WebKit/Chromium real.
     expect(TurboFabSource).toContain('className="turbo-fab"');
     expect(AppSource).toContain('TurboFab');
   });
