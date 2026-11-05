@@ -82,6 +82,15 @@ jobs:
             echo '### env'
             env | grep -E '^(VITE_BASE|CI|GITHUB_REF_NAME)=' | sort
           } > /tmp/diag.md
+          # canal zero (sem permissione nenhuma): o STEP SUMMARY do job é
+          # público — renderizado na página da execução no Actions
+          {
+            echo '<details><summary>🔬 build logs</summary>'
+            echo '```'
+            cat /tmp/diag.md
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
           cat /tmp/diag.md
           # canal 1 (contents:write): empurra o texto para o branch ci-diag —
           # não dispara workflow nenhum (deploy só escuta main/dev)
