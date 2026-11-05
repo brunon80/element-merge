@@ -289,7 +289,8 @@ button {
    o rail esquerdo é céu livre de cima a baixo. Compacto: desce para baixo da
    faixa do toast (top≈100..150 medida) e acima dos buracos (py≈334) — zona
    livre conhecida da mesma família do codex. z 35: igual ao livro (acima do
-   HUD/dock, abaixo dos overlays). */
+   HUD/dock, abaixo dos overlays). Estados: 1× discreto, 3× ouro, 5× ouro→
+   perigo (ciclo do TurboFab). */
 .turbo-fab {
   position: absolute;
   left: 14px;
@@ -315,6 +316,15 @@ button {
   box-shadow:
     0 6px 20px rgba(0, 0, 0, 0.45),
     0 0 26px rgba(255, 209, 84, 0.4);
+}
+/* 5×: mesmo data-on do 3×, mas escrito DEPOIS (mesma especificidade, a ordem
+   vence) — esquenta do ouro para o vermelho do perigo: a escalada de calor lê
+   a intensidade sem precisar ler o contador. */
+.turbo-fab[data-scale='5'] {
+  background: linear-gradient(135deg, var(--gold), var(--danger));
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    0 0 30px rgba(255, 93, 115, 0.55);
 }
 .turbo-fab:hover {
   transform: translateY(-50%) scale(1.08);

@@ -1,7 +1,7 @@
 // ⏩ Turbo de combate (05/nov/2026): a cadência da troca de ataques acelera 3×
-// com o cooldown drenando mais rápido, preservando a cadência relativa de cada
-// monstro (intervalo 2 s → 0,6 s; 3 s → 1 s). Pinos no motor, na store e nos
-// arquivos da feature.
+// e 5× com o cooldown drenando mais rápido, preservando a cadência relativa de
+// cada monstro (intervalo 2 s → 0,67 s no 3× e 0,4 s no 5×). Pinos no motor,
+// na store e nos arquivos da feature.
 import { getEngine, useGameStore } from '../store/gameStore';
 import { makeEngine, mustSummon } from './helpers';
 import type { GameEngine } from '../game/engine/engine';
@@ -79,7 +79,7 @@ describe('Turbo de combate no motor', () => {
 
   test('3×: cada cadência encolhe exatamente para um terço (2 s → 0,67 s; 3 s → 1 s)', () => {
     const { eng, pId, aId } = makeDuel(11); // mesmo seed: mesmo duelo
-    eng.setTurbo(true);
+    eng.setTurbo(3);
     eng.startBattle();
     const times = attackTimes(eng, [pId, aId], 30);
     const p = times.get(pId)!;
@@ -89,19 +89,36 @@ describe('Turbo de combate no motor', () => {
     expect(p.length).toBeGreaterThan(35); // ~3× os tiros do caso 1×
   });
 
-  test('apertar o botão no meio do combate muda a cadência na hora; desligar restaura', () => {
+  test('5×: cada cadência encolhe exatamente para um quinto (2 s → 0,4 s; 3 s → 0,6 s)', () => {
+    const { eng, pId, aId } = makeDuel(11); // mesmo seed: mesmo duelo
+    eng.setTurbo(5);
+    eng.startBattle();
+    const times = attackTimes(eng, [pId, aId], 30);
+    const p = times.get(pId)!;
+    const a = times.get(aId)!;
+    expect(meanGap(p)).toBeCloseTo(2 / 5, 1);
+    expect(meanGap(a)).toBeCloseTo(3 / 5, 1);
+    expect(p.length).toBeGreaterThan(55); // ~5× os tiros do caso 1×
+  });
+
+  test('ciclo do botão no meio do combate muda a cadência na hora; voltar a 1 restaura', () => {
     const { eng, pId, aId } = makeDuel(11);
     eng.startBattle();
     const windowA = attackTimes(eng, [pId, aId], 10).get(pId)!;
     expect(meanGap(windowA)).toBeCloseTo(2, 1);
 
-    eng.setTurbo(true);
+    eng.setTurbo(3);
     advance(eng, 1); // drena o cooldown em curso antes de medir
     const windowB = attackTimes(eng, [pId, aId], 10).get(pId)!;
     expect(meanGap(windowB)).toBeCloseTo(2 / 3, 1);
 
-    eng.setTurbo(false);
-    advance(eng, 2); // drena o último cooldown herdado do 3×
+    eng.setTurbo(5);
+    advance(eng, 1); // idem, agora herdado do 3×
+    const windowD = attackTimes(eng, [pId, aId], 10).get(pId)!;
+    expect(meanGap(windowD)).toBeCloseTo(2 / 5, 1);
+
+    eng.setTurbo(1);
+    advance(eng, 2); // drena o último cooldown herdado do 5×
     const windowC = attackTimes(eng, [pId, aId], 10).get(pId)!;
     expect(meanGap(windowC)).toBeCloseTo(2, 1);
   });
@@ -112,7 +129,7 @@ describe('Turbo de combate no motor', () => {
     const { eng, aId } = makeDuel(11);
     const target = eng.getUnit(aId)!;
     target.hp = 100; // alvo frágil o bastante para morrer de tiros
-    eng.setTurbo(true);
+    eng.setTurbo(3);
     eng.startBattle();
     let killed = false;
     for (let i = 0; i < 60 * 60 && !killed; i++) {
@@ -132,28 +149,32 @@ describe('Turbo na store (botão → motor)', () => {
     useGameStore.getState().initFromSave();
   });
 
-  test('startNewMatch começa em 1×; setTurbo liga/desliga o motor junto', () => {
+  test('startNewMatch começa em 1×; setTurbo escolhe a aceleração no motor junto', () => {
     useGameStore.getState().startNewMatch();
     const eng = getEngine()!;
-    expect(useGameStore.getState().turbo).toBe(false);
+    expect(useGameStore.getState().turbo).toBe(1);
     expect(eng.turbo).toBe(1);
 
     useGameStore.getState().startBattle();
-    useGameStore.getState().setTurbo(true);
-    expect(useGameStore.getState().turbo).toBe(true);
+    useGameStore.getState().setTurbo(3);
+    expect(useGameStore.getState().turbo).toBe(3);
     expect(eng.turbo).toBe(3);
 
-    useGameStore.getState().setTurbo(false);
-    expect(useGameStore.getState().turbo).toBe(false);
+    useGameStore.getState().setTurbo(5);
+    expect(useGameStore.getState().turbo).toBe(5);
+    expect(eng.turbo).toBe(5);
+
+    useGameStore.getState().setTurbo(1);
+    expect(useGameStore.getState().turbo).toBe(1);
     expect(eng.turbo).toBe(1);
   });
 
   test('partida nova zera o turbo (motor novo nasce em 1× e a store acompanha)', () => {
     useGameStore.getState().startNewMatch();
     useGameStore.getState().startBattle();
-    useGameStore.getState().setTurbo(true);
+    useGameStore.getState().setTurbo(5);
     useGameStore.getState().startNewMatch();
-    expect(useGameStore.getState().turbo).toBe(false);
+    expect(useGameStore.getState().turbo).toBe(1);
     expect(getEngine()!.turbo).toBe(1);
   });
 });
@@ -163,11 +184,14 @@ describe('pinos estáticos da feature', () => {
     expect(EngineSource).toContain('unit.cooldown -= dt * this.turboScale');
   });
 
-  test('TurboFab: só existe no combate, alterna 1×/3× e é aria-pressed', () => {
+  test('TurboFab: só existe no combate, cicla 1×/3×/5× e é aria-pressed', () => {
     expect(TurboFabSource).toContain("if (phase !== 'combat') return null");
     expect(TurboFabSource).toContain('data-on');
+    expect(TurboFabSource).toContain('data-scale');
     expect(TurboFabSource).toContain('aria-pressed');
     expect(TurboFabSource).toContain('ClockIcon');
+    expect(TurboFabSource).toContain('TURBO_STEPS');
+    expect(TurboFabSource).toContain('[1, 3, 5]');
     expect(TurboFabSource).toContain('data-testid="turbo-fab"');
   });
 
@@ -178,8 +202,8 @@ describe('pinos estáticos da feature', () => {
   test('styles: o pino visual mora na sonda do navegador real', () => {
     // vitest stubbeia CSS (?raw devolve vazio), então o pino de conteúdo/visual
     // do turbo mora em qa/probe-turbo.mjs: ele busca styles.css?raw do dev
-    // server e mede o FAB vivo (data-on, gradiente de ouro, alternância 1×↔3×)
-    // num WebKit/Chromium real.
+    // server e mede o FAB vivo (data-on/data-scale, gradiente de ouro no 3× e
+    // de perigo no 5×, ciclo 1×→3×→5×→1×) num WebKit/Chromium real.
     expect(TurboFabSource).toContain('className="turbo-fab"');
     expect(AppSource).toContain('TurboFab');
   });

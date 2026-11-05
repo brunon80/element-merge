@@ -112,9 +112,9 @@ interface GameStoreState {
   matchRewardCfg: number;
   /** Depuração ativável nas configurações: criar qualquer espécie no campo. */
   debugMode: boolean;
-  /** ⏩ Turbo de combate ativo (×3 na cadência dos tiros). Vale só na partida
-   *  atual: nasce desligado e cada nova partida recomeça em 1×. */
-  turbo: boolean;
+  /** ⏩ Aceleração da cadência de combate: 1 = normal, 3 e 5 = dreno de
+   *  cooldown acelerado. Vale só na partida atual: cada nova partida volta a 1×. */
+  turbo: TurboScale;
   lastSummary: MatchSummary | null;
   showBestiary: boolean;
   showSettings: boolean;
@@ -153,8 +153,8 @@ interface GameStoreActions {
   setRewardMode: (mode: MatchRewardMode) => void;
   setMatchReward: (n: number) => void;
   setDebugMode: (on: boolean) => void;
-  /** ⏩ liga/desliga o turbo de combate (×3 na cadência; só na partida atual). */
-  setTurbo: (on: boolean) => void;
+  /** ⏩ escolhe a aceleração da cadência (1/3/5; só na partida atual). */
+  setTurbo: (scale: TurboScale) => void;
   /** Depuração: coloca a espécie no slot livre mais à esquerda (só na preparação). */
   spawnDebugUnit: (species: SpeciesId, level: MonsterLevel) => boolean;
   resetProgress: () => void;
@@ -162,6 +162,9 @@ interface GameStoreActions {
 }
 
 export type GameStore = GameStoreState & GameStoreActions;
+
+/** Degraus do ⏩ turbo de combate: o FAB cicla 1× → 3× → 5× → 1×. */
+export type TurboScale = 1 | 3 | 5;
 
 // ---------------------------------------------------------------------------
 // Instância do motor fora do estado React (mutação estável p/ a cena 3D).
@@ -397,7 +400,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     rewardModeCfg: save.settings.rewardMode,
     matchRewardCfg: save.settings.matchReward,
     debugMode: save.settings.debugMode,
-    turbo: false,
+    turbo: 1,
     lastSummary: save.lastSummary,
     showBestiary: false,
     showSettings: false,
@@ -460,7 +463,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         sellHover: false,
         lastSummary: null,
         units: [],
-        turbo: false, // cada partida começa em 1×; o turbo é alívio da partida atual
+        turbo: 1, // cada partida começa em 1×; o turbo é alívio da partida atual
       });
       get().syncUi();
     },
@@ -786,10 +789,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       );
     },
 
-    setTurbo(on: boolean): void {
+    setTurbo(scale: TurboScale): void {
       // não persiste: turbo é alívio da partida em curso, não preferência salva
-      set({ turbo: on });
-      engine?.setTurbo(on);
+      set({ turbo: scale });
+      engine?.setTurbo(scale);
     },
 
     spawnDebugUnit(species: SpeciesId, level: MonsterLevel): boolean {

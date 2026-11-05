@@ -672,8 +672,8 @@ server: `qa/probe-audio-webkit.mjs [webkit|chromium]` — dois fluxos de autopla
 (resume sozinho vs resume+amostra muda no gesto) com console; cai para Chromium
 com gate estrito quando o WebKit não está na máquina. A quinta,
 `qa/probe-turbo.mjs [webkit|chromium] [saidaDir]` (dev server + `QA_URL`), é a
-sonda do botão de turbo: mede o FAB vivo (só no combate, alternância 1×↔3×,
-gradiente, zonas medidas da rail) e pincha o conteúdo do `styles.css` via
+sonda do botão de turbo: mede o FAB vivo (só no combate, ciclo 1×→3×→5×→1×,
+gradientes, zonas medidas da rail) e pincha o conteúdo do `styles.css` via
 `fetch('src/styles.css?raw')` — relativo à página porque o servidor tem base
 `/element-merge/`.
 
@@ -842,45 +842,53 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
 
 Report do usuário: com muitos monstros no campo a partida vira uma fila de
 ataques indo e vindo por minutos. Novelidade: um **botão flutuante de relógio**
-na rail esquerda que alterna a cadência da troca de tiros entre **1× e 3×**,
-respeitando a cadência própria de cada monstro (intervalo 2 s vira 0,67 s;
-3 s vira 1 s — proporcional, não uma cadência global fixa).
+na rail esquerda que cicla a cadência da troca de tiros **1× → 3× → 5× → 1×**,
+respeitando a cadência própria de cada monstro (intervalo 2 s vira 0,67 s no
+3× e 0,4 s no 5×; 3 s vira 1 s e 0,6 s — proporcional, não uma cadência global
+fixa).
 
-- **Motor (o coração):** `GameEngine` ganhou `turboScale` privado (1|3),
-  `setTurbo(on)` e o getter público `turbo`. O ÚNICO ponto escalado é o dreno
-  do relógio de tiro em `combatTick`: `unit.cooldown -= dt * this.turboScale`.
+- **Motor (o coração):** `GameEngine` ganhou `turboScale` privado,
+  `setTurbo(scale)` (aceita qualquer número ≥ 1; os degraus 1/3/5 são escolha da
+  UI) e o getter público `turbo`. O ÚNICO ponto escalado é o dreno do relógio de
+  tiro em `combatTick`: `unit.cooldown -= dt * this.turboScale`.
   Projéteis, dano, status, regen e `battleTime` seguem no tempo real — o que
   muda é a frequência dos tiros, não a força deles. Nota aceita:
   `DOUBLE_SHOT_DELAY` (pendingShots em `world.time`) não é escalada — deslocamento
   relativo menor, deliberado.
-- **Store:** `turbo: boolean` **não persiste** (é alívio da partida em curso,
-  não preferência salva); `setTurbo(on)` espelha em `engine?.setTurbo(on)`;
-  `startNewMatch` reseta `turbo:false` — cada partida começa em 1×.
+- **Store:** `turbo: TurboScale` (`1 | 3 | 5`, tipo exportado) **não persiste**
+  (é alívio da partida em curso, não preferência salva); `setTurbo(scale)`
+  espelha em `engine?.setTurbo(scale)`; `startNewMatch` reseta `turbo:1` — cada
+  partida começa em 1×.
 - **UI:** glifo SVG próprio `ClockIcon` em `components/icons.tsx` (aro + disco
   sombreado + ponteiros na tinta `currentColor`, mesmo desenho de aro do
   CoinIcon — consistência com HeartIcon/SwordsIcon/CoinIcon); `components/
   TurboFab.tsx` monta APENAS em `phase === 'combat'` (preparação não tem tiro,
-  resultado não tem partida), testid `turbo-fab`, estado por `data-on` +
-  `aria-pressed` + contador `1×`/`3×`. Montado no App ao lado do CodexFab. CSS
-  `.turbo-fab` é a segunda peça da MESMA rail do livro: desktop `left:14px;
+  resultado não tem partida), testid `turbo-fab`, cada toque avança o degrau em
+  `TURBO_STEPS = [1,3,5]`; estado por `data-on` (>1) + `data-scale` +
+  `aria-pressed` + contador `1×`/`3×`/`5×`. Montado no App ao lado do CodexFab.
+  CSS `.turbo-fab` é a segunda peça da MESMA rail do livro: desktop `left:14px;
   top:calc(50% + 84px)` 64px (caixa medida 14,402 — abaixo do livro, céu livre
   até os buracos em px≈500); compacto ≤760 `left:10px; top:calc(164px +
   env(safe-area-inset-top))` 52px (caixa medida 10,164 — abaixo da faixa do
-  toast ~100–150 e acima dos buracos ~334). Estado 3× acende no ouro do tema
-  (`var(--gold), var(--fire)`); 1× é discreto.
-- **Verificação:** `src/tests/turbo.test.ts` (10 testes) — cadência medida num
+  toast ~100–150 e acima dos buracos ~334). Estados: 1× discreto; 3× acende no
+  ouro do tema (`var(--gold), var(--fire)`); 5× esquenta do ouro para o
+  perigo (`var(--gold), var(--danger)` — regra `[data-scale='5']` escrita
+  DEPOIS da do 3×: mesma especificidade, a ordem vence) — a escalada de calor
+  lê a intensidade sem ler o contador.
+- **Verificação:** `src/tests/turbo.test.ts` (11 testes) — cadência medida num
   duelo ignis×ignis com intervalos gravados em 2 s/3 s: gaps médios ≈2/3 s em
-  1× e ≈0,67/1 s em 3×, ligue/desligue no meio do combate restaura a cadência,
-  morte continua por acerto de projétil; fiação da store (motor novo nasce em
-  1×, `setTurbo` espelha) e pinos estáticos `?raw`. **Pino do CSS mora na
-  sonda, não no vitest**: o pipeline de CSS do vitest stubbeia importações de
-  CSS (`?raw`, glob e diretas devolvem vazio), então `qa/probe-turbo.mjs`
-  busca `src/styles.css?raw` do dev server (caminho RELATIVO à página — o
-  servidor tem base `/element-merge/`, absoluto dá 404) e mede o FAB vivo.
-  Rodou no WebKit: 0 FABs na preparação, FAB no combate, alternância 1×↔3× com
-  gradiente escuro↔ouro confirmado no `getComputedStyle`, os três pinos de CSS
-  verdes, zonas medidas desktop/compacto conferindo com o CSS, **CONSOLE 0**.
-  Prints aprovados do FAB: `/tmp/opencode/turbo/turbo-{off,on}.png`.
+  1×, ≈0,67/1 s em 3× e ≈0,4/0,6 s em 5×, ciclo 3→5→1× no meio do combate
+  restaura a cadência, morte continua por acerto de projétil; fiação da store
+  (motor novo nasce em 1×, `setTurbo` espelha o degrau) e pinos estáticos
+  `?raw`. **Pino do CSS mora na sonda, não no vitest**: o pipeline de CSS do
+  vitest stubbeia importações de CSS (`?raw`, glob e diretas devolvem vazio),
+  então `qa/probe-turbo.mjs` busca `src/styles.css?raw` do dev server (caminho
+  RELATIVO à página — o servidor tem base `/element-merge/`, absoluto dá 404)
+  e mede o FAB vivo. Rodou no WebKit: 0 FABs na preparação, FAB no combate,
+  ciclo 1×→3×→5×→1× confirmado nos atributos e nos gradientes calculados
+  (escuro↔ouro↔ouro-perigo), os quatro pinos de CSS verdes, zonas medidas
+  desktop/compacto conferindo com o CSS, **CONSOLE 0**. Prints aprovados do
+  FAB: `/tmp/opencode/turbo/turbo-{off,3,5}.png`.
 
 ---
 

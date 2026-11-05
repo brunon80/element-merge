@@ -1,16 +1,17 @@
-// Sonda do ⏩ Turbo de combate: o FAB do relógio só existe no COMBATE, alterna
-// 1×↔3× (data-on + aria-pressed + contagem) e o gradiente de ouro do 3× é o
-// que o navegador realmente calcula. Pino de conteúdo do styles.css: o probe
-// busca `/src/styles.css?raw` do dev server (no vitest o pipeline de CSS
-// stubbeia ?raw, então é aqui que o CSS é pinchado).
+// Sonda do ⏩ Turbo de combate: o FAB do relógio só existe no COMBATE, cicla
+// 1×→3×→5×→1× (data-on + data-scale + aria-pressed + contagem) e os gradientes
+// ouro (3×) e ouro→perigo (5×) são o que o navegador realmente calcula. Pino
+// de conteúdo do styles.css: o probe busca `src/styles.css?raw` do dev server
+// (no vitest o pipeline de CSS stubbeia ?raw, então é aqui que o CSS é
+// pinchado).
 // Uso: npm run dev + node qa/probe-turbo.mjs [webkit|chromium] [saidaDir]
-//   (QA_URL p/ outro servidor; prints do FAB em <saidaDir>/turbo-{off,on}.png)
+//   (QA_URL p/ outro servidor; prints do FAB em <saidaDir>/turbo-{off,3,5}.png)
 import { webkit, chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const OUT = process.argv[3] ?? tmpdir(); // prints do FAB em <saida>/turbo-{off,on}.png
+const OUT = process.argv[3] ?? tmpdir(); // prints do FAB em <saida>/turbo-{off,3,5}.png
 mkdirSync(OUT, { recursive: true });
 
 const URL_APP = process.env.QA_URL ?? 'http://localhost:5173/';
@@ -81,6 +82,7 @@ const css = await page.evaluate(() =>
 );
 const cssPins = {
   stateGold: css.includes(".turbo-fab[data-on='true']") && css.includes('var(--gold), var(--fire)'),
+  stateRed: css.includes(".turbo-fab[data-scale='5']") && css.includes('var(--gold), var(--danger)'),
   desktopRail: css.includes('left: 14px') && css.includes('calc(50% + 84px)'),
   compactRail: css.includes('164px + env(safe-area-inset-top)'),
 };
@@ -91,6 +93,7 @@ const snap = async () =>
     if (!b) return null;
     return {
       on: b.getAttribute('data-on'),
+      scale: b.getAttribute('data-scale'),
       pressed: b.getAttribute('aria-pressed'),
       count: b.querySelector('.turbo-fab-count')?.textContent?.trim(),
       bg: getComputedStyle(b).backgroundImage.slice(0, 120),
@@ -102,16 +105,22 @@ const clipFab = async () => {
   return { x: b.x - 12, y: b.y - 12, width: b.width + 24, height: b.height + 30 };
 };
 
-const off = await snap();
+const s1 = await snap(); // 1× discreto
 await page.screenshot({ path: join(OUT, 'turbo-off.png'), clip: await clipFab() });
 await page.click('[data-testid="turbo-fab"]');
 await page.waitForTimeout(300);
-const on = await snap();
-await page.screenshot({ path: join(OUT, 'turbo-on.png'), clip: await clipFab() });
-const bgGold = /rgb\(245,\s*196,\s*81\)/.test(on?.bg ?? '') && /rgb\(255,\s*122,\s*61\)/.test(on?.bg ?? '');
+const s3 = await snap(); // 3× em ouro
+await page.screenshot({ path: join(OUT, 'turbo-3.png'), clip: await clipFab() });
 await page.click('[data-testid="turbo-fab"]');
 await page.waitForTimeout(300);
-const offAgain = await snap();
+const s5 = await snap(); // 5× ouro→perigo
+await page.screenshot({ path: join(OUT, 'turbo-5.png'), clip: await clipFab() });
+await page.click('[data-testid="turbo-fab"]');
+await page.waitForTimeout(300);
+const s1Again = await snap(); // o ciclo fecha voltando a 1×
+
+const bgGold3 = /rgb\(245,\s*196,\s*81\)/.test(s3?.bg ?? '') && /rgb\(255,\s*122,\s*61\)/.test(s3?.bg ?? '');
+const bgRed5 = /rgb\(245,\s*196,\s*81\)/.test(s5?.bg ?? '') && /rgb\(255,\s*93,\s*115\)/.test(s5?.bg ?? '');
 
 // compacto (390×844 = celular): o FAB cai para a coluna esquerda abaixo do
 // toast e continua debaixo do codex em qualquer largura
@@ -138,15 +147,18 @@ console.log('TURBO', JSON.stringify({
   engine: ENGINE,
   fabNaPreparacao: fabPrep, // deve ser 0
   fabNoCombate: fabBoxDesktop !== null,
-  off,
-  on,
-  offAgain,
-  toggleOk:
-    off?.on === 'false' && on?.on === 'true' && offAgain?.on === 'false' &&
-    off?.count === '1×' && on?.count === '3×' && offAgain?.count === '1×' &&
-    off?.pressed === 'false' && on?.pressed === 'true',
-  bgGold,
-  bgTrocou: off?.bg !== on?.bg,
+  s1,
+  s3,
+  s5,
+  s1Again,
+  cicloOk:
+    s1?.on === 'false' && s3?.on === 'true' && s5?.on === 'true' && s1Again?.on === 'false' &&
+    s1?.scale === '1' && s3?.scale === '3' && s5?.scale === '5' && s1Again?.scale === '1' &&
+    s1?.count === '1×' && s3?.count === '3×' && s5?.count === '5×' && s1Again?.count === '1×' &&
+    s1?.pressed === 'false' && s3?.pressed === 'true' && s5?.pressed === 'true' && s1Again?.pressed === 'false',
+  bgGold3,
+  bgRed5,
+  bgDistintos: s1?.bg !== s3?.bg && s3?.bg !== s5?.bg && s1?.bg !== s5?.bg,
   cssPins,
   railOkDesktop,
   railOkMobile,

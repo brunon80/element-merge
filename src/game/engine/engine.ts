@@ -148,11 +148,11 @@ export class GameEngine {
   private nextUnitId = 1;
   private nextProjectileId = 1;
   /**
-   * ⏩ Turbo de combate (05/nov): 1 = normal; 3 = os cooldowns drenam 3× mais
-   * rápido, e a cadência de cada monstro é preservada proporcionalmente
-   * (intervalo 2 s vira 0,6 s; 3 s vira 1 s). Dano, projéteis e status vivem
-   * seu tempo real; só a cadência de tiro é acelerada — a troca de ataques
-   * encurta a partida quando o campo está lotado.
+   * ⏩ Turbo de combate (05/nov): 1 = normal; 3 e 5 = os cooldowns drenam 3×/5×
+   * mais rápido, e a cadência de cada monstro é preservada proporcionalmente
+   * (intervalo 2 s vira 0,67 s no 3× e 0,4 s no 5×). Dano, projéteis e status
+   * vivem seu tempo real; só a cadência de tiro é acelerada — a troca de
+   * ataques encurta a partida quando o campo está lotado.
    */
   private turboScale = 1;
   private readonly rng: () => number;
@@ -212,10 +212,10 @@ export class GameEngine {
     this.onEvent = cb;
   }
 
-  /** liga/desliga o turbo de combate: ×3 no dreno de cooldown de todos os
-   *  monstros, mantendo a cadência relativa de cada um */
-  setTurbo(on: boolean): void {
-    this.turboScale = on ? 3 : 1;
+  /** escolhe a aceleração da cadência (1 = normal; 3 e 5 = dreno de cooldown
+   *  3×/5× mais rápido, mantendo a cadência relativa de cada monstro) */
+  setTurbo(scale: number): void {
+    this.turboScale = scale > 1 ? scale : 1;
   }
 
   /** leitura pública do multiplicador atual (UI/testes) */
