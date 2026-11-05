@@ -1,8 +1,8 @@
 import {
-  ensureCore,
   getCore,
   musicAudible,
   onAudioReady,
+  resumeCore,
   setMusicVolume,
 } from './core';
 import type { CoreAudio } from './core';
@@ -70,9 +70,17 @@ const MAX_M_VOICES = 32;
 
 function count(src: AudioScheduledSourceNode): void {
   mVoices++;
-  src.onended = () => {
+  let done = false;
+  const dec = (): void => {
+    if (done) return;
+    done = true;
     mVoices--;
   };
+  src.onended = dec;
+  // seguro contra o motor (mesmo motivo do track() no sfx): sem o decremento
+  // o teto de vozes travaria e a trilha emudeceria. Nota mais longa da
+  // vitrola (pad com release) morre bem antes de 12 s.
+  window.setTimeout(dec, 12000);
 }
 
 interface VoiceOpts {
@@ -844,7 +852,12 @@ const LOOKAHEAD = 0.2;
 
 function tick(): void {
   const c = getCore();
-  if (!c || c.ctx.state !== 'running') return;
+  if (!c || c.ctx.state !== 'running') {
+    // iOS suspende/interrompe o relógio em segundo plano ou durante chamada:
+    // destravado uma vez, resume reabre sem gesto novo
+    resumeCore();
+    return;
+  }
   const now = c.ctx.currentTime;
   for (const p of players) {
     if (p.stopAt !== undefined && now > p.stopAt) continue;
@@ -871,8 +884,12 @@ export function playMusic(id: MusicTrackId): void {
   if (desired === id && players.some((p) => p.id === id && p.stopAt === undefined)) return;
   desired = id;
   if (!musicAudible()) return;
-  const c = ensureCore();
-  if (!c || c.ctx.state !== 'running') return; // acende no primeiro gesto (onAudioReady)
+  const c = getCore();
+  if (!c) return; // sem gesto ainda: a faixa fica "desejada" e acende no onAudioReady
+  if (c.ctx.state !== 'running') {
+    resumeCore(); // iOS reabre sem gesto novo depois do primeiro destravamento
+    return;
+  }
   if (players.some((p) => p.id === id && p.stopAt === undefined)) return;
   ensureFx(c);
   stopPlayers(id);

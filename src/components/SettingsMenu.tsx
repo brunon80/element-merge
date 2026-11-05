@@ -276,7 +276,9 @@ export function SettingsMenu() {
                   />
                   <span className="hint">
                     O som é direcional: tiros à esquerda soam à esquerda. Em
-                    celulares, use também o volume do aparelho.
+                    celulares, use também o volume do aparelho — e no iPhone a
+                    chave física de silêncio emudece até o som sintetizado do
+                    navegador: com ela ligada, nenhum áudio sai.
                   </span>
                 </label>
                 <label className="bloom-control" htmlFor="music-volume">

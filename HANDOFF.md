@@ -667,7 +667,10 @@ console), `qa/inspect-webkit.mjs <especie> [aliada]` (o mesmo roteiro do
 inspect-species no WebKit) e `qa/audit-bestiary.mjs [chromium|webkit] [saida]
 [especies...]` (enciclopédia inteira: printa CADA CARD como o usuário vê, conta os
 contextos WebGL da página e cataloga erros do console). Requer
-`npx playwright install webkit` (instalado).
+`npx playwright install webkit` (instalado). A quarta sonda roda SEM dev
+server: `qa/probe-audio-webkit.mjs [webkit|chromium]` — dois fluxos de autoplay
+(resume sozinho vs resume+amostra muda no gesto) com console; cai para Chromium
+com gate estrito quando o WebKit não está na máquina.
 
 ---
 
@@ -784,6 +787,49 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
    **Regra de casa nova: backtick NUNCA dentro de comentário de template literal
    GLSL** — ele fecha a string JS e o build quebra (`esbuild: Expected ";"`);
    ao escrever lições no texto desses shaders, use aspas simples.
+6. **Som mudo no iOS: destravamento do áudio reescrito (05/nov — NÃO
+   reverter).** Report do usuário: no iPhone o jogo inteiro mudo (efeitos e
+   trilha), no desktop funciona. Dois defeitos da política de autoplay do
+   WebKit em `audio/core.ts`:
+   - `resume()` sozinho DENTRO do gesto: no iOS a promessa resolve e o
+     contexto **CONTINUA suspenso** — o WebKit só libera a porteira quando
+     uma fonte TOCA dentro do gesto. Corrigido com `warmUp()` em core.ts:
+     fonte `AudioBufferSourceNode` de 1 amostra muda disparada no próprio
+     gesto (pointerdown OU touchend — iOS 9–11 só destravavam no touchend),
+     o destravamento clássico do iOS; em Chromium é supérfluo, mas inofensivo.
+   - Estado **'interrupted' EXCLUSIVO do WebKit** (chamada, Siri, app em
+     segundo plano): o código antigo só olhava 'suspended' e nunca reabria
+     depois de uma interrupção → mudo para sempre. Corrigido: `statechange`
+     no contexto (o ready sai do estado REAL, nunca de palpite); `resumeCore()`
+     exportado — sfx/música tentam reabrir em todo `playFx`/`tick`/`playMusic`
+     com o bus morto (destravado o autoplay UMA vez, o iOS dispensa gesto
+     novo; resume DURANTE a interrupção RECUSA com InvalidStateError —
+     capturado; insistência fora de gesto throttada em 300 ms, o gesto jamais
+     é bloqueado); `visibilitychange` reabre a aba escondida.
+   - Corolário da porta: o contexto agora só nasce **dentro de gesto**
+     (unlockAudio); `playMusic`/`playFx` só leem o core (`getCore`) — criar
+     AudioContext fora de gesto era o que o iOS antigo punia com suspensão
+     eterna. A faixa do menu fica "desejada" e acende no `onAudioReady`.
+   - Seguro de contadores: se o `onended` falhar (histórico do WebKit com
+     `start(t0, offset, dur)`), o teto de vozes (26 sfx / 32 música) trava e
+     o jogo INTEIRO emudece — `track()`/`count()` liberam a voz também por
+     timeout (5 s / 12 s; nenhuma voz do sintetizador passa disso).
+   - **Chave física de mudo do iPhone não tem conserto em código**: com ela
+     ligada o WebKit silencia até o Web Audio (no Android o volume vai no
+     bus de mídia). Aviso adicionado em Configurações → Som.
+   - Verificação local: `src/tests/audioUnlock.test.ts` (6 testes) com
+     AudioContext fake na **política do WebKit** — resume sem warmUp NÃO
+     abre o contexto, interrupted recusa resume e o statechange reacende o
+     ready sem gesto novo, touchend rearma; pinos estáticos `?raw`: sfx e
+     música jamais chamam `ensureCore`, core contém warmUp+touchend+
+     'interrupted'. A sonda do motor, `qa/probe-audio-webkit.mjs`, rodou no
+     WebKit headless (libs via `sudo npx playwright install-deps webkit`,
+     05/nov): Web Audio presente (sr 44100) e **CONSOLE 0 nos dois fluxos**
+     (so-resume vs resume+amostra muda). Medição honesta: o headless **não
+     reproduz o gate do iOS** — lá o contexto abre sozinho sem gesto. A
+     sonda vale como saúde de API/console no motor; quem pincha o contrato
+     do iOS é o fake da política nos testes. **Confirmação no iPhone do
+     usuário pendente** (chave de mudo desligada + a correção).
 
 ---
 

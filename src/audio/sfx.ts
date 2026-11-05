@@ -1,5 +1,5 @@
 import type { ElementId, FxEvent, SpeciesId } from '../game/types';
-import { ensureCore, getCore, setSfxVolume, sfxAudible } from './core';
+import { getCore, resumeCore, setSfxVolume, sfxAudible } from './core';
 import type { CoreAudio } from './core';
 
 export { setSfxVolume };
@@ -32,9 +32,17 @@ function bufOf(c: CoreAudio, b: Buf): AudioBuffer {
 
 function track(src: AudioScheduledSourceNode): void {
   voices++;
-  src.onended = () => {
+  let done = false;
+  const dec = (): void => {
+    if (done) return;
+    done = true;
     voices--;
   };
+  src.onended = dec;
+  // seguro contra o motor: se o onended não disparar (histórico do WebKit com
+  // start(t0, offset, dur)), o contador travaria no teto e o jogo INTEIRO
+  // emudeceria. Nenhuma voz de efeito passa de 5 s.
+  window.setTimeout(dec, 5000);
 }
 
 /** pan do tabuleiro: x / 12 aparafusado em ±0.7 (nunca 100% de um lado só) */
@@ -456,11 +464,19 @@ function throttled(key: string, gap: number): boolean {
   return false;
 }
 
-/** Effects.tsx despeja aqui cada FxEvent drenado; só as quatro famílias pedidas (e o zap da corrente) toca */
+/** Effects.tsx despeja aqui cada FxEvent drenado; só as quatro famílias pedidas
+ *  (e o zap da corrente) toca. O gesto do usuário já criou o core (unlockAudio);
+ *  aqui só se lê o core e, se o bus apareceu suspenso ou interrompido (iOS:
+ *  segundo plano, chamada), tenta reabrir antes de desistir do som. */
 export function playFx(ev: FxEvent): void {
   if (!sfxAudible()) return;
-  const c = ensureCore();
-  if (!c || c.ctx.state !== 'running' || voices >= MAX_VOICES) return;
+  const c = getCore();
+  if (!c) return;
+  if (c.ctx.state !== 'running') {
+    resumeCore();
+    return;
+  }
+  if (voices >= MAX_VOICES) return;
   const x = ev.pos[0];
   switch (ev.type) {
     case 'launch':
@@ -482,11 +498,14 @@ export function playFx(ev: FxEvent): void {
 }
 
 /** demonstração do menu de configurações: invocação → chama dispara e detona
- *  → raio estala e rasga → fusão fecha a conta */
+ *  → raio estala e rasga → fusão fecha a conta. Agenda mesmo com o bus ainda
+ *  fechando (o gesto do botão já chamou resumeCore): as vozes entram quando o
+ *  iOS abrir o contexto. */
 export function testSfx(): void {
   if (!sfxAudible()) return;
-  const c = ensureCore();
-  if (!c || c.ctx.state !== 'running') return;
+  const c = getCore();
+  if (!c) return;
+  resumeCore();
   sSummon(0);
   window.setTimeout(() => sLaunch(-2, 'fire', 'ignis', 3), 350);
   window.setTimeout(() => sImpact(2, 'fire', 'ignis', 3), 780);
