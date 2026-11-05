@@ -71,20 +71,31 @@ jobs:
       - name: 🔬 Diagnóstico público (só quando falha)
         if: failure()
         run: |
+          set +e
           {
             echo "## Falha no job build (run $GITHUB_RUN_ID, attempt $GITHUB_RUN_ATTEMPT)"
-            echo "- runner: $ImageVersion / node: $(node --version), npm: $(npm --version)"
+            echo "- node: $(node --version) / npm: $(npm --version)"
             echo '### build-main.log (pé)'
             tail -30 /tmp/build-main.log 2>/dev/null || echo '(não rodou)'
             echo '### build-dev.log (pé)'
             tail -30 /tmp/build-dev.log 2>/dev/null || echo '(não rodou)'
-            echo '### workspace'
-            ls dist-main dist-dev 2>/dev/null || true
-            git log --oneline -1
+            echo '### env'
+            env | grep -E '^(VITE_BASE|CI|GITHUB_REF_NAME)=' | sort
           } > /tmp/diag.md
+          cat /tmp/diag.md
+          # canal 1 (contents:write): empurra o texto para o branch ci-diag —
+          # não dispara workflow nenhum (deploy só escuta main/dev)
+          git init -q /tmp/diagrepo && cd /tmp/diagrepo
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          cp /tmp/diag.md diag.md
+          git -c user.name=ci -c user.email=ci@github.com add -A
+          git -c user.name=ci -c user.email=ci@github.com commit -qm "diag run $GITHUB_RUN_ID"
+          git push -q origin HEAD:refs/heads/ci-diag
+          # canal 2 (issues:write): issue público como plano B
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "🔧 Build do deploy falhou (run $GITHUB_RUN_ID)" \
             --body-file /tmp/diag.md
+          exit 0
 
   deploy:
     needs: build
