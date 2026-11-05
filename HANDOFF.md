@@ -908,7 +908,12 @@ Safari ≥ 16.4 com Compartilhar → Adicionar à Tela de Início). Peças e reg
   `./`; GETs same-origin são stale-while-revalidate (o jogo inteiro entra no
   cache na primeira partida online e roda depois sem rede). Mexeu no SW →
   **subir o `CACHE`** (`ebma-v1` → `ebma-v2`); o `activate` purga versões
-  antigas.
+  antigas. (**05/nov: bump ebma-v1→ebma-v2 feito** — o usuário reportou o botão
+  de turbo sumido no iPhone e o site publicado estava correto (bundle/CSS ao
+  vivo pinchados: FAB no combate, ciclo 1×→3×→5×→1× e posições medidas pela
+  sonda `probe-turbo` contra a URL de produção); o culpado provável é o shell
+  antigo pré-turbo que o cache do aparelho revalida devagar. O `activate` do v2
+  varre os caches velhos na primeira visita online.)
 - Registro no `src/main.tsx` com gate `!import.meta.env.DEV`: **SW NUNCA em
   dev** — SW servindo módulos no dev server é a armadilha do transform
   obsoleto que envenena silenciosamente as sondas `qa/` (lição de 03/nov).
