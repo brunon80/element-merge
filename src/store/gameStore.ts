@@ -5,6 +5,7 @@ import { MAX_BATTLE_TIME, DEFAULT_STARTING_COINS } from '../data/balance';
 import { getSpecies, speciesAllowsLevel } from '../data/monsters';
 import { GameEngine } from '../game/engine/engine';
 import { grantMatchReward } from '../game/economy/economy';
+import { ecoFor, handheldNow, PERF_MODE_CHOICES, type PerfModeChoice } from '../game/perf';
 import { checkFusion } from '../game/fusion/fusionRules';
 import { tileFromWorld } from '../game/board';
 import {
@@ -101,6 +102,10 @@ interface GameStoreState {
   scenario: ScenarioChoice;
   bloomIntensity: number;
   sceneryBloomIntensity: number;
+  /** 🔋 Modo de desempenho pedido (persistido: auto/cheio/econômico). */
+  perfMode: PerfModeChoice;
+  /** O que o modo resolveu NESTE aparelho (true = render econômico). */
+  ecoActive: boolean;
   sfxVolume: number;
   musicVolume: number;
   activeArenaScene: ArenaScene;
@@ -147,6 +152,7 @@ interface GameStoreActions {
   setScenario: (scenario: ScenarioChoice) => void;
   setBloomIntensity: (intensity: number) => void;
   setSceneryBloomIntensity: (intensity: number) => void;
+  setPerfMode: (mode: PerfModeChoice) => void;
   setSfxVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
   setStartingCoins: (n: number) => void;
@@ -171,6 +177,8 @@ export type TurboScale = 1 | 3 | 5;
 // ---------------------------------------------------------------------------
 let engine: GameEngine | null = null;
 let save: SaveData = loadSave();
+/** 🔋 Uma pergunta por sessão: este aparelho é de bolso? (ver src/game/perf.ts) */
+const ECO_HANDHELD = handheldNow();
 let toastSeq = 1;
 
 /** mínimo de movimento (px de tela) para a imprensa virar arraste; o toque que
@@ -400,6 +408,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     rewardModeCfg: save.settings.rewardMode,
     matchRewardCfg: save.settings.matchReward,
     debugMode: save.settings.debugMode,
+    perfMode: save.settings.perfMode,
+    ecoActive: ecoFor(save.settings.perfMode, ECO_HANDHELD),
     turbo: 1,
     lastSummary: save.lastSummary,
     showBestiary: false,
@@ -421,6 +431,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         scenario: save.settings.scenario,
         bloomIntensity: save.settings.bloomIntensity,
         sceneryBloomIntensity: save.settings.sceneryBloomIntensity,
+        perfMode: save.settings.perfMode,
+        ecoActive: ecoFor(save.settings.perfMode, ECO_HANDHELD),
         sfxVolume: save.settings.sfxVolume,
         musicVolume: save.settings.musicVolume,
         activeArenaScene: resolveArenaScene(save.settings.scenario, save.lastArenaScene),
@@ -728,6 +740,13 @@ export const useGameStore = create<GameStore>((set, get) => {
       save.settings.sceneryBloomIntensity = value;
       persistSoon();
       set({ sceneryBloomIntensity: value });
+    },
+
+    setPerfMode(mode: PerfModeChoice): void {
+      const value = PERF_MODE_CHOICES.includes(mode) ? mode : 'auto';
+      save.settings.perfMode = value;
+      persistSoon();
+      set({ perfMode: value, ecoActive: ecoFor(value, ECO_HANDHELD) });
     },
 
     setSfxVolume(volume: number): void {

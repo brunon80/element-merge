@@ -1,5 +1,6 @@
 import type { Difficulty, MatchResult } from '../game/types';
 import type { AbilityDef, TargetingRule } from '../game/types';
+import type { PerfModeChoice } from '../game/perf';
 
 export const TARGETING_LABEL: Record<TargetingRule, string> = {
   closest: 'Ataca o inimigo mais próximo',
@@ -18,6 +19,14 @@ export const RESULT_LABEL: Record<MatchResult, string> = {
   victory: 'Vitória!',
   defeat: 'Derrota',
   draw: 'Empate',
+};
+
+/** 🔋 Opções do modo de desempenho (settings → Gráficos; os detalhes ficam no
+ *  hint da aba — os botões reaproveitam o grid `diff-btn` da dificuldade). */
+export const PERF_MODE_LABEL: Record<PerfModeChoice, string> = {
+  auto: 'Automático',
+  full: 'Cheio',
+  eco: 'Econômico',
 };
 
 export function fmtTime(seconds: number): string {

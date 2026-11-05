@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ARENA_R } from '../game/board';
+import { useGameStore } from '../store/gameStore';
 
 export const ICE_BG = '#132b40';
 
@@ -27,12 +28,15 @@ interface IceLayout {
   ridges: Instance[];
 }
 
-function createIceLayout(): IceLayout {
+function createIceLayout(ecoActive: boolean): IceLayout {
   let state = 0x1ce2025;
   const random = () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
     return state / 0x100000000;
   };
+  // 🔋 modo econômico: árvores do anel (32) e rochas de preenchimento (82)
+  // emagrecem; agulhas e cumes do horizonte ficam intactos (silhueta)
+  const thin = (n: number): number => (ecoActive ? Math.max(6, Math.round(n * 0.66)) : n);
   const layout: IceLayout = {
     trunks: [],
     foliage: [],
@@ -42,8 +46,9 @@ function createIceLayout(): IceLayout {
     ridges: [],
   };
 
-  for (let i = 0; i < 32; i++) {
-    const angle = (i / 32) * Math.PI * 2 + (random() - 0.5) * 0.12;
+  const treeRing = thin(32);
+  for (let i = 0; i < treeRing; i++) {
+    const angle = (i / treeRing) * Math.PI * 2 + (random() - 0.5) * 0.12;
     const radius = TREE_RING_INNER_RADIUS + Math.sqrt(random()) * TREE_RING_WIDTH;
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
@@ -77,7 +82,7 @@ function createIceLayout(): IceLayout {
     }
   }
 
-  for (let i = 0; i < 82; i++) {
+  for (let i = 0; i < thin(82); i++) {
     const angle = random() * Math.PI * 2;
     const radius = ARENA_R + 1 + random() * 12;
     const size = 0.6 + random() * 2.1;
@@ -153,7 +158,9 @@ function createSnowfall(): THREE.BufferGeometry {
 }
 
 export function IceEnvironment() {
-  const layout = useMemo(createIceLayout, []);
+  // 🔋 no econômico o layout recebe ecoActive (menos árvores/rochas de preenchimento)
+  const ecoActive = useGameStore((s) => s.ecoActive);
+  const layout = useMemo(() => createIceLayout(ecoActive), [ecoActive]);
   const snowfall = useMemo(createSnowfall, []);
   const trunkRef = useRef<THREE.InstancedMesh>(null);
   const foliageRef = useRef<THREE.InstancedMesh>(null);
@@ -194,15 +201,18 @@ export function IceEnvironment() {
         />
       </mesh>
 
-      <instancedMesh ref={trunkRef} args={[undefined, undefined, layout.trunks.length]} castShadow receiveShadow>
+      {/* 🔋 o anel de gelo (r 32+) e as cumes do horizonte (r 53+) ficam FORA
+          da caixa de sombra (ARENA_R×1,15 ≈ 26,6): castShadow nelas só
+          desenhava instância no passe de profundidade à toa */}
+      <instancedMesh ref={trunkRef} args={[undefined, undefined, layout.trunks.length]} receiveShadow>
         <cylinderGeometry args={[0.42, 0.62, 1, 7]} />
         <meshStandardMaterial roughness={0.95} flatShading />
       </instancedMesh>
-      <instancedMesh ref={foliageRef} args={[undefined, undefined, layout.foliage.length]} castShadow>
+      <instancedMesh ref={foliageRef} args={[undefined, undefined, layout.foliage.length]}>
         <coneGeometry args={[1, 1, 7]} />
         <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>
-      <instancedMesh ref={snowCapRef} args={[undefined, undefined, layout.snowCaps.length]} castShadow>
+      <instancedMesh ref={snowCapRef} args={[undefined, undefined, layout.snowCaps.length]}>
         <coneGeometry args={[1, 1, 7]} />
         <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>
@@ -214,7 +224,7 @@ export function IceEnvironment() {
         <octahedronGeometry args={[1]} />
         <meshStandardMaterial roughness={0.72} metalness={0.08} flatShading />
       </instancedMesh>
-      <instancedMesh ref={ridgeRef} args={[undefined, undefined, layout.ridges.length]} castShadow receiveShadow>
+      <instancedMesh ref={ridgeRef} args={[undefined, undefined, layout.ridges.length]} receiveShadow>
         <dodecahedronGeometry args={[1, 0]} />
         <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>

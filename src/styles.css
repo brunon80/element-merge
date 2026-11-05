@@ -63,6 +63,13 @@ body,
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
 }
 
+/* 🔋 modo econômico: painéis sem backdrop-filter — o blur por CIMA do canvas
+   3D é um dos custos mais caros do iOS (composição extra por frame) e o
+   painel já é rgba(16,22,42,0,82): legível também sem o desfoque */
+.app-shell[data-eco='on'] .panel {
+  backdrop-filter: none;
+}
+
 button {
   font: inherit;
   color: inherit;

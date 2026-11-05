@@ -4,8 +4,9 @@ import { ELEMENTS } from '../data/elements';
 import { TERRAIN_BONUS, TERRAIN_ELEMENT } from '../data/terrainBonuses';
 import type { Difficulty, ScenarioChoice } from '../game/types';
 import { useGameStore } from '../store/gameStore';
+import { PERF_MODE_CHOICES } from '../game/perf';
 import { CoinIcon } from './icons';
-import { DIFFICULTY_LABEL } from './labels';
+import { DIFFICULTY_LABEL, PERF_MODE_LABEL } from './labels';
 
 const DIFF_DESC: Record<Difficulty, string> = {
   easy: 'Inimigo com ~60% do valor do seu time: só criaturas puras Nv.1–2, sem árvore elemental, sem contra-escolha.',
@@ -52,6 +53,9 @@ export function SettingsMenu() {
   const setBloomIntensity = useGameStore((s) => s.setBloomIntensity);
   const sceneryBloomIntensity = useGameStore((s) => s.sceneryBloomIntensity);
   const setSceneryBloomIntensity = useGameStore((s) => s.setSceneryBloomIntensity);
+  const perfMode = useGameStore((s) => s.perfMode);
+  const setPerfMode = useGameStore((s) => s.setPerfMode);
+  const ecoActive = useGameStore((s) => s.ecoActive);
   const sfxVolume = useGameStore((s) => s.sfxVolume);
   const setSfxVolume = useGameStore((s) => s.setSfxVolume);
   const musicVolume = useGameStore((s) => s.musicVolume);
@@ -190,8 +194,43 @@ export function SettingsMenu() {
               <section>
                 <h3>Gráficos</h3>
                 <p className="hint">
+                  🔋 Modo de desempenho. No automático o jogo se conhece pelo
+                  aparelho: celular/tablet entra em modo econômico — resolução
+                  1,25× no lugar de 2×, cena a 30 fps, bloom desligado, sombras
+                  do menu cacheadas e vegetação de preenchimento mais esparsa
+                  (os anéis do horizonte ficam intactos). Cheio força a
+                  qualidade máxima até no celular; Econômico vale também no desktop.
+                </p>
+                <div
+                  className="difficulty-row left"
+                  role="radiogroup"
+                  aria-label="Modo de desempenho (bateria)"
+                >
+                  {PERF_MODE_CHOICES.map((mode) => (
+                    <button
+                      key={mode}
+                      role="radio"
+                      aria-checked={perfMode === mode}
+                      data-testid={`perf-mode-${mode}`}
+                      className={`diff-btn ${perfMode === mode ? 'active' : ''}`}
+                      onClick={() => setPerfMode(mode)}
+                    >
+                      {PERF_MODE_LABEL[mode]}
+                    </button>
+                  ))}
+                </div>
+                {ecoActive && (
+                  <p className="hint" data-testid="perf-eco-active">
+                    Modo econômico ATIVO neste aparelho{perfMode === 'auto' && ' (celular detectado)'}:
+                    resolução 1,25×, cena a 30 fps, bloom desligado, sombras do
+                    menu cacheadas e vegetação de preenchimento mais esparsa.
+                  </p>
+                )}
+                <p className="hint">
                   Ajuste o bloom geral e o bloom adicional da paisagem. Reduzir
-                  ou desligar os efeitos pode aliviar a GPU em dispositivos mais lentos.
+                  ou desligar os efeitos pode aliviar a GPU em dispositivos mais
+                  lentos.
+                  {ecoActive && ' No modo econômico o bloom fica desligado de qualquer jeito.'}
                 </p>
                 <label className="bloom-control" htmlFor="bloom-intensity">
                   <span className="bloom-control-heading">

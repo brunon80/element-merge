@@ -1,10 +1,15 @@
 name: Deploy no GitHub Pages
 
-# Toda versão publicada na main é buildada e enviada ao Pages
-# (build_type=workflow no Pages; também dá para disparar manualmente).
+# main  → deploy de PRODUÇÃO na URL do site (como sempre).
+# dev   → deploy de PREVIEW do GitHub Pages: as branches que não são a
+#         produção viram deployments de branch com URL própria, SEM tocar no
+#         site publicado. A URL exata sai do output `page_url` do
+#         deploy-pages — o step "Publicado" imprime ela no resumo da execução
+#         (Actions → Deploy no GitHub Pages → job Deploy).
+# Também dá para disparar manualmente (Run workflow → escolher a branch).
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -13,7 +18,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -26,6 +31,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Base do build conforme a branch
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo 'VITE_BASE=/element-merge/' >> "$GITHUB_ENV"
+          else
+            # o diretório do preview só existe depois do deploy; base
+            # relativa ('./') resolve assets em qualquer subdiretório
+            echo 'VITE_BASE=./' >> "$GITHUB_ENV"
+          fi
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -41,3 +55,6 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Publicado
+        run: |
+          echo "🔗 ${{ steps.deployment.outputs.page_url }}" | tee -a "$GITHUB_STEP_SUMMARY"

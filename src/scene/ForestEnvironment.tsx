@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ARENA_R, ORBIT_TARGET, SCENIC_CAMERA_MAX_DISTANCE } from '../game/board';
+import { useGameStore } from '../store/gameStore';
 
 export const FOREST_BG = '#4d6041';
 const TREE_CANOPY_RADIUS = 24;
@@ -58,7 +59,7 @@ function addBranch(
   });
 }
 
-function createForestLayout(): ForestLayout {
+function createForestLayout(ecoActive: boolean): ForestLayout {
   let state = 0x4f524553;
   const random = () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
@@ -75,7 +76,13 @@ function createForestLayout(): ForestLayout {
     ferns: [],
     rocks: [],
   };
-  const treeCount = 96;
+  // 🔋 modo econômico: a vegetação de preenchimento emagrece (mesmo PRNG com
+  // seed, mesma distribuição de raio — só a contagem cai). Os anéis ficam
+  // intactos: a muralha distante e as rochas do entorno são a silhueta do
+  // cenário e não entram no passe de sombra de qualquer jeito (ver castShadow
+  // removido nos meshes do anel).
+  const thin = (n: number): number => (ecoActive ? Math.max(8, Math.round(n * 0.66)) : n);
+  const treeCount = thin(96);
   const groundY = -1.53;
 
   for (let i = 0; i < treeCount; i++) {
@@ -220,7 +227,7 @@ function createForestLayout(): ForestLayout {
     });
   }
 
-  for (let i = 0; i < 110; i++) {
+  for (let i = 0; i < thin(110); i++) {
     const angle = random() * Math.PI * 2;
     const radius = ARENA_R + 1.5 + random() * 34;
     const size = 0.6 + random() * 1.4;
@@ -291,7 +298,9 @@ function applyInstances(mesh: THREE.InstancedMesh | null, instances: Instance[])
 }
 
 export function ForestEnvironment() {
-  const layout = useMemo(createForestLayout, []);
+  // 🔋 no econômico a mata emagrece (createForestLayout recebe ecoActive)
+  const ecoActive = useGameStore((s) => s.ecoActive);
+  const layout = useMemo(() => createForestLayout(ecoActive), [ecoActive]);
   const trunkRef = useRef<THREE.InstancedMesh>(null);
   const distantTrunkRef = useRef<THREE.InstancedMesh>(null);
   const distantCrownRef = useRef<THREE.InstancedMesh>(null);
@@ -330,14 +339,18 @@ export function ForestEnvironment() {
         />
       </mesh>
 
-      <instancedMesh ref={trunkRef} args={[undefined, undefined, layout.trunks.length]} castShadow receiveShadow>
+      {/* 🔋 A muralha da floresta (troncos/copas a r 86+) e a muralha distante
+          (r 110+) ficam FORA da caixa de sombra (ARENA_R×1,15 ≈ 26,6): o
+          desenho delas no passe de profundidade era desperdício puro — o
+          castShadow morreu nelas. Rochas e arbustos perto da ilha continuam
+          projetando sombra. */}
+      <instancedMesh ref={trunkRef} args={[undefined, undefined, layout.trunks.length]} receiveShadow>
         <cylinderGeometry args={[0.48, 0.82, 1, 7]} />
         <meshStandardMaterial roughness={0.92} flatShading />
       </instancedMesh>
       <instancedMesh
         ref={distantTrunkRef}
         args={[undefined, undefined, layout.distantTrunks.length]}
-        castShadow
       >
         <cylinderGeometry args={[0.48, 0.82, 1, 7]} />
         <meshStandardMaterial roughness={0.92} flatShading />
@@ -345,20 +358,19 @@ export function ForestEnvironment() {
       <instancedMesh
         ref={distantCrownRef}
         args={[undefined, undefined, layout.distantCrowns.length]}
-        castShadow
       >
         <dodecahedronGeometry args={[1, 0]} />
         <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>
-      <instancedMesh ref={rootRef} args={[undefined, undefined, layout.roots.length]} castShadow receiveShadow>
+      <instancedMesh ref={rootRef} args={[undefined, undefined, layout.roots.length]} receiveShadow>
         <cylinderGeometry args={[0.16, 0.34, 1, 6]} />
         <meshStandardMaterial roughness={0.94} flatShading />
       </instancedMesh>
-      <instancedMesh ref={branchRef} args={[undefined, undefined, layout.branches.length]} castShadow>
+      <instancedMesh ref={branchRef} args={[undefined, undefined, layout.branches.length]}>
         <cylinderGeometry args={[0.2, 0.38, 1, 6]} />
         <meshStandardMaterial roughness={0.94} flatShading />
       </instancedMesh>
-      <instancedMesh ref={crownRef} args={[undefined, undefined, layout.crowns.length]} castShadow>
+      <instancedMesh ref={crownRef} args={[undefined, undefined, layout.crowns.length]}>
         <dodecahedronGeometry args={[1, 0]} />
         <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>

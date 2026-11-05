@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ARENA_R } from '../game/board';
+import { useGameStore } from '../store/gameStore';
 import { circleTexture } from './assets';
 
 export const UNDERWATER_BG = '#0b3446';
@@ -26,12 +27,15 @@ interface UnderwaterLayout {
   distantReefs: Instance[];
 }
 
-function createUnderwaterLayout(): UnderwaterLayout {
+function createUnderwaterLayout(ecoActive: boolean): UnderwaterLayout {
   let state = 0x5ea771c;
   const random = () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
     return state / 0x100000000;
   };
+  // 🔋 modo econômico: rochas (128), moitas de coral (42) e moitas de alga
+  // (58) emagrecem; recifes do horizonte e monumentos do tabuleiro intactos
+  const thin = (n: number): number => (ecoActive ? Math.max(8, Math.round(n * 0.66)) : n);
   const layout: UnderwaterLayout = {
     rocks: [],
     coralBranches: [],
@@ -43,7 +47,7 @@ function createUnderwaterLayout(): UnderwaterLayout {
   };
   const coralColors = ['#d58b7d', '#cb8bb4', '#d2b779', '#88bd9e', '#e5cfa1'];
 
-  for (let i = 0; i < 128; i++) {
+  for (let i = 0; i < thin(128); i++) {
     const angle = random() * Math.PI * 2;
     const radius = ARENA_R + 1.5 + random() * 32;
     const size = 0.7 + random() * 2.4;
@@ -59,7 +63,7 @@ function createUnderwaterLayout(): UnderwaterLayout {
     });
   }
 
-  for (let cluster = 0; cluster < 42; cluster++) {
+  for (let cluster = 0; cluster < thin(42); cluster++) {
     const angle = random() * Math.PI * 2;
     const radius = ARENA_R + 2.5 + random() * 21;
     const x = Math.cos(angle) * radius;
@@ -132,7 +136,7 @@ function createUnderwaterLayout(): UnderwaterLayout {
     });
   }
 
-  for (let cluster = 0; cluster < 58; cluster++) {
+  for (let cluster = 0; cluster < thin(58); cluster++) {
     const angle = random() * Math.PI * 2;
     const radius = ARENA_R + 2 + random() * 25;
     const x = Math.cos(angle) * radius;
@@ -232,7 +236,9 @@ function createBubbles(): THREE.BufferGeometry {
 }
 
 export function UnderwaterEnvironment() {
-  const layout = useMemo(createUnderwaterLayout, []);
+  // 🔋 no econômico o leito emagrece (createUnderwaterLayout recebe ecoActive)
+  const ecoActive = useGameStore((s) => s.ecoActive);
+  const layout = useMemo(() => createUnderwaterLayout(ecoActive), [ecoActive]);
   const bubbles = useMemo(createBubbles, []);
   const rocksRef = useRef<THREE.InstancedMesh>(null);
   const coralBranchesRef = useRef<THREE.InstancedMesh>(null);
@@ -298,10 +304,13 @@ export function UnderwaterEnvironment() {
         <coneGeometry args={[0.5, 1, 5]} />
         <meshStandardMaterial roughness={0.9} flatShading side={THREE.DoubleSide} />
       </instancedMesh>
+      {/* 🔋 os monumentos do fundo (r 31–41) e os recifes do horizonte (r 61–83)
+          estão fora da caixa de sombra (≈26,6): castShadow nelas era desenho
+          desperdiçado no passe de profundidade. Rochas/coral/algas do entorno
+          do tabuleiro continuam projetando sombra */}
       <instancedMesh
         ref={monumentsRef}
         args={[undefined, undefined, layout.monuments.length]}
-        castShadow
         receiveShadow
       >
         <cylinderGeometry args={[0.46, 0.7, 1, 5]} />
@@ -310,7 +319,6 @@ export function UnderwaterEnvironment() {
       <instancedMesh
         ref={monumentCapsRef}
         args={[undefined, undefined, layout.monumentCaps.length]}
-        castShadow
       >
         <coneGeometry args={[0.72, 1, 5]} />
         <meshStandardMaterial roughness={0.94} flatShading />
@@ -318,7 +326,6 @@ export function UnderwaterEnvironment() {
       <instancedMesh
         ref={distantReefsRef}
         args={[undefined, undefined, layout.distantReefs.length]}
-        castShadow
         receiveShadow
       >
         <dodecahedronGeometry args={[1, 0]} />

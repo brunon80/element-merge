@@ -687,7 +687,12 @@ projeta na direção da câmera e aponta a PIOR folha (t=1 some no fog) em cada
 cenário nas três calibrações — retrato 390×844, desktop-janela-larga 1600×900 e
 zoom máximo (empurra a câmera além do teto; o OrbitControls a puxa de volta no
 `maxDistance` do cenário = pior caso real). Meta: pior t ≤ 0,55; prints para
-aprovação visual.
+aprovação visual. A sétima, `qa/probe-eco.mjs [saidaDir]` (dev server +
+`QA_URL`), é a sonda do modo econômico: mede fps REAL via contagem
+`gl.info.render.frame` do renderer achado no `__r3f`, dpr efetivo, flags de
+`shadowMap.autoUpdate`, o radiogroup do painel Gráficos e — com Chromium
+emulando UA de iPhone — se o AUTO acende o eco sozinho. O headless não tem o
+teto de 60 Hz do vsync: vale a RAZÃO cheio→eco e os flags exatos.
 
 ---
 
@@ -847,6 +852,90 @@ no desktop. Verificados e sanados rodando as sondas acima no WebKit (o gate iOS
      sonda vale como saúde de API/console no motor; quem pincha o contrato
      do iOS é o fake da política nos testes. **Confirmação no iPhone do usuário: FEITA em 05/nov** — o som funcionou
      perfeitamente no aparelho após o deploy (`d720741` no GitHub Pages).
+
+---
+
+## 🔋 Modo econômico + pipeline de preview da branch dev (novidade de 05/nov/2026 — NÃO reverter)
+
+Report do usuário: "em dispositivos com bateria, ela está drenando muito
+rápido". O diagnóstico do pipeline (medido por sonda, ver abaixo) apontou cinco
+freios pesados: dpr 2 no iPhone (4× os pixels), shadow map 2048² recalculada em
+TODO frame (até no menu, onde a ilha é estática), `frameloop` sempre a 60 fps,
+bloom via compositor (RT HalfFloat MSAA + escada de mips ≈ 6 passes fullscreen)
+e ~3 mil instâncias de vegetação sombreando sem nunca entrar na caixa de sombra.
+A resposta é o **modo econômico**, ligado sozinho em aparelho de bolso pelo modo
+AUTO, com override manual em Configurações → Gráficos.
+
+- **Detecção (`src/game/perf.ts`, puro e testável):** `perfMode` persistido
+  `'auto' | 'full' | 'eco'` (default auto; parse tolerante no save) → o store
+  resolve `ecoActive` (`handheldNow()` uma vez por sessão: UA
+  iPhone/iPad/iPod/Android; iPadOS moderno entrega pelos múltiplos pontos de
+  toque + pointer grosseiro quando o Safari o disfarça de Mac). A ação
+  `setPerfMode` espelha nos dois; a UI (aba Gráficos) reaproveita o grid
+  `diff-btn` com hint explicativo e o pino vivo `perf-eco-active`.
+- **As alavancas do eco** (no modo cheio o jogo continua idêntico ao de sempre):
+  1. **dpr** do Canvas: `[1, 1.25]` (era `[1, 2]`) ≈ 39% dos pixels no iPhone;
+  2. **frameloop `'demand'` + `src/scene/EcoHeartbeat.tsx`** — o canvas só
+     renderiza quando `invalidate()`; o batimento a 30 Hz mantém a cena viva
+     (metade do frame). ARMADILHA achada na sonda: o showcase `autoRotate` do
+     menu disparava `'change'` no OrbitControls a cada giro, que invalidava o
+     frame e derrubava o teto (menu eco media 62 fps em vez de 30) — no eco o
+     auto-rotate do menu dorme (`autoRotate={menuMode && !ecoActive}`);
+  3. **motor** (`useGameDriver`): `setInterval` de 30 Hz no eco (dt real, mesmo
+     teto 0,05 s) no lugar do rAF de 60 Hz;
+  4. **bloom**: o COMPOSER INTEIRO sai do caminho no eco (`BloomGate`:
+     `useComposer = !QA_NO_COMPOSER && !ecoActive && …`) — não adianta só zerar
+     a intensidade; o RT HalfFloat MSAA + a escada de mips é que pesam;
+  5. **sombras**: no eco, `gl.shadowMap.autoUpdate = false` em MENU (no jogo
+     volta; `needsUpdate = true` uma vez a cada troca de tela/cenário —
+     `BattleScene`) e `mapSize 1024²` no eco (prop `eco` na Lighting,
+     renasce por `key` ao trocar de modo — mudar mapSize em luz viva não
+     recria o buffer);
+  6. **CSS**: eco desliga o `backdrop-filter` dos painéis sobre o canvas
+  (blur por cima do 3D é caro no iOS; `--panel` já é 0,82 de opacidade).
+- **Desbaste de vegetação só no eco** (mesmo PRNG com seed, mesma distribuição
+  de raio — só a contagem cai; anéis de horizonte NÃO mexem, são a silhueta):
+  floresta mata 96→63 + arbustos 110→73; gelo árvores 32→21 (o ângulo usa
+  `treeRing`, senão o anel ocuparia só ⅔ da circunferência) + rochas 82→54;
+  vulcão rochas 140→92; subaquático rochas 128→84 + corais 42→28 + algas
+  58→38. Floresta mantém as 58 rochas e os 36 troncos distantes.
+- **CORREÇÃO GERAL (fora do eco também, visual idêntico)**: castShadow REMOVIDO
+  da vegetação que nunca esteve na caixa de sombra (`SHADOW_BOX = ARENA_R×1,15
+  ≈ 26,6`): muralha da floresta (troncos/copas/raízes/galhos r 86+, distant r
+  110+), anel de gelo (r 32+) e cumes (53+), árvores do entorno vulcânico
+  (31–43) + montanhas do horizonte (75+), monumentos subaquáticos (31–41) e
+  recifes distantes (61–83). Elas só desenhavam milhares de instâncias no passe
+  de profundidade sem sombrear nada visível. Rochas/agulhas/coral do PERTO da
+  ilha continuam projetando.
+- **Verificação:** `src/tests/perf.test.ts` (22 testes: detecção pura com UA
+  injetada, pinos de fiação em App/BloomGate/BattleScene/Lighting/driver/
+  camera/sw e os tags `instancedMesh` com/sem castShadow por cenário);
+  `qa/probe-eco.mjs [saidaDir]` mede o VIVO (WebKit render real + Chromium
+  emulando UA de iPhone): cheio menu 511 fps headless → **eco menu 28 fps**,
+  dpr efetivo = clamp(window dpr, eco 1,25), `shadowMap.autoUpdate` false no
+  menu eco / true no combate eco, voltar ao cheio sobe o fps ≥1,4×, UA de iPhone
+  acende o eco SOZINHO (`data-eco='on'` no shell), radiogroup funciona
+  (`perf-eco-active` some no cheio, aparece no eco) — **CONSOLE 0**. ⚠️ o
+  headless não tem o teto de 60 Hz do vsync: lá 'cheio' sai com centenas de
+  fps; no iPhone real cheio=60, eco≈30 — a sonda confere a razão (eco ≤
+  0,85×) e os flags. `probe-fog` e `probe-turbo` reconfirmados verdes; a sonda
+  do turbo agora monta um time de 3 ignis (um ignis sozinho morria antes do fim
+  do ciclo e derrubava o clip do FAB; a ordem spawn→descoberta→spawn foi
+  consertada com o overlay fechado entre spawns).
+- **Pipeline dev (GitHub Pages):** `.github/workflows/deploy.yml` agora aceita
+  push nas branches **main e dev** (+ `workflow_dispatch`): main publica como
+  produção em `/element-merge/` (base fixa), dev publica como **deploy de
+  branch (preview)** do Pages — deploy-pages reconhece branch não-produção e
+  devolve URL própria via output `page_url`, impresso no step "Publicado" do
+  job Deploy (resumo da execução na aba Actions). Como o diretório do preview
+  só existe depois do primeiro deploy, o build da branch usa `VITE_BASE=./`
+  (vite.config lê a env; base RELATIVA funciona em qualquer diretório) e os
+  links do index.html (ícones/manifest) ficaram relativos por causa disso. O
+  cache do Service Worker isolou os dois mundos: `ebma-${SITE_DIR}-v4` onde
+  SITE_DIR é o diretório da instalação (`ebma-element-merge-v4` na produção —
+  que no caminho também purga os ebma-v2/v3 velhos dos aparelhos — e
+  `ebma-<preview>-v4` no preview). Preview expira com o tempo do GitHub; reative
+  com novo push ou Run workflow na branch dev.
 
 ---
 
@@ -1247,7 +1336,7 @@ alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
   deslocado para o jogador — 24/24 buracos alcançáveis pelo ponteiro), câmera
   orbital 360° (dist 3–`ARENA_R×2,76`, polar 0,35–1,32) e fog/luz derivados de
   `ARENA_R`. Loja com `max-width: 400px` no CSS para o dock não cobrir o board.
-- **QA visual automatizado** (laço Playwright descrito acima), 361 testes/35.
+- **QA visual automatizado** (laço Playwright descrito acima), 382 testes/36.
 
 ## Arquitetura (regras de sempre)
 

@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ARENA_R } from '../game/board';
+import { useGameStore } from '../store/gameStore';
 import { circleTexture } from './assets';
 
 export const VOLCANIC_BG = '#241713';
@@ -199,12 +200,15 @@ function createVolcanoFeatures(volcano: Volcano, seed: number): VolcanoFeatures 
   };
 }
 
-function createVolcanicLayout(): VolcanicLayout {
+function createVolcanicLayout(ecoActive: boolean): VolcanicLayout {
   let state = 0x70c4a11c;
   const random = () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
     return state / 0x100000000;
   };
+  // 🔋 modo econômico: só o campo de rochas de preenchimento (140) emagrece;
+  // agulhas, árvores do entorno e montanhas do horizonte ficam intactos
+  const thin = (n: number): number => (ecoActive ? Math.max(8, Math.round(n * 0.66)) : n);
   const layout: VolcanicLayout = {
     rocks: [],
     spires: [],
@@ -213,7 +217,7 @@ function createVolcanicLayout(): VolcanicLayout {
     mountains: [],
   };
 
-  for (let i = 0; i < 140; i++) {
+  for (let i = 0; i < thin(140); i++) {
     const angle = random() * Math.PI * 2;
     const radius = ARENA_R + 1 + random() * 23;
     const size = 0.45 + random() * 2.2;
@@ -337,7 +341,9 @@ function createEmbers(): THREE.BufferGeometry {
 }
 
 export function VolcanicEnvironment() {
-  const layout = useMemo(createVolcanicLayout, []);
+  // 🔋 no econômico o campo de rochas emagrece (createVolcanicLayout recebe ecoActive)
+  const ecoActive = useGameStore((s) => s.ecoActive);
+  const layout = useMemo(() => createVolcanicLayout(ecoActive), [ecoActive]);
   const embers = useMemo(createEmbers, []);
   const volcanoFeatures = useMemo(
     () => VOLCANOES.map((volcano, index) => createVolcanoFeatures(volcano, 0x71a1 + index * 127)),
@@ -432,18 +438,20 @@ export function VolcanicEnvironment() {
         <coneGeometry args={[1, 1, 5]} />
         <meshStandardMaterial roughness={0.95} flatShading />
       </instancedMesh>
-      <instancedMesh ref={trunkRef} args={[undefined, undefined, layout.trunks.length]} castShadow receiveShadow>
+      {/* 🔋 as árvores do entorno vulcânico (r 31–43) e as montanhas do
+          horizonte (r 75–98) estão fora da caixa de sombra (≈26,6): o
+          castShadow nelas era desenho desperdiçado no passe de profundidade */}
+      <instancedMesh ref={trunkRef} args={[undefined, undefined, layout.trunks.length]} receiveShadow>
         <cylinderGeometry args={[0.2, 0.34, 1, 6]} />
         <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>
-      <instancedMesh ref={branchRef} args={[undefined, undefined, layout.branches.length]} castShadow>
+      <instancedMesh ref={branchRef} args={[undefined, undefined, layout.branches.length]}>
         <cylinderGeometry args={[0.2, 0.34, 1, 5]} />
         <meshStandardMaterial roughness={1} flatShading />
       </instancedMesh>
       <instancedMesh
         ref={mountainRef}
         args={[undefined, undefined, layout.mountains.length]}
-        castShadow
         receiveShadow
       >
         <coneGeometry args={[1, 1, 7]} />

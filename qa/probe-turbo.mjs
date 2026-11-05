@@ -55,7 +55,21 @@ await page.click('[data-testid="play"]');
 await page.waitForSelector('[data-testid="shop"]');
 await page.click('[data-testid="open-bestiary"]');
 await page.waitForSelector('[data-testid="bestiary"]');
-await page.click(`[data-testid="debug-spawn-ignis"]`);
+// time próprio de 3 ignis: um ignis sozinho às vezes morre antes da sonda
+// terminar o ciclo (a luta vira resultado e o FAB sai do DOM). A descoberta
+// do ignis abre um overlay que taparia o próximo spawn — fecho cada um.
+for (let n = 0; n < 3; n++) {
+  await page.click(`[data-testid="debug-spawn-ignis"]`);
+  await page.waitForTimeout(400);
+  if (await page.locator('[data-testid="discovery-overlay"]').isVisible().catch(() => false)) {
+    await page.click('[data-testid="discovery-close"]');
+    await page.waitForTimeout(300);
+  }
+  if (n < 2 && !(await page.locator('[data-testid="bestiary"]').isVisible().catch(() => false))) {
+    await page.click('[data-testid="open-bestiary"]'); // o spawn pode fechar o painel sozinho
+    await page.waitForSelector('[data-testid="bestiary"]');
+  }
+}
 await page.waitForTimeout(900);
 if (await page.locator('[data-testid="discovery-overlay"]').isVisible().catch(() => false)) {
   await page.click('[data-testid="discovery-close"]');
@@ -129,21 +143,21 @@ const snap = async () =>
   });
 
 const clipFab = async () => {
-  const b = await fabLoc.boundingBox();
-  return { x: b.x - 12, y: b.y - 12, width: b.width + 24, height: b.height + 30 };
+  const b = await fabLoc.boundingBox().catch(() => null); // luta que terminou cedo: print inteiro, sem crash
+  return b ? { x: b.x - 12, y: b.y - 12, width: b.width + 24, height: b.height + 30 } : undefined;
 };
 
 const s1 = await snap(); // 1× discreto
 await page.screenshot({ path: join(OUT, 'turbo-off.png'), clip: await clipFab() });
-await page.click('[data-testid="turbo-fab"]');
+await fabLoc.click().catch(() => {});
 await page.waitForTimeout(300);
 const s3 = await snap(); // 3× em ouro
 await page.screenshot({ path: join(OUT, 'turbo-3.png'), clip: await clipFab() });
-await page.click('[data-testid="turbo-fab"]');
+await fabLoc.click().catch(() => {});
 await page.waitForTimeout(300);
 const s5 = await snap(); // 5× ouro→perigo
 await page.screenshot({ path: join(OUT, 'turbo-5.png'), clip: await clipFab() });
-await page.click('[data-testid="turbo-fab"]');
+await fabLoc.click().catch(() => {});
 await page.waitForTimeout(300);
 const s1Again = await snap(); // o ciclo fecha voltando a 1×
 

@@ -14,7 +14,19 @@
  * Ao mexer neste arquivo, suba o CACHE (ex.: ebma-v2) para purgar versões
  * antigas no activate.
  */
-const CACHE = 'ebma-v3'; // 05/nov (2º bump): purga o shell pré-fog adaptivo que serviria o bundle antigo no aparelho
+/**
+ * O nome do cache carrega o DIRETÓRIO onde o SW foi instalado: o site de
+ * produção (./) e o preview de uma branch (ex.: .../dev/) convivem no MESMO
+ * domínio github.io sem disputar cache — cada um purga só a si mesmo.
+ * (Lição do botão sumido: shell velho no cache do aparelho.)
+ */
+const SITE_DIR =
+  new URL('./', self.location).pathname
+    .replace(/\/+$/, '')
+    .split('/')
+    .filter(Boolean)
+    .pop() || 'root';
+const CACHE = `ebma-${SITE_DIR}-v4`; // 05/nov: purga os ebma-v* antigos (pré-modo econômico)
 
 self.addEventListener('install', () => self.skipWaiting());
 

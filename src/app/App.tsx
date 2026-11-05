@@ -17,6 +17,7 @@ import { useGameDriver } from '../hooks/useGameDriver';
 import { useMusicTrack } from '../hooks/useMusicTrack';
 import { CAMERA_POS } from '../game/board';
 import { AdaptiveFog } from '../scene/AdaptiveFog';
+import { EcoHeartbeat } from '../scene/EcoHeartbeat';
 import { BestiaryStage } from '../scene/BestiaryStage';
 import { ARENA_BG, BloomGate } from '../scene/BloomGate';
 import { FOREST_BG } from '../scene/ForestEnvironment';
@@ -38,6 +39,7 @@ export function App() {
   const selectUnit = useGameStore((s) => s.selectUnit);
   const matchKey = useGameStore((s) => s.matchId);
   const activeArenaScene = useGameStore((s) => s.activeArenaScene);
+  const ecoActive = useGameStore((s) => s.ecoActive);
   const seed = useMemo(() => Math.floor(Math.random() * 1e9), []);
   const sceneBackground =
     activeArenaScene === 'forest'
@@ -55,11 +57,12 @@ export function App() {
   const inGame = screen === 'game';
 
   return (
-    <div className="app-shell" data-screen={screen}>
+    <div className="app-shell" data-screen={screen} data-eco={ecoActive ? 'on' : 'off'}>
       <GLBoundary>
         <Canvas
           shadows
-          dpr={[1, 2]}
+          dpr={ecoActive ? [1, 1.25] : [1, 2]}
+          frameloop={ecoActive ? 'demand' : 'always'}
           camera={{ position: CAMERA_POS, fov: 42 }}
           onPointerMissed={() => selectUnit(null)}
         >
@@ -70,6 +73,9 @@ export function App() {
           {activeArenaScene !== 'universe-end' && (
             <AdaptiveFog color={sceneBackground} variant={activeArenaScene} />
           )}
+          {/* 🔋 no econômico o canvas é "demand": este batimento acorda a cena
+              a 30 Hz (metade do frame de antes) sem o rAF de 60 fps */}
+          {ecoActive && <EcoHeartbeat hz={30} />}
           <BattleScene
             key={matchKey ?? `menu-${seed}`}
             menuMode={!inGame}
