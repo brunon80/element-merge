@@ -1057,6 +1057,19 @@ AUTO, com override manual em Configurações → Gráficos.
   Tripwire: …"`). Local:
   `python3 -c "import yaml,sys; yaml.safe_load(open('.github/workflows/deploy.yml'))"`
   antes de subir (não há action de lint no repo).
+- **👁️ Sonda do site publicado (`qa/probe-site-live.mjs`, 06/nov):** abre
+  Chromium nos DOIS mundos do Pages (raiz e `/dev/`), fura o `max-age=600` do
+  CDN com `?probe=<ts>`, recarrega uma vez para passar pelo caminho do service
+  worker (é o cache do aparelho que segura casca velha pós-deploy), abre
+  Configurações → ✨ Gráficos e exige `perf-mode-auto|full|eco`, os três
+  `[role=radio]` do radiogroup, os dois sliders de bloom, `perf-mode` no bundle
+  publicado e `sw.js` encontrado. Roda MANUAL (o runner do deploy não tem
+  navegador do Playwright instalado; as actions do Pages também não instalam).
+  `QA_BASE` p/ apontar p/ outro host. Checagem ao vivo depois do conserto:
+  raiz `index-CJbWdxie.js` e `/dev/` `index-yFbP8FyL.js`, os dois com a aba
+  Gráficos e "Automático" marcado, `sw` em `ebma-${SITE_DIR}-v6` → os dois
+  mundos ok. Rodar a sonda é o que fecha o ciclo do bug de produção velha: o
+  job verde não prova o conteúdo entregue, o navegador no endereço público prova.
 - **SW com dois mundos no MESMO domínio:** caches são compartilhados por
   ORIGEM, então o activate que apaga "tudo que não é o próprio cache" destrói
   o cache offline do outro (produção ↔ preview). O `activate` do sw.js purga só
