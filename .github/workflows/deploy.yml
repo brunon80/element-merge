@@ -115,6 +115,10 @@ jobs:
         run: |
           set -euo pipefail
           fail=0
+          main_js=$(basename "$(ls "$RUNNER_TEMP/site-main"/assets/index-*.js)")
+          dev_js=$(basename "$(ls "$RUNNER_TEMP/site-dev"/assets/index-*.js)")
+          main_sha_short=$(cut -c1-7 < "$RUNNER_TEMP/main-sha")
+          dev_sha_short=$(git rev-parse --short HEAD)
           # 1) todo asset que o build da main gerou está na raiz, byte a byte
           while read -r f; do
             if [ ! -f "dist/$f" ] || ! cmp -s "$RUNNER_TEMP/site-main/$f" "dist/$f"; then
@@ -123,8 +127,6 @@ jobs:
             fi
           done < "$RUNNER_TEMP/main-assets.txt"
           # 2) os dois index.html apontam para os bundles recém-construídos
-          main_js=$(basename "$(ls "$RUNNER_TEMP/site-main"/assets/index-*.js)")
-          dev_js=$(basename "$(ls "$RUNNER_TEMP/site-dev"/assets/index-*.js)")
           if ! grep -q "assets/$main_js" dist/index.html; then
             echo "::error::index.html da raiz não referencia $main_js — produção velha?"
             fail=1
@@ -136,9 +138,9 @@ jobs:
           if [ "$fail" -ne 0 ]; then
             {
               echo '### 🛡️ conferência FALHOU'
-              echo '- main construída: `'"$(cat "$RUNNER_TEMP/main-sha")"` → `'"$main_js"'`'
-              echo '- dev construída: `'"$(git rev-parse --short HEAD)"'` → `'"$dev_js"'`'
-              echo '- assets na raiz: '"$(ls dist/assets | tr '\n' ' ')"
+              echo "- main construída: $main_sha_short  ($main_js)"
+              echo "- dev construída:  $dev_sha_short  ($dev_js)"
+              echo "- assets na raiz: $(ls dist/assets | tr '\n' ' ')"
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
@@ -147,8 +149,8 @@ jobs:
             echo ''
             echo '| mundo | ref | bundle JS | sha256 |'
             echo '| --- | --- | --- | --- |'
-            echo "| produção (raiz) | \`$(cat "$RUNNER_TEMP/main-sha" | cut -c1-7)\` | $main_js | $(sha256sum "dist/assets/$main_js" | cut -c1-16) |"
-            echo "| preview (/dev/) | \`$(git rev-parse --short HEAD)\` | $dev_js | $(sha256sum "dist/dev/assets/$dev_js" | cut -c1-16) |"
+            echo "| produção (raiz) | $main_sha_short | $main_js | $(sha256sum "dist/assets/$main_js" | cut -c1-16) |"
+            echo "| preview (/dev/) | $dev_sha_short | $dev_js | $(sha256sum "dist/dev/assets/$dev_js" | cut -c1-16) |"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: 🔬 Logs no sumário da execução (só quando falha)
         if: failure()
