@@ -3,6 +3,11 @@ node_modules/
 
 # build
 dist/
+# os outDirs do workflow de deploy (main na raiz, dev em /dev/). NUNCA
+# versionar: o segundo `actions/checkout` do deploy troca o build recém-feito
+# pela versão commitada e o GitHub Pages publica código velho SEM ERRO.
+dist-main/
+dist-dev/
 
 # logs
 *.log

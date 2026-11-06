@@ -16,6 +16,8 @@ import StoreSource from '../store/gameStore.ts?raw';
 import UnderwaterSource from '../scene/UnderwaterEnvironment.tsx?raw';
 import VolcanicSource from '../scene/VolcanicEnvironment.tsx?raw';
 import SwSource from '../../public/sw.js?raw';
+import DeployYmlSource from '../../.github/workflows/deploy.yml?raw';
+import GitIgnoreSource from '../../.gitignore?raw';
 import SaveSource from '../persistence/saveGame.ts?raw';
 import { ecoFor, isBatteryHandheld, PERF_MODE_CHOICES } from '../game/perf';
 
@@ -191,10 +193,33 @@ describe('deploy: o cache do SW é isolado por local de instalação', () => {
   test('main (raiz) e preview dev (/dev/) têm caches diferentes e o activate purga só a própria família', () => {
     expect(SwSource).toContain('const SITE_DIR =');
     expect(SwSource).toContain('new URL(\'./\', self.location)');
-    expect(SwSource).toContain('ebma-${SITE_DIR}-v5');
+    expect(SwSource).toContain('ebma-${SITE_DIR}-v6');
     // caches são compartilhados por ORIGEM: com produção e preview no mesmo
     // domínio, o activate não pode apagar o cache do outro mundo
     expect(SwSource).toContain('k.startsWith(`ebma-${SITE_DIR}-`)');
     expect(SwSource).toContain('/^ebma-v\\d+$/');
+  });
+});
+
+describe('deploy: a raiz do Pages é sempre o build da main desta execução', () => {
+  // 06/nov: `dist-main/` e `dist-dev/` commitados + `clean: false` = o 2º
+  // checkout restaura o build COMMITADO por cima do recém-construído e o
+  // Pages publica produção velha com o job verde. Pinos estáticos: o erro
+  // tem que ser impossível por construção, não por cuidado.
+  test('os outDirs do workflow estão ignorados e o job recusa build versionado', () => {
+    expect(GitIgnoreSource).toContain('dist-main/');
+    expect(GitIgnoreSource).toContain('dist-dev/');
+    expect(DeployYmlSource).toContain("grep -E '^(dist|dist-main|dist-dev)/'");
+  });
+
+  test('os builds são engarrafados em $RUNNER_TEMP e a montagem sai de lá', () => {
+    expect(DeployYmlSource).toContain('cp -r dist-main "$RUNNER_TEMP/site-main"');
+    expect(DeployYmlSource).toContain('cp -r "$RUNNER_TEMP/site-main/." dist/');
+    expect(DeployYmlSource).toContain('cp -r "$RUNNER_TEMP/site-dev/." dist/dev/');
+  });
+
+  test('a conferência compara bytes antes do upload (produção velha = job vermelho)', () => {
+    expect(DeployYmlSource).toContain('cmp -s "$RUNNER_TEMP/site-main/$f" "dist/$f"');
+    expect(DeployYmlSource).toContain('grep -q "assets/$main_js" dist/index.html');
   });
 });
