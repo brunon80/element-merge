@@ -268,7 +268,11 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
   const { gl, scene, camera, size } = useThree();
   const bloomIntensity = useGameStore((s) => s.bloomIntensity);
   const sceneryBloomIntensity = useGameStore((s) => s.sceneryBloomIntensity);
-  const useComposer = (bloomIntensity > 0 || sceneryBloomIntensity > 0) && !QA_NO_COMPOSER;
+  // 🔋 modo econômico: a bateria vence — mesmo com bloom configurado o
+  // compositor (RT HalfFloat MSAA + escada de mips do UnrealBloom + cópia,
+  // ~6 passes fullscreen) fica desligado; a cena volta ao render direto.
+  const ecoActive = useGameStore((s) => s.ecoActive);
+  const useComposer = !QA_NO_COMPOSER && !ecoActive && (bloomIntensity > 0 || sceneryBloomIntensity > 0);
 
   const stack = useMemo(() => {
     // RT do composer: HalfFloat segura o HDR do anel de fótons (o highpass lê

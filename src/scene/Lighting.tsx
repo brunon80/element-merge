@@ -18,7 +18,15 @@ const TEAM_LIGHT_RANGE = ARENA_R * 0.85;
 // plataforma continuar com o mesmo brilho de antes do tabuleiro ter crescido
 const TEAM_LIGHT_INTENSITY = 22 * (TEAM_LIGHT_RANGE / 17) ** 2;
 
-export function Lighting({ sceneVariant }: { sceneVariant: ArenaScene }) {
+export function Lighting({
+  sceneVariant,
+  eco = false,
+}: {
+  sceneVariant: ArenaScene;
+  /** 🔋 no modo econômico a sombra cai para 1024² — no enquadre do celular a
+   *  diferença é invisível e o passe de profundidade custa 1/4 */
+  eco?: boolean;
+}) {
   const forest = sceneVariant === 'forest';
   const icy = sceneVariant === 'ice';
   const volcanic = sceneVariant === 'volcanic';
@@ -54,8 +62,8 @@ export function Lighting({ sceneVariant }: { sceneVariant: ArenaScene }) {
         intensity={forest ? 1.8 : icy ? 1.55 : volcanic ? 1.05 : underwater ? 1.45 : universeEnd ? 1.15 : 1.7}
         color={forest ? '#fff1cb' : icy ? '#d6f1ff' : volcanic ? '#ff9b56' : underwater ? '#a3f6f1' : universeEnd ? '#a8caff' : '#ffe9c4'}
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={eco ? 1024 : 2048}
+        shadow-mapSize-height={eco ? 1024 : 2048}
         shadow-camera-left={-SHADOW_BOX}
         shadow-camera-right={SHADOW_BOX}
         shadow-camera-top={SHADOW_BOX}

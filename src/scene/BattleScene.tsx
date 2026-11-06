@@ -25,6 +25,7 @@ export function BattleScene({
 }) {
   const { camera, gl } = useThree();
   const unitIdsRaw = useGameStore((s) => s.units.map((u) => u.id).join(','));
+  const ecoActive = useGameStore((s) => s.ecoActive);
 
   const unitIds = useMemo(
     () => (unitIdsRaw ? unitIdsRaw.split(',').map(Number) : []),
@@ -41,6 +42,16 @@ export function BattleScene({
       object.layers.enable(SCENERY_BLOOM_LAYER);
     });
   }, [sceneVariant]);
+
+  // 🔋 Orçamento de sombra: no MODO ECONÔMICO em menu não há unidade no
+  // tabuleiro — a ilha é estática, então a shadow map é redesenhada UMA vez a
+  // cada troca de tela/cenário e fica em cache enquanto o menu vive. No jogo
+  // volta o autoUpdate (e a 30 Hz, como todo o frame econômico). No modo
+  // cheio o comportamento é o de sempre.
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = !(ecoActive && menuMode);
+    gl.shadowMap.needsUpdate = true;
+  }, [gl, ecoActive, menuMode, sceneVariant]);
 
   const dragTools = useMemo(() => {
     return {
@@ -110,7 +121,7 @@ export function BattleScene({
   return (
     <group>
       <group ref={sceneryLayerRef} name="scenery-bloom-layer">
-        <Lighting sceneVariant={sceneVariant} />
+        <Lighting key={ecoActive ? 'lighting-eco' : 'lighting-full'} sceneVariant={sceneVariant} eco={ecoActive} />
         <Arena sceneVariant={sceneVariant} />
         {sceneVariant === 'universe-end' && <UniverseEndEnvironment />}
       </group>

@@ -58,6 +58,7 @@ export function CameraController({
   const volcanic = sceneVariant === 'volcanic';
   const underwater = sceneVariant === 'underwater';
   const { camera, size } = useThree();
+  const ecoActive = useGameStore((s) => s.ecoActive);
   const dragActive = useGameStore(
     (s) => s.dragId !== null || s.pendingDrag !== null,
   );
@@ -124,10 +125,20 @@ export function CameraController({
       makeDefault
       target={ORBIT_TARGET}
       enablePan={false}
-      enableDamping
+      // 🔋 no eco a inércia MORRE: a damping do OrbitControls continua
+      // disparando 'change' depois que o dedo sai do vidro, e cada 'change'
+      // revalida o canvas demand — a sonda mediu 53,5 fps na cauda de 2 s
+      // pós-arraste (o teto de 30 só valia com a cena parada). Sem damping a
+      // câmera responde 1:1 com o dedo e a cauda não existe. No cheio, a
+      // suavidade de sempre (e o showcase auto-rotate) continua.
+      enableDamping={!ecoActive}
       dampingFactor={0.08}
       enableRotate={!dragActive}
-      autoRotate={menuMode}
+      // 🔋 no MENU o palco gira sozinho (showcase) — mas em demand cada giro
+      // dispara 'change' no OrbitControls, que invalida o frame e derruba o
+      // teto de 30 Hz do modo econômico (a sonda mediu 62 fps em vez de 30).
+      // No eco o menu fica estático; no cheio o showcase continua.
+      autoRotate={menuMode && !ecoActive}
       autoRotateSpeed={0.55}
       minDistance={3} // zoom colado p/ inspecionar o figurino (o clamp antigo
       // em 10 deixava a estaca e os cacos de gelo minúsculos na tela)

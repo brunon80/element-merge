@@ -1,5 +1,6 @@
 import { DEFAULT_STARTING_COINS } from '../data/balance';
 import { ALL_SPECIES_IDS, getSpecies, speciesAllowsLevel } from '../data/monsters';
+import { PERF_MODE_CHOICES, type PerfModeChoice } from '../game/perf';
 import { TILES_PER_SIDE } from '../game/types';
 import {
   DEFAULT_MATCH_REWARD,
@@ -56,6 +57,9 @@ export interface SettingsData {
   scenario: ScenarioChoice;
   bloomIntensity: number;
   sceneryBloomIntensity: number;
+  /** 🔋 Modo de desempenho (bateria): 'auto' detecta o aparelho de bolso,
+   *  'full' força qualidade máxima, 'eco' força economia (src/game/perf.ts). */
+  perfMode: PerfModeChoice;
   /** Volume dos efeitos sonoros sintetizados (0 = desligado, 100 = máximo). */
   sfxVolume: number;
   /** Volume da trilha generativa (menu, cenários e resultados). */
@@ -108,6 +112,7 @@ export function defaultSave(): SaveData {
       scenario: 'random',
       bloomIntensity: DEFAULT_BLOOM_INTENSITY,
       sceneryBloomIntensity: DEFAULT_SCENERY_BLOOM_INTENSITY,
+      perfMode: 'auto',
       sfxVolume: DEFAULT_SFX_VOLUME,
       musicVolume: DEFAULT_MUSIC_VOLUME,
       startingCoins: DEFAULT_STARTING_COINS,
@@ -231,6 +236,11 @@ export function loadSave(): SaveData {
       Number.isFinite(parsed.settings.sceneryBloomIntensity)
         ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(parsed.settings.sceneryBloomIntensity)))
         : base.settings.sceneryBloomIntensity;
+    const perfMode: PerfModeChoice =
+      typeof parsed.settings?.perfMode === 'string' &&
+      PERF_MODE_CHOICES.includes(parsed.settings.perfMode as PerfModeChoice)
+        ? (parsed.settings.perfMode as PerfModeChoice)
+        : base.settings.perfMode;
     const sfxVolume =
       typeof parsed.settings?.sfxVolume === 'number' &&
       Number.isFinite(parsed.settings.sfxVolume)
@@ -286,6 +296,7 @@ export function loadSave(): SaveData {
         scenario,
         bloomIntensity,
         sceneryBloomIntensity,
+        perfMode,
         sfxVolume,
         musicVolume,
         startingCoins,
