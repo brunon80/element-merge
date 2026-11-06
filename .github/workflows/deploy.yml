@@ -11,6 +11,16 @@ name: Deploy no GitHub Pages
 #   dev  → subpasta https://…/element-merge/dev/ (preview da branch)
 # Assim nenhum push de branch consegue trocar o conteúdo da raiz: a raiz é
 # sempre o build da main, e um push na main reimplanta o preview da dev junto.
+#
+# ⚠️ BLINDAGEM (custou um dia de produção velha em silêncio, 06/nov): os
+# artefatos de build NÃO podem viver dentro do repositório. `dist-main/` e
+# `dist-dev/` tinham sido versionados no commit `f2d65a7`; como rastreados, o
+# SEGUNDO checkout (ref: dev) trocava o `dist-main/` recém-construído pelo
+# `dist-main/` COMMITADO — um build de dias atrás — e a raiz publicava código
+# velho sem nenhum erro. Hoje o build é engarrafado em `$RUNNER_TEMP` (fora do
+# alcance do git) e a montagem sai de lá, com conferência de bytes antes do
+# upload. Dois tripwires: (1) nada de build versionado, (2) a raiz tem que
+# conferir byte a byte com o build da main desta execução.
 on:
   push:
     branches: [main, dev]
@@ -34,6 +44,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+      - name: 🛡️ Tripwire: nenhum build versionado no repositório
+        # `dist*/` dentro do git envenena este job: o checkout da dev (2º)
+        # restaura a versão commitada por cima do build recém-feito. Se alguém
+        # commitar build de novo, quebra AQUI — não publica produção velha.
+        run: |
+          set -euo pipefail
+          tracked=$(git ls-files | grep -E '^(dist|dist-main|dist-dev)/' || true)
+          if [ -n "$tracked" ]; then
+            echo "::error::build commitado no git (envenena o artifact): $(echo "$tracked" | head -3 | tr '\n' ' ')…"
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -45,6 +66,17 @@ jobs:
           npm run build -- --outDir dist-main 2>&1 | tee /tmp/build-main.log | tail -25
         env:
           VITE_BASE: /element-merge/
+      - name: 🔒 Engarrafar o build da main fora do repositório
+        # $RUNNER_TEMP não é checkout: nenhum `git checkout`/`git clean` alcança.
+        # É daqui (não de dist-main/) que a raiz do site é montada.
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/site-main"
+          cp -r dist-main "$RUNNER_TEMP/site-main"
+          git rev-parse HEAD > "$RUNNER_TEMP/main-sha"
+          cd "$RUNNER_TEMP/site-main"
+          find assets -type f \( -name '*.js' -o -name '*.css' \) | sort > "$RUNNER_TEMP/main-assets.txt"
+          sha256sum assets/*.js | tee "$RUNNER_TEMP/main-sha256.txt"
       - uses: actions/checkout@v4
         with:
           ref: dev
@@ -56,6 +88,10 @@ jobs:
           # log era inútil). Aqui a limpeza é DESLIGADA: o checkout só troca
           # os arquivos rastreados para o ref dev; node_modules e dist-main
           # sobrevivem de propósito.
+          #
+          # ⚠️ E sobrevivem porque estão IGNORADOS: se dist-main/ estiver
+          # rastreado, o checkout o TROCA pela versão commitada (build velho)
+          # e o artifact sai mentiroso — ver o tripwire no topo do job.
           clean: false
       - name: Build dev (preview em /dev/)
         run: |
@@ -63,11 +99,57 @@ jobs:
           npm run build -- --outDir dist-dev 2>&1 | tee /tmp/build-dev.log | tail -25
         env:
           VITE_BASE: /element-merge/dev/
+      - name: 🔒 Engarrafar o build da dev fora do repositório
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/site-dev"
+          cp -r dist-dev "$RUNNER_TEMP/site-dev"
       - name: Montar o site (main na raiz, dev em /dev/)
         run: |
+          set -euo pipefail
+          rm -rf dist
           mkdir -p dist/dev
-          cp -r dist-main/. dist/
-          cp -r dist-dev/. dist/dev/
+          cp -r "$RUNNER_TEMP/site-main/." dist/
+          cp -r "$RUNNER_TEMP/site-dev/." dist/dev/
+      - name: 🛡️ Conferência: a raiz é o build desta execução
+        run: |
+          set -euo pipefail
+          fail=0
+          # 1) todo asset que o build da main gerou está na raiz, byte a byte
+          while read -r f; do
+            if [ ! -f "dist/$f" ] || ! cmp -s "$RUNNER_TEMP/site-main/$f" "dist/$f"; then
+              echo "::error::a raiz não confere com o build da main desta execução: $f"
+              fail=1
+            fi
+          done < "$RUNNER_TEMP/main-assets.txt"
+          # 2) os dois index.html apontam para os bundles recém-construídos
+          main_js=$(basename "$(ls "$RUNNER_TEMP/site-main"/assets/index-*.js)")
+          dev_js=$(basename "$(ls "$RUNNER_TEMP/site-dev"/assets/index-*.js)")
+          if ! grep -q "assets/$main_js" dist/index.html; then
+            echo "::error::index.html da raiz não referencia $main_js — produção velha?"
+            fail=1
+          fi
+          if ! grep -q "assets/$dev_js" dist/dev/index.html; then
+            echo "::error::index.html de /dev/ não referencia $dev_js — preview velho?"
+            fail=1
+          fi
+          if [ "$fail" -ne 0 ]; then
+            {
+              echo '### 🛡️ conferência FALHOU'
+              echo '- main construída: `'"$(cat "$RUNNER_TEMP/main-sha")"` → `'"$main_js"'`'
+              echo '- dev construída: `'"$(git rev-parse --short HEAD)"'` → `'"$dev_js"'`'
+              echo '- assets na raiz: '"$(ls dist/assets | tr '\n' ' ')"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          {
+            echo '### 🛡️ Site montado (conferido byte a byte)'
+            echo ''
+            echo '| mundo | ref | bundle JS | sha256 |'
+            echo '| --- | --- | --- | --- |'
+            echo "| produção (raiz) | \`$(cat "$RUNNER_TEMP/main-sha" | cut -c1-7)\` | $main_js | $(sha256sum "dist/assets/$main_js" | cut -c1-16) |"
+            echo "| preview (/dev/) | \`$(git rev-parse --short HEAD)\` | $dev_js | $(sha256sum "dist/dev/assets/$dev_js" | cut -c1-16) |"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: 🔬 Logs no sumário da execução (só quando falha)
         if: failure()
         run: |

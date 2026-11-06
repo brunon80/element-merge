@@ -29,7 +29,12 @@ const SITE_DIR =
     .split('/')
     .filter(Boolean)
     .pop() || 'root';
-const CACHE = `ebma-${SITE_DIR}-v5`; // 05/nov (3º bump): purga por diretório, não por origem
+// 06/nov (4º bump): a raiz do Pages publicou um build de dias atrás por ~14h
+// (o 2º checkout do deploy trocou o dist-main/ recém-construído pelo commitado
+// no git). Os aparelhos guardaram essa casca velha — sem bump, o cache teimoso
+// do iPhone continuaria servindo o shell sem o modo de desempenho mesmo depois
+// do deploy corrigido.
+const CACHE = `ebma-${SITE_DIR}-v6`; // purga por diretório, não por origem
 
 self.addEventListener('install', () => self.skipWaiting());
 

@@ -1022,6 +1022,31 @@ AUTO, com override manual em Configurações → Gráficos.
   verde da dev: 42124161513 (sha `40cc006`). ⚠️ O mesmo bug estava no
   deploy.yml da main no commit `c3609b2` (run 42115822657 falhou); a main só
   fica verde depois do port do workflow corrigido.
+- **🪤 ARMADILHA 2 do segundo `actions/checkout` — build COMMITADO envenena o
+  artifact (custou ~14h de produção velha em silêncio, 06/nov):** o
+  `clean: false` preserva os IGNORADOS, mas não faz nada contra os RASTREADOS.
+  `dist-main/` e `dist-dev/` tinham sido commitados sem querer em `f2d65a7` (o
+  `.gitignore` só cobria `dist/`). Sequência envenenada: o job constrói
+  `dist-main/` da main → o 2º checkout (`ref: dev`) **troca os rastreados** e
+  restaura o `dist-main/` COMMITADO, um build de dias atrás →
+  `cp -r dist-main/. dist/` sobe a versão velha → raiz do Pages com código
+  antigo, job VERDE, zero erro. O `/dev/` escapava porque o build da dev roda
+  DEPOIS do último checkout. Evidência no log do run 42206198828: o checkout
+  imprime `D dist-main/assets/index-D3DKVsWT.js` (o build recém-feito apagado)
+  e o bundle publicado `index-D3DKVsWT.js` não tinha `perf-mode-` (nada do modo
+  econômico), enquanto o `/dev/` tinha. Correção em camadas: (1)
+  `git rm -r --cached dist-main dist-dev` + `.gitignore` cobrindo os dois
+  outDirs; (2) os builds são engarrafados em `$RUNNER_TEMP/site-main` e
+  `$RUNNER_TEMP/site-dev` — fora do alcance de qualquer `git checkout`/`clean`
+  — e a montagem do site sai de lá; (3) tripwire no topo do job:
+  `git ls-files | grep -E '^(dist|dist-main|dist-dev)/'` → vermelho se alguém
+  commitar build de novo; (4) step "Conferência" compara bytes (`cmp -s`) de
+  cada asset do build da main com a raiz montada e confere que os dois
+  `index.html` apontam para os bundles desta execução — produção velha passa a
+  ser job VERMELHO, não susto do usuário. Pinos estáticos em `perf.test.ts`
+  (describe `deploy: a raiz do Pages é sempre o build da main desta
+  execução`). CACHE do SW subiu para `ebma-${SITE_DIR}-v6` para expulsar dos
+  aparelhos a casca velha que eles já tinham guardado.
 - **SW com dois mundos no MESMO domínio:** caches são compartilhados por
   ORIGEM, então o activate que apaga "tudo que não é o próprio cache" destrói
   o cache offline do outro (produção ↔ preview). O `activate` do sw.js purga só
