@@ -1047,6 +1047,16 @@ AUTO, com override manual em Configurações → Gráficos.
   (describe `deploy: a raiz do Pages é sempre o build da main desta
   execução`). CACHE do SW subiu para `ebma-${SITE_DIR}-v6` para expulsar dos
   aparelhos a casca velha que eles já tinham guardado.
+- **🪤 `deploy.yml` inválido derruba o run em 0s SEM log:** nome de step é um
+  *plain scalar* YAML — dois-pontos + espaço dentro dele (`- name: 🛡️
+  Tripwire: nenhum build…`) é erro de parse (`mapping values are not allowed
+  here`). Sintoma: o run falha em 0s, sem job nenhum, e o nome do workflow na
+  listagem cai para o caminho do arquivo (`.github/workflows/deploy.yml`) em
+  vez de "Deploy no GitHub Pages" — é o sinal de que o YAML nem foi lido.
+  Correção: cercar de aspas duplas os nomes que têm `:` (`- name: "🛡️
+  Tripwire: …"`). Local:
+  `python3 -c "import yaml,sys; yaml.safe_load(open('.github/workflows/deploy.yml'))"`
+  antes de subir (não há action de lint no repo).
 - **SW com dois mundos no MESMO domínio:** caches são compartilhados por
   ORIGEM, então o activate que apaga "tudo que não é o próprio cache" destrói
   o cache offline do outro (produção ↔ preview). O `activate` do sw.js purga só
