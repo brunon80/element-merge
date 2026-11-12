@@ -1103,6 +1103,14 @@ AUTO, com override manual em Configurações → Gráficos.
   `cancel-in-progress: false` (fila, não cancelamento: as duas branches publicam
   o mesmo site). O step "Publicado" imprime as DUAS URLs no sumário da execução:
   produção e `…/element-merge/dev/` (preview estável, não expira).
+- **🪤 `git merge` sem argumento NÃO funde a dev na main (12/nov):** com
+  `refs/remotes/origin/HEAD → origin/main` no clone, o `git merge --no-ff` rodado
+  na main usa a ref simbólica do remote como ramo — e devolve **"Already up to
+  date"** sem criar merge nenhum, porque a main já é ela mesma. O push seguinte
+  diz `Everything up-to-date` e o deploy nem dispara. Fundir é sempre
+  `git merge --no-ff dev -m "Merge branch 'dev' — …"` (ramo NOMEADO), e depois
+  `git push origin main`; conferir `git --no-pager log --oneline -2` na main antes
+  de empurrar.
 - **🪤 ARMADILHA do segundo `actions/checkout` (custou 4 deploys quebrados em
   silêncio):** com o padrão `clean: true`, o checkout da dev roda
   `git clean -ffdx` no mesmo diretório — e o `-x` APAGA IGNORADOS: o
