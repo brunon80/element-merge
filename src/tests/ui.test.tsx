@@ -15,6 +15,7 @@ import { InspectorPanel } from '../components/InspectorPanel';
 import { MenuScreen } from '../components/MenuScreen';
 import { MergePreviewPanel } from '../components/MergePreviewPanel';
 import { ResultScreen } from '../components/ResultScreen';
+import { SellFab } from '../components/SellFab';
 import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
 import { ToastLayer } from '../components/ToastLayer';
@@ -38,6 +39,7 @@ function renderAll() {
   render(
     <>
       <HUD />
+      <SellFab />
       <ShopPanel />
       <InspectorPanel />
       <ToastLayer />
@@ -209,7 +211,7 @@ describe('Regras reunidas nas configurações', () => {
     const panel = screen.getByRole('tabpanel');
     expect(panel.textContent).toContain('duas criaturas do mesmo nível'); // fusão
     expect(panel.textContent).toContain('a loja só funciona aí'); // preparação
-    expect(panel.textContent).toContain('lixeira'); // venda
+    expect(panel.textContent).toContain('custou para existir'); // venda por arraste
     expect(panel.textContent).toContain('contra-escolhas que leem o duelo'); // dificuldades
     expect(panel.textContent).toContain('+100'); // recompensa
   });
@@ -480,7 +482,7 @@ describe('Destaque do destino enquanto o monstro está segurado', () => {
   });
 });
 
-describe('Lixeira — vender criatura arrastada', () => {
+describe('Botão flutuante de venda — vender criatura arrastada', () => {
   function holdUnit(id: number) {
     const st = useGameStore.getState();
     st.beginDragCandidate(id, 20, 20);
@@ -492,31 +494,90 @@ describe('Lixeira — vender criatura arrastada', () => {
       const st = useGameStore.getState();
       st.beginDragCandidate(id, 20, 20);
       st.tryPromoteDrag(140, 130);
-      st.setSellHover(true); // o dedo está sobre a lixeira (no jogo é o elementFromPoint)
+      st.setSellHover(true); // o dedo está sobre o botão (no jogo é o elementFromPoint)
       st.endDrag();
     });
   }
 
-  test('a lixeira fica logo acima dos cards de invocação', () => {
+  test('fora do arraste não existe botão de venda na tela', () => {
     renderAll();
-    const bin = screen.getByTestId('sell-bin');
-    const card = screen.getByTestId('shop-ignis');
-    // no painel, a lixeira vem antes dos cards (está acima deles)
-    expect(bin.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    clickSummon('shop-ignis');
+    expect(screen.queryByTestId('sell-fab')).toBeNull();
+
+    act(() => holdUnit(myUnits()[0].id));
+    expect(screen.getByTestId('sell-fab')).toBeInTheDocument();
+    act(() => useGameStore.getState().endDrag());
+    expect(screen.queryByTestId('sell-fab')).toBeNull();
   });
 
-  test('arrastar um Nv.2 mostra na lixeira o valor a devolver', () => {
+  test('o botão é o alvo do arraste: carrega data-sell-target e não é focável', () => {
+    renderAll();
+    clickSummon('shop-ignis');
+    act(() => holdUnit(myUnits()[0].id));
+    const fab = screen.getByTestId('sell-fab');
+    // é assim que o BattleScene (elementFromPoint → closest) reconhece o alvo
+    expect(fab).toHaveAttribute('data-sell-target', '');
+    // ele NÃO se clica: vender é soltar o arraste em cima dele
+    expect(fab.tabIndex).toBe(-1);
+    expect(fab.className).toContain('sell-fab');
+    act(() => useGameStore.getState().endDrag());
+  });
+
+  test('criatura inimiga na mão não armou venda nenhuma: sem botão', () => {
+    renderAll();
+    // a carteira da IA só existe no combate; para segurar um inimigo na fase
+    // de preparação é preciso dar moeda a ela (o botão é que tem que recusar)
+    getEngine()!.world.aiCoins = 500;
+    mustSummon(getEngine()!, 'ignis', 'ai');
+    const enemy = getEngine()!.world.units.find((u) => u.side === 'ai' && u.alive)!;
+    act(() => holdUnit(enemy.id));
+    expect(screen.queryByTestId('sell-fab')).toBeNull();
+    act(() => useGameStore.getState().endDrag());
+  });
+
+  test('arrastar um Nv.2 mostra no botão o valor a devolver', () => {
     renderAll();
     clickSummon('shop-ignis', 2);
     const us = myUnits();
     dragOnto(us[0].id, us[1]); // → Nv.2 (custou 2×100)
     const grown = myUnits().find((u) => u.level === 2)!;
     act(() => holdUnit(grown.id));
-    expect(screen.getByTestId('sell-bin-value').textContent).toContain('200');
+    expect(screen.getByTestId('sell-fab-value').textContent).toContain('200');
     act(() => useGameStore.getState().endDrag());
   });
 
-  test('soltar sobre a lixeira some com a criatura e devolve as moedas', () => {
+  test('criatura morrendo não vira venda: sem botão', () => {
+    renderAll();
+    clickSummon('shop-ignis');
+    const doomed = myUnits()[0];
+    // espelha o que a batalha faz: o motor mata e o syncUi traduz para `dying`
+    getEngine()!.world.units.find((u) => u.id === doomed.id)!.alive = false;
+    act(() => useGameStore.getState().syncUi());
+    expect(useGameStore.getState().units.find((u) => u.id === doomed.id)?.dying).toBe(true);
+    act(() => holdUnit(doomed.id));
+    expect(screen.queryByTestId('sell-fab')).toBeNull();
+    act(() => useGameStore.getState().endDrag());
+  });
+
+  test('o botão pulsa devagar e acelera quando o arraste está em cima dele', () => {
+    renderAll();
+    clickSummon('shop-ignis');
+    act(() => holdUnit(myUnits()[0].id));
+    const fab = screen.getByTestId('sell-fab');
+    expect(fab.getAttribute('data-hot')).toBe('false');
+    expect(fab.textContent).toContain('+100');
+
+    act(() => useGameStore.getState().setSellHover(true));
+    expect(screen.getByTestId('sell-fab').getAttribute('data-hot')).toBe('true');
+    // a duração do pulso vem do CSS ([data-hot] encurta a animação); aqui o
+    // que se pinça é o estado que o CSS lê
+    expect(screen.getByTestId('sell-fab-value').textContent).toContain('solte');
+    act(() => useGameStore.getState().setSellHover(false));
+    expect(screen.getByTestId('sell-fab').getAttribute('data-hot')).toBe('false');
+    act(() => useGameStore.getState().endDrag());
+  });
+
+  test('soltar sobre o botão some com a criatura e devolve as moedas', () => {
     renderAll();
     clickSummon('shop-ignis', 3); // 500 → 200
     const us = myUnits();
@@ -546,7 +607,7 @@ describe('Lixeira — vender criatura arrastada', () => {
     expect(useGameStore.getState().coins).toBe(500); // investiu 400, recebeu 400
   });
 
-  test('se o ponteiro sair da lixeira, a venda não acontece', () => {
+  test('se o ponteiro sair do botão, a venda não acontece', () => {
     renderAll();
     clickSummon('shop-ignis');
     const id = myUnits()[0].id;
@@ -1225,7 +1286,7 @@ describe('Prévia de fusões do arraste (painel que persegue o ponteiro)', () =>
     expect(screen.queryByTestId('merge-preview')).toBeNull();
   });
 
-  test('sobre a lixeira o painel desaparece junto com os destaques', () => {
+  test('sobre o botão de venda o painel desaparece junto com os destaques', () => {
     render(<MergePreviewPanel />);
     const held = spawnAt('ignis', 2);
     const target = spawnAt('ignis', 2);

@@ -78,7 +78,7 @@ export function BattleScene({
       return [p.x, p.z];
     };
 
-    const isOverSellBin = (cx: number, cy: number): boolean => {
+    const isOverSellFab = (cx: number, cy: number): boolean => {
       // durante o arraste (especialmente toque, que captura o ponteiro no
       // canvas) o painel DOM não recebe pointerenter — elementFromPoint vê o
       // que está visualmente sob o cursor em qualquer coordenada de tela
@@ -112,7 +112,7 @@ export function BattleScene({
       st.trackTap(e.clientX, e.clientY);
       if (st.pendingDrag) st.tryPromoteDrag(e.clientX, e.clientY);
       if (st.dragId !== null) {
-        st.setSellHover(isOverSellBin(e.clientX, e.clientY));
+        st.setSellHover(isOverSellFab(e.clientX, e.clientY));
         const p = clientToGround(e.clientX, e.clientY);
         // coords de TELA junto: a prévia de fusões (DOM) persegue o ponteiro e
         // foge dos dois monstros do arraste

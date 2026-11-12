@@ -105,7 +105,8 @@ interface GameStoreState {
   /** tela do corpo da criatura que está NA MÃO durante o arraste (o ponteiro
    *  passa perto, mas o corpo fica alguns px acima dele na tela) */
   dragCarriedScreen: { x: number; y: number } | null;
-  /** ponteiro do arraste está sobre a lixeira (vender a criatura segurada) */
+  /** ponteiro do arraste está sobre o botão flutuante de venda (vender a
+   *  criatura segurada). Ver `SellFab` + `BattleScene.isOverSellFab`. */
   sellHover: boolean;
   toast: Toast | null;
   discovered: SpeciesId[];
@@ -343,7 +344,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       //    mortas em combate. É o prêmio por ganhar: evoluir um monstro deixa de
       //    ser uma aposta arriscada, porque a morte dele na partida vencida não o
       //    apaga da coleção. Só não voltam os que foram FUNDIDOS (o filho de
-      //    nível seguinte já é eles) e os VENDIDOS na lixeira (o valor deles já
+      //    nível seguinte já é eles) e os VENDIDOS no botão de venda (o valor deles já
       //    virou moeda).
       //  • DERROTA (regra anti-softlock): se o jogador quiser continuar jogando,
       //    o time inteiro daquela rodada também volta — mas o prejuízo financeiro
@@ -351,7 +352,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       //    padrão de derrota (+50). Sem isso, comprar 5 monstros na 1ª rodada e
       //    perdê-los todos deixaria o jogador com 50 moedas — sem time e sem
       //    nem poder invocar (custo 100): sem-fim de partida. Com o time de
-      //    volta, ele pode trocar de dificuldade, vender criaturas na lixeira
+      //    volta, ele pode trocar de dificuldade, vender criaturas no botão de venda
       //    (o valor delas vira moeda) e remontar a estratégia sem ser
       //    severamente penalizado.
       //  • EMPATE com sobreviventes: só sobreviventes, como sempre — perder
@@ -716,7 +717,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         sellHover: false,
       });
       if (!eng || dragId === null) return;
-      // sobre a lixeira: vende a criatura e devolve o custo acumulado
+      // solto sobre o botão de venda: vende a criatura e devolve o custo acumulado
       if (sellHover) {
         const unit = eng.getUnit(dragId);
         const res = eng.sellUnit(dragId);

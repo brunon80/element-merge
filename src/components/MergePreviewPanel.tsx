@@ -24,7 +24,7 @@ import { MergeThumb } from '../scene/MergeThumb';
  * acima, abaixo) fica a `RAIO` px do corpo do monstro na mão (embaixo do
  * ponteiro) E do corpo do monstro da célula mirada, e o apoio escolhido é o que
  * tapa menos os dois cabendo inteiro na janela. `pointer-events: none` também
- * garante que a venda na lixeira continue enxergando o chão pelo
+ * garante que o botão de venda continue enxergando o chão pelo
  * `elementFromPoint` do BattleScene. As miniaturas 3D são desenhadas pelo
  * `MergeStage` (um único contexto WebGL; z 37) acima do DOM do painel (z 36),
  * abaixo dos overlays.
@@ -285,7 +285,7 @@ export function MergePreviewPanel() {
     dragHover && dragHover.targetId !== undefined
       ? units.find((u) => u.id === dragHover.targetId)
       : undefined;
-  // sobre a lixeira o painel desaparece junto com os destaques da arena
+  // sobre o botão de venda o painel desaparece junto com os destaques da arena
   if (!dragged || !occupant || sellHover) return null;
 
   const valid = dragHover?.kind === 'merge' && dragHover.fusion;

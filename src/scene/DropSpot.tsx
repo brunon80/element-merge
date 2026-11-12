@@ -221,7 +221,7 @@ export function DropSpot() {
     const dragId = st.dragId;
 
     // ---- marcas de slot livre ----
-    // (sobre a lixeira o destino é o painel DOM — escondemos tudo na arena)
+    // (sobre o botão de venda o destino é o DOM — escondemos tudo na arena)
     const dragUnit = dragId !== null && eng ? eng.getUnit(dragId) : undefined;
     const hintPulse = 0.1 + 0.07 * (0.5 + 0.5 * Math.sin(t * 3.2));
     slotDefs.forEach((s, i) => {

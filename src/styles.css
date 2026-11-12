@@ -354,6 +354,95 @@ button {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
+/* ---------------- Venda por arraste: botão flutuante ---------------- */
+/* A lixeira da loja era um filete no canto do dock: alvo pequeno, do lado
+   oposto ao polegar, e sumia quando a loja dobrava. Virou este FAB, que só
+   EXISTE enquanto o jogador segura uma criatura (SellFab devolve null fora do
+   arraste), do lado DIREITO — metade esquerda já está tomada pelo livro (50%)
+   e pelo turbo (50%−150).
+
+   Âncora: `top: calc(50% - 36px)` com o botão de 72px = o centro exatamente na
+   metade da altura, SEM `transform: translateY` — quem anima aqui é o pulso,
+   que usa scale e por isso precisa do transform livre.
+
+   Z-index 38: acima do HUD/dock (20) e dos FABs de navegação (35), acima da
+   prévia de fusões (36) e do palco dela (37) — durante o arraste os três
+   convivem, e o alvo da venda tem que ficar por cima de tudo que o arraste
+   mostra. Abaixo dos overlays (40+).
+
+   O pulso é o sinal de vida do botão: parado = respira devagar (2,6s), e
+   quando o arraste para EM CIMA dele (`data-hot`, escrito por
+   BattleScene.isOverSellFab via elementFromPoint) ele acelera para 0,62s e
+   acende em ouro — o mesmo "isso aqui é o destino" que a arena dá num buraco.
+   Soltar em cima vende (o `endDrag` do store é quem faz a venda; este botão
+   não tem onClick de propósito: `tabIndex={-1}`, ele NÃO se clica). */
+.sell-fab {
+  position: absolute;
+  right: 14px;
+  top: calc(50% - 36px);
+  z-index: 38;
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 196, 81, 0.55);
+  background: radial-gradient(circle at 50% 34%, #2a2415, #131022 70%);
+  color: var(--gold);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: default;
+  user-select: none;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    0 0 22px rgba(245, 196, 81, 0.22);
+  animation: sell-breath 2.6s ease-in-out infinite;
+}
+/* pulo de escala + halo: o brilho entra junto com a escala para o "respirar"
+   ler como um botão vivo e não como um badge piscando. */
+@keyframes sell-breath {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 6px 20px rgba(0, 0, 0, 0.5),
+      0 0 18px rgba(245, 196, 81, 0.18);
+  }
+  50% {
+    transform: scale(1.075);
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.55),
+      0 0 34px rgba(245, 196, 81, 0.5);
+  }
+}
+/* o dedo está em cima: acelera + acende em ouro sólido */
+.sell-fab[data-hot='true'] {
+  animation-duration: 0.62s;
+  border-color: #fff1c4;
+  background: linear-gradient(135deg, var(--gold), var(--fire));
+  color: #241a05;
+}
+.sell-fab .sell-glyph {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.sell-fab-count {
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sell-fab {
+    animation: none;
+  }
+  .sell-fab[data-hot='true'] {
+    /* sem movimento: o estado hot continua visível, só que por cor e borda */
+    outline: 2px solid #fff1c4;
+  }
+}
+
 /* Janelas estreitas — retrato de celular, tablet em pé, tela baixinha: a
    câmera enche a largura (fov cresce abaixo de 1,78) e os buracos colados na
    esquerda chegam a px≈31; no menu, os botões do card full-width também
@@ -407,6 +496,23 @@ button {
   .turbo-fab-count {
     font-size: 10px;
   }
+  /* 🗑 venda: no compacto a borda direita é TABULEIRO no meio da altura (a
+     câmera enche a largura) — o FAB sobe para a faixa livre abaixo do HUD,
+     na mesma altura do turbo, e encolhe para 52px. Ele é o único flutuante do
+     lado direito, e só existe durante o arraste. */
+  .sell-fab {
+    right: 10px;
+    top: calc(164px + env(safe-area-inset-top));
+    width: 52px;
+    height: 52px;
+  }
+  .sell-fab .sell-glyph {
+    width: 20px;
+    height: 20px;
+  }
+  .sell-fab-count {
+    font-size: 10px;
+  }
   /* janela estreita que não é "celular" (ex.: 900×700): o canto esquerdo é do
      livro — a HUD larga começa depois dele, na MESMA fileira do FAB: mesmo
      topo (8px) e altura mínima 52px (border-box), assim o painel encosta em
@@ -458,48 +564,8 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-/* lixeira — solte a criatura arrastada aqui para vender */
-.sell-bin {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 10px;
-  padding: 7px 10px;
-  border: 1.5px dashed rgba(245, 196, 81, 0.28);
-  border-radius: 10px;
-  background: rgba(245, 196, 81, 0.04);
-  color: var(--muted);
-  font-size: 12px;
-  user-select: none;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    color 0.15s ease;
-}
-.sell-bin.armed {
-  border-color: rgba(245, 196, 81, 0.75);
-  color: #e6d5a4;
-}
-.sell-bin.hot {
-  background: rgba(245, 196, 81, 0.16);
-  border-style: solid;
-  border-color: var(--gold);
-  color: #ffedb9;
-}
-.sell-bin-icon {
-  font-size: 15px;
-}
-.sell-bin-text {
-  flex: 1;
-  letter-spacing: 0.4px;
-}
-.sell-bin-value {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  color: var(--gold);
-  font-weight: 700;
-}
+/* A venda por arraste não é mais um filete no dock: virou o botão flutuante
+   `.sell-fab` (ver adiante, junto dos outros FABs). */
 .shop-cards {
   /** grade e não linha: os 4 cards esticam por toda a largura do painel
    *  (no flex com card travado em 84px sobrava buraco morto à direita).
@@ -1810,10 +1876,6 @@ input[type='range'] {
   }
   .shop-card {
     padding: 7px 4px;
-  }
-  .sell-bin {
-    margin-bottom: 8px;
-    padding: 6px 8px;
   }
   .battle-controls {
     align-self: stretch;

@@ -1697,7 +1697,7 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           break;
         }
         case 'sell': {
-          // lixeira: implosão dourada + moedas subindo + "+X" no local
+          // venda: implosão dourada + moedas subindo + "+X" no local
           spawnRing(x, 0.1, z, '#f5c451', 1.35);
           spawnParticles(x, y, z, '#f5c451', 12, 1.2, 1.0, -2.2, 0.9); // moedas sobem
           spawnParticles(x, y, z, '#ffe9b8', 5, 0.7, 0.6, -1.2, 0.6);
