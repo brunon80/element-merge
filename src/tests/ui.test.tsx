@@ -13,13 +13,14 @@ import { DiscoveryOverlay } from '../components/DiscoveryOverlay';
 import { HUD } from '../components/HUD';
 import { InspectorPanel } from '../components/InspectorPanel';
 import { MenuScreen } from '../components/MenuScreen';
+import { MergePreviewPanel } from '../components/MergePreviewPanel';
 import { ResultScreen } from '../components/ResultScreen';
 import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
 import { ToastLayer } from '../components/ToastLayer';
 import { tileGroundPosition } from '../game/board';
 import { TREE_SPECIES_IDS, getSpecies } from '../data/monsters';
-import type { Side } from '../game/types';
+import type { MonsterLevel, Side, SpeciesId } from '../game/types';
 import { getEngine, useGameStore } from '../store/gameStore';
 import type { SummonResult } from '../game/engine/engine';
 import { mustSummon } from './helpers';
@@ -431,7 +432,7 @@ describe('Destaque do destino enquanto o monstro está segurado', () => {
     let hv = useGameStore.getState().dragHover;
     expect(hv?.kind).toBe('merge');
     expect(hv?.targetId).toBe(partner.id);
-    expect(hv?.fusion).toEqual({ label: 'Ignis', level: 2, known: true });
+    expect(hv?.fusion).toEqual({ species: 'ignis', label: 'Ignis', level: 2, known: true });
 
     // Nv.1 de fogo sobre Nv.1 de água: nada de híbrido no Nv.1 — invalid
     useGameStore.getState().hoverWorld(...tileXZ('player', water.tile));
@@ -955,7 +956,9 @@ describe('Enciclopédia (bestiário)', () => {
     expect(earth.ok && fire.ok).toBe(true);
     const fireUnit = eng.getUnit(fire.unitId!)!;
 
-    // durante o arraste, o resultado inédito aparece como "??? Nv.6"
+    // durante o arraste, o resultado inédito é REVELADO no destino (é a
+    // prévia de "o que vou criar se eu soltar aqui"); `known:false` segue
+    // indicando que a espécie ainda não está na enciclopédia
     act(() => {
       const st = useGameStore.getState();
       st.beginDragCandidate(earth.unitId!, 20, 20);
@@ -963,7 +966,8 @@ describe('Enciclopédia (bestiário)', () => {
       useGameStore.getState().hoverWorld(...tileXZ('player', fireUnit.tile));
     });
     expect(useGameStore.getState().dragHover?.fusion).toEqual({
-      label: '???',
+      species: 'magma',
+      label: 'Magma',
       level: 6,
       known: false,
     });
@@ -1028,5 +1032,312 @@ describe('Enciclopédia (bestiário)', () => {
     expect(card.className).toContain('primordial');
     expect(card.textContent).toContain('NASCIMENTO DO PRIMORDIAL');
     expect(screen.getByTestId('discovery-name').textContent).toContain('Primordial');
+  });
+});
+
+describe('Prévia de fusões do arraste (painel que persegue o ponteiro)', () => {
+  afterEach(() => {
+    // o teste de posicionamento crava o tamanho da janela: nada disso vaza
+    delete (window as unknown as Record<string, unknown>).innerWidth;
+    delete (window as unknown as Record<string, unknown>).innerHeight;
+  });
+
+  /** criatura no campo pela trilha do debug (grátis e NÃO descobre espécie) */
+  function spawnAt(species: SpeciesId, level: MonsterLevel) {
+    act(() => useGameStore.getState().setDebugMode(true));
+    expect(useGameStore.getState().spawnDebugUnit(species, level)).toBe(true);
+    // a ÚLTIMA da lista é a recém-criada (o motor acrescenta no fim): dois
+    // spawns iguais não podem devolver a mesma unidade
+    const spawned = myUnits().filter((u) => u.species === species && u.level === level);
+    const unit = spawned[spawned.length - 1];
+    if (!unit) throw new Error(`spawn de debug falhou: ${species} Nv.${level}`);
+    return unit;
+  }
+
+  /** segura a criatura e PARA em cima do alvo (o painel vive no hover) */
+  function holdOver(
+    heldId: number,
+    over: { side: Side; tile: number },
+    at: { x: number; y: number } = { x: 300, y: 240 },
+  ) {
+    act(() => {
+      const st = useGameStore.getState();
+      st.beginDragCandidate(heldId, 20, 20);
+      st.tryPromoteDrag(140, 130); // moveu o bastante: virou arraste
+      useGameStore.getState().hoverWorld(...tileXZ(over.side, over.tile), at.x, at.y);
+    });
+  }
+
+  const boxesOf = (row: HTMLElement): Element[] => Array.from(row.querySelectorAll('.mt-box'));
+
+  function translateOf(el: HTMLElement): [number, number] {
+    const m = /translate\((-?\d+)px,\s*(-?\d+)px\)/.exec(el.style.transform);
+    if (!m) throw new Error(`painel sem posicionamento: "${el.style.transform}"`);
+    return [Number(m[1]), Number(m[2])];
+  }
+
+  test('linha 1: arrastada + alvo = resultado REVELADO antes de soltar', () => {
+    render(<MergePreviewPanel />);
+    // Nereia Nv.5 sobre Zéfiro Nv.5 → Gelo Nv.6, espécie ainda NÃO descoberta
+    const held = spawnAt('nereia', 5);
+    const target = spawnAt('zephyr', 5);
+    holdOver(held.id, target);
+
+    expect(useGameStore.getState().dragHover?.fusion).toEqual({
+      species: 'gelo',
+      label: 'Gelo',
+      level: 6,
+      known: false,
+    });
+    const row = screen.getByTestId('mp-current');
+    expect(row.className).toContain('mp-valid');
+    expect(row.textContent).toContain('Nereia');
+    expect(row.textContent).toContain('Zéfiro');
+    // é a prévia do "se eu soltar agora": nome e miniatura do filho inédito
+    expect(row.textContent).toContain('Gelo');
+    expect(row.textContent).toContain('Nv.6');
+    const boxes = boxesOf(row);
+    expect(boxes).toHaveLength(3);
+    expect(boxes[2].className).not.toContain('locked'); // o alvo do dedo não é silhueta
+    // e nada fundiu ainda: a árvore continua selada para o resto da tela
+    expect(useGameStore.getState().discovered).not.toContain('gelo');
+  });
+
+  test('resto da lista: as outras fusões da criatura na mão, inéditas seladas', () => {
+    render(<MergePreviewPanel />);
+    const held = spawnAt('nereia', 5);
+    const target = spawnAt('zephyr', 5);
+    holdOver(held.id, target);
+
+    expect(screen.getByTestId('mp-title').textContent).toContain('Outras fusões possíveis');
+    // Nereia Nv.5 também funde com Gólem (→ Madeira) e com Ignis (→ Vapor); o par
+    // já mostrado na linha 1 não se repete aqui
+    expect(screen.getAllByTestId(/^mp-option-/)).toHaveLength(2);
+    expect(screen.queryByTestId('mp-option-zephyr')).toBeNull();
+
+    const row = screen.getByTestId('mp-option-golem');
+    expect(row.textContent).toContain('Gólem'); // pura: sempre visível
+    expect(row.textContent).toContain('Nv.5');
+    expect(row.textContent).toContain('???'); // resultado inédito: selado
+    expect(row.textContent).not.toContain('Madeira');
+    const boxes = boxesOf(row);
+    expect(boxes[1].className).not.toContain('locked');
+    expect(boxes[2].className).toContain('locked'); // silhueta escura, como no bestiário
+    expect(boxes[2].className).toContain('mt-box');
+  });
+
+  test('espécie já descoberta sai do selo: nome e miniatura na lista', () => {
+    render(<MergePreviewPanel />);
+    const eng = getEngine()!;
+    // descobre RAIO de verdade, fora do arraste: Ignis Nv.5 + Zéfiro Nv.5
+    act(() => {
+      const a = eng.addRetainedUnit('ignis', 5);
+      const b = eng.addRetainedUnit('zephyr', 5);
+      expect(a.ok && b.ok).toBe(true);
+      expect(eng.tryMerge(a.unitId!, b.unitId!).ok).toBe(true);
+      useGameStore.getState().dismissDiscovery();
+      useGameStore.getState().syncUi();
+    });
+    expect(useGameStore.getState().discovered).toContain('raio');
+
+    const held = spawnAt('ignis', 5);
+    const target = spawnAt('golem', 5); // Ignis + Gólem → Magma (ainda inédita)
+    holdOver(held.id, target);
+
+    // opção já descoberta: nome de verdade e miniatura colorida
+    const knownRow = screen.getByTestId('mp-option-zephyr');
+    expect(knownRow.textContent).toContain('Raio');
+    expect(knownRow.textContent).not.toContain('???');
+    expect(boxesOf(knownRow)[2].className).not.toContain('locked');
+
+    // opção inédita continua selada; e a linha 1 (Magma) segue revelada
+    const sealedRow = screen.getByTestId('mp-option-nereia');
+    expect(sealedRow.textContent).toContain('???');
+    expect(sealedRow.textContent).not.toContain('Vapor');
+    expect(boxesOf(sealedRow)[2].className).toContain('locked');
+    expect(screen.getByTestId('mp-current').textContent).toContain('Magma');
+  });
+
+  test('alvo que não funde: linha 1 com ✕, motivo legível, resto continua listado', () => {
+    render(<MergePreviewPanel />);
+    const held = spawnAt('golem', 5);
+    const small = spawnAt('golem', 3); // mesma espécie, nível diferente → bloqueado
+    holdOver(held.id, small);
+
+    const row = screen.getByTestId('mp-current');
+    expect(row.className).toContain('mp-invalid');
+    expect(row.textContent).toContain('✕');
+    expect(row.textContent).not.toContain('=');
+    expect(screen.getByText('Só monstros do mesmo nível podem ser fundidos.')).toBeInTheDocument();
+    // as outras fusões possíveis dele seguem na tela (Gólem Nv.5 tem 3 híbridos)
+    expect(screen.getAllByTestId(/^mp-option-/)).toHaveLength(3);
+  });
+
+  test('criatura sem nenhuma fusão neste nível: aviso, sem lista', () => {
+    render(<MergePreviewPanel />);
+    const held = spawnAt('gelo', 6);
+    const target = spawnAt('raio', 6); // Gelo + Raio → Tempestade (linha 1)
+    holdOver(held.id, target);
+    expect(screen.getByTestId('mp-current').textContent).toContain('Tempestade');
+    // Gelo só tem dois pares (raio, vapor): fora o par mirado, sobra um
+    expect(screen.getAllByTestId(/^mp-option-/)).toHaveLength(1);
+
+    // Primordial Nv.10 não funde com nada: linha ✕ + aviso, zero opções
+    act(() => useGameStore.getState().clearPointerState()); // cancela sem fundir
+    const crown = spawnAt('primordial', 10);
+    const other = spawnAt('astral', 9); // nível diferente: bloqueado
+    holdOver(crown.id, other);
+    expect(screen.getByTestId('mp-current').className).toContain('mp-invalid');
+    expect(screen.queryAllByTestId(/^mp-option-/)).toHaveLength(0);
+    expect(screen.getByText('Esta criatura não funde com mais nada neste nível.')).toBeInTheDocument();
+  });
+
+  test('some quando não está em cima de outra criatura aliada', () => {
+    render(<MergePreviewPanel />);
+    const held = spawnAt('ignis', 2);
+    const target = spawnAt('ignis', 2);
+    let freeTile = -1;
+    for (let t = 0; t < 12; t++) {
+      if (!getEngine()!.unitAt('player', t)) {
+        freeTile = t;
+        break;
+      }
+    }
+
+    // célula livre: é mover, não fundir — nada de prévia
+    holdOver(held.id, { side: 'player', tile: freeTile });
+    expect(screen.queryByTestId('merge-preview')).toBeNull();
+
+    // sobre a própria criatura: nenhum alvo
+    holdOver(held.id, { side: 'player', tile: held.tile });
+    expect(screen.queryByTestId('merge-preview')).toBeNull();
+
+    // metade inimiga / fora do tabuleiro
+    holdOver(held.id, { side: 'ai', tile: 0 });
+    expect(screen.queryByTestId('merge-preview')).toBeNull();
+    holdOver(held.id, { side: 'player', tile: freeTile });
+    expect(screen.queryByTestId('merge-preview')).toBeNull();
+
+    // de volta sobre a aliada: o painel reaparece; soltar o arraste o apaga
+    holdOver(held.id, target);
+    expect(screen.getByTestId('merge-preview')).toBeInTheDocument();
+    act(() => useGameStore.getState().endDrag());
+    expect(screen.queryByTestId('merge-preview')).toBeNull();
+  });
+
+  test('sobre a lixeira o painel desaparece junto com os destaques', () => {
+    render(<MergePreviewPanel />);
+    const held = spawnAt('ignis', 2);
+    const target = spawnAt('ignis', 2);
+    holdOver(held.id, target);
+    expect(screen.getByTestId('merge-preview')).toBeInTheDocument();
+    act(() => useGameStore.getState().setSellHover(true));
+    expect(screen.queryByTestId('merge-preview')).toBeNull();
+    act(() => useGameStore.getState().setSellHover(false));
+    expect(screen.getByTestId('merge-preview')).toBeInTheDocument();
+  });
+
+  test('persegue o ponteiro sem nunca cobrir o monstro que está sob ele', () => {
+    render(<MergePreviewPanel />);
+    const held = spawnAt('ignis', 2);
+    const target = spawnAt('ignis', 2);
+    holdOver(held.id, target, { x: 700, y: 400 });
+
+    // o jsdom não mede caixa nenhuma (offsetWidth 0) — o efeito de placement
+    // sai fora nesse caso; aqui o tamanho do painel e da janela é craveado à
+    // mão para exercitar o cálculo de apoio (direita/esquerda/acima/abaixo)
+    const panel = screen.getByTestId('merge-preview');
+    Object.defineProperty(panel, 'offsetWidth', { value: 300, configurable: true });
+    Object.defineProperty(panel, 'offsetHeight', { value: 140, configurable: true });
+    Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 768, configurable: true });
+
+    act(() => {
+      useGameStore.getState().hoverWorld(...tileXZ('player', target.tile), 700, 400);
+    });
+    expect(useGameStore.getState().dragScreen).toEqual({ x: 700, y: 400 });
+    let [x, y] = translateOf(panel);
+    // janela larga: 700+62+300 estouraria a borda direita, então o painel vira
+    // para a ESQUERDA do ponteiro e para exatamente a uma RAIO do corpo dele
+    expect(x).toBe(338);
+    expect(y).toBe(330);
+    expect(x + 300).toBeLessThanOrEqual(700 - 62);
+    expect(x).toBeGreaterThanOrEqual(10);
+    expect(y + 140).toBeLessThanOrEqual(768 - 10);
+
+    // perto da borda esquerda: vai para a direita, de novo a uma RAIO do dedo
+    act(() => {
+      useGameStore.getState().hoverWorld(...tileXZ('player', target.tile), 60, 400);
+    });
+    ;[x, y] = translateOf(panel);
+    expect(x).toBe(60 + 62);
+    expect(x).toBeGreaterThan(60);
+
+    // janela estreita (celular em retrato): sobe/desce em vez de ir para o lado
+    Object.defineProperty(window, 'innerWidth', { value: 360, configurable: true });
+    act(() => {
+      useGameStore.getState().hoverWorld(...tileXZ('player', target.tile), 180, 300);
+    });
+    ;[x, y] = translateOf(panel);
+    expect(x + 300).toBeLessThanOrEqual(360);
+    expect(y + 140).toBeLessThanOrEqual(300); // ACIMA do dedo: não o cobre
+
+    // painel é DOM inerte: jamais engole o pointerdown do arraste/lixeira. O
+    // pino do `pointer-events: none` computedido é do browser real (o vitest
+    // stubbeia o CSS) e mora na sonda qa/probe-merge-preview.mjs
+    expect(panel.className).toContain('merge-preview');
+    expect(panel.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('o painel também foge do monstro da célula mirada (não tapa o alvo)', () => {
+    render(<MergePreviewPanel />);
+    const held = spawnAt('ignis', 2);
+    const target = spawnAt('ignis', 2);
+    holdOver(held.id, target, { x: 700, y: 400 });
+    const panel = screen.getByTestId('merge-preview');
+    Object.defineProperty(panel, 'offsetWidth', { value: 300, configurable: true });
+    Object.defineProperty(panel, 'offsetHeight', { value: 140, configurable: true });
+    Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 768, configurable: true });
+
+    // alvo logo à direita do ponteiro: o apoio da direita taparia os dois corpos,
+    // então o painel tem que vir para a esquerda (e o store traz a tela do alvo)
+    act(() => {
+      const st = useGameStore.getState();
+      st.hoverWorld(...tileXZ('player', target.tile), 700, 400, { alvo: { x: 900, y: 400 } });
+    });
+    expect(useGameStore.getState().dragTargetScreen).toEqual({ x: 900, y: 400 });
+    const [x, y] = translateOf(panel);
+    // um corpo está "livre" se o painel inteiro passa fora do quadrado dele
+    // (RAIO de folga em cada lado); com (cx,cy) sendo o centro do corpo na tela
+    const livre = (cx: number, cy: number): boolean =>
+      x + 300 <= cx - 62 || x >= cx + 62 || y + 140 <= cy - 62 || y >= cy + 62;
+    // nem o corpo na mão (ponteiro) nem o do slot mirado ficam sob o painel
+    expect(livre(700, 400)).toBe(true);
+    expect(livre(900, 400)).toBe(true);
+    expect(x).toBeGreaterThanOrEqual(10);
+    expect(y).toBeGreaterThanOrEqual(10);
+
+    // o corpo que vai na mão FLUTUA alguns px acima do ponteiro: ele também é
+    // um ponto a não cobrir (aqui, bem acima do dedo - onde o apoio "acima"iria bater)
+    act(() => {
+      const st = useGameStore.getState();
+      st.hoverWorld(...tileXZ('player', target.tile), 700, 400, {
+        corpo: { x: 700, y: 250 },
+      });
+    });
+    expect(useGameStore.getState().dragCarriedScreen).toEqual({ x: 700, y: 250 });
+    const [cx2, cy2] = translateOf(panel);
+    const livre2 = (px2: number, py2: number): boolean =>
+      cx2 + 300 <= px2 - 62 || cx2 >= px2 + 62 || cy2 + 140 <= py2 - 62 || cy2 >= py2 + 62;
+    expect(livre2(700, 400)).toBe(true);
+    expect(livre2(700, 250)).toBe(true);
+
+    // sem alvo na tela (célula vazia / mover), o painel volta para o apoio normal
+    act(() => {
+      useGameStore.getState().hoverWorld(...tileXZ('player', target.tile), 60, 400);
+    });
+    expect(useGameStore.getState().dragTargetScreen).toBeNull();
+    expect(translateOf(panel)[0]).toBe(60 + 62);
   });
 });

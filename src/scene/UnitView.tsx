@@ -25,6 +25,9 @@ const BAR_W = 0.92;
 /** Limite do arraste: a criatura segurada persegue o ponteiro, mas fica na
  *  própria metade da ilha (não anda sobre o abismo nem sai da plataforma). */
 const DRAG_EDGE_X = PLATFORM.halfX - 0.25;
+/** o quanto a criatura segurada flutua acima do chão enquanto o ponteiro a
+ *  leva (o BattleScene projeta esse corpo para a prévia não cobri-lo) */
+export const DRAG_LIFT = 1.1;
 const DRAG_EDGE_FRONT = PLATFORM.frontZ - 0.05;
 const DRAG_EDGE_BACK = PLATFORM.backZ - 0.2;
 
@@ -199,7 +202,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
     // ---- posição: enquanto o ponteiro está segurando a criatura, ela PERSEGUE
     // o cursor (não fica presa no slot até o soltar); limites: sua metade da plataforma ----
     const dragging = st.dragId === unitId;
-    const lift = dragging ? 1.1 : 0;
+    const lift = dragging ? DRAG_LIFT : 0;
     let tx = u.pos[0];
     let tz = u.pos[2];
     if (dragging && st.dragPointer) {

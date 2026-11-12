@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { SCENERY_BLOOM_LAYER } from './BloomGate';
 import { useGameStore } from '../store/gameStore';
+import { tileFromWorld, tileGroundPosition, UNIT_BASE_Y } from '../game/board';
 import { Arena } from './Arena';
 import { CameraController } from './CameraController';
 import { DropSpot } from './DropSpot';
@@ -12,7 +13,7 @@ import { Lighting } from './Lighting';
 import { ProjectileField } from './ProjectileField';
 import { SmokeLayer } from './SmokeLayer';
 import { SmokePool } from './smokePool';
-import { UnitView } from './UnitView';
+import { DRAG_LIFT, UnitView } from './UnitView';
 import { UniverseEndEnvironment } from './UniverseEndEnvironment';
 import type { ArenaScene } from '../game/types';
 
@@ -59,6 +60,7 @@ export function BattleScene({
       raycaster: new THREE.Raycaster(),
       ndc: new THREE.Vector2(),
       hit: new THREE.Vector3(),
+      probe: new THREE.Vector3(),
     };
   }, []);
 
@@ -84,6 +86,27 @@ export function BattleScene({
       return el ? el.closest('[data-sell-target]') !== null : false;
     };
 
+    // para onde um ponto do MUNDO 3D vai NA TELA: a prévia de fusões é DOM e
+    // precisa saber onde moram os dois corpos do arraste para nunca ficar por
+    // cima de nenhum deles
+    const corpoNaTela = (
+      wx: number,
+      wy: number,
+      wz: number,
+    ): { x: number; y: number } | null => {
+      const rect = gl.domElement.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return null;
+      const v = dragTools.probe.set(wx, wy, wz).project(camera);
+      return {
+        x: rect.left + ((v.x + 1) / 2) * rect.width,
+        y: rect.top + ((1 - v.y) / 2) * rect.height,
+      };
+    };
+    const slotNaTela = (side: 'player' | 'ai', tile: number): { x: number; y: number } | null => {
+      const [wx, wy, wz] = tileGroundPosition(side, tile);
+      return corpoNaTela(wx, wy + 0.6, wz); // centro do corpo, não a base no chão
+    };
+
     const onMove = (e: PointerEvent) => {
       const st = useGameStore.getState();
       st.trackTap(e.clientX, e.clientY);
@@ -91,7 +114,18 @@ export function BattleScene({
       if (st.dragId !== null) {
         st.setSellHover(isOverSellBin(e.clientX, e.clientY));
         const p = clientToGround(e.clientX, e.clientY);
-        if (p) st.hoverWorld(p[0], p[1]);
+        // coords de TELA junto: a prévia de fusões (DOM) persegue o ponteiro e
+        // foge dos dois monstros do arraste
+        if (p) {
+          const olhado = tileFromWorld(p[0], p[1]);
+          st.hoverWorld(p[0], p[1], e.clientX, e.clientY, {
+            alvo: olhado ? slotNaTela(olhado.side, olhado.tile) : null,
+            // quem está na mão é desenhado FLUTUANDO acima do chão (o mesmo
+            // lift do UnitView): é esse corpo que o painel tem que desviar, e
+            // ele mora alguns px ACIMA do dedo na tela
+            corpo: corpoNaTela(p[0], UNIT_BASE_Y + DRAG_LIFT + 0.6, p[1]),
+          });
+        }
       }
     };
     const onUp = (e: PointerEvent) => {

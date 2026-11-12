@@ -48,14 +48,18 @@ function useInView(ref: React.RefObject<HTMLElement | null>): boolean {
 }
 
 /** rotação do card: o usuário arrasta (userRot) e o palco gira sozinho (spin) */
-interface Turntable {
+export interface Turntable {
   /** offset do arrasto do usuário (rad) */
   userRot: React.MutableRefObject<number>;
   /** true enquanto o dedo/mouse segura o card (pausa o giro automático) */
   dragging: React.MutableRefObject<boolean>;
 }
 
-function SpeciesRig({
+/**
+ * Rig de espécie para palco compartilhado (enciclopédia e prévia de fusões).
+ * `locked` desenha a silhueta selada; `turn` controla a vitrola do modelo.
+ */
+export function SpeciesRig({
   species,
   attackSeq,
   level = 1,

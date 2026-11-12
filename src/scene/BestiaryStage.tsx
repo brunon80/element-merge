@@ -29,7 +29,7 @@ import { hasWebGL2 } from './webgl';
  */
 
 /** limpa o buffer inteiro antes dos containers do View (prioridade = index >= 1) */
-function ClearBuffer() {
+export function ClearBuffer() {
   const gl = useThree((s) => s.gl);
   useFrame(() => {
     gl.setScissorTest(false); // scissor/viewport ficam sujos do card anterior

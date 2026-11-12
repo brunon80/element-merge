@@ -1252,6 +1252,156 @@ button {
   z-index: 45;
   pointer-events: none;
 }
+
+/* ---------------- Prévia de fusões do arraste ----------------
+   Painel que persegue o ponteiro enquanto o jogador segura uma criatura sobre
+   outra aliada. Linha 1 = "se eu soltar agora" (resultado sempre revelado);
+   o resto são as outras fusões possíveis da criatura na mão, com as espécies
+   ainda inéditas seladas (silhueta escura + "???") como no bestiário.
+   z 36/37: ACIMA do HUD/dock/inspetor (20) e do livro/turbo (35), ABAIXO dos
+   overlays (40) e do palco da enciclopédia (45) — na prática nunca há overlay
+   aberto durante um arraste, e o palco do bestiário não está montado aqui.
+   `pointer-events: none` é OBRIGATÓRIO: o painel jamais pode engolir
+   pointerdown/elementFromPoint do arraste (lixeira incluída) nem orbitar a
+   câmera. O posicionamento (transform) vem do componente — nunca na frente do
+   monstro sob o ponteiro: 26 px de lado, ou acima/abaixo em telas estreitas. */
+.merge-preview {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 36;
+  pointer-events: none;
+  padding: 8px 10px 9px;
+  width: max-content;
+  max-width: min(92vw, 340px);
+  font-size: 11px;
+  will-change: transform;
+}
+/* o palco da prévia: um canvas, um contexto WebGL, para TODAS as miniaturas
+   (nasce com o arraste, morre no soltar) — desenha por cima do DOM do painel */
+.merge-stage {
+  z-index: 37;
+  pointer-events: none;
+}
+.mp-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 2px 0;
+}
+.mp-row + .mp-row {
+  margin-top: 6px;
+}
+.mp-valid {
+  border: 1px solid rgba(60, 233, 164, 0.55);
+  border-radius: 10px;
+  padding: 5px 6px;
+  background: rgba(60, 233, 164, 0.08);
+}
+.mp-invalid {
+  border: 1px solid rgba(255, 84, 112, 0.6);
+  border-radius: 10px;
+  padding: 5px 6px;
+  background: rgba(255, 84, 112, 0.08);
+}
+.mp-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 72px;
+  min-width: 0;
+}
+.mp-cell b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+.mp-cell i {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-size: 9.5px;
+  color: var(--muted);
+}
+.mp-op {
+  align-self: center;
+  padding-bottom: 16px; /* compensa os rótulos embaixo da miniatura */
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--muted);
+}
+.mp-title {
+  margin: 7px 2px 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mp-reason {
+  margin: 6px 2px 0;
+  font-size: 10.5px;
+  color: #ff8ba0;
+}
+.mp-hint {
+  margin: 6px 2px 0;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+/* caixinha da miniatura (o modelo 3D do palco é recortado nela) */
+.mt-box {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: radial-gradient(circle at 50% 30%, #17233d 0%, #0b1122 72%);
+}
+.mt-box.locked {
+  border-style: dashed;
+  /* como o card selado do bestiário: a mesma face (só um ponto mais escura),
+     com a silhueta opaca #0d1220 do `SpeciesRig locked` por cima — se a face
+     for preta demais, em 44 px a silhueta vira um buraco e não dá para ler a
+     forma do monstro */
+  background: radial-gradient(circle at 50% 30%, #101a2e 0%, #070c18 72%);
+}
+.mp-no {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff8ba0;
+  font-weight: 800;
+}
+/* marca da caixa no palco da prévia: o drei `View` recorta este retângulo */
+.mt-model {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* sem WebGL2: bolinha na cor da espécie (selada = caixa vazia pontilhada) */
+.mt-flat {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  opacity: 0.9;
+}
+/* telas estreitas (retrato/baixa): miniaturas e células mais curtas para o
+   painel caber ao LADO do polegar quase sempre (placement de cima só em nóia) */
+@media (max-width: 760px), (max-height: 560px) {
+  .mp-cell {
+    width: 58px;
+  }
+  .mt-box {
+    width: 38px;
+    height: 38px;
+  }
+}
 /* linha embaixo da caixa com os chips de forma, o nome da forma e a dica de
    clique: fora da caixa de propósito — dentro, o modelo 3D desenhado por cima
    do canvas cobriria esses textos */

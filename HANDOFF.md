@@ -699,6 +699,46 @@ exatos.
 
 ---
 
+## 🧬 Prévia de fusões do arraste (12/nov/2026 — NÃO reverter)
+
+Segurar uma criatura **em cima de uma aliada** abre um painel DOM que persegue
+o ponteiro/toque e lista TUDO que aquela criatura pode fundir naquele nível:
+
+- **linha 1** — `arrastada + alvo = resultado` do "se eu soltar agora". Essa
+  linha é SEMPRE revelada (miniatura 3D + nome), mesmo espécie inédita: levar a
+  criatura até a parceira é o que compra a prévia (a árvore continua selada na
+  enciclopédia). Par que NÃO funde → linha com ✕ + o motivo legível
+  (`FUSION_MSG[reason]`).
+- **resto** — as outras fusões da criatura na mão, no MESMO nível dela. O par já
+  mostrado na linha 1 não se repete; parceira e resultado ainda não descobertos
+  entram como no bestiário: `???` + silhueta escura (`SpeciesRig locked`) na
+  caixa pontilhada.
+- **nunca cobre os monstros** — o painel escolhe entre quatro apoios (direita,
+  esquerda, acima, abaixo) o que cabe na janela E tapa menos os corpos na tela
+  (`RAIO = 62 px` em volta do ponteiro, do slot mirada e do corpo flutuante que
+  vai na mão), com um custo de troca para não tremer no meio do gesto. É
+  `pointer-events: none`: a venda na lixeira continua vendo o chão pelo
+  `elementFromPoint` do `BattleScene`.
+
+Regra ÚNICA de "o que funde": `mergeOptionsFor(espécie, nível)` em
+`fusionRules.ts` pergunta para o próprio `checkFusion` (nada de tabela paralela
+de receitas), e `mergeOptions.test.ts` confere equivalência de conjunto com
+`checkFusion` nas 23 espécies × 10 níveis.
+
+Telas do arraste ficam no store — `dragScreen` (ponteiro), `dragTargetScreen`
+(slot mirada) e `dragCarriedScreen` (o corpo que vai na mão, em
+`UNIT_BASE_Y + DRAG_LIFT + 0.6`). Quem PROJETA é o `BattleScene`, porque só a
+cena vive dentro do `<Canvas>`; o painel é DOM e não enxerga three. `DRAG_LIFT`
+passou a ser exportado do `UnitView` (o lift é o que muda o corpo de lugar na
+tela durante o arraste).
+
+Miniaturas 3D: `MergeStage` + `MergeThumb` — um **único** canvas WebGL (o teto
+de contextos do iOS) recortado em janelas pelo `View` do drei, montado só
+enquanto `dragId !== null` (z 36 o painel, z 37 o palco). Reusa `SpeciesRig` e
+`Turntable` do `MonsterViewer` e `ClearBuffer` do `BestiaryStage`.
+
+---
+
 ## Compatibilidade iOS/WebKit (corrigido em 01/nov — NÃO reverter)
 
 Dois defeitos reais do WebKit faziam os monstros SUMIREM no iPhone e aparecerem
@@ -1511,6 +1551,7 @@ npm run dev               # http://localhost:5173/element-merge/ (HMR; hard refr
 node qa/inspect-species.mjs <especie> [aliada]
 node qa/probe-footprint.mjs            # encaixe/no-overlap (veredito "no buraco?"/"no anel?" + SOBREPOSIÇÕES: 0)
 node qa/probe-framing.mjs              # enquadramento (24/24 buracos) + arraste real no slot do alvo + loja fechada
+node qa/probe-merge-preview.mjs        # prévia de fusões do arraste (revelar/selar, persegue o ponteiro, SEM FALHAS)
 ```
 
 ## Armadilhas (resumo)
@@ -1543,5 +1584,13 @@ node qa/probe-framing.mjs              # enquadramento (24/24 buracos) + arraste
 - Pipeline de cor: hex dos catálogos já compensam a linearização do three;
   não "corrigir" um material isolado.
 - Flaky ocasional: `ui.test.tsx` "tempo persistido" (sync de 0,14s).
+- **Painel DOM da prévia de fusões**: no jsdom `offsetWidth` é 0 e o CSS é
+  stubbeado, então o placement só roda nos testes com `offsetWidth/offsetHeight`
+  e `window.innerWidth/innerHeight` craveados à mão; o pino de
+  `pointer-events: none` e o "não tapa nenhum dos dois monstros" são do browser
+  real (`qa/probe-merge-preview.mjs`). O corpo que vai na mão é desenhado
+  FLUTUANDO (`DRAG_LIFT`) e com lag do follow — por isso a sonda tolera folga de
+  `RAIO − 2` px e é por isso que o store guarda a tela projetada dos três pontos
+  (ponteiro, slot mirada, corpo na mão).
 - UI e comentários em **PT-BR**; aprovar visual só com screenshot (nos do
   laço Playwright valem) — nunca aprovar às cegas.

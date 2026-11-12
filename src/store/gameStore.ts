@@ -21,6 +21,7 @@ import type {
   ArenaScene,
   ElementId,
   EngineEvent,
+  FusionRejectReason,
   MatchPhase,
   MatchRewardMode,
   MatchSummary,
@@ -59,8 +60,12 @@ export interface DragHover {
   tile: TileIndex;
   kind: 'move' | 'merge' | 'invalid';
   targetId?: number;
-  /** Resultado da fusão mostrada no slot (nome oculto se a espécie ainda não foi descoberta). */
-  fusion?: { label: string; level: MonsterLevel; known: boolean };
+  /** Resultado da fusão mostrada no slot — sempre revelado: quem carrega tem o
+   *  direito de ver o filho ANTES de soltar (é a recompensa do arraste; a
+   *  árvore continua selada na enciclopédia e nas etiquetas 3D). */
+  fusion?: { species: SpeciesId; label: string; level: MonsterLevel; known: boolean };
+  /** por que a fusão naquele slot está bloqueada (só quando kind === 'invalid') */
+  reason?: FusionRejectReason;
 }
 
 export interface Toast {
@@ -91,6 +96,15 @@ interface GameStoreState {
   dragHover: DragHover | null;
   /** posição do ponteiro no chão enquanto arrasta (para o destaque de destino) */
   dragPointer: { x: number; z: number } | null;
+  /** posição de TELA do ponteiro durante o arraste — é o que a prévia de
+   *  fusões persegue (o chão 3D não serve: o painel é DOM, cravado na janela) */
+  dragScreen: { x: number; y: number } | null;
+  /** para onde a célula que estamos mirando vai na tela — a prévia também foge
+   *  dela, para nunca tapar o monstro que vamos fundir (é DOM, o alvo é 3D) */
+  dragTargetScreen: { x: number; y: number } | null;
+  /** tela do corpo da criatura que está NA MÃO durante o arraste (o ponteiro
+   *  passa perto, mas o corpo fica alguns px acima dele na tela) */
+  dragCarriedScreen: { x: number; y: number } | null;
   /** ponteiro do arraste está sobre a lixeira (vender a criatura segurada) */
   sellHover: boolean;
   toast: Toast | null;
@@ -139,7 +153,15 @@ interface GameStoreActions {
   beginTapCandidate: (id: number, x: number, y: number) => void;
   trackTap: (x: number, y: number) => void;
   commitTap: (x: number, y: number) => void;
-  hoverWorld: (x: number, z: number) => void;
+  hoverWorld: (
+    x: number,
+    z: number,
+    screenX?: number,
+    screenY?: number,
+    /** o que mais está na tela durante o arraste, em px da janela (projetado
+     *  pela cena, que tem a câmera): o slot mirada e o corpo que vai na mão */
+    tela?: { alvo?: { x: number; y: number } | null; corpo?: { x: number; y: number } | null },
+  ) => void;
   endDrag: () => void;
   clearPointerState: () => void;
   setSellHover: (on: boolean) => void;
@@ -216,7 +238,8 @@ function resolveArenaScene(
   return available[Math.floor(Math.random() * available.length)];
 }
 
-const FUSION_MSG: Record<string, string> = {
+/** Motivo de fusão bloqueada → texto legível (usado no toast E na prévia de arraste). */
+export const FUSION_MSG: Record<string, string> = {
   SAME_UNIT: 'Escolha duas criaturas diferentes.',
   DIFFERENT_SIDE: 'Só é possível fundir criaturas aliadas.',
   UNIT_GONE: 'A criatura já saiu da arena.',
@@ -391,6 +414,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     dragId: null,
     dragHover: null,
     dragPointer: null,
+    dragScreen: null,
+    dragTargetScreen: null,
+    dragCarriedScreen: null,
     sellHover: false,
     toast: null,
     discovered: [...save.discovered],
@@ -472,6 +498,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         dragId: null,
         dragHover: null,
         dragPointer: null,
+        dragScreen: null,
+        dragTargetScreen: null,
+        dragCarriedScreen: null,
         sellHover: false,
         lastSummary: null,
         units: [],
@@ -504,6 +533,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         dragId: null,
         dragHover: null,
         dragPointer: null,
+        dragScreen: null,
+        dragTargetScreen: null,
+        dragCarriedScreen: null,
         sellHover: false,
         coins: save.coins,
         retainedCount: save.retainedRoster.length,
@@ -526,7 +558,12 @@ export const useGameStore = create<GameStore>((set, get) => {
       const eng = engine;
       if (!eng) return;
       const res = eng.tryMerge(aId, bId);
-      set({ dragId: null, dragHover: null, dragPointer: null, sellHover: false });
+      set({ dragId: null, dragHover: null, dragPointer: null,
+        dragScreen: null,
+        dragTargetScreen: null,
+        dragCarriedScreen: null,
+        sellHover: false,
+      });
       if (!res.ok) {
         get().pushToast('error', FUSION_MSG[res.reason ?? ''] ?? 'Fusão inválida.');
       } else {
@@ -551,7 +588,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (!pd) return false;
       const d = Math.hypot(x - pd.x, y - pd.y);
       if (d < DRAG_PROMOTE_PX) return false;
-      set({ dragId: pd.id, pendingDrag: null });
+      set({ dragId: pd.id, pendingDrag: null, dragScreen: { x, y } });
       return true;
     },
 
@@ -576,7 +613,12 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     clearPointerState(): void {
-      set({ pendingDrag: null, dragId: null, dragHover: null, dragPointer: null, sellHover: false });
+      set({ pendingDrag: null, dragId: null, dragHover: null, dragPointer: null,
+        dragScreen: null,
+        dragTargetScreen: null,
+        dragCarriedScreen: null,
+        sellHover: false,
+      });
     },
 
     setSellHover(on: boolean): void {
@@ -585,36 +627,63 @@ export const useGameStore = create<GameStore>((set, get) => {
       set({ sellHover: on });
     },
 
-    hoverWorld(x: number, z: number): void {
+    hoverWorld(
+      x: number,
+      z: number,
+      screenX?: number,
+      screenY?: number,
+      // para onde a célula mirada e o corpo que vai na mão vão NA TELA (quem
+      // projeta é a cena, que tem a câmera); o painel de prévia usa isso para
+      // não cobrir nenhum dos dois monstros do arraste
+      tela?: { alvo?: { x: number; y: number } | null; corpo?: { x: number; y: number } | null },
+    ): void {
       const eng = engine;
       const dragId = get().dragId;
       if (!eng || dragId === null) return;
       const dragUnit = eng.getUnit(dragId);
       if (!dragUnit) return;
       const ptr = { x, z };
+      // tela do ponteiro: é em px da janela que a prévia de fusões persegue o
+      // dedo/mouse; o chão 3D (dragPointer) continua sendo o dado do destino
+      const screen =
+        screenX !== undefined && screenY !== undefined ? { x: screenX, y: screenY } : null;
+      // o corpo que vai na mão segue o ponteiro pelo chão 3D, então mora um
+      // pouco ACIMA dele na tela; sem essa tela o painel o taparia na beirada
+      const naMao = tela?.corpo ?? null;
+      const semAlvo = screen
+        ? { dragScreen: screen, dragTargetScreen: null, dragCarriedScreen: naMao }
+        : {};
       const spot = tileFromWorld(x, z);
       if (!spot || spot.side !== dragUnit.side) {
-        set({ dragHover: null, dragPointer: ptr });
+        set({ dragHover: null, dragPointer: ptr, ...semAlvo });
         return;
       }
       const occupant = eng.unitAt(spot.side, spot.tile);
       if (!occupant) {
-        set({ dragHover: { side: spot.side, tile: spot.tile, kind: 'move' }, dragPointer: ptr });
+        set({
+          dragHover: { side: spot.side, tile: spot.tile, kind: 'move' },
+          dragPointer: ptr,
+          ...semAlvo,
+        });
         return;
       }
       if (occupant.id === dragUnit.id) {
-        set({ dragHover: null, dragPointer: ptr });
+        set({ dragHover: null, dragPointer: ptr, ...semAlvo });
         return;
       }
       const check = checkFusion(dragUnit.species, dragUnit.level, occupant.species, occupant.level);
       let fusion: DragHover['fusion'];
+      let reason: FusionRejectReason | undefined;
       if (check.ok) {
         const known = save.discovered.includes(check.outcome.species);
         fusion = {
-          label: known ? getSpecies(check.outcome.species).name : '???',
+          species: check.outcome.species,
+          label: getSpecies(check.outcome.species).name,
           level: check.outcome.level,
           known,
         };
+      } else {
+        reason = check.reason;
       }
       set({
         dragHover: {
@@ -622,16 +691,30 @@ export const useGameStore = create<GameStore>((set, get) => {
           tile: spot.tile,
           kind: check.ok ? 'merge' : 'invalid',
           targetId: occupant.id,
-          fusion,
+          ...(fusion ? { fusion } : {}),
+          ...(reason !== undefined ? { reason } : {}),
         },
         dragPointer: ptr,
+        // a prévia foge dos dois corpos: o que está na mão e o do slot mirada
+        ...(screen
+          ? {
+              dragScreen: screen,
+              dragTargetScreen: tela?.alvo ?? null,
+              dragCarriedScreen: naMao,
+            }
+          : {}),
       });
     },
 
     endDrag(): void {
       const eng = engine;
       const { dragId, dragHover, sellHover } = get();
-      set({ dragId: null, dragHover: null, dragPointer: null, sellHover: false });
+      set({ dragId: null, dragHover: null, dragPointer: null,
+        dragScreen: null,
+        dragTargetScreen: null,
+        dragCarriedScreen: null,
+        sellHover: false,
+      });
       if (!eng || dragId === null) return;
       // sobre a lixeira: vende a criatura e devolve o custo acumulado
       if (sellHover) {
