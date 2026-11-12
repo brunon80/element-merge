@@ -1,4 +1,9 @@
-import { evolutionRecipeFor, recipeIngredientLevel, recipeOf } from '../../data/fusionRecipes';
+import {
+  EVOLUTION_RECIPES,
+  evolutionRecipeFor,
+  recipeIngredientLevel,
+  recipeOf,
+} from '../../data/fusionRecipes';
 import { getSpecies, speciesAllowsLevel } from '../../data/monsters';
 import {
   CROSS_FUSION_MIN_LEVEL,
@@ -80,9 +85,61 @@ export function checkFusion(
   return { ok: true, outcome };
 }
 
+/** Combinação 2→1 que uma criatura arrastada pode executar no nível atual. */
+export interface MergeOption {
+  /** espécie arrastada (sempre o lado A do par) */
+  species: SpeciesId;
+  level: MonsterLevel;
+  /** a outra criatura exigida (no MESMO nível — regra da árvore) */
+  partner: SpeciesId;
+  result: SpeciesId;
+  resultLevel: MonsterLevel;
+  /** fusão vertical (mesma espécie; só puras sobem assim) */
+  vertical: boolean;
+}
+
+/**
+ * TODAS as fusões que a espécie arrastada pode fazer no nível dado — a MESMA
+ * regra de `checkFusion` consultada par a par (nenhum caminho paralelo):
+ *  • vertical: espécie + espécie própria (só puras abaixo do teto de nível);
+ *  • árvore: cada receita cuja linha de ingredientes é exatamente este nível
+ *    e em que a espécie participa; o par (nível+resultado) vem do `outcome` da
+ *    checagem. O resultado vem ORDENADO: vertical primeiro, depois a ordem das
+ *    receitas em EVOLUTION_RECIPES.
+ * A UI de arraste usa isto para listar no painel todas as fusões possíveis da
+ * criatura segurada; o motor usa `checkFusion` no soltar (a verdade da fusão).
+ */
+export function mergeOptionsFor(species: SpeciesId, level: MonsterLevel): MergeOption[] {
+  const options: MergeOption[] = [];
+  const tryPush = (partner: SpeciesId): void => {
+    const check = checkFusion(species, level, partner, level);
+    if (!check.ok) return;
+    options.push({
+      species,
+      level,
+      partner,
+      result: check.outcome.species,
+      resultLevel: check.outcome.level,
+      vertical: partner === species,
+    });
+  };
+  // vertical (a própria espécie) vem primeiro; a regra decide se vale
+  tryPush(species);
+  for (const recipe of EVOLUTION_RECIPES) {
+    if (recipeIngredientLevel(recipe) !== level) continue;
+    if (recipe.a === species) tryPush(recipe.b);
+    else if (recipe.b === species) tryPush(recipe.a);
+  }
+  return options;
+}
+
 /**
  * Texto da receita/evolução de uma espécie (enciclopédia).
- * A camada de UI só mostra isto para espécies já DESCOBERTAS.
+ * A camada de UI mostra a receita COMPLETA e legível para espécies já
+ * DESCOBERTAS. Para espécies ainda SELADAS o texto é deliberadamente vago —
+ * é o que a UI mostra quando o jogador está a ponto de descobrir a espécie
+ * (prévia de arraste/inspetor): nem o nome do pai desconhecido nem o do
+ * filho podem aparecer antes da fusão, senão a árvore se entrega sozinha.
  */
 export function evolutionRecipeText(species: SpeciesId): string {
   const def = getSpecies(species);

@@ -8,6 +8,7 @@ import { DiscoveryOverlay } from '../components/DiscoveryOverlay';
 import { HUD } from '../components/HUD';
 import { InspectorPanel } from '../components/InspectorPanel';
 import { MenuScreen } from '../components/MenuScreen';
+import { MergePreviewPanel } from '../components/MergePreviewPanel';
 import { ResultScreen } from '../components/ResultScreen';
 import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
@@ -26,6 +27,7 @@ import { VOLCANIC_BG } from '../scene/VolcanicEnvironment';
 import { UNDERWATER_BG } from '../scene/UnderwaterEnvironment';
 import { UNIVERSE_END_BG } from '../scene/UniverseEndEnvironment';
 import { BattleScene } from '../scene/BattleScene';
+import { MergeStage } from '../scene/MergeStage';
 import { useGameStore } from '../store/gameStore';
 import { GLBoundary } from './GLBoundary';
 
@@ -99,6 +101,10 @@ export function App() {
             <ShopPanel />
             <BattleControls />
           </div>
+          {/* prévia de fusões: persegue o ponteiro durante o arraste (linha 1 =
+              o resultado SE SOLTAR AGORA, sempre revelado; o resto são as
+              outras fusões possíveis, inéditas seladas como no bestiário) */}
+          <MergePreviewPanel />
         </>
       )}
 
@@ -108,6 +114,9 @@ export function App() {
           perderia o canvas da batalha se cada card montasse o seu) */}
       <BestiaryStage />
       <Bestiary />
+      {/* palco WebGL da prévia de fusões: um contexto único só enquanto há um
+          arraste armado (igual à enciclopédia, mas mais breve ainda) */}
+      <MergeStage />
       <DiscoveryOverlay />
       <SettingsMenu />
       <ToastLayer />
