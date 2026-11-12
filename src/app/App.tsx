@@ -9,6 +9,7 @@ import { HUD } from '../components/HUD';
 import { InspectorPanel } from '../components/InspectorPanel';
 import { MenuScreen } from '../components/MenuScreen';
 import { MergePreviewPanel } from '../components/MergePreviewPanel';
+import { SellFab } from '../components/SellFab';
 import { ResultScreen } from '../components/ResultScreen';
 import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
@@ -96,6 +97,9 @@ export function App() {
           <HUD />
           <CodexFab />
           <TurboFab />
+          {/* 🗑 venda por arraste: só existe enquanto uma criatura está na mão
+              (pulsa devagar; acelera quando o arraste para em cima dela) */}
+          <SellFab />
           <InspectorPanel />
           <div className="dock">
             <ShopPanel />

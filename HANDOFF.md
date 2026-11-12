@@ -717,7 +717,7 @@ o ponteiro/toque e lista TUDO que aquela criatura pode fundir naquele nível:
   esquerda, acima, abaixo) o que cabe na janela E tapa menos os corpos na tela
   (`RAIO = 62 px` em volta do ponteiro, do slot mirada e do corpo flutuante que
   vai na mão), com um custo de troca para não tremer no meio do gesto. É
-  `pointer-events: none`: a venda na lixeira continua vendo o chão pelo
+  `pointer-events: none`: o botão flutuante de venda continua vendo o chão pelo
   `elementFromPoint` do `BattleScene`.
 
 Regra ÚNICA de "o que funde": `mergeOptionsFor(espécie, nível)` em
@@ -736,6 +736,61 @@ Miniaturas 3D: `MergeStage` + `MergeThumb` — um **único** canvas WebGL (o tet
 de contextos do iOS) recortado em janelas pelo `View` do drei, montado só
 enquanto `dragId !== null` (z 36 o painel, z 37 o palco). Reusa `SpeciesRig` e
 `Turntable` do `MonsterViewer` e `ClearBuffer` do `BestiaryStage`.
+
+---
+
+## 🗑 Venda por arraste: botão flutuante (12/nov/2026 — NÃO reverter)
+
+A venda NÃO é mais um filete no dock (a "lixeira" da loja media ~200×30 px, ficava
+no canto oposto ao polegar e sumia quando a loja dobrava). É agora um **FAB de 72 px
+(52 px no compacto) que só existe enquanto o jogador segura uma criatura**:
+
+- `src/components/SellFab.tsx` monta dentro do bloco `inGame` do `App` e devolve
+  `null` quando `sellValue(espécie, nível) === 0`, quando a criatura na mão é do
+  lado inimigo ou quando ela está `dying` — fora do arraste não há botão na tela.
+- **Pulso**: `@keyframes sell-breath` (2,6s, escala 1 → 1,075 + halo dourado).
+  Quando o arraste para em cima dele, `data-hot='true'` encurta
+  `animation-duration` para **0,62s** e acende o disco em ouro→fogo; o chip troca
+  `+{reembolso}` por **`solte`**. `prefers-reduced-motion`: sem pulso, o hot
+  continua legível por cor/borda.
+- **Não se clica**: sem `onClick`, `tabIndex={-1}`. Quem detecta "o dedo está em
+  cima" é `BattleScene.isOverSellFab` → `document.elementFromPoint(...)` +
+  `closest('[data-sell-target]')` (no arraste por toque o canvas captura o
+  ponteiro, então `pointerenter` não existe). Soltar em cima cai no `endDrag` do
+  store, que vende e devolve `sellValue` (Nv.2 = 2×Nv.1, híbrido = 2× o nível).
+- **Z 38**: acima do HUD/dock (20) e dos FABs de navegação (35,40), acima da
+  prévia de fusões (36) e do palco dela (37) — durante o arraste os três convivem
+  e o alvo da venda tem que estar por cima do que o arraste mostra (a prévia é
+  `pointer-events: none`, então não engole o hit-test do botão).
+- **Zonas medidas** (`qa/probe-sell-fab.mjs`, `deviceScaleFactor: 1.5`):
+  - ramo largo → `right: 14px; top: calc(50% - 36px)` (centro na metade da
+    altura). Medições: 1373×749 → x 1284..1362, y 336..413; o rail ESQUERDO já
+    está tomado (livro em 14..86 no meio da altura, turbo em 50%−150).
+  - compacto `(max-aspect-ratio: 17/10), (max-width: 760px), (max-height: 560px)`
+    → `right: 10px; top: calc(164px + env(safe-area-inset-top))`, 52 px. No
+    compacto o meio da borda direita É tabuleiro/loja: 1280×610 (paisagem, porém
+    curto) mede `.battle-controls` em y 544..598 e a loja sobe para y 324; em
+    390×844 o botão fica em x 326..382, y 162..218, abaixo da HUD (y 8..60),
+    acima da loja (y 641) e na MESMA altura do turbo (outro lado da tela).
+  - Regra inegociável conferida pela sonda nos três tamanhos: **nenhum dos 24
+    buracos pode cair em cima do botão** — se caísse, apontar ali acenderia a
+    venda e soltar VENDIA a criatura em vez de pousá-la.
+- Glifo: `SellIcon` em `src/components/icons.tsx` (lixeira com uma moeda entrando
+  — vender devolve moeda), em `currentColor` como os outros (`BookIcon`,
+  `ClockIcon`, `CoinIcon`).
+- `isOverSellBin` → `isOverSellFab` (renomeado junto); os comentários que diziam
+  "lixeira" no store/`DropSpot`/`Effects`/`MergePreviewPanel` agora falam do botão
+  de venda. A aba **Regras** das configurações (`SettingsMenu`) foi reescrita para
+  descrever o FAB (o teste pincha `'custou para existir'`).
+- Testes: `src/tests/ui.test.tsx`, describe *Botão flutuante de venda* (8
+  cenários: some fora do arraste, `data-sell-target` + `tabIndex -1`, inimigo na
+  mão não arma, `dying` não arma, valor do Nv.2, `data-hot` + chip `solte`, venda
+  real devolvendo moedas, sair de cima cancela). `SellFab` entrou no `renderAll()`.
+- Sonda nova: `qa/probe-sell-fab.mjs` → 34 checks SEM FALHAS (pulso 2,6s → 0,62s
+  medido por `getComputedStyle`, `elementFromPoint` no centro do FAB resolvendo
+  para o alvo, 24/24 buracos livres nos três tamanhos, venda real nos dois
+  cenários, console limpo). Ela também tem marcos em stderr + relógio de bordo:
+  sem isso um hang da sonda chegava sem stack nenhum.
 
 ---
 
@@ -1552,6 +1607,7 @@ node qa/inspect-species.mjs <especie> [aliada]
 node qa/probe-footprint.mjs            # encaixe/no-overlap (veredito "no buraco?"/"no anel?" + SOBREPOSIÇÕES: 0)
 node qa/probe-framing.mjs              # enquadramento (24/24 buracos) + arraste real no slot do alvo + loja fechada
 node qa/probe-merge-preview.mjs        # prévia de fusões do arraste (revelar/selar, persegue o ponteiro, SEM FALHAS)
+node qa/probe-sell-fab.mjs             # FAB de venda: só no arraste, pulso devagar→rápido, 24/24 buracos livres (1373×749, 1280×610, 390×844)
 ```
 
 ## Armadilhas (resumo)
@@ -1576,6 +1632,11 @@ node qa/probe-merge-preview.mjs        # prévia de fusões do arraste (revelar/
   de `.shop`**: o dock DOM engole `pointerdown` e, se o chão de um buraco cai em
   cima do painel (ou a nota longa estica o flex), aquela criatura fica travada no
   slot. Ao mexer câmera/CSS/layout, rodar `qa/probe-framing.mjs` e exigir 24/24.
+- **Dom de venda é hit-test, não área desenhada**: `sellHover` vem de
+  `elementFromPoint` sobre `[data-sell-target]`. Qualquer flutuante novo no lado
+  direito (o `SellFab` é o de hoje) tem que ser medido contra os 24 buracos —
+  `qa/probe-sell-fab.mjs` faz isso em três janelas e falha se algum chão cair em
+  cima do botão (soltar ali venderia em vez de pousar).
 - HMR preserva `useMemo` de material three → reiniciar dev ou Ctrl+Shift+R ao
   editar shaders/cores.
 - GLSL silencioso: vírgula antes de `)` quebra compilação e a mesh SUMIA (hoje

@@ -124,6 +124,49 @@ export function SwordsIcon({ size = 12 }: { size?: number }) {
   );
 }
 
+/** Lixeira: o glifo do BOTÃO DE VENDA (aparece só durante o arraste). Tampa com
+ *  alça, corpo com as costelas de sempre e a moeda caindo dentro — vender é
+ *  devolver moeda, não jogar fora. Tudo em currentColor, como os outros. */
+export function SellIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} className="sell-glyph" aria-hidden>
+      {/* tampa + alça */}
+      <path
+        d="M4.2 7.5h15.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9.6 7.5V5.6c0-.6.5-1.1 1.1-1.1h2.6c.6 0 1.1.5 1.1 1.1v1.9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* corpo da lixeira */}
+      <path
+        d="M6.1 7.9l.9 11.3c.07.9.8 1.6 1.7 1.6h6.6c.9 0 1.63-.7 1.7-1.6l.9-11.3"
+        fill="currentColor"
+        opacity="0.25"
+      />
+      <path
+        d="M6.1 7.9l.9 11.3c.07.9.8 1.6 1.7 1.6h6.6c.9 0 1.63-.7 1.7-1.6l.9-11.3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* moeda entrando na lixeira: o que a venda devolve */}
+      <circle cx="12" cy="12.6" r="2.9" fill="currentColor" opacity="0.9" />
+      <path d="M12 11.1v3M11 12.6h2" stroke="#1b1300" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /** Relógio: o glifo do TURBO DE COMBATE (botão flutuante). Aro com disco
  *  sombreado e ponteiros — o mesmo desenho de aro do CoinIcon, na tinta do
  *  FAB (currentColor). */

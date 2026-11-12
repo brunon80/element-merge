@@ -381,12 +381,15 @@ export function SettingsMenu() {
                     </p>
                   </div>
                   <div>
-                    <h4>Lixeira (venda)</h4>
+                    <h4>Venda por arraste</h4>
                     <p>
-                      Arraste uma criatura sua até a lixeira para vendê-la:
-                      você recebe de volta exatamente o que ela custou para
-                      existir (Nv.2 devolve 200, Nv.3 devolve 400…; espécies
-                      da árvore valem o dobro do nível).
+                      Enquanto você segura uma criatura, um{' '}
+                      <b>botão flutuante dourado</b> aparece na lateral direita
+                      da arena — ele pulsa devagar e acelera quando o seu dedo
+                      passa por cima dele. Solte a criatura em cima do botão
+                      para vendê-la: você recebe de volta exatamente o que ela
+                      custou para existir (Nv.2 devolve 200, Nv.3 devolve
+                      400…; espécies da árvore valem o dobro do nível).
                     </p>
                   </div>
                   <div>

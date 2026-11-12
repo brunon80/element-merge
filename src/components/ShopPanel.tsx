@@ -1,48 +1,13 @@
 import { ELEMENTS } from '../data/elements';
 import { getSpecies, PURE_SPECIES_IDS } from '../data/monsters';
-import { sellValue } from '../game/economy/economy';
 import { useGameStore } from '../store/gameStore';
 import type { SpeciesId } from '../game/types';
 import { SUMMON_COST, TILES_PER_SIDE } from '../game/types';
 import { CoinIcon, ElementIcon } from './icons';
 
-/**
- * Lixeira — arrastar uma criatura da arena até aqui a vende e devolve à
- * carteira exatamente a soma do que ela custou para existir (Nv.2 = 2×Nv.1,
- * Nv.3 = 4×Nv.1 ...; híbridos valem o dobro do nível).
- */
-function SellBin() {
-  const sellHover = useGameStore((s) => s.sellHover);
-  const held = useGameStore((s) =>
-    s.dragId === null ? undefined : s.units.find((u) => u.id === s.dragId),
-  );
-  const refund =
-    held && held.side === 'player' && !held.dying ? sellValue(held.species, held.level) : 0;
-  const armed = refund > 0;
-
-  return (
-    <div
-      data-testid="sell-bin"
-      data-sell-target=""
-      className={`sell-bin ${armed ? 'armed' : ''} ${sellHover && armed ? 'hot' : ''}`}
-      title="Arraste uma criatura até aqui para vendê-la e receber as moedas de volta"
-    >
-      <span className="sell-bin-icon" aria-hidden="true">
-        🗑
-      </span>
-      <span className="sell-bin-text">
-        {armed ? (sellHover ? 'solte para vender' : 'lixeira — arraste até aqui') : 'lixeira · venda'}
-      </span>
-      {armed && (
-        <span className="sell-bin-value" data-testid="sell-bin-value">
-          <CoinIcon size={13} /> +{refund}
-        </span>
-      )}
-    </div>
-  );
-}
-
-/** Loja de invocação — sempre Nv.1 puro, custo fixo de 100 moedas. */
+/** Loja de invocação — sempre Nv.1 puro, custo fixo de 100 moedas.
+ *  A venda por arraste NÃO mora mais aqui: a lixeira era um filete no canto do
+ *  dock e virou o `SellFab`, botão flutuante que só existe durante o arraste. */
 export function ShopPanel() {
   const coins = useGameStore((s) => s.coins);
   const phase = useGameStore((s) => s.phase);
@@ -58,7 +23,6 @@ export function ShopPanel() {
   return (
     <div className="shop panel" data-testid="shop">
       <div className="shop-title">Invocar · Nível 1 · custo fixo {SUMMON_COST}</div>
-      <SellBin />
       <div className="shop-cards">
         {PURE_SPECIES_IDS.map((id: SpeciesId) => {
           const def = getSpecies(id);
