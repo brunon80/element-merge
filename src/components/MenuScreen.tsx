@@ -9,7 +9,7 @@ import { RESULT_LABEL } from './labels';
  * Configurações → Regras (o card do menu não vira manual).
  */
 export function MenuScreen() {
-  const startNewMatch = useGameStore((s) => s.startNewMatch);
+  const play = useGameStore((s) => s.play);
   const setSettings = useGameStore((s) => s.setSettings);
   const stats = useGameStore((s) => s.stats);
   const lastSummary = useGameStore((s) => s.lastSummary);
@@ -31,7 +31,9 @@ export function MenuScreen() {
           </div>
         )}
 
-        <button className="btn primary big" data-testid="play" onClick={startNewMatch}>
+        {/* "Jogar" é o portão do tutorial: na primeira vez ele dispara os 5
+            passos (ou pergunta antes, se já existe jogo salvo) */}
+        <button className="btn primary big" data-testid="play" onClick={play}>
           ⚔ Jogar — saldo <CoinIcon size={16} /> {coins}
         </button>
 

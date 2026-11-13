@@ -15,6 +15,7 @@ import { SmokeLayer } from './SmokeLayer';
 import { SmokePool } from './smokePool';
 import { DRAG_LIFT, UnitView } from './UnitView';
 import { UniverseEndEnvironment } from './UniverseEndEnvironment';
+import { registerWorldBridge } from './worldToScreen';
 import type { ArenaScene } from '../game/types';
 
 export function BattleScene({
@@ -64,19 +65,45 @@ export function BattleScene({
     };
   }, []);
 
-  useEffect(() => {
-    const clientToGround = (cx: number, cy: number): [number, number] | null => {
-      const rect = gl.domElement.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return null;
-      dragTools.ndc.set(
-        ((cx - rect.left) / rect.width) * 2 - 1,
-        -((cy - rect.top) / rect.height) * 2 + 1,
-      );
-      dragTools.raycaster.setFromCamera(dragTools.ndc, camera);
-      const p = dragTools.raycaster.ray.intersectPlane(dragTools.plane, dragTools.hit);
-      if (!p) return null;
-      return [p.x, p.z];
+  // ── ponte mundo 3D ⇄ pixels da janela ──────────────────────────────────────
+  // quem é DOM (a prévia de fusões, a luvinha do tutorial) precisa saber onde o
+  // corpo mora na tela e para onde o dedo cai no chão. A câmera só existe aqui
+  // dentro, então a cena publica a ponte no registro global
+  // (ver src/scene/worldToScreen.ts).
+  const bridge = useMemo(() => {
+    const v = new THREE.Vector3();
+    return {
+      toScreen: (wx: number, wy: number, wz: number): { x: number; y: number } | null => {
+        const rect = gl.domElement.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return null;
+        v.set(wx, wy, wz).project(camera);
+        return {
+          x: rect.left + ((v.x + 1) / 2) * rect.width,
+          y: rect.top + ((1 - v.y) / 2) * rect.height,
+        };
+      },
+      toGround: (cx: number, cy: number): [number, number] | null => {
+        const rect = gl.domElement.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return null;
+        dragTools.ndc.set(
+          ((cx - rect.left) / rect.width) * 2 - 1,
+          -((cy - rect.top) / rect.height) * 2 + 1,
+        );
+        dragTools.raycaster.setFromCamera(dragTools.ndc, camera);
+        const p = dragTools.raycaster.ray.intersectPlane(dragTools.plane, dragTools.hit);
+        if (!p) return null;
+        return [p.x, p.z];
+      },
     };
+  }, [camera, gl, dragTools]);
+
+  useEffect(() => {
+    registerWorldBridge(bridge);
+    return () => registerWorldBridge(null);
+  }, [bridge]);
+
+  useEffect(() => {
+    const clientToGround = bridge.toGround;
 
     const isOverSellFab = (cx: number, cy: number): boolean => {
       // durante o arraste (especialmente toque, que captura o ponteiro no
@@ -86,25 +113,10 @@ export function BattleScene({
       return el ? el.closest('[data-sell-target]') !== null : false;
     };
 
-    // para onde um ponto do MUNDO 3D vai NA TELA: a prévia de fusões é DOM e
-    // precisa saber onde moram os dois corpos do arraste para nunca ficar por
-    // cima de nenhum deles
-    const corpoNaTela = (
-      wx: number,
-      wy: number,
-      wz: number,
-    ): { x: number; y: number } | null => {
-      const rect = gl.domElement.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return null;
-      const v = dragTools.probe.set(wx, wy, wz).project(camera);
-      return {
-        x: rect.left + ((v.x + 1) / 2) * rect.width,
-        y: rect.top + ((1 - v.y) / 2) * rect.height,
-      };
-    };
+    // para onde um ponto do MUNDO 3D vai NA TELA (função publicada logo acima)
     const slotNaTela = (side: 'player' | 'ai', tile: number): { x: number; y: number } | null => {
       const [wx, wy, wz] = tileGroundPosition(side, tile);
-      return corpoNaTela(wx, wy + 0.6, wz); // centro do corpo, não a base no chão
+      return bridge.toScreen(wx, wy + 0.6, wz); // centro do corpo, não a base no chão
     };
 
     const onMove = (e: PointerEvent) => {
@@ -123,7 +135,7 @@ export function BattleScene({
             // quem está na mão é desenhado FLUTUANDO acima do chão (o mesmo
             // lift do UnitView): é esse corpo que o painel tem que desviar, e
             // ele mora alguns px ACIMA do dedo na tela
-            corpo: corpoNaTela(p[0], UNIT_BASE_Y + DRAG_LIFT + 0.6, p[1]),
+            corpo: bridge.toScreen(p[0], UNIT_BASE_Y + DRAG_LIFT + 0.6, p[1]),
           });
         }
       }
@@ -150,7 +162,7 @@ export function BattleScene({
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
     };
-  }, [camera, gl, dragTools]);
+  }, [bridge]);
 
   return (
     <group>

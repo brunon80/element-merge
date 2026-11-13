@@ -34,7 +34,9 @@ beforeEach(() => {
   st.returnToMenu();
   st.resetProgress();
   localStorage.clear();
-  useGameStore.setState({ toast: null });
+  // o smoke test do App percorre o caminho de quem já viu o tutorial: "Jogar"
+  // abre a partida direto (os 5 passos ficam em src/tests/tutorial.test.tsx)
+  useGameStore.setState({ tutorialDone: true, toast: null });
 });
 
 describe('App (smoke)', () => {

@@ -1,9 +1,15 @@
 # HANDOFF — Elemental Battle: Merge Arena
 
-> Estado verificado em **03/nov/2026** por inspeção direta + suíte rodando:
-> `npx tsc --noEmit` OK · `npx vitest run` **360 testes / 34 arquivos, todos
-> verdes** · `npm run build` OK · git em `main` (repo público
-> `brunon80/element-merge`, CI → GitHub Pages).
+> Estado verificado em **12/nov/2026** por inspeção direta + suíte e sondas
+> rodando: `npx tsc --noEmit` OK · `npx vitest run` **505 testes / 45 arquivos**
+> (as únicas falhas são as conhecidas e IDÊNTICAS no HEAD: `app.test.tsx`
+> *App (smoke)* ×2 porque o jsdom não tem WebGL e `data-testid="scene-game"` não
+> nasce — verificado no worktree do HEAD — mais o flaky já documentado de
+> `ui.test.tsx` "tempo persistido") · `npm run build` OK · sondas verdes:
+> `qa/probe-framing.mjs` (24/24 buracos + arraste real no slot do alvo),
+> `qa/probe-sell-fab.mjs` (SEM FALHAS) e `qa/probe-tutorial.mjs` (92 checagens,
+> 0 falhas) · git em `dev` (repo público `brunon80/element-merge`, CI → GitHub
+> Pages).
 
 ---
 
@@ -794,6 +800,149 @@ no canto oposto ao polegar e sumia quando a loja dobrava). É agora um **FAB de 
 
 ---
 
+## 🎓 Tutorial da luvinha (12/nov/2026 — NÃO reverter)
+
+A primeira partida do jogador novo é guiada por uma **mão de luva** que ensina os
+cinco primeiros gestos, e **nenhuma outra jogada é liberada** enquanto ela não
+terminar. Feito depois do pedido do usuário e corrigido por ele: a luva
+**ilustra**, quem joga é o jogador.
+
+**Os cinco passos (`TUTORIAL_STEPS` em `src/game/tutorial.ts`):** `escolher`
+(toque no card destacado da loja) → `inpecionar` (toque no monstro **em cena**
+para abrir os status) → `comprar` (compre OUTRO IgNIS) → `arrastar` (arraste uma
+criatura SOBRE a outra) → `vender` (arraste até o botão dourado). O passo
+seguinte fecha o anterior; o último encerra.
+
+**Arquitetura em três camadas, sem ciclar:**
+
+- `src/game/tutorial.ts` é a máquina de passos **PURA** — sem React, sem three,
+  sem localStorage. Guarda `TUTORIAL_STEP_DEF` (frase, `action`, `target`,
+  `mime?`, `delayMs`, `rules`) e a régua `gateTutorial(step, kind, {species})` +
+  `tutorialBlockMsg`. É a única fonte do "o que pode neste passo".
+- `src/store/gameStore.ts` **aplica e avança**: `allowTutorial(kind)` chama
+  `gateTutorial` em cada ação que muda a partida (`summon`, `beginDragCandidate`,
+  `beginTapCandidate`, `endDrag`/drop, `sell`, `startBattle`, `spawnDebugUnit`),
+  e `tutorialPlayDone(kind)` só é chamado pela jogada REAL do jogador. Estado no
+  store: `tutorialStep`, `tutorialDone`, `tutorialReplay`, `tutorialPrompt`.
+- `src/components/TutorialHand.tsx` **só desenha** (faixa + luva + aro +
+  fantasma). Nunca chama ação do store.
+
+**Mímica ≠ jogada (a correção que o usuário cobrou).** O `TutorialMime`
+(`{ de, ate }`) faz a mão percorrer o trajeto **em loop**, sem tocar no store:
+o componente só escreve `transform`/`opacity`/`data-fase` na `<div>` da luva
+(`apontar|espera|pegar|carregar|soltar|voltar`, durações `MIME = {pegar 750,
+carregar 950, soltar 850, voltar 750}`). Nos passos 4 e 5 o passo só fecha com o
+`drop`/`sell` verdadeiro do jogador — os testes pinam que durante a mímica
+`dragId`/`pendingDrag`/`sellHover` seguem `null` e criaturas, buracos e saldo não
+se mexem.
+
+**Marcas de ensino (tudo `pointer-events: none`, nada engole ponteiro):**
+
+- `.tutorial-aro` — anel pontilhado no buraco de DESTINO da fusão (passo 4).
+- `TutorialFabFantasma` — aro no MESMO lugar onde o FAB dourado nasce no
+  arraste; reaproveita a classe `.sell-fab` do styles.css, então herda a geometria
+  e as regras de mídia do botão real (52 px no compacto, mesma borda direita).
+  Id/seletor: `TUTORIAL_FAB_ALVO_ID = 'tutorial-fab-alvo'` / `TUTORIAL_FAB_ALVO`.
+- Z-index dos overlays: aro **64**, faixa **65**, luva **66**, pergunta **75**
+  (todos acima do FAB de venda, que é 38).
+- Quem projeta mundo→tela é `src/scene/worldToScreen.ts` (extraído do
+  `BattleScene`, que é quem vive dentro do `<Canvas>`; a luva é DOM).
+
+**Barreira e recados.** O tutorial é a ÚNICA fase que barra jogada fora do rota.
+Regra de fusão que ditou os passos: dois puros **diferentes** Nv.1 NÃO fundem
+(`CROSS_FUSION_MIN_LEVEL = 5`) — por isso o passo 3 compra OUTRO IgNIS (iguais:
+Nv.1+Nv.1 → Nv.2), e o arraste ensinada é `TUTORIAL_SRC_TILE = 1` sobre
+`TUTORIAL_DST_TILE = 0`. **🎓 UMA pressionada de dedo, UM recado:** `UnitView`
+abre candidato de toque E de arraste na mesma teclada, e como a UI tem **um slot
+de toast só**, as duas barreiras juntas apagariam a mensagem boa (a que diz o
+passo). Então `pressaoSeq`/`recadoDestaPressao`/`toqueDestaPressao` fecham a
+segunda reclamação do mesmo gesto (a jogada continua barrada; a pressionada
+seguinte volta a avisar). O `drop` está fora disso (dispara no `pointerup`).
+
+**Cofre intocado (moeda virtual).** O tutorial monta a arena com
+`max(save.coins, TUTORIAL_COINS)` e **nunca escreve no save**: `summon`, `syncUi`
+e `returnToMenu` pulam a gravação de moedas enquanto `tutorialStep !== null`.
+`TUTORIAL_COINS = 500` cobre as duas invocações (2×100) e ainda deixa a venda
+dar reembolso. Por isso não existe máquina de snapshot/restore.
+
+**Sempre começa vazio, devolve o time guardado no fim.** `startTutorial` limpa a
+arena; se já existe time guardado, `play()` abre antes a pergunta
+(`TutorialPrompt`, `tutorial-prompt-go/no`) — nunca apaga nada sem perguntar, e
+quem recusar entra direto com `tutorialDone = true`. No fim, `closeTutorial` só
+chama `startNewMatch()`: como o cofre nunca foi tocado, o time volta **nos
+mesmos buracos** (a sonda mede `x7.8 z3.1` de volta). A despedida chega
+`TUTORIAL_FAREWELL_DELAY_MS = 1500` depois e só se o tutorial continua fechado —
+senão ela atropelaria o recado da venda (`… vendido — +N moedas`), que é a
+recompensa do passo. O texto depende de `save.retainedRoster.length` ('Loja e
+combate liberados — bom jogo.' quando não há time guardado).
+
+**Persistência e repetição.** `tutorialDone: boolean` no save (v12; save antigo
+não tem o campo → `!!parsed.tutorialDone` = falso, tutorial roda). Marcado em
+`startTutorial` E quando o jogador recusa a pergunta. Repetir: Configurações ▸
+Progresso ▸ **Repetir tutorial** (`tutorial-replay` → confirm →
+`tutorial-replay-go`), que também começa com a arena vazia e por isso pede
+confirmação.
+
+**Três armadilhas de implementação que custaram horas de sonda:**
+
+1. **Câmera travada só nos passos com mímica** (`CameraController`):
+   `cameraTravada = tutorialStep !== null && TUTORIAL_STEP_DEF[step].mime !==
+   undefined`, no `enableRotate={!dragActive && !cameraTravada}`. É
+   concorrência pura: quem pega a criatura é o `pointerdown` da cena 3D, que só
+   escreve no store — o `enableRotate={!dragActive}` do frame seguinte chega
+   tarde, o OrbitControls já embolsou o gesto e a câmera gira junto com o dedo. O
+   destino foge da tela no meio do arraste e a fusão não sai. Fora desses dois
+   passos (e depois do tutorial) a órbita é livre.
+2. **O card de status fecha na entrada do passo de arraste**
+   (`set(next === 'arrastar' ? { tutorialStep: next, selectedId: null } : …)`).
+   No layout compacto (≤900px) o `.inspector` é uma folha CENTRADA sobre a arena
+   (regra do styles.css: na lateral ele brigaria com a loja) — em 390×844 ele
+   mede 16..374×285..560 e os buracos vão de y 334 a 548, ou seja, o card aberto
+   engole os 24 buracos. O jogador leu os status no passo 2 e pode reabrir quando
+   quiser.
+3. **Relógio da animação = o carimbo da própria frame do rAF**, nunca
+   `performance.now()` para `t0`: em alguns ambientes as origens são diferentes
+   (jsdom marca a frame desde a navegação, Node desde o processo) e misturar os
+   dois fazia a mímica nunca começar.
+
+**Faixa que não tapa nada.** `posicionarFaixa` mede a própria caixa, testa **7
+apoios** (acima do dock, abaixo do HUD, cantos esquerdo/direito em ambos os
+níveis, último recurso no rodapé) e escolhe por custo
+`fora×60 + tapa×10 + pisa×18 + i×1,5`. Os buracos vêm da projeção da cena
+(raio derivado do espaçamento real na tela, então vale em qualquer zoom); o
+botão de venda **real ou o fantasma** entra como obstáculo sólido (`solidos`,
+`.sell-fab`) — senão a faixa sentava em cima do FAB dourado exatamente na hora
+da venda no celular.
+
+**`prefers-reduced-motion`:** o CSS mata pulso/respiração e a luva **fica parada
+em cima do destino** do gesto (`semMovimento` via `window.matchMedia`); o aro e o
+fantasma continuam ensinando o resto.
+
+**Testes e sonda:**
+
+- `src/tests/tutorial.test.tsx` — **20 testes**, incluindo o describe *A luva
+  ilustra, quem joga é o jogador* (faz o `registerWorldBridge` falso projetar,
+  roda frames de rAF de verdade e exige `data-fase` chegar em `carregar`+`soltar`
+  enquanto nada é arrastado/fundido/vendido) e *uma pressionada de dedo barrada
+  dá UM recado*. Rodar com `--localstorage-file` **novo** a cada execução (arquivo
+  reaproveitado vaza `settings` e causa falso negativo).
+- `qa/probe-tutorial.mjs` — **90 checagens, 0 falhas** (`QA_OUT=/tmp/opencode/
+  tutorial node qa/probe-tutorial.mjs`, ~4 min). Cobre: arena vazia na primeira
+  vez, os 5 passos com a mímica e o gesto real, 24/24 buracos livres no passo 1,
+  4 e 5 e depois do tutorial (desktop e retrato), aro/fantasma coincidentes com o
+  FAB real (`1323,374.5` vs `1323,374.5`; retrato `354,190`, 52 px), ponta do
+  dedo a ≤1 px do destino, cofre intacto, time de volta no mesmo slot, repetir
+  tutorial reesvazia a arena, pergunta com save, ordem dos recados. Três
+  utilitários que consertaram falsas culpas do jogo: `cenaQuieta()` (só lê
+  posição quando a cena para de mexer — depois de um drop recusado a criatura
+  VOLTA VOANDO para o buraco, e ler nesse instante faz o `mouse.down` cair no
+  vazio e virar órbita de câmera), `arrastar()` que promove o arraste com um
+  primeiro movimento de `(+14,−8)` e devolve se o FAB dourado armou (sem isso o
+  gesto foi órbita, não arraste, e a sonda culpa a si mesma) e `frenteEm()`
+  (`elementFromPoint` no corpo da criatura antes de pegar).
+
+---
+
 ## Compatibilidade iOS/WebKit (corrigido em 01/nov — NÃO reverter)
 
 Dois defeitos reais do WebKit faziam os monstros SUMIREM no iPhone e aparecerem
@@ -1103,6 +1252,14 @@ AUTO, com override manual em Configurações → Gráficos.
   `cancel-in-progress: false` (fila, não cancelamento: as duas branches publicam
   o mesmo site). O step "Publicado" imprime as DUAS URLs no sumário da execução:
   produção e `…/element-merge/dev/` (preview estável, não expira).
+- **🪤 `git merge` sem argumento NÃO funde a dev na main (12/nov):** com
+  `refs/remotes/origin/HEAD → origin/main` no clone, o `git merge --no-ff` rodado
+  na main usa a ref simbólica do remote como ramo — e devolve **"Already up to
+  date"** sem criar merge nenhum, porque a main já é ela mesma. O push seguinte
+  diz `Everything up-to-date` e o deploy nem dispara. Fundir é sempre
+  `git merge --no-ff dev -m "Merge branch 'dev' — …"` (ramo NOMEADO), e depois
+  `git push origin main`; conferir `git --no-pager log --oneline -2` na main antes
+  de empurrar.
 - **🪤 ARMADILHA do segundo `actions/checkout` (custou 4 deploys quebrados em
   silêncio):** com o padrão `clean: true`, o checkout da dev roda
   `git clean -ffdx` no mesmo diretório — e o `-x` APAGA IGNORADOS: o
@@ -1608,7 +1765,14 @@ node qa/probe-footprint.mjs            # encaixe/no-overlap (veredito "no buraco
 node qa/probe-framing.mjs              # enquadramento (24/24 buracos) + arraste real no slot do alvo + loja fechada
 node qa/probe-merge-preview.mjs        # prévia de fusões do arraste (revelar/selar, persegue o ponteiro, SEM FALHAS)
 node qa/probe-sell-fab.mjs             # FAB de venda: só no arraste, pulso devagar→rápido, 24/24 buracos livres (1373×749, 1280×610, 390×844)
+node qa/probe-tutorial.mjs             # 🎓 luvinha: 5 passos, mímica que NÃO joga, 24/24 buracos (desktop+retrato), cofre intacto, time de volta (92 checagens, ~4 min)
 ```
+
+> As sondas que NÃO testam o tutorial (`probe-framing`, `probe-sell-fab`,
+> `probe-merge-preview`, `probe-footprint`) marcam `tutorialDone: true` no save
+> **dentro do `addInitScript`** — em perfil limpo é o tutorial que abre no `play`
+> e ele barra spawn de depuração/arraste fora do passo, o que derrubaria a sonda
+> por um motivo que ela não está testando.
 
 ## Armadilhas (resumo)
 
@@ -1653,5 +1817,49 @@ node qa/probe-sell-fab.mjs             # FAB de venda: só no arraste, pulso dev
   FLUTUANDO (`DRAG_LIFT`) e com lag do follow — por isso a sonda tolera folga de
   `RAIO − 2` px e é por isso que o store guarda a tela projetada dos três pontos
   (ponteiro, slot mirada, corpo na mão).
+- **🎓 A luvinha ILUSTRA, ela nunca joga pelo jogador.** `TutorialHand` só escreve
+  `transform`/`opacity`/`data-fase`; nenhum `mime` chama ação do store e o passo
+  só fecha pela jogada real (`tutorialPlayDone`). Foi a correção que o usuário
+  cobrou ("moveu o monstro um no outro e depois vendeu sozinho") — se algum
+  futuro efeito da luva começar a chamar `beginDragCandidate`/`sell`, o tutorial
+  volta a se auto-jogar. Pino: `src/tests/tutorial.test.tsx`, describe *A luva
+  ilustra, quem joga é o jogador*.
+- **🎓 Overlay DOM em cima de buraco TRAVA a criatura** (mesma regra do dock): a
+  faixa/luva/aro/fantasma do tutorial são `pointer-events: none` E a faixa é
+  colocada por custo que considera os 24 buracos projetados **e** a caixa de
+  `.sell-fab` (real ou fantasma) como obstáculo sólido. `qa/probe-tutorial.mjs`
+  exige 24/24 livres no passo 1, no 4, no 5, depois do tutorial e no retrato, e
+  que a faixa não cubra o botão dourado.
+- **🎓 Um slot de toast só**: `toast: {id,kind,msg}` no store — dois `pushToast`
+  no mesmo tick viram o último. Daí a coalescência por pressionada
+  (`pressaoSeq`/`recadoDestaPressao`/`toqueDestaPressao`: toque + arraste
+  candidato nascem do mesmo `pointerdown`) e a despedida atrasada
+  (`TUTORIAL_FAREWELL_DELAY_MS`) para não engolir o recado da venda.
+- **🎓 Câmera travada nos passos com mímica**: `enableRotate` no frame de
+  depois do `pointerdown` é TARDE — o OrbitControls já embolsou o gesto e o
+  arraste vira órbita (o destino foge do dedo e a fusão nunca sai). Por isso
+  `cameraTravada` vale nos passos em que `TUTORIAL_STEP_DEF[step].mime` existe.
+- **🎓 O card de status aberto cobre a arena no layout compacto (dívida
+  pré-existente, não é do tutorial)**: `@media (max-width: 900px)` faz do
+  `.inspector` uma folha CENTRADA (medido em 390×844: 16..374×285..560 contra
+  buracos em y 334..548) → com ele aberto nenhum dos 24 buracos recebe
+  `pointerdown`, ou seja, no celular não dá para mover/fundir/vender enquanto o
+  card está na tela. O tutorial fecha o card ao entrar no passo de arraste
+  (`selectedId: null`); `qa/probe-framing.mjs` nunca abre o inspetor e por isso
+  nunca viu isso. Consertar de verdade (card lateral/rodapé que não tape a
+  quadra) é trabalho separado.
+- **Relógio de animação: o carimbo da própria frame do rAF** para `t0` e `agora`
+  — `performance.now()` tem origem diferente em alguns ambientes (jsdom marca
+  desde a navegação, Node desde o processo) e misturar os dois faz a animação
+  nunca começar (ou nunca terminar).
+- **Sonda que mede tempo do Node pula fase**: `page.evaluate` a cada 80 ms pode
+  ver uma frame a cada >850 ms com a máquina carregada, e aí a checagem culpa o
+  jogo. Gravar DENTRO da aba (rAF ou `MutationObserver`) e/ou esperar a cena
+  assentar antes de ler posição (`cenaQuieta()` — depois de um drop recusado a
+  criatura volta voando para o buraco).
+- **Rodar os testes com `--localstorage-file` NOVO**: arquivo reaproveitado vaza
+  o save/settings da execução anterior (bloom 80, `tutorialDone`) e produz falso
+  negativo — `NODE_OPTIONS="--localstorage-file=/tmp/opencode/ls-<novo>" npx
+  vitest run --pool=forks --poolOptions.forks.singleFork`.
 - UI e comentários em **PT-BR**; aprovar visual só com screenshot (nos do
   laço Playwright valem) — nunca aprovar às cegas.

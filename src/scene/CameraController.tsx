@@ -13,6 +13,7 @@ import {
   UNDERWATER_CAMERA_MAX_DISTANCE,
   VOLCANIC_CAMERA_MAX_DISTANCE,
 } from '../game/board';
+import { TUTORIAL_STEP_DEF } from '../game/tutorial';
 import { useGameStore } from '../store/gameStore';
 import type { ArenaScene } from '../game/types';
 
@@ -62,6 +63,24 @@ export function CameraController({
   const dragActive = useGameStore(
     (s) => s.dragId !== null || s.pendingDrag !== null,
   );
+  // 🎓 nos passos que SÃO um arraste (4 e 5) a câmera fica CRABADA. O motivo é
+  // de concorrência: o `pointerdown` que pega a criatura é da cena 3D e só
+  // escreve no store — o `enableRotate={!dragActive}` do frame seguinte chega
+  // tarde demais, o OrbitControls já embolsou o gesto e a câmera gira junto com
+  // o dedo. Aí o destino foge da tela no meio do arraste e a fusão não sai —
+  // nada ensina menos que "arraste uma criatura na outra". Fora desses dois
+  // passos (e depois do tutorial) a órbita continua livre.
+  // 🎓 nos passos em que a luvinha faz MÍMICA de arraste (4 e 5) a câmera fica
+  // CRABADA. É concorrência pura: quem pega a criatura é o `pointerdown` da
+  // cena 3D, que só escreve no store — o `enableRotate={!dragActive}` do frame
+  // seguinte chega tarde, o OrbitControls já embolsou o gesto e a câmera gira
+  // junto com o dedo. O destino foge da tela no meio do arraste e a fusão não
+  // sai, que é o pior jeito de um tutorial dizer "arraste até lá" e não deixar.
+  // Nos outros passos (e fora do tutorial) a órbita continua livre.
+  const cameraTravada = useGameStore((s) => {
+    const step = s.tutorialStep;
+    return step !== null && TUTORIAL_STEP_DEF[step].mime !== undefined;
+  });
 
   useEffect(() => {
     if (icy || volcanic || underwater) {
@@ -133,7 +152,7 @@ export function CameraController({
       // suavidade de sempre (e o showcase auto-rotate) continua.
       enableDamping={!ecoActive}
       dampingFactor={0.08}
-      enableRotate={!dragActive}
+      enableRotate={!dragActive && !cameraTravada}
       // 🔋 no MENU o palco gira sozinho (showcase) — mas em demand cada giro
       // dispara 'change' no OrbitControls, que invalida o frame e derruba o
       // teto de 30 Hz do modo econômico (a sonda mediu 62 fps em vez de 30).
