@@ -14,6 +14,8 @@ import { ResultScreen } from '../components/ResultScreen';
 import { SettingsMenu } from '../components/SettingsMenu';
 import { ShopPanel } from '../components/ShopPanel';
 import { ToastLayer } from '../components/ToastLayer';
+import { TutorialHand } from '../components/TutorialHand';
+import { TutorialPrompt } from '../components/TutorialPrompt';
 import { TurboFab } from '../components/TurboFab';
 import { useGameDriver } from '../hooks/useGameDriver';
 import { useMusicTrack } from '../hooks/useMusicTrack';
@@ -109,10 +111,14 @@ export function App() {
               o resultado SE SOLTAR AGORA, sempre revelado; o resto são as
               outras fusões possíveis, inéditas seladas como no bestiário) */}
           <MergePreviewPanel />
+          {/* 🎓 luvinha do tutorial: faixa do passo + a mão que aponta (e que
+              executa os gestos 4 e 5 pelas mesmas ações do ponteiro) */}
+          <TutorialHand />
         </>
       )}
 
       {!inGame && <MenuScreen />}
+      <TutorialPrompt />
       <ResultScreen />
       {/* palco WebGL da enciclopédia: UM contexto para todos os cards (o iOS
           perderia o canvas da batalha se cada card montasse o seu) */}

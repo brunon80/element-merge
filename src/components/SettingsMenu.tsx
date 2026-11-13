@@ -69,12 +69,15 @@ export function SettingsMenu() {
   const debugMode = useGameStore((s) => s.debugMode);
   const setDebugMode = useGameStore((s) => s.setDebugMode);
   const resetProgress = useGameStore((s) => s.resetProgress);
+  const requestTutorialReplay = useGameStore((s) => s.requestTutorialReplay);
+  const tutorialRodando = useGameStore((s) => s.tutorialStep !== null);
   const stats = useGameStore((s) => s.stats);
   const coins = useGameStore((s) => s.coins);
   const retainedCount = useGameStore((s) => s.retainedCount);
 
   const [tab, setTab] = useState<TabId>('match');
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmTutorial, setConfirmTutorial] = useState(false);
 
   if (!open) return null;
 
@@ -563,6 +566,51 @@ export function SettingsMenu() {
                     <CoinIcon size={13} /> 1200 rende <CoinIcon size={13} /> 600 no
                     fim da partida.
                   </p>
+                )}
+
+                {/* 🎓 repetir o tutorial da luvinha. A régua é a mesma do início:
+                    o tutorial SEMPRE começa com a arena vazia — por isso a pergunta
+                    antes. A partida em curso é encerrada (como em "sair da partida")
+                    e o time guardado volta no fim dos 5 passos. */}
+                {confirmTutorial ? (
+                  <div className="confirm" data-testid="tutorial-replay-confirm">
+                    O tutorial começa com a <b>arena vazia</b>. A partida em curso sai
+                    do tabuleiro e o time guardado ({retainedCount}{' '}
+                    {retainedCount === 1 ? 'criatura' : 'criaturas'}) volta no fim dos 5
+                    passos.
+                    <button
+                      className="btn primary small"
+                      data-testid="tutorial-replay-go"
+                      onClick={() => {
+                        setConfirmTutorial(false);
+                        setOpen(false);
+                        requestTutorialReplay();
+                      }}
+                    >
+                      Repetir tutorial
+                    </button>
+                    <button
+                      className="btn ghost small"
+                      data-testid="tutorial-replay-cancel"
+                      onClick={() => setConfirmTutorial(false)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="btn ghost"
+                    data-testid="tutorial-replay"
+                    onClick={() => setConfirmTutorial(true)}
+                    disabled={tutorialRodando}
+                    title={
+                      tutorialRodando
+                        ? 'O tutorial já está rodando'
+                        : 'Os 5 passos da luvinha, do zero'
+                    }
+                  >
+                    🎓 Repetir tutorial
+                  </button>
                 )}
 
                 {confirmReset ? (

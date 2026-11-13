@@ -39,6 +39,17 @@ import {
   SUMMON_COST,
   TILES_PER_SIDE,
 } from '../game/types';
+import {
+  gateTutorial,
+  nextTutorialStep,
+  tutorialBlockMsg,
+  TUTORIAL_COINS,
+  TUTORIAL_FAREWELL_DELAY_MS,
+  TUTORIAL_SPECIES,
+  TUTORIAL_STEP_DEF,
+  type TutorialGateKind,
+  type TutorialStepId,
+} from '../game/tutorial';
 
 /** Unidade espelhada para a UI (dado discreto; posições vivem no motor). */
 export interface UiUnit {
@@ -139,10 +150,30 @@ interface GameStoreState {
   showBestiary: boolean;
   showSettings: boolean;
   uiTick: number;
+
+  // ── 🎓 tutorial da luvinha ─────────────────────────────────────────────────
+  /** Passo atual (null = fora do tutorial). A régua mora em src/game/tutorial.ts. */
+  tutorialStep: TutorialStepId | null;
+  /** Já assistido (espelho do save): sem isto o tutorial volta a cada abertura. */
+  tutorialDone: boolean;
+  /** O tutorial que está rolando foi pedido nas configurações (muda o recado final). */
+  tutorialReplay: boolean;
+  /** Time salvo no cofre: a pergunta "começar o tutorial com a arena vazia?". */
+  tutorialPrompt: boolean;
 }
 
 interface GameStoreActions {
   initFromSave: () => void;
+  /** Botão "Jogar" do menu: dispara o tutorial na primeira vez, senão partida normal. */
+  play: () => void;
+  /** Resposta da pergunta "o tutorial começa vazio e seu time volta no fim?". */
+  answerTutorialPrompt: (go: boolean) => void;
+  /** Começa a partida-do-tutorial (arena vazia, saldo virtual) no passo 1. */
+  startTutorial: (replay?: boolean) => void;
+  /** "Pular tutorial": fecha o tutorial e entra na partida de verdade com o time. */
+  skipTutorial: () => void;
+  /** Repetir tutorial pedido nas configurações (o confirm é da própria UI). */
+  requestTutorialReplay: () => void;
   startNewMatch: () => void;
   returnToMenu: () => void;
   summon: (species: SpeciesId) => void;
@@ -386,9 +417,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     });
   }
 
-  function newEngine(scene: ArenaScene): void {
+  function newEngine(scene: ArenaScene, coinsOverride?: number): void {
     engine = new GameEngine({
-      playerCoins: save.coins,
+      playerCoins: coinsOverride ?? save.coins,
       aiCoins: 0,
       maxBattleTime: MAX_BATTLE_TIME,
       difficulty: save.settings.difficulty,
@@ -398,6 +429,100 @@ export const useGameStore = create<GameStore>((set, get) => {
       scene,
     });
     engine.setEventCallback(handleEngineEvent);
+  }
+
+  // ── 🎓 TUTORIAL: régua, avanço e saída ─────────────────────────────────────
+  // A definição dos passos e a régua do que é permitido moram em
+  // src/game/tutorial.ts (máquina pura). Aqui só aplica a régua nas ações que
+  // mudam a partida e faz o avanço quando a jogada certa acontece.
+
+  /** dentro do tutorial o saldo do motor é virtual (não contamina o cofre) */
+  function inTutorial(): boolean {
+    return get().tutorialStep !== null;
+  }
+
+  /**
+   * 🎓 UMA pressionada de dedo, UM recado. Tocar em uma criatura dispara o
+   * candidato de toque E o de arraste na mesma teclada (ver `UnitView`), então
+   * as duas barreiras reclamar juntas — e como a UI tem um slot de toast só, a
+   * segunda mensagem atropela a primeira (que é justamente a que diz o passo).
+   * Então: um contador de pressionadas e o recado que aquela já deu; a segunda
+   * reclamação do mesmo gesto é engolido (a jogada continua barrada).
+   */
+  let pressaoSeq = 0;
+  let recadoDestaPressao = -1;
+  /** o toque aberto nesta pressionada (é ele que o arraste candidato reaproveita) */
+  let toqueDestaPressao: { seq: number; id: number } | null = null;
+
+  /** Barreira: devolve false (e avisa o porquê) quando a jogada não é a do passo. */
+  function allowTutorial(
+    kind: TutorialGateKind,
+    opts: { species?: SpeciesId } = {},
+  ): boolean {
+    const step = get().tutorialStep;
+    if (step === null) return true;
+    const gate = gateTutorial(step, kind, { species: opts.species });
+    if (!gate.ok && gate.msg) {
+      const nasceuDaPressionada = kind === 'tap' || kind === 'drag';
+      if (!nasceuDaPressionada || recadoDestaPressao !== pressaoSeq) {
+        if (nasceuDaPressionada) recadoDestaPressao = pressaoSeq;
+        get().pushToast('error', gate.msg);
+      }
+    }
+    return gate.ok;
+  }
+
+  /** A jogada certa acabou de acontecer: avança o passo (ou fecha o tutorial). */
+  function tutorialPlayDone(kind: 'summon' | 'tap' | 'merge' | 'sell'): void {
+    const step = get().tutorialStep;
+    if (!step) return;
+    const action = TUTORIAL_STEP_DEF[step].action;
+    const esperado =
+      (kind === 'summon' && action === 'press') ||
+      (kind === 'tap' && action === 'tap') ||
+      (kind === 'merge' && step === 'arrastar') ||
+      (kind === 'sell' && step === 'vender');
+    if (!esperado) return;
+    const next = nextTutorialStep(step);
+    if (!next) {
+      closeTutorial('done');
+      return;
+    }
+    // 🎓 na entrada do passo de ARRASTE, o card de status fecha. No layout
+    // compacto (≤900px) o inspetor é uma folha centralizada SOBRE a arena (na
+    // lateral ele brigaria com a loja — regra do styles.css), então deixá-lo
+    // aberto engoliria o ponteiro dos 24 buracos e o gesto que o passo pede no
+    // celular. O jogador leu os status no passo 2 e pode reabrir quando quiser;
+    // só não pode ficar com a mão em cima do tabuleiro sem ver o tabuleiro.
+    set(next === 'arrastar' ? { tutorialStep: next, selectedId: null } : { tutorialStep: next });
+  }
+
+  /**
+   * Fim do tutorial. Nada foi destruído no caminho: o cofre (moedas + time)
+   * nunca foi tocado, então `startNewMatch` devolve o time guardado exatamente
+   * nos buracos em que estava.
+   */
+  function closeTutorial(why: 'done' | 'skip'): void {
+    const replay = get().tutorialReplay;
+    set({ tutorialStep: null, tutorialReplay: false, selectedId: null });
+    get().startNewMatch();
+    if (why !== 'done') return;
+    // ⏱ a despedida ESPERA: o último passo é uma venda, e o recado do ganho
+    // ('… vendido — +N moedas') é a recompensa do passo — se vier por cima dele,
+    // a UI (um slot só) apaga exatamente a informação que o jogador acabou de
+    // conquistar. Depois do tempo, só fala se o tutorial continua fechado.
+    const guardado = save.retainedRoster.length > 0;
+    const texto = replay
+      ? guardado
+        ? 'Tutorial repetido — seu time está de volta ao tabuleiro.'
+        : 'Tutorial repetido — agora é só jogar.'
+      : guardado
+        ? 'Tutorial concluído! Seu time está de volta e o combate é livre.'
+        : 'Tutorial concluído! Loja e combate liberados — bom jogo.';
+    globalThis.setTimeout(() => {
+      if (get().tutorialStep !== null) return; // alguém já recomeçou: silêncio
+      get().pushToast('success', texto);
+    }, TUTORIAL_FAREWELL_DELAY_MS);
   }
 
   return {
@@ -442,6 +567,10 @@ export const useGameStore = create<GameStore>((set, get) => {
     showBestiary: false,
     showSettings: false,
     uiTick: 0,
+    tutorialStep: null,
+    tutorialDone: save.tutorialDone,
+    tutorialReplay: false,
+    tutorialPrompt: false,
 
     initFromSave(): void {
       save = loadSave();
@@ -469,7 +598,95 @@ export const useGameStore = create<GameStore>((set, get) => {
         matchRewardCfg: save.settings.matchReward,
         debugMode: save.settings.debugMode,
         lastSummary: save.lastSummary,
+        tutorialDone: save.tutorialDone,
       });
+    },
+
+    // ── 🎓 fluxo do tutorial ─────────────────────────────────────────────────
+    play(): void {
+      if (get().tutorialDone) {
+        get().startNewMatch();
+        return;
+      }
+      // Primeira vez: o tutorial SEMPRE começa com a arena vazia. Se já existe
+      // jogo salvo (time no cofre ou partidas jogadas), avisamos antes — as
+      // moedas e o time guardados não são tocados, só voltam no fim.
+      const temJogoSalvo = save.retainedRoster.length > 0 || save.stats.matchesPlayed > 0;
+      if (temJogoSalvo) {
+        set({ tutorialPrompt: true });
+        return;
+      }
+      get().startTutorial(false);
+    },
+
+    answerTutorialPrompt(go: boolean): void {
+      set({ tutorialPrompt: false });
+      if (go) {
+        get().startTutorial(false);
+        return;
+      }
+      // recusou: não enchemos o menu de pergunta a cada abertura. Quem quiser o
+      // tutorial de novo acha em Configurações ▸ Progresso ▸ "Repetir tutorial".
+      save.tutorialDone = true;
+      persistSoon();
+      set({ tutorialDone: true });
+      get().startNewMatch();
+    },
+
+    startTutorial(replay: boolean = false): void {
+      const activeArenaScene = get().activeArenaScene;
+      // marca antes de começar: fechar a aba no meio dos 5 passos não faz o
+      // tutorial voltar sozinho na próxima abertura
+      save.tutorialDone = true;
+      save.lastArenaScene = activeArenaScene;
+      persistSoon();
+      // arena vazia de propósito (nenhum `addRetainedUnit`) e saldo virtual, o
+      // bastante para os dois IgNIS do tutorial custarem o que custariam
+      newEngine(activeArenaScene, Math.max(save.coins, TUTORIAL_COINS));
+      set({
+        screen: 'game',
+        phase: 'preparation',
+        activeArenaScene,
+        lastMatchArenaScene: activeArenaScene,
+        matchId: engine!.world.matchId,
+        coins: engine!.world.playerCoins,
+        aiCoins: 0,
+        retainedCount: save.retainedRoster.length,
+        battleTime: 0,
+        selectedId: null,
+        pendingDrag: null,
+        tapCandidate: null,
+        dragId: null,
+        dragHover: null,
+        dragPointer: null,
+        dragScreen: null,
+        dragTargetScreen: null,
+        dragCarriedScreen: null,
+        sellHover: false,
+        lastSummary: null,
+        units: [],
+        turbo: 1,
+        tutorialStep: 'escolher',
+        tutorialDone: true,
+        tutorialReplay: replay,
+        tutorialPrompt: false,
+        discoveryReveal: null,
+      });
+      get().syncUi();
+      get().pushToast('info', 'Tutorial da luvinha: 5 passos. Se preferir, pule quando quiser.');
+    },
+
+    skipTutorial(): void {
+      if (get().tutorialStep === null) return;
+      closeTutorial('skip');
+    },
+
+    requestTutorialReplay(): void {
+      if (get().tutorialStep !== null) return;
+      // o tutorial é sempre uma sessão vazia: se havia partida em curso, ela é
+      // encerrada como em "sair da partida" (o cofre continua intacto)
+      if (get().screen === 'game') get().returnToMenu();
+      get().startTutorial(true);
     },
 
     startNewMatch(): void {
@@ -506,6 +723,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         lastSummary: null,
         units: [],
         turbo: 1, // cada partida começa em 1×; o turbo é alívio da partida atual
+        tutorialStep: null,
+        tutorialReplay: false,
+        tutorialPrompt: false,
       });
       get().syncUi();
     },
@@ -515,7 +735,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       // Partida encerrada: o saldo já inclui a recompensa (finishMatch) — não regrava.
       const currentEngine = engine;
       const abandoningMatch = currentEngine !== null && !currentEngine.world.summary;
-      if (abandoningMatch && currentEngine) {
+      // no tutorial o saldo do motor é virtual: abandoná-lo não grava moeda alguma
+      if (abandoningMatch && currentEngine && !inTutorial()) {
         save.coins = currentEngine.world.playerCoins;
         persistSoon();
       }
@@ -540,18 +761,26 @@ export const useGameStore = create<GameStore>((set, get) => {
         sellHover: false,
         coins: save.coins,
         retainedCount: save.retainedRoster.length,
+        tutorialStep: null,
+        tutorialReplay: false,
+        tutorialPrompt: false,
       });
     },
 
     summon(species: SpeciesId): void {
+      if (!allowTutorial('summon', { species })) return;
       const eng = engine;
       if (!eng) return;
       const res = eng.summon('player', species);
       if (res.ok) {
-        save.coins = eng.world.playerCoins;
-        persistSoon();
-        set({ coins: save.coins });
+        // dentro do tutorial o saldo é virtual: o cofre não é tocado
+        if (!inTutorial()) {
+          save.coins = eng.world.playerCoins;
+          persistSoon();
+        }
+        set({ coins: eng.world.playerCoins });
         get().syncUi();
+        tutorialPlayDone('summon');
       }
     },
 
@@ -569,10 +798,12 @@ export const useGameStore = create<GameStore>((set, get) => {
         get().pushToast('error', FUSION_MSG[res.reason ?? ''] ?? 'Fusão inválida.');
       } else {
         get().syncUi();
+        tutorialPlayDone('merge');
       }
     },
 
     startBattle(): void {
+      if (!allowTutorial('battle')) return;
       engine?.startBattle();
     },
 
@@ -581,6 +812,13 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     beginDragCandidate(id: number, x: number, y: number): void {
+      // mesma pressionada do toque? então não abre uma nova "seq" — é o segundo
+      // pedido do MESMO gesto (ver a trava de recado em `allowTutorial`)
+      if (!toqueDestaPressao || toqueDestaPressao.seq !== pressaoSeq || toqueDestaPressao.id !== id) {
+        pressaoSeq++;
+        toqueDestaPressao = null;
+      }
+      if (!allowTutorial('drag')) return;
       set({ pendingDrag: { id, x, y } });
     },
 
@@ -594,6 +832,10 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     beginTapCandidate(id: number, x: number, y: number): void {
+      // novo toque = nova pressionada de dedo
+      pressaoSeq++;
+      toqueDestaPressao = { seq: pressaoSeq, id };
+      if (!allowTutorial('tap')) return;
       set({ tapCandidate: { id, x, y } });
     },
 
@@ -611,6 +853,15 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (!tc) return;
       if (Math.hypot(x - tc.x, y - tc.y) >= DRAG_PROMOTE_PX) return;
       set({ selectedId: tc.id });
+      // passo 2 do tutorial: o toque CERTO é no monstro que a loja acabou de
+      // chamar — é isso que abre o card de status e encerra o passo
+      const step = get().tutorialStep;
+      if (step === 'inpecionar') {
+        const u = engine?.getUnit(tc.id);
+        if (u && u.side === 'player' && u.species === TUTORIAL_SPECIES) {
+          tutorialPlayDone('tap');
+        }
+      }
     },
 
     clearPointerState(): void {
@@ -719,6 +970,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (!eng || dragId === null) return;
       // solto sobre o botão de venda: vende a criatura e devolve o custo acumulado
       if (sellHover) {
+        // no tutorial a venda só é jogada no passo 5
+        if (!allowTutorial('sell')) return;
         const unit = eng.getUnit(dragId);
         const res = eng.sellUnit(dragId);
         if (res.ok && unit) {
@@ -727,8 +980,20 @@ export const useGameStore = create<GameStore>((set, get) => {
             `${getSpecies(unit.species).name} (Nv.${unit.level}) vendido — +${res.refund} moedas.`,
           );
           get().syncUi();
+          tutorialPlayDone('sell');
         }
         return;
+      }
+      // no tutorial existe UM destino certo por passo: fundir (passo 4) ou
+      // vender (passo 5). Mover de buraco ou soltar no vazio é recusada com o
+      // recado do próprio passo.
+      const step = get().tutorialStep;
+      if (step !== null) {
+        const mergeDoPasso = step === 'arrastar' && dragHover?.kind === 'merge';
+        if (!mergeDoPasso) {
+          get().pushToast('error', tutorialBlockMsg(step, 'drop'));
+          return;
+        }
       }
       if (!dragHover) return; // soltou fora: sem efeito
       if (dragHover.kind === 'move') {
@@ -899,6 +1164,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     spawnDebugUnit(species: SpeciesId, level: MonsterLevel): boolean {
+      if (!allowTutorial('debug')) return false;
       if (!get().debugMode) return false;
       const eng = engine;
       if (!eng) {
@@ -940,6 +1206,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         retainedCount: 0,
         stats: { ...save.stats },
         lastSummary: null,
+        // zerar o progresso também devolve o tutorial: na próxima vez que apertar
+        // "Jogar", a luvinha aparece de novo
+        tutorialDone: save.tutorialDone,
       });
       get().pushToast('info', 'Progresso reiniciado.');
     },
@@ -967,7 +1236,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       // Quando a partida terminou, o saldo do motor está congelado no valor
       // pré-recompensa; quem manda no saldo é o finishMatch (via save/store).
       const finished = !!w.summary;
-      const coinsChanged = !finished && save.coins !== w.playerCoins;
+      // dentro do tutorial o saldo do motor é virtual (passos 1/3/5 mexem nele):
+      // não gravamos no cofre — o tutorial inteiro não custa uma moeda salva
+      const coinsChanged = !finished && !inTutorial() && save.coins !== w.playerCoins;
       const next: Partial<GameStoreState> = { units };
       if (
         !finished &&

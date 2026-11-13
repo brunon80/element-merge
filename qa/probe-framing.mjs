@@ -28,6 +28,19 @@ await page.addInitScript(() => {
     if (d && (d.isScene || d.isWebGLRenderer)) window.__threeRs.push(d);
   });
   window.__THREE_DEVTOOLS__ = et;
+  // 🎓 num perfil limpo é o TUTORIAL DA LUVINHA que abre no `play`, e ele barra
+  // qualquer jogada fora dos 5 passos (spawn de depuração incluso). Esta sonda
+  // não testa o tutorial — então marcamos o flag no save ANTES do app nascer.
+  // `loadSave` é defensivo: um objeto só com `tutorialDone` vira o save padrão
+  // em tudo o mais.
+  try {
+    const K = 'elemental-merge-save-v1';
+    const s = JSON.parse(localStorage.getItem(K) ?? '{}');
+    s.tutorialDone = true;
+    localStorage.setItem(K, JSON.stringify(s));
+  } catch {
+    localStorage.setItem('elemental-merge-save-v1', JSON.stringify({ tutorialDone: true }));
+  }
 });
 
 await page.goto(URL, { waitUntil: 'networkidle' });

@@ -31,6 +31,9 @@ function freshGame() {
   st.returnToMenu();
   st.resetProgress();
   st.setDebugMode(false); // o modo debug persiste no save: teste começa sem ele
+  // jogador que já assistiu o tutorial: "Jogar" abre a partida direto. Os 5
+  // passos da luvinha têm casa própria (src/tests/tutorial.test.tsx)
+  useGameStore.setState({ tutorialDone: true });
   st.startNewMatch();
   useGameStore.setState({ toast: null }); // limpa o aviso "progresso reiniciado"
 }

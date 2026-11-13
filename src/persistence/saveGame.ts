@@ -18,8 +18,8 @@ import type {
 } from '../game/types';
 
 export const SAVE_KEY = 'elemental-merge-save-v1';
-/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som; v9: volume da música; v10: posição do time guardado no tabuleiro; v11: recompensa de fim de partida configurável. */
-export const SAVE_VERSION = 11;
+/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som; v9: volume da música; v10: posição do time guardado no tabuleiro; v11: recompensa de fim de partida configurável; v12: tutorial da luvinha já assistido. */
+export const SAVE_VERSION = 12;
 export const DEFAULT_BLOOM_INTENSITY = 20;
 export const MAX_BLOOM_INTENSITY = 100;
 export const DEFAULT_SCENERY_BLOOM_INTENSITY = 30;
@@ -97,6 +97,12 @@ export interface SaveData {
   processedMatchIds: string[];
   lastSummary: MatchSummary | null;
   lastArenaScene: ArenaScene | null;
+  /**
+   * 🎓 O tutorial da luvinha já rodou (ou o jogador recusou na primeira vez).
+   * É o que impede o tutorial de voltar sozinho; dá para repetir em
+   * Configurações ▸ Progresso.
+   */
+  tutorialDone: boolean;
 }
 
 export const PURE_START: SpeciesId[] = ['ignis', 'nereia', 'golem', 'zephyr'];
@@ -124,6 +130,7 @@ export function defaultSave(): SaveData {
     processedMatchIds: [],
     lastSummary: null,
     lastArenaScene: null,
+    tutorialDone: false,
   };
 }
 
@@ -308,6 +315,8 @@ export function loadSave(): SaveData {
       processedMatchIds,
       lastSummary: parsed.lastSummary ?? null,
       lastArenaScene,
+      // v12: save antigo não tem o campo → nunca assistiu, tutorial roda.
+      tutorialDone: !!parsed.tutorialDone,
     };
   } catch {
     return defaultSave();

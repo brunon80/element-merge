@@ -1983,3 +1983,245 @@ input[type='range'] {
     padding: 6px 12px;
   }
 }
+
+
+/* ═════════════════════════ 🎓 TUTORIAL DA LUVINHA ═════════════════════════
+   A FAIXA do passo (z 65) e a LUVA (z 66) ficam acima dos painéis de jogo e do
+   toast (60), abaixo do overlay de descoberta (70). A luva é
+   `pointer-events: none`: ela aponta e nunca engole o toque — o chão dos 24
+   buracos continua resolvendo para o `<canvas>` (a regra do enquadre). A faixa
+   é a única peça que aceita toque, e ela mesma se reposiciona para nunca cobrir
+   um buraco (ver `posicionarFaixa` em src/components/TutorialHand.tsx). */
+.tutorial-faixa {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 65;
+  max-width: min(560px, 92vw);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-color: rgba(245, 196, 81, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(245, 196, 81, 0.18);
+}
+.tutorial-linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tutorial-luva {
+  flex: none;
+  color: var(--gold);
+}
+.tutorial-frase {
+  font-size: 15px;
+  line-height: 1.35;
+}
+.tutorial-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tutorial-passos {
+  display: inline-flex;
+  gap: 6px;
+}
+.tutorial-passos i {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  background: rgba(140, 170, 230, 0.14);
+  color: var(--muted);
+}
+.tutorial-passos i[data-active='true'] {
+  background: var(--gold);
+  color: #241a06;
+}
+
+.tutorial-luva-mao {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 66;
+  pointer-events: none;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.55));
+}
+.tutorial-luva-mao .glove-glyph {
+  display: block;
+  /* todo crescimento/encolhimento parte da PONTA do dedo (7/52 ≈ 13,5% do
+     desenho), porque é a ponta que está colada no alvo */
+  transform-origin: 13.5% 13.5%;
+}
+/* passos 1/2/3: a luva APONTA e espera o dedo do jogador — pulsa no alvo */
+.tutorial-luva-mao[data-action='press'] .glove-glyph,
+.tutorial-luva-mao[data-action='tap'] .glove-glyph {
+  animation: luva-pulsa 1.6s ease-in-out infinite;
+}
+@keyframes luva-pulsa {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.84);
+  }
+  55% {
+    transform: scale(1.05);
+  }
+}
+/* passos 4/5: MÍMICA. A luva faz o gesto de mentirinha, em loop, e quem joga é
+   o jogador. As fases (`data-fase`) só mudam o DESENHO da mão — nenhuma chamada
+   de jogo sai daqui. */
+.tutorial-luva-mao[data-fase='carregar'] .glove-glyph {
+  transform: scale(1.12);
+}
+.tutorial-luva-mao[data-fase='pegar'] .glove-glyph {
+  animation: luva-pegar 0.75s ease-in-out infinite;
+}
+.tutorial-luva-mao[data-fase='soltar'] .glove-glyph {
+  animation: luva-soltar 0.85s ease-in-out infinite;
+}
+@keyframes luva-pegar {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.85);
+  }
+}
+@keyframes luva-soltar {
+  0%,
+  100% {
+    transform: scale(1.06);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+/* o aro pontilhado marca o BURACO onde a criatura deve ser solta (passo 4). É
+   `pointer-events: none`, então não compete com o chão do slot na hora do
+   ponteiro (a regra dos 24 buracos vale mesmo em cima de um buraco) */
+.tutorial-aro {
+  position: absolute;
+  left: -38px;
+  top: -38px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 2px dashed rgba(245, 196, 81, 0.75);
+  background: radial-gradient(circle, rgba(245, 196, 81, 0.16), rgba(245, 196, 81, 0) 70%);
+  z-index: 64;
+  pointer-events: none;
+  animation: aro-respira 1.8s ease-in-out infinite;
+}
+@keyframes aro-respira {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* o FANTASMA do botão de venda (passo 5): reaproveita a classe `.sell-fab` para
+   herdar exatamente o lugar, o tamanho e as regras de janela do botão real — a
+   diferença é que ele é pontilhado, apagado e surdo ao ponteiro. Assim a mímica
+   tem para onde apontar antes de o FAB verdadeiro nascer (ele só existe durante
+   o arraste) */
+.tutorial-fab-alvo {
+  pointer-events: none;
+  animation: none;
+  border-style: dashed;
+  border-color: rgba(245, 196, 81, 0.55);
+  background: radial-gradient(circle at 50% 34%, rgba(42, 36, 21, 0.35), rgba(19, 16, 34, 0.25) 70%);
+  box-shadow: none;
+  opacity: 0.6;
+}
+.tutorial-fab-alvo .sell-glyph {
+  filter: none;
+  opacity: 0.8;
+}
+
+/* o card da loja que o passo está ensinando ganha a moldura dourada: é o alvo
+   da luva e o único botão vivo da loja naquele passo */
+.shop-card[data-tutorial-do-passo='true']:not(.disabled) {
+  box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(245, 196, 81, 0.35);
+}
+
+/* a PERGUNTA quando já existe jogo salvo: o tutorial começa vazio e o time
+   volta no fim. Zima da descoberta (70) de propósito: ela é o portão do "Jogar" */
+.tutorial-pergunta {
+  z-index: 75;
+}
+.tutorial-pergunta-card {
+  width: min(460px, 92vw);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+.tutorial-pergunta-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 20px;
+  color: var(--gold);
+}
+.tutorial-pergunta p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.tutorial-pergunta p b {
+  color: var(--text);
+}
+.tutorial-pergunta-cofre {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.tutorial-acoes {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.tutorial-pergunta-dica {
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .tutorial-faixa {
+    max-width: calc(100vw - 20px);
+    padding: 8px 12px;
+  }
+  .tutorial-frase {
+    font-size: 13.5px;
+  }
+}
+
+/* pouca movimentação (preferência do sistema): a luva para de viajar e de
+   pulsar — fica parada em cima do destino do gesto. O `TutorialHand` também
+   enxerga essa preferência e congela a mímica no destino, então o tutorial
+   continua ensinando sem ninguém ter que perseguir uma mão animada */
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-luva-mao .glove-glyph,
+  .tutorial-aro {
+    animation: none;
+  }
+}

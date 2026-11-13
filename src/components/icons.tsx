@@ -186,3 +186,38 @@ export function ClockIcon({ size = 20 }: { size?: number }) {
     </svg>
   );
 }
+
+/**
+ * Luva de cartomante apontando: o glifo da luvinha do tutorial.
+ *
+ * A ponta do indicador mora em (7,7) do viewBox de 52 — o `TutorialHand` usa
+ * essa referência (TIP_U) para que a PONTA do dedo encoste no alvo, e não a
+ * esquina do desenho. Traço escuro largo por baixo + traço claro por cima =
+ * contorno de desenho animado, do mesmo modo dos outros glifos daqui.
+ */
+export function GloveIcon({ size = 56 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 52 52" width={size} height={size} className="glove-glyph" aria-hidden>
+      <g strokeLinecap="round" strokeLinejoin="round">
+        {/* punho da luva (faixa dourada), desenhado antes da mão para a luva
+            parecer costurada por baixo dela */}
+        <path d="M30 33 45 48" fill="none" stroke="#12100c" strokeWidth="16" />
+        <path d="M30 33 45 48" fill="none" stroke="#e9b849" strokeWidth="10.5" />
+        {/* indicador esticado: contorno + preenchimento */}
+        <path d="M7 7 22 22" fill="none" stroke="#12100c" strokeWidth="12.5" />
+        <path d="M7 7 22 22" fill="none" stroke="#fdf3dc" strokeWidth="8" />
+        {/* mão fechada (punho) */}
+        <path
+          d="M17 17c8-7 22-4 25 7 2 9-4 18-14 18-10 0-17-7-17-15 0-4 2-8 6-10z"
+          fill="#fdf3dc"
+          stroke="#12100c"
+          strokeWidth="3"
+        />
+        {/* polegar cruzando a frente da mão */}
+        <path d="M19.5 27.5c6 5 13 6 18.5 3" fill="none" stroke="#12100c" strokeWidth="2.6" />
+        {/* costura dos dedos, no miolo da luva */}
+        <path d="M28 21c4 2 6.5 5 7.5 9" fill="none" stroke="#c9b58c" strokeWidth="2.2" />
+      </g>
+    </svg>
+  );
+}
