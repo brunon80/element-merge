@@ -28,7 +28,9 @@ import { GloveIcon, SellIcon } from './icons';
  *    mesma regra do enquadre: o chão projetado de cada buraco tem que seguir
  *    livre para o ponteiro);
  *  • a LUVA, que persegue o alvo do passo. Nos passos 1/2/3 ela aponta e pulsa;
- *    nos passos 4 e 5 ela percorre em loop o trajeto `de → até` da mímica;
+ *    nos passos 4 e 5 ela percorre em loop o trajeto `de → até` da mímica. De
+ *    um passo para o outro ela NÃO pula: continua de onde parou e desliza até o
+ *    alvo novo (o jogador acompanha o próximo passo com os olhos);
  *  • as MARCAS do destino: o aro pontilhado sobre o buraco onde a criatura deve
  *    ser solta (passo 4) e o fantasma do botão dourado mostrando onde o FAB de
  *    venda vai aparecer (passo 5 — o botão real só existe durante o arraste).
@@ -38,8 +40,13 @@ import { GloveIcon, SellIcon } from './icons';
  */
 
 const HAND_PX = 56;
-/** ponta do indicador dentro do viewBox (52) do GloveIcon — é ela que encosta no alvo */
-const TIP_U = 7 / 52;
+/**
+ * Ponta do indicador no frame de APONTAR da folha de sprites — é ela que
+ * encosta no alvo. (85.3%, 11.4%) do recorte, medidos no pixel do sprite;
+ * os mesmos números no transform-origin do pulso (styles.css) e na sonda do QA.
+ */
+const TIP_X = 0.853;
+const TIP_Y = 0.114;
 
 /** a mímica do arraste: quanto tempo cada trecho do loop dura (ms) */
 const MIME = {
@@ -53,6 +60,11 @@ const MIME = {
   voltar: 750,
 } as const;
 const CICLO = MIME.pegar + MIME.carregar + MIME.soltar + MIME.voltar;
+
+/** deslize de entrada quando o passo muda: a mão VIAJA da posição anterior
+ *  para o alvo novo em vez de teleportar (pedido do usuário: o jogador consegue
+ *  acompanhar o próximo passo com os olhos) */
+const TRANSICAO_MS = 650;
 
 type Ponto = { x: number; y: number };
 
@@ -282,6 +294,9 @@ function alvoAgora(step: TutorialStepId, papel: 'de' | 'ate'): TutorialTarget | 
 function TutorialLuva({ step }: { step: TutorialStepId }) {
   const maoRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+  // por onde a mão andou no passo ANTERIOR — ela não nasce teletransportada no
+  // alvo do passo novo; o `<div>` sobrevive à troca de passo (sem `key`)
+  const ultimaRef = useRef<Ponto | null>(null);
   const def = TUTORIAL_STEP_DEF[step];
   // o aro pontilhado no buraco de destino só existe quando o destino É um
   // buraco (passo 4). No passo 5 o destino já é o fantasma do botão dourado.
@@ -300,7 +315,12 @@ function TutorialLuva({ step }: { step: TutorialStepId }) {
     // processo), e misturar os dois faria a mímica nunca começar
     let t0 = -1;
     let antes = -1;
-    let segue: Ponto | null = null; // suaviza a mão nos passos que só apontam
+    // A mão CONTINUA de onde parou no passo anterior (o efeito reabre a cada
+    // passo, o ref não): `segue`/`guia` já nascem na última posição que ela
+    // ocupou — nos passos que só apontam o próprio lerp faz o trajeto; na
+    // mímica, o `guia` cuida da entrada e depois o loop manda sozinho
+    let segue: Ponto | null = ultimaRef.current;
+    let guia: Ponto | null = ultimaRef.current;
     let raf = requestAnimationFrame(function loop(agora: number) {
       if (t0 < 0) t0 = agora;
       if (antes < 0) antes = agora;
@@ -339,6 +359,15 @@ function TutorialLuva({ step }: { step: TutorialStepId }) {
           p = de; // ainda esperando os bichos nascerem: fica onde vai pegar
           fase = 'espera';
         }
+        // entrada SEM PULO: nos primeiros ~650 ms do passo novo a mão chega
+        // voando do lugar onde parou no passo anterior; passado o intervalo, o
+        // loop da mímica manda sozinho (o guia já está colado nele, sem estouro)
+        if (p) {
+          if (guia && agora - t0 < TRANSICAO_MS) {
+            p = misto(guia, p, 1 - Math.exp(-dt * 6));
+          }
+          guia = p;
+        }
       } else if (de) {
         // passo que só aponta: a mão desliza até o alvo e pulsa (o CSS cuida
         // da pulsação); o lerp com dt mantém o movimento igual a 60 ou 120 Hz
@@ -348,8 +377,11 @@ function TutorialLuva({ step }: { step: TutorialStepId }) {
       }
 
       if (p) {
-        const off = HAND_PX * TIP_U;
-        mao.style.transform = `translate3d(${Math.round(p.x - off)}px, ${Math.round(p.y - off)}px, 0)`;
+        ultimaRef.current = p; // onde o próximo passo deve "apanhar" a mão
+        // ancora a PONTA do dedo (não a caixa) no alvo: o frame de apontar tem
+        // a ponta em (TIP_X, TIP_Y) do recorte, e é esse pixel que viaja em cima
+        // do bicho/botão — nos frames de punho a mão fica recolhida para o lado
+        mao.style.transform = `translate3d(${Math.round(p.x - HAND_PX * TIP_X)}px, ${Math.round(p.y - HAND_PX * TIP_Y)}px, 0)`;
         mao.style.opacity = String(alpha);
       }
       mao.dataset.fase = fase;
@@ -415,8 +447,10 @@ export function TutorialHand() {
   return (
     <>
       <TutorialFaixa step={step} />
-      {/* key por passo: cada passo recomeça a mímica do zero */}
-      <TutorialLuva key={step} step={step} />
+      {/* SEM `key` por passo: a luva sobrevive à troca e desliza do alvo
+          anterior para o novo (o relógio da mímica reinicia pelos deps do
+          `useEffect`, não pela remontagem) */}
+      <TutorialLuva step={step} />
       {/* o fantasma precisa existir no DOM antes de a mão medir o destino */}
       {step === 'vender' && <TutorialFabFantasma />}
     </>

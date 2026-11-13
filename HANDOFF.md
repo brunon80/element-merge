@@ -836,6 +836,32 @@ carregar 950, soltar 850, voltar 750}`). Nos passos 4 e 5 o passo só fecha com 
 `dragId`/`pendingDrag`/`sellHover` seguem `null` e criaturas, buracos e saldo não
 se mexem.
 
+**A luva virou sprite (13/nov — pedido do usuário).** O glifo deixou de ser SVG
+desenhado no código: `GloveIcon` é agora um `<span>` que recorta a folha
+`src/assets/tutorial-glove-sheet.png` (3 frames lado a lado — punho fechado →
+mão abrindo → indicador apontando — em 648×216, importada pelo Vite), e o
+**pedido foi animar os 3 frames**: `luva-frames` no styles.css gira o recorte em
+loop via `background-position-x` + `steps(1,end)`; parado, o recorte mostra
+sempre o frame de apontar (o glifo pequeno da faixa e da pergunta). As fases da
+mímica **casaram com os frames**: `pegar` fecha/abre o punho
+(`luva-pegar-frames`), `carregar` atravessa a tela de punho fechado (carga não
+se aponta), `soltar` abre o indicador em cima do destino. A PONTA do dedo no
+frame de apontar mora em **(85.3%, 11.4%) do recorte** — `TIP_X`/`TIP_Y` no
+`TutorialHand` ancoram esse pixel no alvo, o `transform-origin` do pulso é o
+mesmo ponto, e a sonda mede a ponta por essas duas frações (antes: 13,5% do
+SVG). `prefers-reduced-motion` congela frames e pulso no frame de apontar.
+
+**Luva sem pulo entre passos (13/nov — pedido do usuário).** O
+`<TutorialLuva>` não é mais remontado por passo (o `key={step}` saiu): um ref
+`ultimaRef` guarda a última posição que a mão ocupou e o efeito reaberto do
+passo novo apanha a mão ali — nos passos de apontar o lerp de posição (dt×7) já
+faz o trajeto; nos de mímica um deslize de entrada (`guia`, ~650 ms de
+`TRANSICAO_MS`) leva a mão até a origem do loop, e passado o intervalo o
+trajeto manda sozinho, sem atraso. O reinício da mímica a cada passo continua
+garantido pelos deps do `useEffect` (o `t0` nasce do carimbo do rAF), não pela
+remontagem. O primeiro passo ainda nasce no alvo (a mão não estava em lugar
+nenhum antes).
+
 **Marcas de ensino (tudo `pointer-events: none`, nada engole ponteiro):**
 
 - `.tutorial-aro` — anel pontilhado no buraco de DESTINO da fusão (passo 4).

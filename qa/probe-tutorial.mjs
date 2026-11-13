@@ -126,7 +126,8 @@ const moedasNoCofre = () =>
     SAVE_KEY,
   );
 
-/** a luva: fase da mímica + onde a PONTA do indicador encosta (13,5% do desenho) */
+/** a luva: fase da mímica + onde a PONTA do indicador encosta — (85.3%, 11.4%)
+ *  do frame de APONTAR da folha de sprites (mesmos TIP_X/TIP_Y do TutorialHand) */
 const luva = () =>
   page.evaluate(() => {
     const el = document.querySelector('[data-testid="tutorial-luva"]');
@@ -134,8 +135,8 @@ const luva = () =>
     const r = el.getBoundingClientRect();
     return {
       fase: el.dataset.fase ?? '',
-      tipX: r.left + r.width * 0.135,
-      tipY: r.top + r.height * 0.135,
+      tipX: r.left + r.width * 0.853,
+      tipY: r.top + r.height * 0.114,
       op: getComputedStyle(el).opacity,
       w: Math.round(r.width),
     };
@@ -378,8 +379,8 @@ const assistirMimica = async (limiteMs = 14000) => {
         const r = el.getBoundingClientRect();
         window.__luvaFrames.push({
           fase: el.dataset.fase ?? '',
-          tipX: r.left + r.width * 0.135,
-          tipY: r.top + r.height * 0.135,
+          tipX: r.left + r.width * 0.853,
+          tipY: r.top + r.height * 0.114,
           op: getComputedStyle(el).opacity,
           w: Math.round(r.width),
         });

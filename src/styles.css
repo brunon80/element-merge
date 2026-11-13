@@ -2012,7 +2012,6 @@ input[type='range'] {
 }
 .tutorial-luva {
   flex: none;
-  color: var(--gold);
 }
 .tutorial-frase {
   font-size: 15px;
@@ -2055,16 +2054,49 @@ input[type='range'] {
   will-change: transform, opacity;
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.55));
 }
+/* 🎏 A LUVA é uma FOLHA DE SPRITES (3 frames de 216×216 lado a lado na faixa
+   de 648×216 do `GloveIcon`: punho fechado → mão abrindo → indicador
+   apontando). Cada recorte entra por `background-position-x` com a imagem a
+   300% de largura: 0% = punho, 50% = abrindo, 100% = apontando. PARADA, a
+   folha mostra o frame de APONTAR — é o glifo pequeno da faixa e da pergunta. */
+.glove-glyph {
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-size: 300% 100%;
+  background-position: 100% 0;
+}
+/* A mão grande do tutorial: os três frames giram em loop — a mão se recolhe
+   (punho), abre o indicador e APONTA, segurando a pose em cima do alvo. O
+   `steps(1,end)` segura cada chave dentro do seu intervalo: frame a frame,
+   como desenho nascido. */
 .tutorial-luva-mao .glove-glyph {
   display: block;
-  /* todo crescimento/encolhimento parte da PONTA do dedo (7/52 ≈ 13,5% do
-     desenho), porque é a ponta que está colada no alvo */
-  transform-origin: 13.5% 13.5%;
+  /* todo crescimento/encolhimento parte da PONTA do dedo — (85.3%, 11.4%) do
+     frame de apontar, o MESMO ponto que o `TutorialHand` ancora no alvo
+     (TIP_X/TIP_Y) e que a sonda do QA persegue */
+  transform-origin: 85.3% 11.4%;
+  animation: luva-frames 1.15s steps(1, end) infinite;
 }
-/* passos 1/2/3: a luva APONTA e espera o dedo do jogador — pulsa no alvo */
+@keyframes luva-frames {
+  0% {
+    background-position-x: 0%;
+  }
+  24% {
+    background-position-x: 50%;
+  }
+  47% {
+    background-position-x: 100%;
+  }
+  100% {
+    background-position-x: 100%;
+  }
+}
+/* passos 1/2/3: a luva APONTA e espera o dedo do jogador — pulsa no alvo. O
+   pulso escala `transform`, os frames mexem `background-position`: são
+   animações de propriedades diferentes, cabem juntas */
 .tutorial-luva-mao[data-action='press'] .glove-glyph,
 .tutorial-luva-mao[data-action='tap'] .glove-glyph {
-  animation: luva-pulsa 1.6s ease-in-out infinite;
+  animation: luva-frames 1.15s steps(1, end) infinite, luva-pulsa 1.6s ease-in-out infinite;
 }
 @keyframes luva-pulsa {
   0%,
@@ -2080,14 +2112,33 @@ input[type='range'] {
 }
 /* passos 4/5: MÍMICA. A luva faz o gesto de mentirinha, em loop, e quem joga é
    o jogador. As fases (`data-fase`) só mudam o DESENHO da mão — nenhuma chamada
-   de jogo sai daqui. */
+   de jogo sai daqui. Agora cada fase TAMBÉM escolhe o frame da folha: */
+/* carregar: o punho fecha na criatura imaginária e a atravessa pela tela — a
+   mão segura, não aponta, em cima da carga */
 .tutorial-luva-mao[data-fase='carregar'] .glove-glyph {
+  animation: none;
+  background-position-x: 0%;
   transform: scale(1.12);
 }
+/* pegar: a mão tenta fechar no bicho — punho ↔ aberta, no compasso da escala */
 .tutorial-luva-mao[data-fase='pegar'] .glove-glyph {
-  animation: luva-pegar 0.75s ease-in-out infinite;
+  animation: luva-pegar-frames 0.75s steps(1, end) infinite, luva-pegar 0.75s ease-in-out infinite;
 }
+@keyframes luva-pegar-frames {
+  0% {
+    background-position-x: 0%;
+  }
+  50% {
+    background-position-x: 50%;
+  }
+  100% {
+    background-position-x: 50%;
+  }
+}
+/* soltar: em cima do DESTINO o indicador se abre — "solte aqui" — respirando
+   na escala. É o frame em que a PONTA encosta no aro/fantasma (≤1 px) */
 .tutorial-luva-mao[data-fase='soltar'] .glove-glyph {
+  background-position-x: 100%;
   animation: luva-soltar 0.85s ease-in-out infinite;
 }
 @keyframes luva-pegar {
@@ -2221,7 +2272,20 @@ input[type='range'] {
    continua ensinando sem ninguém ter que perseguir uma mão animada */
 @media (prefers-reduced-motion: reduce) {
   .tutorial-luva-mao .glove-glyph,
+  .tutorial-luva-mao[data-action='press'] .glove-glyph,
+  .tutorial-luva-mao[data-action='tap'] .glove-glyph,
+  .tutorial-luva-mao[data-fase='carregar'] .glove-glyph,
+  .tutorial-luva-mao[data-fase='pegar'] .glove-glyph,
+  .tutorial-luva-mao[data-fase='soltar'] .glove-glyph,
   .tutorial-aro {
     animation: none;
+  }
+  /* com os frames congelados, a luva fica cravada no frame de APONTAR — aponta
+     o alvo sem dançar */
+  .tutorial-luva-mao .glove-glyph,
+  .tutorial-luva-mao[data-fase='carregar'] .glove-glyph,
+  .tutorial-luva-mao[data-fase='pegar'] .glove-glyph,
+  .tutorial-luva-mao[data-fase='soltar'] .glove-glyph {
+    background-position-x: 100%;
   }
 }
