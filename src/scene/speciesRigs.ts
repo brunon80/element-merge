@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import type { SpeciesId } from '../game/types';
-import { FlameRig } from './FlameRig';
+import { IgnisRig } from './IgnisMeshRig';
 import { WindRig } from './WindRig';
 import { StoneRig } from './StoneRig';
 import { WaterRig } from './WaterRig';
@@ -92,7 +92,7 @@ export interface SpeciesRigProps {
  * já têm figurino próprio; a busca é por espécie e o fallback é o rig padrão.
  */
 export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigProps>>> = {
-  ignis: FlameRig,
+  ignis: IgnisRig, // Nv.1 = malha 3D importada (experimental); Nv.2+ = FlameRig
   zephyr: WindRig,
   golem: StoneRig,
   nereia: WaterRig,

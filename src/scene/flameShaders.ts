@@ -116,6 +116,91 @@ export interface FlameMaterialOpts {
   seed?: number;
 }
 
+/**
+ * Geometria das brasas: N pontos com um `aRand` aleatório (ângulo, fase,
+ * velocidade/tamanho) — a posição de cada brasa nasce no vertex shader, então
+ * o buffer fica vazio e só cresce no `prog` do ciclo de vida.
+ */
+export function makeEmberGeo(n: number): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3);
+  const rnd = new Float32Array(n * 3);
+  let s = 0x9e3779b9;
+  const rand = () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+  for (let i = 0; i < n * 3; i++) rnd[i] = rand();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aRand', new THREE.BufferAttribute(rnd, 3));
+  return g;
+}
+
+/** sistema de brasas compartilhado: FlameRig e a malha importada do Ignis Nv.1
+ *  usam exatamente as mesmas fagulhas subindo (identidade da chama da espécie) */
+export function makeEmberParticles(o: {
+  count: number;
+  emberScale: number;
+  level: number;
+  topY: number;
+}): { geo: THREE.BufferGeometry; mat: THREE.ShaderMaterial } {
+  return {
+    geo: makeEmberGeo(o.count),
+    mat: new THREE.ShaderMaterial({
+      vertexShader: EMBER_VERT,
+      fragmentShader: EMBER_FRAG,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      uniforms: {
+        uTime: { value: 0 },
+        uAlpha: { value: 1 },
+        uSizeMul: { value: o.emberScale },
+        uSpread: { value: 0.55 + o.level * 0.18 }, // fogo maior solta brasas mais longe
+        uHeight: { value: o.topY }, // brasas sobem junto da coluna de fogo do nível
+      },
+    }),
+  };
+}
+
+export const EMBER_VERT = /* glsl */ `
+attribute vec3 aRand; // x: ângulo, y: fase, z: velocidade/tamanho
+uniform float uTime;
+uniform float uAlpha;
+uniform float uSizeMul;
+uniform float uSpread;
+uniform float uHeight;
+varying float vA;
+varying vec3 vC;
+void main() {
+  float speed = 0.32 + 0.42 * aRand.z;
+  float prog = fract(uTime * speed + aRand.y);
+  float ang = aRand.x * 6.28318 + uTime * 0.5 * (1.0 + aRand.z);
+  float r = mix(0.14, 0.75, prog) * (0.5 + 0.5 * aRand.z) * uSpread;
+  vec3 p = vec3(cos(ang) * r, mix(0.2, 1.0, prog) * uHeight, sin(ang) * r);
+  p.x += sin(uTime * 2.3 + aRand.x * 10.0 + prog * 9.0) * 0.08;
+  p.z += cos(uTime * 2.0 + aRand.y * 8.0 + prog * 7.0) * 0.08;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  float size = (5.0 * (1.0 - prog) + 1.2) * (0.7 + 0.5 * aRand.z) * uSizeMul;
+  // clamp: perto da câmera o sprite não pode virar parede (envelope fantasma)
+  gl_PointSize = min(90.0, size * (28.0 / max(0.5, -mv.z)));
+  vA = smoothstep(0.0, 0.12, prog) * (1.0 - smoothstep(0.45, 1.0, prog)) * uAlpha;
+  vC = mix(vec3(1.0, 0.85, 0.35), vec3(1.0, 0.28, 0.05), prog);
+  gl_Position = projectionMatrix * mv;
+}
+`;
+
+export const EMBER_FRAG = /* glsl */ `
+varying float vA;
+varying vec3 vC;
+void main() {
+  vec2 d = gl_PointCoord - 0.5;
+  float m = smoothstep(0.5, 0.12, length(d));
+  if (m <= 0.001 || vA <= 0.001) discard;
+  gl_FragColor = vec4(vC, m * vA);
+}
+`;
+
 export function makeFlameMaterial(o: FlameMaterialOpts): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     vertexShader: FLAME_VERT,

@@ -10,6 +10,13 @@
 > `qa/probe-sell-fab.mjs` (SEM FALHAS) e `qa/probe-tutorial.mjs` (92 checagens,
 > 0 falhas) · git em `dev` (repo público `brunon80/element-merge`, CI → GitHub
 > Pages).
+>
+> **Atualizado em 14/nov (malha do Ignis Nv.1):** `npx tsc --noEmit` OK ·
+> `npm run build` OK (o `.glb` sai como asset de 2,5 MB) · suíte 505 testes
+> com as falhas CONHECIDAS do ambiente local Node 26 — `app.test.tsx` ×2
+> (jsdom sem WebGL) + contaminação de timers de música em
+> `audioUnlock.test.ts` ("expected 2 to be 1"); rodados isolados, os dois
+> passam 64/64. Trabalhando em `dev`.
 
 ---
 
@@ -226,6 +233,11 @@ de basalto + brasa subindo + farpas de pedra-pomes; 183 peças / 12.380 vértice
 10.308 triângulos)** — commit `e4b4463`. Anteriores:
 abissal `e38d018`, geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
 `9d7a881`.
+
+**🔥 LINHA NOVA ABERTA EM 14/nov: MODELOS 3D IMPORTADOS.** O usuário vai gerar
+GLBs fora do jogo (Hunyuan3D) para as outras espécies; o IGNIS Nv.1 é o
+piloto — seção `## 🔥 Ignis Nv.1 de MALHA 3D IMPORTADA` abaixo. O loop da
+árvore continua completo; o que muda é o pipeline de figurino a partir daqui.
 
 **PARADA ATUAL: o loop da ÁRVORE ESTÁ COMPLETO.** Todas as 22 espécies da árvore
 têm figurino próprio, rig, projétil-assinatura, FX de impacto e testes de
@@ -702,6 +714,106 @@ mobile a canvas é coberta pela UI, então a órbita ali não existe para medir)
 e — com Chromium emulando UA de iPhone — se o AUTO acende o eco sozinho. O
 headless não tem o teto de 60 Hz do vsync: vale a RAZÃO cheio→eco e os flags
 exatos.
+
+---
+
+## 🔥 Ignis Nv.1 de MALHA 3D IMPORTADA + invólucro de chama (14/nov/2026 — piloto da linha "modelos 3D")
+
+Pedido do usuário: trocar o figurino procedural do **Ignis Nv.1** ("faísca")
+pelo mesh texturizado que ele criou fora do jogo (`src/models/fire/
+fire_model_lvl1.glb`, ~2,5 MB, 21.451 vértices, UMA malha com UMA textura,
+gerado no Hunyuan3D — **SEM ossos e SEM animação no arquivo**). Nv.2+ continua
+o FlameRig normal. O resultado foi aprovado no navegador do usuário ("ficou
+excelente"); é EXPERIMENTAL e serve de molde para os GLBs das outras espécies
+que o usuário vai gerar. Branch: trabalho segue em `dev`.
+
+**Peças:** `src/scene/IgnisMeshRig.tsx` (novo: dispatcher + esqueleto + shader
++ invólucro), `speciesRigs.ts` (`ignis: IgnisRig`), `flameShaders.ts` (brasas
+compartilhadas: `makeEmberParticles`/`makeEmberGeo`/`EMBER_VERT`/`EMBER_FRAG`
+migraram do FlameRig — comportamento idêntico), `FlameRig.tsx` (exporta
+`attackPose`/`AttackPose`/`ROLE_LOOK`/`ATTACK_WINDOW`; embers importados do
+compartilhado). `FlameRig` continua o fallback durante o load do GLB e o rig
+de Nv.2+.
+
+**A forma em camadas (o que o usuário aprovou, nesta ordem de feedback):**
+1. malha texturizada com `emissiveIntensity` base **1,0** e `emissiveMap` =
+   própria textura ("o brilho ficou muito bom");
+2. crina de fogo no VÉRTICE do material (`onBeforeCompile` + ruído de
+   `flameShaders`): cada ponta do leque com FASE PRÓPRIA (fase = azimute em
+   torno do eixo) — mollejo em 2 harmônicos, línguas que alongam/encolhem,
+   dobra radial, grão de brasa CORRENDO PARA CIMA, e as pontas piscam emissivo
+   (`vHair` no frag). Abaixo de y local 0,42 é SÓLIDO: rosto/olhos firmes;
+3. ESQUELETO EM CÓDIGO (o GLB não traz nada): `root(−1,0) → spine(−0,15) →
+   head(0,30) → hair0(0,42) → hair1(0,72)` (`JOINT_Y`), pesos de pele por
+   FAIXA de Y com 2 influências/vértice (`ensureSkin`, rampas suaves, o rosto
+   < 0,28 NUNCA herda osso da crina); follow-through real: `hair0` amostra a
+   coreografia de ataque **70 ms** e `hair1` **140 ms** no passado;
+4. VOLUMETRIA DO ANTIGO nos ossos: o `spine` carrega a FÓRMULA EXATA de
+   stretch do FlameRig (flick de 3 harmônicos 5,7/11,9/2,3 + `surge` lento) e
+   o XZ espreme em contrafase — escala de grupo nenhum passa essa contrafase;
+5. ENVOLTÓRIO DE CHAMA (o feedback vencedor, "o novo envolto das
+   características do antigo"): uma CASCA da mesma malha vestida com o shader
+   do FlameRig (cores `ROLE_LOOK`, fervura que NASCE NA BASE e CORRE para o
+   topo, gradiente de calor e alfa do antigo), aditiva/`depthWrite:false` por
+   cima da textura — o rosto lê ATRAVÉS do véu; sem ossos próprios, cola no
+   beat do osso `spine`; `uAmp` base 0,11, folga 0,13, `uAlpha` base 0,55.
+
+**ENCAIXE:** modelo escalado para `formTop(ignis,1)` = 1,95, base no chão,
+centralizado; `MODEL_YAW = 0` (orientação aprovada nos prints). O invólucro da
+malha (~0,68 × 0,53 de meia-envergadura) é MENOR que o `MEDIDO.ignis` da
+faísca (1,01 × 1,27) — `slotFit`/buracos/HUD seguem sem tocar em
+`data/footprints.ts`. Se um GLB futuro for MAIOR que o `MEDIDO` da espécie, a
+regra da casa continua: sonda `qa/probe-footprint.mjs` + atualizar `MEDIDO`.
+
+**Lições duras (não re-aprender):**
+- **Import de GLB no Vite: `import url from '...glb?url'` + `useGLTF(url)` do
+  drei + `useGLTF.preload(url)`** no corpo do componente. Não precisa de
+  `assetsInclude` (o `?url` resolve sozinho); o build emite o `.glb` como
+  asset com hash. O card do bestiário é uma janela do palco compartilhado
+  (`BestiaryStage`/`View` do drei), então o Nv.1 de malha também aparece lá e
+  a animação de demonstração é o `demoAttackSeq` — o dispatcher trata os dois
+  canais de ataque (`lastAttackAt` do motor + `demoAttackSeq` do bestiário).
+- **Deslocar casca AO LONGO DA NORMAL rasga pontas finas:** nas pontas da
+  crina as duas faces empurram para lados opostos, viram na quina e nascem
+  "rachaduras" (linha escura no lip da dobra) — as duas faces DA MESMA ponta
+  têm sinal trocado e os harmônicos do ruído não se cancelam ali, só se somam.
+  Fix: folga + fervura ao longo de um EIXO suavizado (`pos − centro(0,−0,15)`
+  com y espremido ×0,3) — as faces andam juntas e a ponta ainda cresce para
+  cima (gesto de língua de fogo). No figurino procedural antigo isso nunca
+  apareceu porque as peças eram GROSSAS; a lição da casa ("o shader desloca
+  vértice ao longo da normal") vale para peça grossa, não para casca de malha
+  finíssima (também é o oposto exato do fix do Colosso: lá o anel pedia
+  matacões NA TANGENTE; aqui a casca pede eixo radial suavizado).
+- **Osso com `position` animado na mão: o valor de repouso SEMPRE entra na
+  conta** — o `root` descansa em y −1,0 (`JOINT_Y[0]`), e escrever
+  `bone.position.y = oscilação` no `useFrame` arranca o esqueleto inteiro do
+  lugar. Padrão: `b.root.position.y = JOINT_Y[0] + osc`.
+- **Esqueleto é POR INSTÂNCIA; a geometria (com os pesos) é compartilhada.**
+  `ensureSkin` roda uma vez por geometria (pino `geo.userData.ignisSkin`), mas
+  cada unidade cria o SEU `SkinnedMesh` + `Skeleton` — dois Ignis em cena
+  nunca dançam sincronizados. `skinned.frustumCulled = false` (crina + shader
+  viajam além da esfera da malha).
+- **Não dispor a textura do `useGLTF`** — ela é do cache compartilhado do
+  drei; dispose só os materiais por instância + `skeleton.dispose()`.
+- **HMR não recompila material three** com `onBeforeCompile`/`ShaderMaterial`
+  (já era armadilha da casa; aqui pega EM CHEIO: sem Ctrl+Shift+R o usuário
+  vê o shader velho e o feedback vira fantasma).
+- **`*:Zone.Identifier`**: os GLBs que o usuário baixa/generated no Windows
+  trazem o stream alternativo NTFS junto; `.gitignore` agora cobre
+  `*:Zone.Identifier`.
+- jsdom não carrega viewer 3D, então a suíte não exercita o caminho do GLB;
+  quem valida o visual é o laço de prints/console (o dev server + spawn do
+  bestiário) — `npx tsc --noEmit` + `npm run build` cobrem o resto.
+
+**Estado/verificação (14/nov):** `tsc` limpo; `npm run build` limpo (o `.glb`
+sai como asset de 2,5 MB; chunk único de ~1,78 MB já era assim antes); suíte
+505 testes com as falhas CONHECIDAS do ambiente local Node 26 (as 2× smoke do
+`app.test.tsx` WebGL/jsdom + a contaminação de timers de música no
+`audioUnlock.test.ts` — "expected 2 to be 1"; as duas isoladas passam:
+rodadas separadas 64/64). Nenhum teste novo escrito (a casa pinça teste de
+progressão DEPOIS de aprovado visualmente; aqui a aprovação foi no navegador
+do usuário e é experimental — pinos vêm quando a linha "modelos 3D" pegar de
+vez). Nada de `MEDIDO` tocado.
 
 ---
 
@@ -1746,7 +1858,8 @@ alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
 - **Modo debug**: Configurações → Depuração → botão "Criar no campo" em todo
   card do bestiário (`engine.addRetainedUnit`, só na preparação, sem descoberta);
   puros têm seletor de forma Nv.1–5; card selado mostra rig real.
-- **Puros com figurino completo e aprovado**: ignis (FlameRig), zephyr
+- **Puros com figurino completo e aprovado**: ignis (FlameRig; **Nv.1 piloto de
+  malha 3D importada desde 14/nov — ver a seção do Ignis Nv.1**), zephyr
   (WindRig), golem (StoneRig — o padrão físico modelo), nereia (WaterRig) —
   5 formas visíveis cada, gateadas por `minLvl/maxLvl`.
 - **Arena**: ilha flutuante, plataformas derivadas de `game/board.ts`
@@ -1792,6 +1905,7 @@ node qa/probe-framing.mjs              # enquadramento (24/24 buracos) + arraste
 node qa/probe-merge-preview.mjs        # prévia de fusões do arraste (revelar/selar, persegue o ponteiro, SEM FALHAS)
 node qa/probe-sell-fab.mjs             # FAB de venda: só no arraste, pulso devagar→rápido, 24/24 buracos livres (1373×749, 1280×610, 390×844)
 node qa/probe-tutorial.mjs             # 🎓 luvinha: 5 passos, mímica que NÃO joga, 24/24 buracos (desktop+retrato), cofre intacto, time de volta (92 checagens, ~4 min)
+# visual do IGNIS Nv.1 de malha: dev server → Configurações ▸ Depuração → enciclopédia → "Criar no campo" (`debug-spawn-ignis`); o card do bestiário E a arena renderizam a malha; Ctrl+Shift+R (hard refresh) SEMPRE antes de avaliar feedback de material/shader
 ```
 
 > As sondas que NÃO testam o tutorial (`probe-framing`, `probe-sell-fab`,
@@ -1831,6 +1945,19 @@ node qa/probe-tutorial.mjs             # 🎓 luvinha: 5 passos, mímica que NÃ
   editar shaders/cores.
 - GLSL silencioso: vírgula antes de `)` quebra compilação e a mesh SUMIA (hoje
   o laço Playwright pega pelo console; ainda assim escanear GLSL editado).
+- **Não deslocar casca de malha AO LONGO DA NORMAL se a malha tem pontas
+  finas** (cabelo/crista de chamas): as duas faces da MESMA ponta empurram
+  para lados opostos, viram na quina e nascem "rachaduras" no print. A lição
+  da casa ("relevo vem do deslocamento na normal", régua do Astral
+  `amp = min(uAmp, rMin·0,25)`) vale para peça PROCEDURAL GROSSA; para casca
+  de malha finíssima, deslocar por EIXO suavizado (a regra está na seção do
+  Ignis Nv.1).
+- **Osso de esqueleto animado na mão carrega o valor de repouso na conta**:
+  `bone.position.y = oscilação` apaga o repouso e arranca o esqueleto do
+  lugar (o `root` do ignis descansa em −1,0). Padrão: `JOINT_Y[0] + osc`.
+- **Textura do `useGLTF` NÃO se dispõe** (cache compartilhado do drei): ao
+  desmontar um rig de malha importada, dispose só os materiais por instância
+  e o `skeleton`.
 - `<sprite>` sem `map` = quadrado sólido.
 - Pipeline de cor: hex dos catálogos já compensam a linearização do three;
   não "corrigir" um material isolado.

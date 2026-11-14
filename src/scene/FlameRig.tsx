@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { getEngine } from '../store/gameStore';
-import { makeFlameMaterial } from './flameShaders';
+import { makeFlameMaterial, makeEmberParticles } from './flameShaders';
 import { circleTexture, getGeometry } from './assets';
 import { MODELS, partsForLevel, type MatRole } from './speciesModels';
 import type { SmokePool } from './smokePool';
@@ -48,7 +48,7 @@ export const ROLE_LOOK: Partial<Record<MatRole, FlameLook>> = {
   dark: { cold: '#b8280a', mid: '#ff5a12', hot: '#ffa64d', alpha: 0.8 },
 };
 
-interface AttackPose {
+export interface AttackPose {
   lean: number; // inclinação do corpo (negativo = recolhendo)
   swing: number; // balanço dos braços/patas (para frente no arremesso)
   flare: number; // energia reunida/estouro (0..1)
@@ -56,7 +56,7 @@ interface AttackPose {
   roar: number; // mandíbula aberta (rugido de fogo)
 }
 
-function attackPose(since: number): AttackPose {
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = { lean: 0, swing: 0, flare: 0, stepZ: 0, roar: 0 };
   if (since < 0 || since > ATTACK_WINDOW) return P;
   const p = since / ATTACK_WINDOW;
@@ -79,21 +79,6 @@ function attackPose(since: number): AttackPose {
   P.flare = Math.min(1, 0.55 + 0.9 * a) * decay;
   P.roar = (0.5 + 1.3 * a) * decay;
   return P;
-}
-
-function makeEmberGeo(n: number): THREE.BufferGeometry {
-  const g = new THREE.BufferGeometry();
-  const pos = new Float32Array(n * 3);
-  const rnd = new Float32Array(n * 3);
-  let s = 0x9e3779b9;
-  const rand = () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-  for (let i = 0; i < n * 3; i++) rnd[i] = rand();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('aRand', new THREE.BufferAttribute(rnd, 3));
-  return g;
 }
 
 export interface FlameRigProps {
@@ -202,23 +187,7 @@ export function FlameRig({
   }, [visParts, seed]);
 
   const ember = useMemo(
-    () => ({
-      geo: makeEmberGeo(emberCount),
-      mat: new THREE.ShaderMaterial({
-        vertexShader: EMBER_VERT,
-        fragmentShader: EMBER_FRAG,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        uniforms: {
-          uTime: { value: 0 },
-          uAlpha: { value: 1 },
-          uSizeMul: { value: emberScale },
-          uSpread: { value: 0.55 + level * 0.18 }, // fogo maior solta brasas mais longe
-          uHeight: { value: topY }, // brasas sobem junto da coluna de fogo do nível
-        },
-      }),
-    }),
+    () => makeEmberParticles({ count: emberCount, emberScale, level, topY }),
     [emberCount, emberScale, level, topY],
   );
 
@@ -407,41 +376,3 @@ export function FlameRig({
     </group>
   );
 }
-
-const EMBER_VERT = /* glsl */ `
-attribute vec3 aRand; // x: ângulo, y: fase, z: velocidade/tamanho
-uniform float uTime;
-uniform float uAlpha;
-uniform float uSizeMul;
-uniform float uSpread;
-uniform float uHeight;
-varying float vA;
-varying vec3 vC;
-void main() {
-  float speed = 0.32 + 0.42 * aRand.z;
-  float prog = fract(uTime * speed + aRand.y);
-  float ang = aRand.x * 6.28318 + uTime * 0.5 * (1.0 + aRand.z);
-  float r = mix(0.14, 0.75, prog) * (0.5 + 0.5 * aRand.z) * uSpread;
-  vec3 p = vec3(cos(ang) * r, mix(0.2, 1.0, prog) * uHeight, sin(ang) * r);
-  p.x += sin(uTime * 2.3 + aRand.x * 10.0 + prog * 9.0) * 0.08;
-  p.z += cos(uTime * 2.0 + aRand.y * 8.0 + prog * 7.0) * 0.08;
-  vec4 mv = modelViewMatrix * vec4(p, 1.0);
-  float size = (5.0 * (1.0 - prog) + 1.2) * (0.7 + 0.5 * aRand.z) * uSizeMul;
-  // clamp: perto da câmera o sprite não pode virar parede (envelope fantasma)
-  gl_PointSize = min(90.0, size * (28.0 / max(0.5, -mv.z)));
-  vA = smoothstep(0.0, 0.12, prog) * (1.0 - smoothstep(0.45, 1.0, prog)) * uAlpha;
-  vC = mix(vec3(1.0, 0.85, 0.35), vec3(1.0, 0.28, 0.05), prog);
-  gl_Position = projectionMatrix * mv;
-}
-`;
-
-const EMBER_FRAG = /* glsl */ `
-varying float vA;
-varying vec3 vC;
-void main() {
-  vec2 d = gl_PointCoord - 0.5;
-  float m = smoothstep(0.5, 0.12, length(d));
-  if (m <= 0.001 || vA <= 0.001) discard;
-  gl_FragColor = vec4(vC, m * vA);
-}
-`;
