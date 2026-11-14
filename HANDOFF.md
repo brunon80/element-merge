@@ -11,12 +11,13 @@
 > 0 falhas) · git em `dev` (repo público `brunon80/element-merge`, CI → GitHub
 > Pages).
 >
-> **Atualizado em 14/nov (malha do Ignis Nv.1):** `npx tsc --noEmit` OK ·
-> `npm run build` OK (o `.glb` sai como asset de 2,5 MB) · suíte 505 testes
+> **Atualizado em 14/nov (malhas do Ignis Nv.1 e do Zéfiro Nv.1):** `npx
+> tsc --noEmit` OK · `npm run build` OK (os `.glb` saem como assets: 2,5 + 4,4
+> MB) · suíte 505 testes
 > com as falhas CONHECIDAS do ambiente local Node 26 — `app.test.tsx` ×2
 > (jsdom sem WebGL) + contaminação de timers de música em
 > `audioUnlock.test.ts` ("expected 2 to be 1"); rodados isolados, os dois
-> passam 64/64. Trabalhando em `dev`.
+> passam (o audioUnlock fecha 6/6 sozinho). Trabalhando em `dev`.
 
 ---
 
@@ -238,6 +239,25 @@ abissal `e38d018`, geodo `8ae1176`, cósmico, cristal `f48e789`, névoa/plasma
 GLBs fora do jogo (Hunyuan3D) para as outras espécies; o IGNIS Nv.1 é o
 piloto — seção `## 🔥 Ignis Nv.1 de MALHA 3D IMPORTADA` abaixo. O loop da
 árvore continua completo; o que muda é o pipeline de figurino a partir daqui.
+
+> **14/nov (2): o ZÉFIRO Nv.1 entrou no molde** (aprovado no navegador do
+> usuário na primeira rodada, "ficou muito bom, nada a mudar"). `ZephyrRig`
+> despacha Nv.1 = `src/models/wind/wind_model_lvl1.glb` (4,4 MB, 24.662
+> verts, export do trimesh a partir de .ply) / Nv.2+ = WindRig. Mesma arquitetura
+> do fogo (esqueleto de código `root→spine→head→fin0→fin1`, volumetria do
+> figurino no osso spine com a SUCÇÃO da inalação, invólucro por eixo com o
+> WIND_FRAG literal do `windShaders` — o fragment do figurino reaproveitado
+> palavra por palavra —, motes em espiral + poeira fria do pool, clarão frio).
+> O sopro FLUTUA (`FLOAT_Y` 0,34, como o Nv.1 antigo; o do fogo é plantado).
+> `MEDIDO.zephyr` intocado (malha escalada 0,73 × 0,62 < 0,9 × 0,88). Lição
+> nova: **ao vestir um shader da casa na malha importada, confira o que ele
+> LÊ da geometria** — o WIND_VERT exige `aSeed` por VÉRTICE (lição WebKit do
+> bound curto: sem `setSeedAttribute` na malha, no iPhone o monstro some) e
+> `uv.y` (o trimesh entrega; nem todo export entrega). O giro do invólucro é
+> LENTO (uSpin 0,9) de propósito: vórtice rápido alarga a varredura do
+> invólucro para fora do anel da pegada. O GLB (4,4 MB) entra no bundle como
+> asset — dois modelos = ~7 MB de assets; quando a linha passar de ~3
+> modelos, comprimir (KTX2/Draco) ou `import()` por espécie.
 
 **PARADA ATUAL: o loop da ÁRVORE ESTÁ COMPLETO.** Todas as 22 espécies da árvore
 têm figurino próprio, rig, projétil-assinatura, FX de impacto e testes de
@@ -1860,7 +1880,8 @@ alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
   puros têm seletor de forma Nv.1–5; card selado mostra rig real.
 - **Puros com figurino completo e aprovado**: ignis (FlameRig; **Nv.1 piloto de
   malha 3D importada desde 14/nov — ver a seção do Ignis Nv.1**), zephyr
-  (WindRig), golem (StoneRig — o padrão físico modelo), nereia (WaterRig) —
+  (WindRig; **Nv.1 também de malha importada, mesmo molde**), golem (StoneRig —
+  o padrão físico modelo), nereia (WaterRig) —
   5 formas visíveis cada, gateadas por `minLvl/maxLvl`.
 - **Arena**: ilha flutuante, plataformas derivadas de `game/board.ts`
   (`TILE_SPACING_X 5,2 · ROW_DEPTH 5,2 · FRONT_ROW_Z 3,1 · UNIT_BASE_Y 0,28 ·
@@ -1905,7 +1926,7 @@ node qa/probe-framing.mjs              # enquadramento (24/24 buracos) + arraste
 node qa/probe-merge-preview.mjs        # prévia de fusões do arraste (revelar/selar, persegue o ponteiro, SEM FALHAS)
 node qa/probe-sell-fab.mjs             # FAB de venda: só no arraste, pulso devagar→rápido, 24/24 buracos livres (1373×749, 1280×610, 390×844)
 node qa/probe-tutorial.mjs             # 🎓 luvinha: 5 passos, mímica que NÃO joga, 24/24 buracos (desktop+retrato), cofre intacto, time de volta (92 checagens, ~4 min)
-# visual do IGNIS Nv.1 de malha: dev server → Configurações ▸ Depuração → enciclopédia → "Criar no campo" (`debug-spawn-ignis`); o card do bestiário E a arena renderizam a malha; Ctrl+Shift+R (hard refresh) SEMPRE antes de avaliar feedback de material/shader
+# visual das malhas Nv.1 (IGNIS e ZÉFIRO): dev server → Configurações ▸ Depuração → enciclopédia → "Criar no campo" (`debug-spawn-ignis` / `debug-spawn-zephyr`); o card do bestiário E a arena renderizam a malha; Ctrl+Shift+R (hard refresh) SEMPRE antes de avaliar feedback de material/shader
 ```
 
 > As sondas que NÃO testam o tutorial (`probe-framing`, `probe-sell-fab`,
@@ -1958,6 +1979,11 @@ node qa/probe-tutorial.mjs             # 🎓 luvinha: 5 passos, mímica que NÃ
 - **Textura do `useGLTF` NÃO se dispõe** (cache compartilhado do drei): ao
   desmontar um rig de malha importada, dispose só os materiais por instância
   e o `skeleton`.
+- **Vestindo shader da casa em malha importada: confira o que o shader LÊ da
+  geometria** — `aSeed` precisa ser carimbado em TODO vértice
+  (`setSeedAttribute`; bound curto = o WebKit não desenha nada — a lição do
+  iPhone) e `uv.y` precisa existir (o trimesh entrega; nem todo export
+  entrega). O `WIND_VERT` lê os dois.
 - `<sprite>` sem `map` = quadrado sólido.
 - Pipeline de cor: hex dos catálogos já compensam a linearização do three;
   não "corrigir" um material isolado.

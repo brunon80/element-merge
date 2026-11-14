@@ -59,7 +59,7 @@ export const WIND_ROLE_LOOK: Partial<Record<MatRole, WindLook>> = {
 const FLOAT_Y = [0.34, 0.24, 0.13, 0.05, 0];
 const BOB_AMP = [0.11, 0.09, 0.07, 0.045, 0.02];
 
-interface AttackPose {
+interface WindAttackPose {
   lean: number; // coluna inclina (negativo = recolhendo/inalando)
   swing: number; // pás e lâminas (para frente no release)
   flare: number; // energia de rotação (0..1) — acelera torção e brilho
@@ -68,7 +68,9 @@ interface AttackPose {
   suck: number; // 1 = funil comprimido (inalando), negativo = expande
 }
 
-function attackPose(since: number): AttackPose {
+/** exportado: a malha importada do Nv.1 (ZephyrMeshRig) dança a MESMA coreografia */
+export type AttackPose = WindAttackPose;
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = { lean: 0, swing: 0, flare: 0, stepZ: 0, roar: 0, suck: 0 };
   if (since < 0 || since > WIND_ATTACK_WINDOW) return P;
   const p = since / WIND_ATTACK_WINDOW;
