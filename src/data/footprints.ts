@@ -47,7 +47,9 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
     { x: 2.03, z: 2.8 },
   ],
   nereia: [
-    { x: 0.51, z: 0.5 },
+    // Nv.1 medido na MALHA 3D importada (probe-footprint: autoral 0,57 × 0,56
+    // da gota escalada; ver NereiaMeshRig) — a gotinha procedural media 0,51 × 0,50
+    { x: 0.58, z: 0.58 },
     { x: 0.75, z: 0.74 },
     { x: 0.93, z: 0.62 },
     { x: 1.21, z: 1.59 },

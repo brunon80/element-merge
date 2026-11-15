@@ -293,10 +293,35 @@ piloto — seção `## 🔥 Ignis Nv.1 de MALHA 3D IMPORTADA` abaixo. O loop da
 > shell que o invoca e derruba sua chamada. Se os próximos modelos gerados
 > tiverem os BRAÇOS SEPARADOS do corpo (vão/vinco de verdade), o arremesso volta
 > a ter braço independente grande — hoje o teto é da malha, não da coreografia.
-> Testes de progressão para as três malhas continuam FORA até aprovação visual
-> de cada uma (o que há é o `debug-spawn-` + olho do usuário). Bundle: 3 GLB =
-> ~12,6 MB — passamos do limiar de 3 modelos: comprimir (KTX2/Draco) ou
-> `import()` por espécie quando o 4º modelo entrar.
+> Testes de progressão para as malhas continuam FORA até aprovação visual de
+> cada uma (o que há é o `debug-spawn-` + olho do usuário).
+>
+> **15/nov (4): a NEREIA Nv.1 entrou no molde de primeira no visual — e duas
+> armadilhas DA CASA caíram no caminho** (detalhes na seção da Nereia, abaixo).
+> (a) O `BloomGate` **amassava** o `onBeforeCompile` dos materiais que patcheia e
+> fixava `customProgramCacheKey = () => 'qtBloomEncode'`: na arena — único lugar
+> onde o gate roda — o corpo inteiro dos rigs de malha, que MORA no
+> `onBeforeCompile` do material, ficava mudo, enquanto no palco do bestiário (sem
+> bloom) continuava vivo. É o "no bestiário aparece certo, mas na batalha não" que
+> o usuário apontou no aquático e no golém; fogo e vento também estavam mudos
+> (só que neles o visual se sustenta no osso + partículas). Conserto: **compor** —
+> patch anterior em `userData.qtBloomPrev`, roda primeiro, chave de programa
+> COMPOSTA, unpatch DEVOLVE o patch do rig (armadilha do three: o texto do shader
+> patcheado não entra na chave do programa e `onBeforeCompile` só roda no MISS do
+> cache). (b) O "amarronzado" que o usuário via em TODAS as fases não era a
+> pintura da escultora nem a luz do bioma: era o ARO DE EQUIPE no fresnel do
+> próprio rig (`TEAM_TINT.player` dourado, EMISSIVO ⇒ imune ao bioma; no palco do
+> bestiário não há unidade e cai no `neutral` frio — por isso lá a cor estava
+> certa). O caso fechou com duas sondas novas, ambas no acervo:
+> `qa/probe-textura-warm.mjs` (a textura do GLB é fria em todas as faixas: 0% de
+> pixels quentes ⇒ proibido pintar por cima sem medir) e `qa/probe-tone.mjs`
+> (cenário TRAVADO pelo seletor da própria UI, porque o bioma é SORTEADO a cada
+> partida; câmera colada no corpo; A/B de luz no mesmo quadro; números lidos dos
+> próprios PNG, bloom incluso). Status da linha: **4 de 4 puros com Nv.1 em malha
+> importada** (fogo, vento, pedra, água). Bundle: 4 GLB = **15,4 MB** (fogo 2,5 ·
+> vento 4,5 · pedra 5,7 · água 3,4) — estourado o limiar de 3 modelos: **dívida
+> aberta de comprimir (KTX2 nas texturas 2048² + Draco/Meshopt nas malhas) ou
+> `import()` por espécie**; decidir antes de importar o 5º.
 
 **PARADA ATUAL: o loop da ÁRVORE ESTÁ COMPLETO.** Todas as 22 espécies da árvore
 têm figurino próprio, rig, projétil-assinatura, FX de impacto e testes de
@@ -772,7 +797,163 @@ combate (o teto de 30 Hz precisa valer TAMBÉM na cauda pós-arraste; no menu
 mobile a canvas é coberta pela UI, então a órbita ali não existe para medir)
 e — com Chromium emulando UA de iPhone — se o AUTO acende o eco sozinho. O
 headless não tem o teto de 60 Hz do vsync: vale a RAZÃO cheio→eco e os flags
-exatos.
+exatos. As duas últimas que entraram em 15/nov pagam o pedágio da linha de
+modelos importados: `qa/probe-tone.mjs [ice underwater volcanic]` (trava o
+cenário pelo seletor da própria UI — o bioma é SORTEADO a cada partida, então
+A/B entre execuções sem travar compara BIOMAS, não code —, cola a câmera no
+corpo via `controls.target` + `minDistance`, fotografa a caixa delimitadora
+projetada e faz A/B de luz no mesmo enquadre; os números saem dos PNG
+decodificados no Node, ou seja do quadro COMPOSTO que o usuário vê, bloom
+incluso — `readPixels` com `gl.render` na mesma thread desenha o NÃO-composto) e
+`qa/probe-textura-warm.mjs [glb...]` (decodifica o PNG do chunk BIN do GLB e dá
+a cor média + % de pixels quentes por faixa horizontal: antes de pintar por cima
+da cor de um modelo importado, medir a pintura). O viewer do GLB puro (sem arena
+nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
+
+---
+
+## 💧 NEREIA Nv.1 DE MALHA 3D IMPORTADA + onda descendo pelo corpo (15/nov/2026 — 5ª da linha "modelos 3D", aprovada no navegador do usuário: "o efeito ficou muito bom" / "ficou ótimo")
+
+Quarta malha da linha (mesmo molde de Ignis/Zéfiro/Golém): `NereiaRig`
+(`src/scene/NereiaMeshRig.tsx`) despacha **Nv.1 = mesh**
+(`src/models/water/water_model_lvl1.glb`, 3,4 MB, 20.860 vértices, UMA textura
+2048², bbox local y −1,00..+0,97, **SEM ossos e SEM animação no arquivo**) com
+`<Suspense fallback={<WaterRig level={1}/>}>`; **Nv.2+ = WaterRig** inteiro (a
+progressão gotinha → maré → tsunami segue procedural, intocada).
+`speciesRigs.ts` troca `nereia: WaterRig` por `NereiaRig`.
+
+- **Encaixe**: `fit` escala para o `formTop` Nv.1 e PLANTA no chão;
+  `NEREIA_MODEL_YAW = 0`. `MEDIDO.nereia[0]`: 0,51 × 0,50 → **0,58 × 0,58**
+  (autorais 0,57 × 0,56 medidos por `qa/probe-footprint.mjs` na malha escalada —
+  a gotinha procedural era mais magra).
+- **Material**: `MeshStandardMaterial` + `map` do GLB, `roughness 0,42` /
+  `metalness 0,06` (molhado: o brilho é o fresnel da receita, não metal falseado)
+  e `onBeforeCompile` vestindo a casa dentro do modelo novo: o WATER_VERT do
+  figurino nas MESMAS escalas (`uFSwell`/`uFBend`/`uFSurge`, `gfrac` = fração da
+  **ALTURA LOCAL** da malha — 1,977 — porque usar o `formTop` do mundo comprime a
+  fração e a metade de cima fica CONGELADA, sem gradiente vertical) e as ONDAS
+  BRANCAS no **DIFUSO**, não só no emissivo.
+- **A onda tem de morar no difuso** (lição que custou três prints): o figurino é
+  um shader OPACO e a receita dele SUBSTITUI o albedo
+  (`col = mix(col, uFoam, waves·foamAmt)`); sobre a textura azure CLARA da malha,
+  só emissivo não se lê. `vANer` (o `vAng` do figurino) entrou no varying para a
+  onda QUEBRAR AROUND o corpo em vez de descer em faixa horizontal perfeita; a
+  cara fica de fora da vida do shader (`vFaceMask`: y −0,42..0,22 e z > 0,3).
+- **Dosagem na malha ≠ dosagem no figurino** (mesma fórmula, leitura outra): a
+  gota ocupa ~90 px de tela e a crista estreita `smoothstep(0,0→0,13)`/
+  `(0,13→0,30)` do figurino + ondinhas `ribMask × 0,35` viravam LISTRAS DE
+  CÓDIGO DE BARRA. Na malha: crista `0,0→0,18` / `0,18→0,42`, ondinhas `× 0,18`,
+  `WAVE_AMT 0,55` (0,65 estourou as cristas), `GLOW_REST 0,15` /
+  `GLOW_CHARGE 1,1`, `RIPPLE_AMP 0,05`.
+- **Esqueleto de código** (`ensureSkin`, o GLB não traz nenhum): 5 juntas
+  `root→belly→face→shoulder→tip` com `NEREIA_JOINT_Y [-1, -0,3, 0,02, 0,34, 0,7]`
+  e bandas SUAVES (`TRANS_Y [-0,66, -0,15, 0,15, 0,62]`, `RAMP_HALF 0,13`) — a
+  gota é MOLE: squash/stretch mora no osso `belly` e rampa larga é o acerto aqui,
+  o OPOSTO do golém (pedra: dobra estreita). Esqueleto por instância, geometria
+  com pesos compartilhada (`geo.userData.nereiaSkin`), `frustumCulled = false`.
+- **Coreografia = a MESMA partitura do figurino**: `WaterRig` exportou
+  `AttackPose`, `attackPose`, `WATER_WINDUP` e `makeSprayGeo` e a malha dança
+  com eles (puxão + achato na carga, estico + gotas em arco na liberação, morte
+  escorre); gotas/clarão no pool compartilhado.
+
+### ⚠️ ARMADILHA DA CASA QUE A MALHA EXPÔS — o BloomGate AMASSAVA o shader do rig (conserto vale para as quatro malhas e qualquer rig futuro; NÃO reverter)
+
+Sintoma reportado pelo usuário: **"no bestiário aparece certo, mas na batalha
+não"** (ele viu no aquático e no golém; fogo/vento também estavam mudos — só que
+neles o visual se sustenta no osso + partículas + emissivo da textura, então
+ninguém notou). Causa em `src/scene/BloomGate.tsx`: `patchOne` fazia
+`p.onBeforeCompile = (shader) => {…}` **trocando** a função do rig pela dele e
+fixava `customProgramCacheKey = () => 'qtBloomEncode'`; e o `unpatchBuiltins`
+ainda `delete p.onBeforeCompile` (ligar/desligar o bloom matava o monstro em
+definitivo). Fatos do three (r16x) que explicam o estrago:
+
+- a chave do programa é `shaderID + parâmetros + customProgramCacheKey()` — o
+  **texto** do shader patcheado NÃO entra na chave — então chave fixa cola dois
+  rigs diferentes no MESMO programa;
+- `onBeforeCompile` **só roda no MISS** do cache de programas (three.cjs ≈
+  30408); `Material.copy()` não copia `onBeforeCompile`.
+
+O gate só roda na ARENA (é o palco do bloom) — o palco do bestiário não tem
+BloomGate, logo o patch do rig sobrevivia lá. Conserto: **compor, nunca
+amassar** — o patch anterior do material vai para `userData.qtBloomPrev`
+(`PREV_KEY`), roda PRIMEIRO dentro do patch do gate (o gate só mexe em
+tonemapping/colorspace do fragment), a chave vira
+`chaveDoRig + '|qtBloomEncode'` e o unpatch **DEVOLVE** o patch do rig. Prova na
+cena viva: antes, 46 programas no renderizador da arena e **zero** com o patch do
+rig; depois, `userData.shader` presente e `uFT` avançando nos três (ignis 2,49 ·
+golém 1,77 · nereia). jsdom não tem WebGL, então o contrato está pinado no fonte
+em `src/tests/renderSettings.test.ts`. Consequência visual esperada: golém volta
+com a veia de magma na batalha e ignis/zéfiro ganham a vida de shader no corpo
+que nunca tiveram na arena.
+
+### ⚠️ "Amarronzado" não era a escultora — era o ARO DE EQUIPE (lição de método: medir antes de pintar)
+
+O usuário apontou um tom cáqui no corpo que "permanece em todas as fases". A
+primeira tentativa (esfriar o albedo quente no fragment, uniforme `uFWarm`) foi
+**no-op medido** e foi apagada. Motivo: `qa/probe-textura-warm.mjs`
+(desenvolvedor de PNG embutido no chunk BIN do GLB, sem dependency) mostra a
+textura **FRIA em todas as 10 faixas** — média ~(75,182,207), `r−b` entre −110 e
+−151, **0% de pixels quentes**. O quente vinha do próprio rig, no fresnel:
+`uFTeam * pow(1−ndv, 2,2) * 0,3` com `uFTeam = TEAM_TINT.player = #f5c451`
+(dourado). Isso fecha o caso todo: é **emissivo**, então ignora a luz do bioma
+(igual em todas as fases); some no palco do bestiário porque lá não há unidade e
+o tint cai no `TEAM_TINT.neutral` (`#c8dcff`, frio); fogo/vento não denunciam
+nada (dourado sobre laranja/pálido); e no figurino opaco de base azul-**escura**
+o aro largo lia como luz de contorno, enquanto na malha PBR clara — barriga
+gorda quase sempre quase de perfil para a câmera — o expoente 2,2 banhava metade
+do corpo (dourado por cima de azure = cáqui). Emenda em
+`NereiaMeshRig.tsx`: `RIM_POW 4,2` (aro apertado na silhueta) + `RIM_COOL 0,78`
+de mistura para `vec3(0,70, 0,90, 1,00)` + `RIM_DOSE 0,34` ⇒ jogador fica
+**menta**, IA **lavanda** (a identificação de equipe continua; água
+Fresnel-reflete o céu da arena, não a lanterna da equipe). Se o aro dourado
+largo incomodar em bioma frio no **golém** (pedra marrom: lá é característico), é
+a mesma alavanca no `GolemMeshRig`.
+
+### QA de tom que fica na casa (as duas sondas novas)
+
+- `qa/probe-tone.mjs [ice underwater volcanic]`: **TRAVA o cenário** pelo seletor
+  da própria UI (Configurações → 🌄 Cenário → `[data-testid="scenario-<id>"]`)
+  porque o bioma é SORTEADO a cada partida (`resolveArenaScene` usa
+  `Math.random`) — A/B entre execuções sem travar compara BIOMAS DIFERENTES e não
+  code. Cola a câmera no corpo (`controls.target` = unidade + `minDistance 3`),
+  fotografa o recorte da caixa delimitadora projetada e faz A/B de luz no MESMO
+  enquadre (point mais quente apagada / trocada por branca / todas as point
+  lights apagadas). Os números saem dos PNG decodificados no Node: é o quadro
+  COMPOSTO que o usuário vê, bloom incluso — `readPixels` na arena engana, porque
+  `gl.render(scene, camera)` na mesma thread desenha o NÃO-composto. Resultado do
+  caso: pixels quentes do corpo 2% → **0%** (Gélido) e 1% → **0%** (Subaquático).
+- `qa/probe-textura-warm.mjs [glb...]`: calor da pintura por faixa horizontal
+  (obrigatório antes de tocar na cor de um modelo importado).
+- Viewer do GLB puro (sem arena/bloom): `mesh-viewer.html` na raiz +
+  `qa/mesh-viewer-shot.mjs` — abre em `http://localhost:5173/element-merge/mesh-viewer.html`;
+  separa "o modelo" de "o pipeline".
+- Nota de ferramenta (poupando a próxima rodada): o **chrome-devtools MCP presta
+  para DOM/offline** (foi assim que o SW/PWA foi atestado) mas o Chromium dele vem
+  **SEM WebGL** (`webgl1:false webgl2:false`, só WebGPU) ⇒ o jogo cai em
+  `gl-missing` e ele não gruda no Chrome do Windows do usuário (sem endpoint de
+  debug remoto). Para cena 3D: Playwright com
+  `['--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader']`.
+  Acesso à cena viva nas sondas: `window.__THREE_DEVTOOLS__` (EventTarget
+  registrado em `addInitScript`) → o scene tem `__r3f.root.getState()` com
+  `{gl, scene, camera, controls}`.
+
+**Estado/verificação (15/nov):** `npx tsc --noEmit` limpo; `npm run build` limpo
+(6,3 s; o GLB aquático entra como asset de 3,4 MB); suíte 45 arquivos / 505
+testes / **500 passando**, 2 falhas CONHECIDAS (as duas smoke de `app.test.tsx`:
+jsdom não tem WebGL ⇒ cai no `gl-missing`), 3 skipped. `qa/probe-footprint.mjs` e
+`qa/probe-front.mjs` consertados para Linux (perfil limpo SEMPRE abre o tutorial:
+`[data-testid="tutorial-skip"]` é obrigatório; fechar o bestiário antes de medir;
+flags `QA_*`). Nenhum teste de progressão escrito para a malha (a regra da linha
+"modelos 3D": pino só depois de a linha pegar de vez).
+
+**Fora da linha do modelo (infra de teste, vai em commit próprio):** Node ≥22
+instala um GETTER global `localStorage` (o webstorage experimental) que devolve
+`undefined` sem `--localstorage-file`; no jsdom do vitest
+`window === globalThis === document.defaultView` (sondado), então o getter
+sombreia o storage do jsdom e **107 testes caíram de uma vez** (persistência,
+save, roster, UI). `src/tests/setup.ts` agora instala um storage em memória
+**quando o ambiente não entrega um** (em Node mais velho nada roda). A casa só usa
+`getItem/setItem/removeItem/clear` (medido por grep).
 
 ---
 
@@ -1981,7 +2162,9 @@ alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
   malha 3D importada desde 14/nov — ver a seção do Ignis Nv.1**), zephyr
   (WindRig; **Nv.1 também de malha importada, mesmo molde**), golem (StoneRig —
   o padrão físico modelo; **Nv.1 de malha importada desde 14/nov, seção do
-  Golém Nv.1 — arremesso-assinatura com o corpo, não o braço**), nereia (WaterRig) —
+  Golém Nv.1 — arremesso-assinatura com o corpo, não o braço**), nereia
+  (WaterRig; **Nv.1 de malha importada desde 15/nov, seção da Nereia Nv.1 — onda
+  branca descendo pelo corpo no DIFUSO, e a lição do BloomGate/aro de equipe**) —
   5 formas visíveis cada, gateadas por `minLvl/maxLvl`.
 - **Arena**: ilha flutuante, plataformas derivadas de `game/board.ts`
   (`TILE_SPACING_X 5,2 · ROW_DEPTH 5,2 · FRONT_ROW_Z 3,1 · UNIT_BASE_Y 0,28 ·
@@ -2037,6 +2220,33 @@ node qa/probe-tutorial.mjs             # 🎓 luvinha: 5 passos, mímica que NÃ
 
 ## Armadilhas (resumo)
 
+- **Gate de pós-processamento NUNCA substitui o `onBeforeCompile` de um rig:
+  compõe.** O `BloomGate` patcheia os materiais EMBUTIDOS da arena (devolve a
+  eles o ACES+sRGB que o three pula no render target) e já chegou a TROCAR a
+  função do rig pela dele, fixar `customProgramCacheKey = () => 'qtBloomEncode'`
+  e ainda `delete p.onBeforeCompile` no unpatch. Fatos do three (r16x) que fazem
+  disso uma armadilha invisível: a chave do programa é
+  `shaderID + parâmetros + customProgramCacheKey()` — o TEXTO do shader
+  patcheado não entra na chave — e `onBeforeCompile` **só roda no MISS** do cache
+  (three.cjs ≈ 30408). Sintoma pago em 15/nov: o corpo dos rigs de malha 3D
+  (que MORA no `onBeforeCompile` do material) ficava mudo na arena e vivo no
+  palco do bestiário — "no bestiário aparece certo, mas na batalha não". Pinos do
+  contrato em `src/tests/renderSettings.test.ts`; prova viva: `userData.shader`
+  presente e o uniforme de tempo do rig avançando.
+- **Cor de modelo importado: medir antes de pintar.** O "amarronzado" que o
+  usuário via em todas as fases do aquático NÃO era a textura (fria em 100% das
+  faixas — `qa/probe-textura-warm.mjs`) nem a luz do bioma (o corpo continuava
+  frio com todas as point lights apagadas — `qa/probe-tone.mjs`): era o ARO DE
+  EQUIPE no fresnel do rig, EMISSIVO (`TEAM_TINT.player` dourado sobre azure =
+  cáqui, imune ao bioma, ausente no palco do bestiário porque lá o tint cai no
+  `neutral`). Antes de encostar na cor de um modelo novo, as duas sondas.
+- **Rodando os testes num Node ≥22: se metade da suíte cair com
+  `Cannot read properties of undefined (reading 'clear')`, a culpa é do Node, não
+  do seu diff.** Node instala um GETTER global `localStorage` (webstorage
+  experimental) que devolve `undefined` sem `--localstorage-file`, e no jsdom do
+  vitest `window === globalThis === document.defaultView` — o getter sombreia o
+  storage do jsdom (107 testes de uma vez em 15/nov). `src/tests/setup.ts` já
+  instala um storage em memória quando o ambiente não entrega um; não remover.
 - **NUNCA reintroduzir `scale = 1 + 0,07 × (nível−1)` no `UnitView`**: os rigs da
   árvore já nascem autorais no tamanho final e isso escalava 1,35–1,63× por cima
   do figurino (foi o que fez o Colosso derramar sobre a plataforma inimiga). O

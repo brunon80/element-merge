@@ -10,7 +10,7 @@ import { mkdirSync } from 'node:fs';
 
 const sp = process.argv[2] ?? 'geodo';
 const ally = process.argv[3] ?? 'golem';
-const OUT = process.argv[4] ?? 'C:\\Users\\bruno\\AppData\\Local\\Temp\\opencode\\shots-front';
+const OUT = process.argv[4] ?? '/tmp/opencode/shots-front';
 const deg = Number(process.argv[5] ?? 155);
 mkdirSync(OUT, { recursive: true });
 
@@ -32,15 +32,26 @@ const spawn = async (id) => {
   if (await page.locator('[data-testid="discovery-overlay"]').isVisible().catch(() => false)) {
     await page.click('[data-testid="discovery-close"]');
   }
+  // o bestiário NÃO fecha sozinho (e o `Escape` também não fecha) — sem isto,
+  // o próximo clique no FAB é interceptado pelo próprio overlay
+  if (await page.locator('[data-testid="close-bestiary"]').count())
+    await page.click('[data-testid="close-bestiary"]');
 };
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(process.env.QA_URL ?? 'http://localhost:5173/element-merge/', {
+  waitUntil: 'networkidle',
+});
 await page.click('[data-testid="open-settings"]');
 await page.click('[data-testid="settings-tab-debug"]');
 await page.click('[data-testid="debug-toggle"]');
 await page.click('[data-testid="close-settings"]');
 await page.click('[data-testid="play"]');
 await page.waitForSelector('[data-testid="shop"]');
+// sem pular o tutorial o debug-spawn é bloqueado (gateTutorial `debug`) —
+// contexto limpo do Playwright sempre começa o tutorial
+if (await page.locator('[data-testid="tutorial-skip"]').count())
+  await page.click('[data-testid="tutorial-skip"]');
+await page.waitForTimeout(300);
 await spawn(sp);
 if (ally && ally !== sp) await spawn(ally);
 await page.waitForTimeout(2400);
@@ -56,12 +67,12 @@ await page.mouse.move(box.x + 120 + dx, cy, { steps: 18 });
 await page.mouse.up();
 await page.mouse.wheel(0, -1100);
 await page.waitForTimeout(1200);
-await canvas.screenshot({ path: `${OUT}\\${sp}-face-closed.png` });
+await canvas.screenshot({ path: `${OUT}/${sp}-face-closed.png` });
 
 // afinação/arremesso: o combate mesmo (o card não dá zoom no modelo)
 await page.click('[data-testid="start-battle"]');
 for (let i = 0; i < 30; i++) {
-  await canvas.screenshot({ path: `${OUT}\\${sp}-f-${String(i).padStart(2, '0')}.png` });
+  await canvas.screenshot({ path: `${OUT}/${sp}-f-${String(i).padStart(2, '0')}.png` });
   await page.waitForTimeout(150);
 }
 await browser.close();

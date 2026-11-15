@@ -26,7 +26,7 @@ if (!SPECIES.length) {
   );
 }
 const OUT =
-  process.env.QA_OUT ?? 'C:\\Users\\bruno\\AppData\\Local\\Temp\\opencode\\footprint';
+  process.env.QA_OUT ?? '/tmp/opencode/footprint';
 mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch({
@@ -64,6 +64,12 @@ await page.click('[data-testid="debug-toggle"]');
 await page.click('[data-testid="close-settings"]');
 await page.click('[data-testid="play"]');
 await page.waitForSelector('[data-testid="shop"]');
+// o tutorial BLOQUEIA o debug-spawn (gateTutorial: `debug` nunca passa com
+// passo ativo) — contexto limpo do Playwright SEMPRE inicia o tutorial, então
+// pular aqui é obrigatório para a sonda conseguir criar unidade
+if (await page.locator('[data-testid="tutorial-skip"]').count())
+  await page.click('[data-testid="tutorial-skip"]');
+await page.waitForTimeout(300);
 
 for (const spec of SPECIES) {
   // aceita "especie" ou "especie@nivel" (os puros têm seletor de forma no card)
@@ -84,7 +90,11 @@ for (const spec of SPECIES) {
   } else {
     console.log(`(sem botão de spawn para ${id})`);
   }
-  await page.keyboard.press('Escape');
+  // a enciclopédia fecha no botão próprio (o `Escape` NÃO fecha o bestiário —
+  // lição da corrida no Linux: sem isto a segunda iteração acha o overlay
+  // aberto e o clique no FAB fica interceptado)
+  if (await page.locator('[data-testid="close-bestiary"]').count())
+    await page.click('[data-testid="close-bestiary"]');
   await page.waitForTimeout(150);
 }
 await page.waitForTimeout(3000); // a escala de spawn entra em 0,45 s
@@ -218,7 +228,7 @@ const probe = await page.evaluate(() => {
 
 if (probe.err) {
   console.log('ERRO:', probe.err);
-  await page.screenshot({ path: `${OUT}\\footprint-erro.png` });
+  await page.screenshot({ path: `${OUT}/footprint-erro.png` });
   process.exit(1);
 }
 
@@ -260,11 +270,11 @@ for (const o of probe.overlaps) {
 }
 
 const canvas = page.locator('canvas').first();
-await canvas.screenshot({ path: `${OUT}\\footprint-arena.png` });
+await canvas.screenshot({ path: `${OUT}/footprint-arena.png` });
 const box = await canvas.boundingBox();
 await page.mouse.wheel(box.x + box.width / 2, box.y + box.height * 0.45, -1200);
 await page.waitForTimeout(900);
-await canvas.screenshot({ path: `${OUT}\\footprint-arena-zoomout.png` });
+await canvas.screenshot({ path: `${OUT}/footprint-arena-zoomout.png` });
 
 console.log(`\nconsole: ${msgs.length ? msgs.join('\n') : 'SEM ERROS/WARNINGS'}`);
 console.log(`prints em ${OUT}`);

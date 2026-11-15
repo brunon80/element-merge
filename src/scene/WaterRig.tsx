@@ -32,7 +32,7 @@ import { getSpecies } from '../data/monsters';
 
 export const WATER_ATTACK_WINDOW = 0.55;
 /** fração da janela em que a Nereia está carregando a maré */
-const WATER_WINDUP = 0.45;
+export const WATER_WINDUP = 0.45;
 
 const NEREIA_DEF = getSpecies('nereia');
 
@@ -58,7 +58,8 @@ export const WATER_ROLE_LOOK: Partial<Record<MatRole, WaterLook>> = {
   dark: { deep: '#081a33', mid: '#173e6e', foam: '#84b4d8', alpha: 0.8, foamAmt: 0.22, swell: 0.6 },
 };
 
-interface AttackPose {
+/** exportado: a malha importada do Nv.1 (`NereiaMeshRig`) dança a MESMA partitura */
+export interface AttackPose {
   surge: number; // corpo puxado (neg) / arremessado (pos) para frente
   squash: number; // −1 = achatada carregando, +1 = esticada soltando
   swing: number; // barbatanas/pés (neg = varridas para trás, pos = disparam)
@@ -67,7 +68,7 @@ interface AttackPose {
   roar: number; // fenda da boca
 }
 
-function attackPose(since: number): AttackPose {
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = { surge: 0, squash: 0, swing: 0, charge: 0, flare: 0, roar: 0 };
   if (since < 0 || since > WATER_ATTACK_WINDOW) return P;
   const p = since / WATER_ATTACK_WINDOW;
@@ -93,7 +94,8 @@ function attackPose(since: number): AttackPose {
   return P;
 }
 
-function makeSprayGeo(n: number): THREE.BufferGeometry {
+/** exportado: a malha do Nv.1 usa as MESMAS gotas em arco (a assinatura da água) */
+export function makeSprayGeo(n: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const rnd = new Float32Array(n * 3);
@@ -477,7 +479,7 @@ export function WaterRig({
  * diferente dos detritos do vento, que sobem). Nível alto = mais gotas e mais
  * longe. Usam NormalBlending para não estourar em branco.
  */
-const SPRAY_VERT = /* glsl */ `
+export const SPRAY_VERT = /* glsl */ `
 attribute vec3 aRand; // x: ângulo, y: fase, z: tamanho/velocidade
 uniform float uTime;
 uniform float uAlpha;
@@ -510,7 +512,7 @@ void main() {
 }
 `;
 
-const SPRAY_FRAG = /* glsl */ `
+export const SPRAY_FRAG = /* glsl */ `
 varying float vA;
 varying vec3 vC;
 void main() {

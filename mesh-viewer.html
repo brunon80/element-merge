@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- viewer OFFLINE de GLB da linha "modelos 3D": renderiza a malha de 4 cantos
+     (frente +Z, costas −Z, lados ±X) num só canvas. Sonda visual do rumo da
+     malha; não é código do jogo. Abrir via dev server:
+     http://localhost:5173/element-merge/mesh-viewer.html?src=./src/models/water/water_model_lvl1.glb -->
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <title>viewer de malha</title>
+    <style>
+      body { margin: 0; background: #10161f; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+      const src = new URLSearchParams(location.search).get('src') || './src/models/water/water_model_lvl1.glb';
+      const canvas = document.getElementById('c');
+      const W = 1280, H = 960;
+      canvas.width = W; canvas.height = H;
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(W, H, false);
+
+      const views = [
+        { name: 'frente (+Z)', pos: [0, 0.15, 2.6] },
+        { name: 'costas (-Z)', pos: [0, 0.15, -2.6] },
+        { name: 'lado -X', pos: [-2.6, 0.15, 0] },
+        { name: 'lado +X', pos: [2.6, 0.15, 0] },
+      ];
+      const loader = new GLTFLoader();
+      loader.load(src, (gltf) => {
+        const root = gltf.scene;
+        root.traverse((o) => {
+          if (o.isMesh) {
+            o.material.flatShading = false;
+          }
+        });
+        const bb = new THREE.Box3().setFromObject(root);
+        const size = bb.getSize(new THREE.Vector3());
+        const center = bb.getCenter(new THREE.Vector3());
+        const d = Math.max(size.x, size.y, size.z);
+        for (let i = 0; i < 4; i++) {
+          const scene = new THREE.Scene();
+          scene.background = new THREE.Color('#10161f');
+          scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x2a2f38, 1.6));
+          const key = new THREE.DirectionalLight(0xffffff, 2.2);
+          key.position.set(0.6, 1.4, 1.0);
+          scene.add(key);
+          const rim = new THREE.DirectionalLight(0x88bbff, 0.8);
+          rim.position.set(-1.2, 0.4, -1.4);
+          scene.add(rim);
+          const clone = root.clone(true);
+          clone.position.sub(center);
+          scene.add(clone);
+          const cam = new THREE.PerspectiveCamera(34, 1, 0.05, 50);
+          const v = views[i];
+          cam.position.set(v.pos[0] * d * 0.9, v.pos[1] * d, v.pos[2] * d * 0.9);
+          cam.lookAt(0, 0, 0);
+          renderer.setScissorTest(true);
+          const x = (i % 2) * (W / 2), y = H / 2 - Math.floor(i / 2) * (H / 2);
+          renderer.setViewport(x, y, W / 2, H / 2);
+          renderer.setScissor(x, y, W / 2, H / 2);
+          renderer.render(scene, cam);
+        }
+        document.title = 'ok';
+      });
+    </script>
+  </body>
+</html>
