@@ -1,6 +1,7 @@
 // Sonda de INVÓLUCRO EM MUNDO REAL: mede, na cena viva, a caixa delimitadora de
-// cada unidade (só as malhas do figurino — HUD, anel de seleção e hitbox ficam
-// de fora) e diz se o figurino CABE no slot e se ele invade o slot vizinho.
+// cada unidade (só as malhas do figurino — HUD, anel de seleção, anel de bônus
+// de cenário, ícones de status e hitbox ficam de fora; esses nomes são CONTRATO
+// do `UnitView`) e diz se o figurino CABE no slot e se ele invade o slot vizinho.
 // É a resposta objetiva para "o monstro tem que caber no spot sem sobrepor".
 //
 // Uso:  node qa/probe-footprint.mjs [especie ...]   (default: as pesadas da árvore)
@@ -98,6 +99,29 @@ for (const spec of SPECIES) {
   await page.waitForTimeout(150);
 }
 await page.waitForTimeout(3000); // a escala de spawn entra em 0,45 s
+// ⚠️ O PUNCH DE SPAWN contamina a leitura: o `UnitView` faz `scale = fit × punch`
+// e o punch ESTOUROU (até 1,25×) nos primeiros 0,45 s do relógio de jogo. Como o
+// bestiário abre/fecha e o overlay de descoberta PAUSA esse relógio, o último
+// bicho spawned pode estar no meio do estouro quando a régua desce — e a sonda lê
+// escala e invólucro MAIORES que os reais (no Nv.5 da nereia isso deu o falso
+// "NÃO no anel": 2,78 em vez de 2,43). Então: espera até as escalas baterem na
+// MEDIANA (bicho morrendo encolhe e fica fora da conta), no máx. +8 s.
+for (let i = 0; i < 8; i++) {
+  const unsettled = await page.evaluate(() => {
+    const scene = (window.__threeRs || []).find((s) => s && s.isScene);
+    if (!scene) return true;
+    const sc = [];
+    scene.traverse((o) => {
+      if (o.userData && o.userData.unitId !== undefined) sc.push(o.scale.x);
+    });
+    if (sc.length < 2) return false;
+    sc.sort((a, b) => a - b);
+    const med = sc[Math.floor(sc.length / 2)];
+    return sc.some((s) => s > med * 1.02);
+  });
+  if (!unsettled) break;
+  await page.waitForTimeout(1000);
+}
 
 const probe = await page.evaluate(() => {
   const scene = (window.__threeRs || []).find((s) => s && s.isScene);
@@ -145,7 +169,7 @@ const probe = await page.evaluate(() => {
   scene.traverse((o) => {
     if (!o.userData || o.userData.unitId === undefined) return;
     const box = newBox();
-    const skip = new Set(['hud', 'selring', 'hitbox']);
+    const skip = new Set(['hud', 'selring', 'hitbox', 'bonusring', 'statusicon']);
     const walk = (child) => {
       if (skip.has(child.name)) return;
       if (child.isMesh && child.visible) {

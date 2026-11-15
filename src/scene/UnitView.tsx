@@ -470,8 +470,15 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
           ))}
         </group>
       </group>
+      {/* Ícones de status/bônus (queimadura, lentidão, veneno, boost de cenário).
+          `name="statusicon"` é CONTRATO da sonda de invólucro: eles vivem a
+          `footR + 0,3` do lado de fora da silhueta, então entram na lista de
+          pulados junto com HUD, anel de seleção e hitbox — sem isso a régua mede
+          o DECORADO e não o figurino (lição da nereia Nv.5: o anel de bônus de
+          cenário e o ícone de queimadura inflaram a leitura em quase 1 metro). */}
       <sprite
         ref={burnIconRef}
+        name="statusicon"
         position={[footR + 0.3, topY - 0.1, 0]}
         scale={0.42}
         visible={false}
@@ -480,6 +487,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       </sprite>
       <sprite
         ref={slowIconRef}
+        name="statusicon"
         position={[-(footR + 0.3), topY - 0.1, 0]}
         scale={0.4}
         visible={false}
@@ -488,6 +496,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       </sprite>
       <sprite
         ref={poisonIconRef}
+        name="statusicon"
         position={[0, topY + 0.32, 0]}
         scale={0.4}
         visible={false}
@@ -496,6 +505,7 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       </sprite>
       <sprite
         ref={bonusIconRef}
+        name="statusicon"
         position={[footR + 0.55, Math.max(1.05, topY - 0.75), 0]}
         scale={0.4}
         visible={false}
