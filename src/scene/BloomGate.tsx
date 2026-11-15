@@ -199,12 +199,20 @@ vec3 qtACESFilmic( vec3 color ) {
 
 interface PatchableShader {
   fragmentShader: string;
+  vertexShader?: string;
 }
 interface Patchable {
   userData: Record<string, unknown>;
-  onBeforeCompile?: (shader: PatchableShader) => void;
+  onBeforeCompile?: (shader: PatchableShader, renderer?: unknown) => void;
   customProgramCacheKey?: () => string;
 }
+/** o patch que o gate emprestou por um instante (o do rig volta quando o bloom
+ * desliga) */
+interface Borrowed {
+  onBeforeCompile?: (shader: PatchableShader, renderer?: unknown) => void;
+  customProgramCacheKey?: () => string;
+}
+const PREV_KEY = 'qtBloomPrev';
 
 /**
  * Devolve aos materiais EMBUTIDOS (tudo que não é ShaderMaterial cru — a
@@ -230,9 +238,32 @@ function patchOne(m: THREE.Material) {
   if ((m as { isShaderMaterial?: boolean }).isShaderMaterial) return; // cru: já escreve display-referred, intocado
   const p = m as unknown as Patchable;
   if (p.userData.qtBloom) return;
-  p.userData.qtBloom = true;
   const tone = m.toneMapped; // false = o próprio traço já pedia zero tone map nos dois caminhos
-  p.onBeforeCompile = (shader) => {
+
+  // ⚠️ COMPOR, NUNCA AMASSAR. Os rigs de malha 3D (ignis, zéfiro, golém,
+  // Nereia) vivem o corpo no `onBeforeCompile` do MATERIAL — relevo, crista de
+  // magma, onda branca descendo pela gota. O gate antigo trocava essa função
+  // pela dele, e o `unpatch` ainda a APAGAVA: na arena (que é onde o bloom
+  // roda) o monstro ficava mudo, enquanto no palco do bestiário (sem bloom) ele
+  // continuava vivo — foi o "no bestiário aparece certo, na batalha não" que o
+  // usuário apontou no golém e na Nereia. Agora o patch do rig roda PRIMEIRO e
+  // o gate só mexe no que é dele (tonemapping/colorspace no fragment).
+  const borrowed: Borrowed = {
+    onBeforeCompile: Object.prototype.hasOwnProperty.call(p, 'onBeforeCompile')
+      ? p.onBeforeCompile
+      : undefined,
+    customProgramCacheKey: Object.prototype.hasOwnProperty.call(p, 'customProgramCacheKey')
+      ? p.customProgramCacheKey
+      : undefined,
+  };
+  const prev = borrowed.onBeforeCompile;
+  const prevKey = borrowed.customProgramCacheKey;
+
+  p.userData.qtBloom = true;
+  p.userData[PREV_KEY] = borrowed;
+
+  p.onBeforeCompile = (shader, renderer) => {
+    if (prev) prev(shader, renderer); // a vida do rig (vértice + difuso + emissivo)
     let f = shader.fragmentShader;
     if (tone && f.includes('#include <tonemapping_fragment>')) {
       f = f.replace('#include <tonemapping_fragment>', 'gl_FragColor.rgb = qtACESFilmic( gl_FragColor.rgb );');
@@ -242,7 +273,13 @@ function patchOne(m: THREE.Material) {
     }
     shader.fragmentShader = ENCODE_HEAD + '\n' + f;
   };
-  p.customProgramCacheKey = () => 'qtBloomEncode';
+  // a chave do programa: o three embaralha materiais de chave IGUAL no mesmo
+  // programa (e o `onBeforeCompile` só roda no miss), então a chave fixa
+  // 'qtBloomEncode' colaria dois rigs diferentes no mesmo shader. Compondo a
+  // chave do rig com a nossa, cada criatura continua no seu programa — e a
+  // cantaria sem patch segue dividindo o dela (a string fica idêntica para ela)
+  p.customProgramCacheKey = () =>
+    (prevKey ? prevKey() : prev ? prev.toString() : '') + '|qtBloomEncode';
   m.needsUpdate = true;
 }
 
@@ -256,9 +293,15 @@ function unpatchBuiltins(scene: THREE.Scene) {
       const p = mm as unknown as Patchable;
       if (!p.userData.qtBloom) continue;
       p.userData.qtBloom = false;
-      // de volta ao no-op do prototype do three (o setProgram chama sem checar)
-      delete p.onBeforeCompile;
-      delete p.customProgramCacheKey;
+      // devolve o patch ANTERIOR do material (o do rig de malha 3D), não o no-op
+      // do prototype: apagar daqui era o outro lado do bug — ligar e desligar o
+      // bloom deixava o monstro sem vida para sempre
+      const prev = p.userData[PREV_KEY] as Borrowed | undefined;
+      delete p.userData[PREV_KEY];
+      if (prev?.onBeforeCompile) p.onBeforeCompile = prev.onBeforeCompile;
+      else delete p.onBeforeCompile; // sem dono nenhum: volta ao no-op do three
+      if (prev?.customProgramCacheKey) p.customProgramCacheKey = prev.customProgramCacheKey;
+      else delete p.customProgramCacheKey;
       mm.needsUpdate = true;
     }
   });
