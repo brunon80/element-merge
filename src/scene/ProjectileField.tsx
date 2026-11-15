@@ -1773,7 +1773,11 @@ export function ProjectileField() {
             dummy.quaternion.copy(tmpQuat);
           }
           if (dropN < MAX_PER_ELEMENT) {
-            const scale = 0.8 + 0.26 * (lvSign - 1);
+            // A ÁRVORE DA ÁGUA EM MALHA (Nv.1..5): cada fusão troca a malha do
+            // monstro e ENGORDA a lança — a maré que um Nv5 cospe é MAIS que o
+            // triplo da gotinha Nv1 (0,80 → 2,60 de escala, antes 0,80 → 1,84).
+            // O halo acompanha (é o clarão da gota inteira)
+            const scale = 0.8 + 0.45 * (lvSign - 1);
             dummy.scale.setScalar(scale);
             dummy.updateMatrix();
             dropRef.current?.setMatrixAt(dropN, dummy.matrix);

@@ -812,7 +812,90 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
-## 🌪️ A ÁRVORE INTEIRA DO VENTO EM MALHA 3D — Nv.1..5 (15/nov/2026 — 7ª da linha "modelos 3D"; Nv.2..5 à espera do aval visual do usuário)
+## 💧 A ÁRVORE INTEIRA DA ÁGUA EM MALHA 3D — Nv.1..5 (15/nov/2026 — 8ª da linha "modelos 3D"; aprovada no navegador do usuário: "já testei e visualmente já está bom, pode encerrar os testes e versionar")
+
+Nereia virou a TERCEIRA família com a árvore inteira na malha importada (fogo e
+vento vieram antes — entradas logo abaixo). `NereiaRig`
+(`src/scene/NereiaMeshRig.tsx`, reescrito) despacha **Nv.1..5 = mesh**
+(`src/models/water/water_model_lvl1..5.glb`; o lvl1 já estava na casa, lvl2..5
+novos, 4,5-5,3 MB cada, um mesh/uma textura, SEM ossos) com
+`<Suspense fallback={<WaterRig level={n}/>}>`; o `WaterRig` procedural segue
+vivo só como fallback de carga.
+
+- ⚠️ **OS GLBs CHEGARAM DA ESTEIRA INVERTIDOS em relação às artes 2D**: o
+  `water_model_lvl2.glb` era o DRAGÃO ALADO da arte `water_lvl5_1` e o
+  `water_model_lvl5.glb` o AXOLOTL da `water_lvl2_1` (o lvl3 era o draco
+  musculoso da arte 4 e o lvl4 o hippocampão da arte 3). Os arquivos foram **RENOMEADOS**
+  (lvl2↔lvl5 e lvl3↔lvl4) para casar com a escada da referência: gotinha →
+  axolotl → hippocampão → draco → dragão alado. Se a esteira entregar de novo com
+  a numeração trocada, é RENOMEAR ARQUIVO — não remapear `WATER_URLS` por cima.
+- **Esqueleto nasce em código** (`root→belly→face→shoulder→tip`), pesos de pele
+  por faixa de Y com rampas SUAVES (`ensureSkin`, uma vez por geometria — a
+  máscara DURA do golém não vale para água, que flui), TODOS os marcos (juntas,
+  faixas e cara) leem da bbox de CADA malha na régua porcentual (`BODY_FRAC`:
+  juntas 0,0008/0,193/0,5313/0,7851/0,9014, faixas 0,1728/0,4309/0,5827/0,8205,
+  meia-rampa 0,0658).
+- **O "glow" de água em movimento do Nv.1 (a onda descendo pelo corpo, aprovado
+  na rodada anterior) virou o tratamento de TODOS os níveis** — foi o pedido do
+  usuário. Diferente do vento e do fogo, a água NÃO ganha casca por fora: a vida
+  mora no shader da MESMA malha, com as faixas de corrente/onda em PORCENTAGEM da
+  bbox (`uFBase`/`uFModelH` substituíram o −1,0 engessado que só servia à gotinha)
+  e a fervura na MESMA medida de mundo em qualquer malha (`uFA = RIPPLE_AMP ×
+  SPAN_NV1/spanY`, `SPAN_NV1` = 1,9762 m do Nv.1).
+- **FERA DA CARA por nível** (`FACE_BANDS`): a janela (altura × frente +Z, em %
+  da bbox) onde a vida da água DESAPARECE — sem ela os olhos tremem e a boca
+  "derrete" (a queixa da rodada do golém, mesma causa). Nv.1 é a janela EXATA
+  aprovada nos prints da gotinha (y 0,294→0,617, frente 0,376); nos níveis novos a
+  cara migra para cima (axolotl 0,52→0,9 · hippocampão 0,58→0,96 · draco
+  0,62→0,95 · dragão 0,55→0,9) e os ornamentos (barbatanas, chifres, cristas,
+  brânquias de lado) ficam FORA da janela e seguem vivos.
+- **Regra `MEDIDO` da linha "modelos 3D"** (a mesma do vento, validada de novo):
+  linha da tabela = `s_a·(half + abraço)` com `s_a = formTop/spanY` e
+  `WAVE_HUG 0,02` (metro do Nv.1, proporcional por malha; o FOOT_MARGIN cobre o
+  resto — a sonda lê a caixa CPU e NÃO vê o deslocamento do vertex shader).
+  Nereia: `{0,58;0,58} {1,2;1,2} {1,48;1,39} {1,05;2,12} {2,39;2,32}` — o axolotl
+  abre as brânquias pros dois lados, o draco Nv.4 deita a cauda longa no FUNDO do
+  buraco (2,12 de profundidade, 1,05 de largura) e o dragão alado Nv.5 é o pior
+  caso (2,39): puxa o `familyRadius` 2,21→2,47 e o `slotFit` 1,13→1,01, então a
+  família quase não encolhe e a escada autoral sobrevive quase inteira.
+- **Ataque escala com o nível** (também pedido): a lança d'água do
+  `ProjectileField` vai a `0,8 + 0,45·(n−1)` (0,80→2,60; era 0,80→1,84) e a
+  explosão do `Effects` engrossa por nível — respingo `10+3n`, azul `8+2n`, espuma
+  `4+n`, anéis molhados no chão `1,5+0,3n` e `0,9+0,24n`, **ANEL NO AR NOVO
+  `0,8+0,2n`** (a coroa de respingo no ponto do impacto, espelhando o anel duplo
+  do vendaval) e névoa d'água `3+2n` com `size 0,07+0,018n` / `life 0,8+0,12n`. No
+  rig: respingo `10+8n`, névoa da boca `4+2n` saindo da frente crua escalada
+  (`mouthZ = fit.s × halfZ`) e glow `1,0+0,18n`.
+- `MESH_FIGURINOS.nereia` = cinco `true` (`speciesModels.ts`): o pino "a tabela
+  de invólucros não envelheceu" do `board.test` PULA figurinos de malha — a AABB
+  analítica das peças procedurais não é mais a referência da silhueta; a sonda
+  viva é.
+- 🛠 **A SONDA MENTIU E FOI CONSERTADA (não reverter)** — duas fontes de leitura
+  INFLADA em `qa/probe-footprint.mjs`, ambas dando o falso "NÃO no anel" no
+  Nv.4/Nv.5 da nereia:
+  1. **PUNCH DE SPAWN**: o `UnitView` faz `scale = fit × punch` e o punch
+     ESTOUROU (até 1,25×) nos primeiros 0,45 s do relógio de JOGO; como o overlay
+     de descoberta PAUSA esse relógio, o ÚLTIMO bicho spawned é fotografado no
+     meio do estouro. A sonda agora espera as escalas baterem na MEDIANA (máx.
+     +8 s; bicho morrendo encolhe e fica fora da conta).
+  2. **DECORADO ≠ FIGURINO**: o anel de bônus de cenário e os ícones de
+     queimadura/lentidão/veneno vivem a `footR + 0,3` DO LADO DE FORA da silhueta
+     e entravam na caixa — quase um metro a mais (3,37 em vez de 2,43). Os quatro
+     sprites ganharam `name="statusicon"` no `UnitView` e a lista de pulados da
+     sonda é `{hud, selring, hitbox, bonusring, statusicon}`: um CONTRATO entre as
+     duas pontas, escrito nos dois lados.
+  Medida limpa final (`qa/probe-footprint.mjs nereia@1..5`): tudo SIM/SIM,
+  SOBREPOSIÇÕES 0, console limpo, escada MONÓTONA (topo mundo
+  1,52→2,30→2,88→3,56→4,51; invólucro 0,58→1,21→1,47→2,07→2,43; autoral bate com
+  a tabela em ±0,06). A sonda consertada NÃO mexe em veredito já aprovado: zéfiro
+  e ignis seguem SIM/SIM com os números de sempre.
+- 💰 **Dívida de assets piorou de novo**: 16 GLBs ≈ 68 MB em `src/models` (água
+  22, vento 22, fogo 20, golém 5,5). Compressão KTX2/Draco ou import por espécie
+  continua em aberto.
+
+---
+
+## 🌪️ A ÁRVORE INTEIRA DO VENTO EM MALHA 3D — Nv.1..5 (15/nov/2026 — 7ª da linha "modelos 3D"; commit `4c20bb8`, aprovada no navegador do usuário: "aprovado, pode versionar")
 
 Zéfiro virou a SEGUNDA família com a árvore inteira na malha importada (o fogo
 veio antes — ver a entrada do Ignis logo abaixo). `ZephyrRig`

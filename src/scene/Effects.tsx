@@ -1606,18 +1606,23 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               speed: 1.8,
             });
           } else if (ev.species === 'nereia') {
-            // lança d'água: fonte azul que sobe e CAI (água tem peso),
-            // dois anéis molhados no chão e névoa d'água
+            // A ÁRVORE EM MALHA molha com maré cada vez mais alta: cada nível
+            // do atirador engorda a lança (0,80→2,60 no projétil) E a explosão
+            // — fonte azul que sobe e CAI (água tem peso) em maior enxame, dois
+            // anéis molhados no chão CRESCENDO com o nível, a COROA DE RESPINGO
+            // no ar do impacto (o vórtice gêmeo da maré grande, espelhando o
+            // anel duplo do vendaval) e mais névoa d'água
             const lv = Math.max(1, Math.min(5, ev.level ?? 1));
-            spawnParticles(x, y, z, '#bfe4ff', 10 + lv * 2, 2.6, 0.55, 1.5, 1.7); // respingo
-            spawnParticles(x, y, z, '#4db4ff', 8 + lv, 2.0, 0.6, 1.2, 0.6);
+            spawnParticles(x, y, z, '#bfe4ff', 10 + lv * 3, 2.6, 0.55, 1.5, 1.7); // respingo
+            spawnParticles(x, y, z, '#4db4ff', 8 + lv * 2, 2.0, 0.6, 1.2, 0.6);
             spawnParticles(x, y, z, '#e8f6ff', 4 + lv, 1.2, 0.35, 1.0, 0.8); // espuma
-            spawnRing(x, 0.1, z, '#7cc4f0', 1.5 + 0.22 * lv);
-            spawnRing(x, 0.16, z, '#4db4ff', 0.9 + 0.18 * lv);
-            spawnSmoke(x, y, z, 3 + lv, {
-              size: 0.07 + 0.012 * lv,
+            spawnRing(x, 0.1, z, '#7cc4f0', 1.5 + 0.3 * lv); // o anel molhado principal
+            spawnRing(x, 0.16, z, '#4db4ff', 0.9 + 0.24 * lv); // e a marca no chão (o peso da maré)
+            spawnRing(x, y + 0.12, z, '#bfe4ff', 0.8 + 0.2 * lv); // a coroa de respingo no ar
+            spawnSmoke(x, y, z, 3 + lv * 2, {
+              size: 0.07 + 0.018 * lv,
               heat: 0.02, // névoa d'água
-              life: 0.8 + 0.08 * lv,
+              life: 0.8 + 0.12 * lv,
               speed: 1.2,
             });
           } else if (

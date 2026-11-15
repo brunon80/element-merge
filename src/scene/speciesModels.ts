@@ -973,7 +973,7 @@ export const MESH_FIGURINOS: Partial<Record<SpeciesId, boolean[]>> = {
   ignis: [true, true, true, true, true], // árvore do fogo inteira (fire_model_lvl1..5)
   zephyr: [true, true, true, true, true], // árvore do vento inteira (wind_model_lvl1..5)
   golem: [true, false, false, false, false], // Nv.1 piloto (golem_model_lvl1)
-  nereia: [true, false, false, false, false], // Nv.1 piloto (water_model_lvl1)
+  nereia: [true, true, true, true, true], // árvore da água inteira (water_model_lvl1..5)
 };
 
 export const MODELS: Record<SpeciesId, SpeciesModel> = {

@@ -57,13 +57,27 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
     { x: 3.41, z: 2.2 }, // envergadura das asas — o pior caso da família
   ],
   nereia: [
-    // Nv.1 medido na MALHA 3D importada (probe-footprint: autoral 0,57 × 0,56
-    // da gota escalada; ver NereiaMeshRig) — a gotinha procedural media 0,51 × 0,50
-    { x: 0.58, z: 0.58 },
-    { x: 0.75, z: 0.74 },
-    { x: 0.93, z: 0.62 },
-    { x: 1.21, z: 1.59 },
-    { x: 1.75, z: 2.13 },
+    // A ÁRVORE INTEIRA na MALHA 3D importada (water_model_lvl1..5.glb, Nv.1..5).
+    // Encaixe autoral da SILHUETA: caixa CPU da malha + a sobra da vida da água
+    // (`WAVE_HUG`, proporcional ao tamanho — a sonda lê a caixa CPU e NÃO vê o
+    // deslocamento do vertex shader; o hug é a folga que a ondulação da casca e
+    // o achatado da carga ganham para fora, e o FOOT_MARGIN cobre o resto). A
+    // rig amarra o encaixe da malha a estes números (`footprintOf` no
+    // NereiaMeshRig): `MEDIDO = s_a·(half + abraço)` com `s_a = formTop/spanY`
+    // (a mesma regra da tabela do vento). ⚠️ Os GLBs chegaram da esteira em
+    // ordem INVERTIDA às artes 2D (o "lvl2" era o dragão da arte `water_lvl5_1`
+    // e o "lvl5" o axolotl da `water_lvl2_1`); os arquivos foram RENOMEADOS
+    // para a escada da referência: gotinha → axolotl → hippocampão → draco →
+    // dragão alado. O axolotl abre as brânquias (1,00 de meia-envergadura crua),
+    // o draco Nv.4 deita a cauda no FUNDO do buraco (1,00 de profundidade) e o
+    // dragão Nv.5 é o pior caso da família (2,39) — puxa o `familyRadius`
+    // 2,21 → 2,47 e o `slotFit` 1,13 → 1,01 (a família quase não encolhe: a
+    // escada autoral sobrevive quase inteira).
+    { x: 0.58, z: 0.58 }, // gotinha Nv.1: malha + sobra (a gota procedural media 0,51 × 0,50)
+    { x: 1.2, z: 1.2 }, // axolotl Nv.2: brânquias em leque para os dois lados
+    { x: 1.48, z: 1.39 }, // hippocampão Nv.3: cauda enrolando para o lado
+    { x: 1.05, z: 2.12 }, // draco Nv.4: corpo estreito, cauda longa no eixo profundo
+    { x: 2.39, z: 2.32 }, // dragão alado Nv.5: barbatanas-alas abertas — o pior caso da família
   ],
   golem: [
     { x: 0.75, z: 0.63 },
