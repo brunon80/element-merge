@@ -1714,8 +1714,11 @@ export function ProjectileField() {
           }
           if (flameN < MAX_PER_ELEMENT) {
             const launch = Math.min(1, 0.25 + p.age / 0.12); // nasce pequena e "dispara"
-            // dragões Nv5 lançam bolas de fogo bem maiores que a faísca Nv1
-            const scale = (0.5 + 0.11 * (lvSign - 1)) * launch;
+            // A ÁRVORE DO FOGO EM MALHA (Nv.1..5): cada fusão troca a malha do
+            // monstro e ENGORDA o arremesso — o incêndio que um Nv5 cospe é
+            // MAIS que o dobro da bola da faísca Nv1 (0,50 → 1,15 de escala,
+            // antes 0,50 → 0,94). O halo acompanha (é o clarão da bola inteira)
+            const scale = (0.5 + 0.1625 * (lvSign - 1)) * launch;
             dummy.scale.setScalar(scale);
             dummy.updateMatrix();
             flameRef.current?.setMatrixAt(flameN, dummy.matrix);

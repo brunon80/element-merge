@@ -1094,15 +1094,23 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
           spawnParticles(x, y, z, glowColor(ev.element), 8, 2.4, 0.45, 1.2, 0.8);
           spawnRing(x, 0.1, z, glowColor(ev.element), 1.1);
           if (ev.species === 'ignis') {
-            // bola de fogo maior/mais alto nível = explosão e fuligem maiores
+            // A ÁRVORE EM MALHA cospe fogo cada vez mais gordo: cada nível do
+            // atirador engorda a bola (0,50→1,15 no projétil) E a explosão —
+            // bola de chama maior, a SEGUNDA bola de fogo por cima (a cogumela
+            // do incêndio, espelhando os dois matacões do golem), anel no piso
+            // que cresce com o nível (o "peso" do impacto, como o golem), e
+            // mais brasa e fuligem voando
             const lv = Math.max(1, Math.min(5, ev.level ?? 1));
-            spawnBurst(x, y, z, 0.62 + 0.17 * lv);
-            spawnParticles(x, y, z, '#ffb347', 8 + lv * 2, 3.0, 0.6, -1.8, 1.4); // brasos subindo
-            spawnParticles(x, y, z, '#ff5a1f', 6 + lv, 2.2, 0.5, 1.6);
-            spawnSmoke(x, y, z, 3 + lv, {
-              size: 0.08 + 0.014 * lv,
+            spawnBurst(x, y, z, 0.55 + 0.28 * lv); // bola principal (Nv1 0,83 → Nv5 1,95)
+            spawnBurst(x, y + 0.3, z, 0.34 + 0.18 * lv); // segunda língua de fogo
+            spawnParticles(x, y, z, '#ffb347', 8 + lv * 3, 3.0, 0.6, -1.8, 1.4); // brasos subindo
+            spawnParticles(x, y, z, '#ff5a1f', 6 + lv * 2, 2.2, 0.5, 1.6); // gotas de chama caindo
+            spawnRing(x, 0.1, z, '#ff7a2a', 1.1 + 0.34 * lv); // anel largo no piso = peso
+            spawnRing(x, y * 0.55, z, '#ffb347', 0.8 + 0.16 * lv); // anel de choque no ar
+            spawnSmoke(x, y, z, 3 + lv * 2, {
+              size: 0.08 + 0.02 * lv,
               heat: 0.55,
-              life: 1.0 + 0.12 * lv,
+              life: 1.0 + 0.14 * lv,
               speed: 1.1,
             });
           } else if (ev.species === 'golem') {

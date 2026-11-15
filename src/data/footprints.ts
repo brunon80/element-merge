@@ -40,11 +40,21 @@ export const FOOT_MARGIN = 0.08;
 const MEDIDO: Record<SpeciesId, Footprint[]> = {
   // --------------------------- puros (5 formas) ---------------------------
   ignis: [
-    { x: 1.01, z: 1.27 },
-    { x: 1.25, z: 1.98 },
-    { x: 1.04, z: 1.96 },
-    { x: 1.76, z: 2.58 },
-    { x: 2.03, z: 2.8 },
+    // A ÁRVORE INTEIRA na MALHA 3D importada (fire_model_lvl1..5.glb, Nv.1..5).
+    // Encaixe autoral da SILHUETA: caixa CPU da malha + o abraço estático do
+    // invólucro de chama (`SHELL_HUG`, proporcional ao tamanho — a sonda lê a
+    // caixa CPU e NÃO vê o deslocamento do vertex shader; o hug é a sobra que
+    // a casca ganha para fora, e o FOOT_MARGIN cobre a fervura). A rig amarra
+    // o encaixe da malha a estes números (`footprintOf` no IgnisMeshRig): o
+    // formTop manda na altura ATÉ a largura deixar — o Nv.5 abre as asas
+    // (3,41 de meia-envergadura: ele puxa o `familyRadius` 2,88 → 3,49 e o
+    // `slotFit` da família 0,87 → 0,72; o dragão é LARGO, não alto — mesmo
+    // padrão do primordial escalado para o buraco de 2,5)
+    { x: 0.82, z: 0.68 }, // faísca Nv.1: malha mais compacta que a bolota procedural antiga
+    { x: 0.87, z: 0.68 },
+    { x: 1.86, z: 1.12 },
+    { x: 2.17, z: 1.96 },
+    { x: 3.41, z: 2.2 }, // envergadura das asas — o pior caso da família
   ],
   nereia: [
     // Nv.1 medido na MALHA 3D importada (probe-footprint: autoral 0,57 × 0,56

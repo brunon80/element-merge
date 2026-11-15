@@ -3,26 +3,37 @@ import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import fireLvl1Url from '../models/fire/fire_model_lvl1.glb?url';
+import fireLvl2Url from '../models/fire/fire_model_lvl2.glb?url';
+import fireLvl3Url from '../models/fire/fire_model_lvl3.glb?url';
+import fireLvl4Url from '../models/fire/fire_model_lvl4.glb?url';
+import fireLvl5Url from '../models/fire/fire_model_lvl5.glb?url';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
+import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { getEngine } from '../store/gameStore';
+import type { MonsterLevel } from '../game/types';
 import { circleTexture } from './assets';
 import { attackPose, FlameRig, ROLE_LOOK, type FlameRigProps } from './FlameRig';
 import { makeEmberParticles, NOISE_GLSL } from './flameShaders';
 
 /**
- * IGNIS Nv.1 de MALHA 3D IMPORTADA (experimental): a unidade Nv.1 ("faísca")
- * troca o figurino procedural de chamas pelo mesh texturizado criado fora do
- * jogo (`src/models/fire/fire_model_lvl1.glb` — ~21 mil vértices, 40 mil
- * triângulos, UMA malha com UMA textura; gerado no Hunyuan3D, SEM ossos e SEM
- * animação no arquivo). Nv.2+ continua o FlameRig normal, e enquanto a malha
- * carrega o fallback também é o FlameRig.
+ * IGNIS DE MALHA 3D IMPORTADA — A ÁRVORE INTEIRA (Nv.1..5): cada forma da
+ * evolução do fogo é um mesh texturizado criado fora do jogo
+ * (`src/models/fire/fire_model_lvl1..5.glb` — ~21-27 mil vértices, UMA malha
+ * com UMA textura cada; gerados no Hunyuan3D, SEM ossos e SEM animação no
+ * arquivo). O figurino procedural de chamas (`FlameRig`) só aparece como
+ * fallback enquanto a malha da forma carrega.
  *
- * O GLB não traz esqueleto, então o ESQUELETO NASCE EM CÓDIGO:
+ * Os GLBs não trazem esqueleto, então o ESQUELETO NASCE EM CÓDIGO:
  * `root → spine → head → hair0 → hair1`, com pesos de pele (2 ossos/vértice)
  * calculados por FAIXA de Y da malha (`ensureSkin`, uma vez por geometria e
  * compartilhados entre instâncias — quem anima é o osso, e osso é por unidade).
+ * As caixas dos cinco modelos DIFEREM (o Nv.5 é mais baixo e mais largo que a
+ * bolota Nv.1), então TODOS os marcos do corpo — juntas, faixas de pele, zona
+ * da crina e o gradiente do invólucro — nascem da bbox de cada malha na mesma
+ * régua porcentual da faísca (`BODY_FRAC`); encaixar uma malha nova é só soltar
+ * o `.glb` na pasta e mapear a URL.
  * A "vida" vem em camadas, no mesmo idioma dos rigs da casa:
  *  1. RESPIRAÇÃO + cambalear idle nos ossos (spine infla/murcha, head atrasa,
  *     crina faz follow-through — o que escala de grupo nenhum faz);
@@ -32,48 +43,77 @@ import { makeEmberParticles, NOISE_GLSL } from './flameShaders';
  *  3. VIDA DA CHAMA no material: `onBeforeCompile` com o ruído de
  *     `flameShaders.ts` — cada ponta do leque molleja/alonga/pisca FORA DE
  *     FASE (em cima do movimento do osso, não no lugar dele);
- *  4. as MESMAS brasas subindo e a fuligem do pool compartilhado;
- *  5. INVOLTÓRIO DE CHAMA (o antigo abraçando o novo): uma casca da mesma
- *     malha vestida com o shader do FlameRig (fervura da base → topo),
- *     aditiva e translúcida por cima da textura — o rosto lê ATRAVÉS da
+ *  4. as MESMAS brasas subindo e a fuligem do pool compartilhado (mais de cada,
+ *     quanto mais alto o nível — como no FlameRig);
+ *  5. INVOLTÓRIO DE CHAMA (o antigo abraçando o novo, em TODOS os níveis): uma
+ *     casca da mesma malha vestida com o shader do FlameRig (fervura da base →
+ *     topo), aditiva e translúcida por cima da textura — o rosto lê ATRAVÉS da
  *     chama-veu, como os olhos do imps antigo na própria bola de fogo.
  *
- * ENCAIXE: o modelo é escalado para o topo autoral da forma (`formTop` Nv.1 =
- * 1,95) e plantado com a base no chão — o invólucro da malha (~0,68 × 0,53 de
- * meia-envergadura) é MENOR que o `MEDIDO` da faísca (1,01 × 1.27), então
- * `slotFit`/buracos/HUD seguem sem tocar em `data/footprints.ts`.
+ * ENCAIXE: cada modelo é escalado para o topo autoral da forma (`formTops`
+ * 1,95 → 4,45) e plantado com a base no chão. O Nv.5 abre as asas para os
+ * lados: o invólucro largo é o que `familyRadius`/`slotFit` levam em conta
+ * para o buraco — ver `data/footprints.ts`.
  */
 
-/** dados da espécie (a altura autoral do Nv.1 vem do catálogo, não do modelo) */
+/** dados da espécie (a altura autoral de cada forma vem do catálogo, não do modelo) */
 const IGNIS_DEF = getSpecies('ignis');
-const TOP_LVL1 = formTop(IGNIS_DEF, 1);
 const LEVEL_1 = 1;
 
+/** topo autoral por forma (Nv.1..5) — a mesma escada que o motor usa p/ o canhão */
+const TOP_BY_LEVEL = [1, 2, 3, 4, 5].map((l) => formTop(IGNIS_DEF, l));
+
+/** URL da malha da forma (índice = nível-1). O encaixe por bbox torna o resto automático */
+const FIRE_URLS = [fireLvl1Url, fireLvl2Url, fireLvl3Url, fireLvl4Url, fireLvl5Url];
+const fireUrlFor = (level: number): string => FIRE_URLS[level - 1];
+
 /**
- * Rumo da malha: o rig encara o INIMIGO no +Z local (o mesmo +Z do avanço do
- * arremesso). O Hunyuan3D costuma exportar a frente no +Z da câmera que gerou
- * a imagem — se o print mostrar o bicho DE COSTAS para a câmera/inimigo,
- * vire aqui (Math.PI para meia-volta; π/2 e -π/2 para os lados).
+ * Rumo da malha POR NÍVEL (índice = nível-1): o rig encara o INIMIGO no +Z
+ * local (o mesmo +Z do avanço do arremesso). O Hunyuan3D costuma exportar a
+ * frente no +Z da câmera que gerou a imagem, MAS cada prompt/geração pode
+ * nascer virada para outro lado — o print de quatro vistas (mesh-viewer)
+ * mostrou: Nv.1 +Z, Nv.2 +Z, Nv.3 −X, Nv.4 +Z, Nv.5 +X. Se algum print
+ * mostrar o bicho DE COSTAS ou de lado, vire aqui (Math.PI para meia-volta;
+ * π/2 e -π/2 para os lados).
  */
-export const MODEL_YAW = 0;
+export const MODEL_YAWS = [0, 0, Math.PI / 2, 0, -Math.PI / 2];
+const yawFor = (level: number): number => MODEL_YAWS[level - 1];
 
 /** brasa base do emissivo (mesma família de cores do FlameRig) e o flash */
 const EMISSIVE_BASE = new THREE.Color('#ff5a12');
 const EMISSIVE_FLASH = new THREE.Color('#fff2d8');
 
 /**
- * ENVOLTÓRIO DE CHAMA (o antigo abraçando o novo): uma casca da MESMA malha,
- * deslocada para fora e vestida com o shader de chama do FlameRig — fervura
- * que NASCE NA BASE e CORRE para o topo (fluxo vertical do ruído + amplitude
- * crescendo com a altura + twist no topo). Renderizada aditiva e translúcida
- * por cima do corpo texturizado: o rosto fica lido ATRAVÉS da chama-veu, como
- * os olhos do imps antigo immersionados na própria bola de fogo.
+ * ENVOLTÓRIO DE CHAMA (o antigo abraçando o novo, em TODOS os níveis): uma
+ * casca da MESMA malha, deslocada para fora e vestida com o shader de chama do
+ * FlameRig — fervura que NASCE NA BASE e CORRE para o topo (fluxo vertical do
+ * ruído + amplitude crescendo com a altura + twist no topo). Renderizada
+ * aditiva e translúcida por cima do corpo texturizado: o rosto fica lido
+ * ATRAVÉS da chama-veu, como os olhos do imps antigo immersionados na própria
+ * bola de fogo. A base/topo vêm em uniforms (`uYMin`/`uYSpan`/`uBelly`) — a
+ * mesma fervura vale para a bolota Nv.1 e para o dragão Nv.5.
  */
+/**
+ * Abraço estático do invólucro (em metros do MODELO Nv.1): o deslocamento da
+ * casca para fora. Como os 5 modelos têm tamanhos de caixa DIFERENTES (o Nv.5
+ * é mais baixo que a bolota Nv.1), a folga é PROPORCIONAL ao tamanho — se
+ * ficasse fixa em 0,13, a casca do Nv.5 "abraçaria" 10% da altura dele (o
+ * dobro da faísca) e o fogo vazaria para fora do buraco.
+ */
+const SHELL_HUG = 0.13;
+
+/** altura de caixa da faísca Nv.1 — a régua que calibra o abraço e a fervura */
+const SPAN_NV1 = 1.974;
+
 const SHELL_VERT = /* glsl */ `
 uniform float uTime;
 uniform float uAmp;
 uniform float uSeed;
 uniform float uHurt;
+uniform float uYMin;
+uniform float uYSpan;
+uniform float uBelly;
+uniform float uHug;
 varying float vH;
 varying float vN1;
 varying vec3 vNrm;
@@ -81,9 +121,10 @@ varying vec3 vView;
 ${NOISE_GLSL}
 void main() {
   vec3 pos = position;
-  // altura no modelo (bbox local −1.02..+0.97): a fervura começa na base e vai
-  // ao topo — miúda embaixo, violenta em cima (o gradiente do FLAME_VERT antigo)
-  float h01 = clamp((pos.y + 1.02) / 1.99, 0.0, 1.0);
+  // altura NO MODELO (caixa de cada malha, dos −1,01 aos +0,98 da bolota aos
+  // −0,69..+0,61 do dragão): a fervura começa na base e vai ao topo — miúda
+  // embaixo, violenta em cima (o gradiente do FLAME_VERT antigo)
+  float h01 = clamp((pos.y - uYMin) / max(uYSpan, 1e-4), 0.0, 1.0);
   vH = h01;
   vec3 q = vec3(pos.x * 3.2, pos.y * 1.35 - uTime * 3.1, pos.z * 3.2) + uSeed;
   float n1 = fbm(q);
@@ -94,9 +135,9 @@ void main() {
   // duas faces das pontas finas empurram para lados opostos, dobram na quina e
   // nascem as "rachaduras"; no eixo as faces andam juntas — e a ponta cresce
   // para cima, que é exatamente o gesto de uma língua de fogo
-  vec3 away = pos - vec3(0.0, -0.15, 0.0); // umbigo da bolota = centro do eixo
+  vec3 away = pos - vec3(0.0, uBelly, 0.0); // umbigo do corpo = centro do eixo
   vec3 axis = normalize(vec3(away.x, away.y * 0.3, away.z) + 1e-5);
-  pos += axis * (0.13 + ((n1 - 0.5) * 1.7 + (n2 - 0.5) * 0.9) * amp);
+  pos += axis * (uHug + ((n1 - 0.5) * 1.7 + (n2 - 0.5) * 0.9) * amp);
   pos.y += (n1 - 0.4) * amp * h01; // línguas lambendo para cima no topo
   float tw = (fbm(q * 1.5 + 13.0) - 0.5) * 1.4 * h01; // twist que cresce com a altura
   float c = cos(tw);
@@ -145,20 +186,51 @@ const clampLevel = (l: number | undefined): number =>
   Math.max(1, Math.min(5, Math.round(l ?? 1)));
 
 /**
- * Esqueleto em código (o GLB não traz nenhum): `root → spine → head →
- * hair0 → hair1`. As juntas calcam nos marcos do modelo (bbox y −1.00..+0.97):
- * base do corpo, coração da bolota, topo da cara, raiz da crina e meio da
- * crina — a ponta final fica livre para o follow-through.
+ * Marcos do corpo em PORCENTAGEM da altura da malha — a régua que a faísca
+ * Nv.1 consagrou (bbox y −1,00..+0,97). Cada modelo tem a própria caixa (o
+ * Nv.5 é mais baixo e mais largo que a bolota Nv.1), então esqueleto, pesos de
+ * pele e shaders NASCEM DA BBOX de cada malha nesta mesma régua: base do
+ * corpo, coração da bolota, topo da cara, raiz da crina e meio da crina — e o
+ * invólucro/brasa entendem "embaixo/topo" por essa régua.
  */
-const JOINT_Y = [-1.0, -0.15, 0.3, 0.42, 0.72];
+const BODY_FRAC = {
+  /** juntas: base do corpo, coração da bolota, topo da cara, raiz/meio da crina */
+  joints: [0.0005, 0.431, 0.658, 0.719, 0.871],
+  /** faixas dos pesos de pele (rampas de `ensureSkin`) */
+  tRootSpine: [0.152, 0.406],
+  tSpineHead: [0.406, 0.648],
+  tHeadHair: [0.648, 0.729],
+  tHairRamp: [0.76, 0.912],
+  /** umbigo do corpo (centro do eixo do invólucro) */
+  belly: 0.431,
+  /** crina de fogo: onde começam as pontas livres e qual a rampa até o topo */
+  hairStart: 0.719,
+  hairSpan: 0.28,
+};
+
+/**
+ * Esqueleto em código (o GLB não traz nenhum): `root → spine → head →
+ * hair0 → hair1`. As juntas calcam nos marcos do MODELO (frações da bbox,
+ * `BODY_FRAC.joints`): base do corpo, coração da bolota, topo da cara, raiz da
+ * crina e meio da crina — a ponta final fica livre para o follow-through.
+ */
 
 /**
  * Pesos de pele POR FAIXA DE Y (2 influências por vértice, rampas suaves —
  * sem costuras duras). Uma vez por geometria (`userData` guarda o pino); as
  * instâncias compartilham os atributos, cada uma anima o PRÓPRIO esqueleto.
- * Abaixo de 0.28 o rosto nunca herda nada da crina (os olhos ficam firmes).
+ * Abaixo da rampa Spine→Head o rosto nunca herda nada da crina (os olhos
+ * ficam firmes). As faixas vêm da bbox da malha (`BODY_FRAC.t*`).
  */
-function ensureSkin(geo: THREE.BufferGeometry): void {
+function ensureSkin(
+  geo: THREE.BufferGeometry,
+  t: {
+    rootSpine: readonly [number, number];
+    spineHead: readonly [number, number];
+    headHair: readonly [number, number];
+    hairRamp: readonly [number, number];
+  },
+): void {
   if (geo.userData.ignisSkin) return;
   const pos = geo.attributes.position;
   const n = pos.count;
@@ -168,14 +240,14 @@ function ensureSkin(geo: THREE.BufferGeometry): void {
   for (let i = 0; i < n; i++) {
     const y = pos.getY(i);
     let a: number, b: number, w: number;
-    if (y < -0.2) {
-      a = 0; b = 1; w = band(y, -0.7, -0.2); // Root → Spine
-    } else if (y < 0.28) {
-      a = 1; b = 2; w = band(y, -0.2, 0.28); // Spine → Head
-    } else if (y < 0.44) {
-      a = 2; b = 3; w = band(y, 0.28, 0.44); // Head → Hair0
+    if (y < t.spineHead[0]) {
+      a = 0; b = 1; w = band(y, t.rootSpine[0], t.rootSpine[1]); // Root → Spine
+    } else if (y < t.headHair[0]) {
+      a = 1; b = 2; w = band(y, t.spineHead[0], t.spineHead[1]); // Spine → Head
+    } else if (y < t.headHair[1]) {
+      a = 2; b = 3; w = band(y, t.headHair[0], t.headHair[1]); // Head → Hair0
     } else {
-      a = 3; b = 4; w = band(y, 0.5, 0.8); // Hair0 → Hair1 (ponta = 1.0)
+      a = 3; b = 4; w = band(y, t.hairRamp[0], t.hairRamp[1]); // Hair0 → Hair1 (ponta = 1.0)
     }
     idx[i * 4] = a;
     idx[i * 4 + 1] = b;
@@ -188,32 +260,32 @@ function ensureSkin(geo: THREE.BufferGeometry): void {
 }
 
 /**
- * Dispatcher do Ignis: Nv.1 = malha importada; Nv.2..5 = FlameRig (a silhueta
- * procedural continua a estrela da progressão faísca → dragão).
+ * Dispatcher do Ignis: Nv.1..5 = a malha importada da forma (faísca → dragão
+ * de fogo, uma por nível); enquanto a malha carrega, o figurino procedural de
+ * chamas do MESMO nível segura o palco.
  */
 export function IgnisRig(props: FlameRigProps) {
   const level = clampLevel(props.level);
-  if (level === 1) {
-    // enquanto o GLB (2,4 MB) carrega, a faísca antiga segura o palco
-    return (
-      <Suspense fallback={<FlameRig {...props} level={1} />}>
-        <FireLvl1MeshRig {...props} level={1} />
-      </Suspense>
-    );
-  }
-  return <FlameRig {...props} level={level} />;
+  // enquanto o GLB (2,5-5 MB) carrega, o figurino do nível segura o palco
+  return (
+    <Suspense fallback={<FlameRig {...props} level={level} />}>
+      <FireMeshRig {...props} level={level} />
+    </Suspense>
+  );
 }
 
-/** malha Nv.1 pura — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
-function FireLvl1MeshRig({
+/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+function FireMeshRig({
   seed,
   unitId,
   emberScale = 1,
   demoAttackSeq,
   smoke,
+  level = LEVEL_1,
 }: FlameRigProps) {
-  useGLTF.preload(fireLvl1Url);
-  const { scene } = useGLTF(fireLvl1Url);
+  const url = fireUrlFor(level);
+  useGLTF.preload(url);
+  const { scene } = useGLTF(url);
 
   // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
   // só o material é por unidade, para dano/flicker não vazarem entre os bichos)
@@ -222,24 +294,58 @@ function FireLvl1MeshRig({
     scene.traverse((o) => {
       if (o instanceof THREE.Mesh) meshes.push(o);
     });
-    if (meshes.length === 0) throw new Error('fire_model_lvl1.glb não tem mesh');
+    if (meshes.length === 0) throw new Error(`${url} não tem mesh`);
     const geo = meshes[0].geometry;
     geo.computeBoundingBox();
-    const tex = (meshes[0].material as THREE.MeshStandardMaterial).map;
-    return { geo, tex };
+    const bb = geo.boundingBox!;
+    const spanY = bb.max.y - bb.min.y;
+    const at = (f: number) => bb.min.y + f * spanY; // fração da caixa → metro do modelo
+    return {
+      geo,
+      tex: (meshes[0].material as THREE.MeshStandardMaterial).map,
+      jointY: BODY_FRAC.joints.map(at),
+      yMin: bb.min.y,
+      spanY,
+      bellyY: at(BODY_FRAC.belly),
+      hairY0: at(BODY_FRAC.hairStart),
+      hairSpan: BODY_FRAC.hairSpan * spanY,
+      skin: {
+        rootSpine: BODY_FRAC.tRootSpine.map(at) as [number, number],
+        spineHead: BODY_FRAC.tSpineHead.map(at) as [number, number],
+        headHair: BODY_FRAC.tHeadHair.map(at) as [number, number],
+        hairRamp: BODY_FRAC.tHairRamp.map(at) as [number, number],
+      },
+    };
   }, [scene]);
 
-  // encaixe autoral: altura = formTop Nv.1, base no chão (y=0), centro do
-  // corpo no eixo do rig; o offset compensa a rotação de rumo (matriz T·R·S)
+  // encaixe autoral: altura = formTop da forma, base no chão (y=0), centro do
+  // corpo no eixo do rig; o offset compensa a rotação de rumo (matriz T·R·S).
+  // TETO DE LARGURA: a malha também respeita o buraco — o invólucro autoral da
+  // FORMA (`footprintOf`, já assinado na tabela de `data/footprints.ts`) é o
+  // contrato: encaixo (mesh + abraço de chama) ≤ entrada, nos dois eixos. O
+  // Nv.5 abre as asas: inflado só pela altura (formTop 4,45), a caixa larga
+  // dele estouraria o invólucro; então a altura autoral vale ATÉ onde a
+  // largura deixar — o dragão fica LARGO e um pouco mais BAIXO que o formTop
+  // (mesmo compromisso do primordial, que é escalado para caber no buraco)
   const fit = useMemo(() => {
     const bb = src.geo.boundingBox!;
-    const s = TOP_LVL1 / (bb.max.y - bb.min.y);
+    const foot = footprintOf('ignis', level as MonsterLevel);
+    const hug = SHELL_HUG * (SPAN_NV1 / src.spanY); // abraço proporcional ao tamanho
+    // meias-extensões NA ORDEM DO RUMO: com o bicho virado para os lados, a
+    // envergadura (eixo X da malha) vira profundidade no mundo (eixo Z) — o
+    // teto de largura tem que medir o que o buraco vê, não a caixa crua
+    const yaw = yawFor(level);
+    const sideways = Math.abs(Math.sin(yaw)) > 0.5;
+    const halfAlong = sideways ? Math.max(-bb.min.z, bb.max.z) : Math.max(-bb.min.x, bb.max.x);
+    const halfWide = sideways ? Math.max(-bb.min.x, bb.max.x) : Math.max(-bb.min.z, bb.max.z);
+    const sW = Math.min(foot.x / (halfWide + hug), foot.z / (halfAlong + hug));
+    const s = Math.min(TOP_BY_LEVEL[level - 1] / src.spanY, sW);
     const cx = ((bb.min.x + bb.max.x) / 2) * s;
     const cz = ((bb.min.z + bb.max.z) / 2) * s;
-    const px = -(cx * Math.cos(MODEL_YAW) + cz * Math.sin(MODEL_YAW));
-    const pz = cx * Math.sin(MODEL_YAW) - cz * Math.cos(MODEL_YAW);
+    const px = -(cx * Math.cos(yaw) + cz * Math.sin(yaw));
+    const pz = cx * Math.sin(yaw) - cz * Math.cos(yaw);
     return { s, pos: [px, -bb.min.y * s, pz] as [number, number, number] };
-  }, [src]);
+  }, [src, level]);
 
   // material por instância: textura do GLB + brasa emissiva + ondulação de
   // chama via onBeforeCompile (o MESMO ruído de flameShaders.ts)
@@ -256,16 +362,19 @@ function FireLvl1MeshRig({
       sh.uniforms.uFT = { value: 0 };
       sh.uniforms.uFA = { value: 0.06 };
       sh.uniforms.uFSeed = { value: seed };
+      sh.uniforms.uHairY0 = { value: src.hairY0 };
+      sh.uniforms.uHairSpan = { value: src.hairSpan };
       sh.vertexShader =
-        `uniform float uFT;\nuniform float uFA;\nuniform float uFSeed;\nvarying float vHair;\n${NOISE_GLSL}\n` +
+        `uniform float uFT;\nuniform float uFA;\nuniform float uFSeed;\nuniform float uHairY0;\nuniform float uHairSpan;\nvarying float vHair;\n${NOISE_GLSL}\n` +
         sh.vertexShader.replace(
           '#include <begin_vertex>',
           /* glsl */ `#include <begin_vertex>
           // CRINA DE FOGO (comportamento de chama, não "gelatina"):
-          // y<0.42 é sólido (rosto/olhos nunca tremem); de 0.42 ao topo (0.97),
-          // cada ponta do leque TEM FASE PRÓPRIA — molleja, alonga/encurta e
-          // acende fora de fase, como línguas de fogo numa vela.
-          float h = clamp((transformed.y - 0.42) / 0.55, 0.0, 1.0);
+          // abaixo da raiz da crina (uHairY0, marco da bbox desta malha) é
+          // sólido (rosto/olhos nunca tremem); da raiz ao topo, cada ponta do
+          // leque TEM FASE PRÓPRIA — molleja, alonga/encurta e acende fora de
+          // fase, como línguas de fogo numa vela.
+          float h = clamp((transformed.y - uHairY0) / uHairSpan, 0.0, 1.0);
           float w = h * h; // raiz plantada na cabeça, pontas livres
           float ph = atan(transformed.z, transformed.x) * 1.3 + transformed.y * 2.0 + uFSeed;
           // mollejo lateral (dois harmônicos — senão vira metrônomo)
@@ -274,7 +383,7 @@ function FireLvl1MeshRig({
           // línguas de fogo: a ponta alonga e encolhe (onda subindo pela crina)
           float tongue = sin(uFT * 7.4 + ph * 3.4) * 0.5
             + fbm(vec3(transformed.x * 7.0, transformed.y * 5.0 - uFT * 5.0, transformed.z * 7.0) + uFSeed) - 0.4;
-          transformed.y = 0.42 + (transformed.y - 0.42) * (1.0 + uFA * 3.4 * w * tongue);
+          transformed.y = uHairY0 + (transformed.y - uHairY0) * (1.0 + uFA * 3.4 * w * tongue);
           // as pontas dobram para dentro/para fora do eixo (chama respirando)
           vec2 radial = length(transformed.xz) > 1e-4 ? normalize(vec2(transformed.x, transformed.z)) : vec2(0.0);
           transformed.xz += radial * uFA * 1.5 * w * sin(uFT * 4.6 + ph);
@@ -299,21 +408,22 @@ function FireLvl1MeshRig({
 
   // ESQUELETO POR INSTÂNCIA: a geometria (com os pesos de `ensureSkin`) é
   // compartilhada, mas os ossos e a animação são privados de cada unidade —
-  // dois Ignis Nv.1 em cena nunca dançam sincronizados.
+  // dois Ignis em cena nunca dançam sincronizados.
   const rig = useMemo(() => {
-    ensureSkin(src.geo);
+    ensureSkin(src.geo, src.skin);
     const mk = (name: string, y: number) => {
       const b = new THREE.Bone();
       b.name = name;
       b.position.set(0, y, 0);
       return b;
     };
-    // juntas absolutas (JOINT_Y) viram offsets locais na cadeia
-    const root = mk('root', JOINT_Y[0]);
-    const spine = mk('spine', JOINT_Y[1] - JOINT_Y[0]);
-    const head = mk('head', JOINT_Y[2] - JOINT_Y[1]);
-    const hair0 = mk('hair0', JOINT_Y[3] - JOINT_Y[2]);
-    const hair1 = mk('hair1', JOINT_Y[4] - JOINT_Y[3]);
+    // juntas absolutas (marcos da bbox) viram offsets locais na cadeia
+    const jy = src.jointY;
+    const root = mk('root', jy[0]);
+    const spine = mk('spine', jy[1] - jy[0]);
+    const head = mk('head', jy[2] - jy[1]);
+    const hair0 = mk('hair0', jy[3] - jy[2]);
+    const hair1 = mk('hair1', jy[4] - jy[3]);
     root.add(spine);
     spine.add(head);
     head.add(hair0);
@@ -327,15 +437,16 @@ function FireLvl1MeshRig({
   }, [src, body]);
 
   // brasas subindo + clarão + fuligem: o mesmo idioma visual do FlameRig
+  // (fogo maior = mais brasa subindo)
   const ember = useMemo(
     () =>
       makeEmberParticles({
-        count: 12 + LEVEL_1 * 8,
+        count: 12 + level * 8,
         emberScale,
-        level: LEVEL_1,
-        topY: TOP_LVL1,
+        level,
+        topY: TOP_BY_LEVEL[level - 1],
       }),
-    [emberScale],
+    [emberScale, level],
   );
 
   // INVOLTÓRIO: a casca de chama do antigo (shader próprio acima, mesmo
@@ -350,16 +461,20 @@ function FireLvl1MeshRig({
         depthWrite: false,
         uniforms: {
           uTime: { value: 0 },
-          uAmp: { value: 0.11 },
+          uAmp: { value: 0.11 * (SPAN_NV1 / src.spanY) },
+          uHug: { value: SHELL_HUG * (SPAN_NV1 / src.spanY) },
           uSeed: { value: seed },
           uHurt: { value: 0 },
           uAlpha: { value: 0.55 },
+          uYMin: { value: src.yMin },
+          uYSpan: { value: src.spanY },
+          uBelly: { value: src.bellyY },
           uCold: { value: new THREE.Color(ROLE_LOOK.body!.cold) },
           uMid: { value: new THREE.Color(ROLE_LOOK.body!.mid) },
           uHot: { value: new THREE.Color(ROLE_LOOK.body!.hot) },
         },
       }),
-    [seed],
+    [seed, src],
   );
 
   useEffect(
@@ -391,6 +506,8 @@ function FireLvl1MeshRig({
     const dt = Math.min(dtRaw, 0.05);
     clock.current += dt;
     const t = clock.current;
+    const top = TOP_BY_LEVEL[level - 1];
+    const jy = src.jointY;
 
     // estado da unidade no motor (dano, HP, morte) — os mesmos canais do FlameRig
     let hurt = 0;
@@ -438,7 +555,7 @@ function FireLvl1MeshRig({
     // cambalear idêntico ao FlameRig (os mesmos dois harmônicos de eixo)
     b.spine.rotation.z = Math.sin(t * 1.8 + seed) * 0.07 + Math.sin(t * 4.7 + 1.1) * 0.03;
     b.spine.rotation.x = Math.sin(t * 2.2 + seed) * 0.045 + pose.lean * 0.85;
-    b.root.position.y = JOINT_Y[0] + Math.sin(t * 2.6 + seed * 1.3) * 0.05 + surge * 0.7;
+    b.root.position.y = jy[0] + Math.sin(t * 2.6 + seed * 1.3) * 0.05 + surge * 0.7;
     b.head.rotation.x =
       Math.sin(t * 1.9 + seed * 0.7) * 0.06 + pose.lean * 0.45 - hurt * 0.18 + wilt * 0.6;
     b.head.rotation.z = Math.sin(t * 1.25 + seed * 0.4) * 0.05;
@@ -458,8 +575,11 @@ function FireLvl1MeshRig({
     }
     shellMat.uniforms.uTime.value = t;
     shellMat.uniforms.uHurt.value = hurt;
+    // fervura PROPORCIONAL ao tamanho da malha (SPAN_NV1 / spanY): a casca do
+    // dragão Nv.5 (caixa miúda de 1,29) ferve nas MESMAS medidas de mundo da
+    // faísca — senão o ruído inflaria 20% da barriga dele e vazaria do buraco
     shellMat.uniforms.uAmp.value =
-      0.11 * (0.62 + 0.38 * hpFrac) * (1 + pose.flare * 0.6) * (1 + hurt * 0.4) * (1 - wilt * 0.6);
+      0.11 * (SPAN_NV1 / src.spanY) * (0.62 + 0.38 * hpFrac) * (1 + pose.flare * 0.6) * (1 + hurt * 0.4) * (1 - wilt * 0.6);
     shellMat.uniforms.uAlpha.value = Math.max(0, (0.55 + flick * 0.07 + pose.flare * 0.25) * alpha);
     g.position.z = pose.stepZ;
 
@@ -471,8 +591,9 @@ function FireLvl1MeshRig({
       sh.uniforms.uFT.value = t;
       // fervor acompanha HP/fraca, estouro do arremesso e dano (o mesmo
       // ampMul do FlameRig: fogo ferido ferve diferente, fogo cheio ferve mais)
+      // — na MESMA medida de mundo em qualquer malha (SPAN_NV1 / spanY)
       sh.uniforms.uFA.value =
-        0.06 * (0.7 + 0.3 * hpFrac) * (1 + pose.flare * 1.2 + hurt * 0.6);
+        0.06 * (SPAN_NV1 / src.spanY) * (0.7 + 0.3 * hpFrac) * (1 + pose.flare * 1.2 + hurt * 0.6);
     }
     body.emissiveIntensity = Math.max(
       0,
@@ -485,9 +606,10 @@ function FireLvl1MeshRig({
     ember.mat.uniforms.uTime.value = t;
     ember.mat.uniforms.uAlpha.value = alpha;
 
-    // ---- fuligem do corpo (pool compartilhado com a trilha de fogo) ----
+    // ---- fuligem do corpo (pool compartilhado com a trilha de fogo) —
+    // quanto mais alta a forma, mais fuligem saindo (como no FlameRig) ----
     if (smoke && alpha > 0.25) {
-      sootAcc.current += dt * (2.2 + 2.7 * LEVEL_1);
+      sootAcc.current += dt * (2.2 + 2.7 * level);
       let guard = 0;
       while (sootAcc.current >= 1 && guard < 4) {
         sootAcc.current -= 1;
@@ -496,15 +618,15 @@ function FireLvl1MeshRig({
         // sai da coluna sobre a cabeça: altura entre 45% e 105% do topo
         tmpWorld
           .set(
-            (Math.random() - 0.5) * (0.4 + LEVEL_1 * 0.16),
-            TOP_LVL1 * (0.45 + Math.random() * 0.6),
-            (Math.random() - 0.5) * (0.4 + LEVEL_1 * 0.16) - 0.15,
+            (Math.random() - 0.5) * (0.4 + level * 0.16),
+            top * (0.45 + Math.random() * 0.6),
+            (Math.random() - 0.5) * (0.4 + level * 0.16) - 0.15,
           )
           .applyMatrix4(g.matrixWorld);
         smoke.spawn(tmpWorld.x, tmpWorld.y, tmpWorld.z, {
-          size: 0.055 + 0.016 * LEVEL_1,
+          size: 0.055 + 0.016 * level,
           heat: 0.35 + Math.random() * 0.3,
-          life: 1.0 + LEVEL_1 * 0.08,
+          life: 1.0 + level * 0.08,
           lifeVar: 0.5,
           jitter: 0.14,
           rise: 0.55,
@@ -514,26 +636,30 @@ function FireLvl1MeshRig({
       if (sootAcc.current > 4) sootAcc.current = 4;
     }
 
-    // ---- clarão quente (carrega no arremesso como o FlameRig) ----
-    const s2 = Math.max(0.6, 1.78 + flick * 0.3 + hurt * 0.5 + pose.flare * 0.7);
+    // ---- clarão quente (carrega no arremesso como o FlameRig; forma maior,
+    // clarão maior — a mesma escada de base do procedural) ----
+    const s2 = Math.max(
+      0.6,
+      1.5 + level * 0.28 + flick * 0.3 + hurt * 0.5 + pose.flare * 0.7,
+    );
     glow.scale.setScalar(s2);
-    glow.position.y = TOP_LVL1 * 0.5;
+    glow.position.y = top * 0.5;
     (glow.material as THREE.SpriteMaterial).opacity = Math.max(
       0,
-      (0.24 + flick * 0.08 + hurt * 0.2 + pose.flare * 0.3) * alpha,
+      (0.18 + level * 0.03 + flick * 0.07 + hurt * 0.2 + pose.flare * 0.3) * alpha,
     );
   });
 
   return (
     <group ref={animRef}>
-      <group position={fit.pos} rotation-y={MODEL_YAW} scale={fit.s}>
+      <group position={fit.pos} rotation-y={yawFor(level)} scale={fit.s}>
         <primitive object={rig.skinned} />
         {/* pivô no joelho do spine: a casca espreme/inclina junto do corpo */}
-        <group ref={shellRef} position={[0, JOINT_Y[1], 0]}>
+        <group ref={shellRef} position={[0, src.jointY[1], 0]}>
           <mesh
             geometry={src.geo}
             material={shellMat}
-            position={[0, -JOINT_Y[1], 0]}
+            position={[0, -src.jointY[1], 0]}
             frustumCulled={false}
           />
         </group>

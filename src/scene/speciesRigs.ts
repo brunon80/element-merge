@@ -92,7 +92,7 @@ export interface SpeciesRigProps {
  * já têm figurino próprio; a busca é por espécie e o fallback é o rig padrão.
  */
 export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigProps>>> = {
-  ignis: IgnisRig, // Nv.1 = malha 3D importada (experimental); Nv.2+ = FlameRig
+  ignis: IgnisRig, // Nv.1..5 = a malha 3D da árvore do fogo (FlameRig só segura o palco enquanto o GLB carrega)
   zephyr: ZephyrRig, // Nv.1 = malha 3D importada (experimental); Nv.2+ = WindRig
   golem: GolemRig, // Nv.1 = malha 3D importada (experimental); Nv.2+ = StoneRig
   nereia: NereiaRig, // Nv.1 = malha 3D importada (experimental); Nv.2+ = WaterRig
