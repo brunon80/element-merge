@@ -25,6 +25,13 @@ vi.mock('../scene/BloomGate', () => ({
   BloomGate: () => null,
 }));
 
+// A névoa adaptiva é filho direto do <Canvas> no App e vive de `useThree` +
+// `useFrame` — no smoke o Canvas é um `<div>` mockado, então ela também sai de
+// cena (mesmo critério do BattleScene e do BloomGate logo acima).
+vi.mock('../scene/AdaptiveFog', () => ({
+  AdaptiveFog: () => null,
+}));
+
 import { App } from '../app/App';
 import { getEngine, useGameStore } from '../store/gameStore';
 

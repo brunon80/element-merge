@@ -3,10 +3,16 @@ import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import windLvl1Url from '../models/wind/wind_model_lvl1.glb?url';
+import windLvl2Url from '../models/wind/wind_model_lvl2.glb?url';
+import windLvl3Url from '../models/wind/wind_model_lvl3.glb?url';
+import windLvl4Url from '../models/wind/wind_model_lvl4.glb?url';
+import windLvl5Url from '../models/wind/wind_model_lvl5.glb?url';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
+import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { getEngine } from '../store/gameStore';
+import type { MonsterLevel } from '../game/types';
 import { circleTexture, setSeedAttribute } from './assets';
 import { NOISE_GLSL } from './flameShaders';
 import {
@@ -19,68 +25,123 @@ import {
 import { WIND_FRAG } from './windShaders';
 
 /**
- * ZÉFIRO Nv.1 de MALHA 3D IMPORTADA (linha "modelos 3D", molde do Ignis Nv.1):
- * a unidade Nv.1 ("sopro") troca o funil procedural de peças pelo mesh
- * texturizado criado fora do jogo (`src/models/wind/wind_model_lvl1.glb` —
- * ~24,7 mil vértices, 40 mil triângulos, UMA malha com UMA textura, exportado
- * pelo trimesh a partir de um .ply; SEM ossos e SEM animação no arquivo).
- * Nv.2+ continua o WindRig normal (redemoinho → tornado), e enquanto a malha
- * carrega o fallback também é o WindRig.
+ * ZÉFIRO DE MALHA 3D IMPORTADA — A ÁRVORE INTEIRA (Nv.1..5): cada forma da
+ * evolução do vento é um mesh texturizado criado fora do jogo
+ * (`src/models/wind/wind_model_lvl1..5.glb` — ~25-31 mil vértices, UMA malha
+ * com UMA textura cada; SEM ossos e SEM animação no arquivo). O figurino
+ * procedural de vendaval (`WindRig`) só aparece como fallback enquanto a malha
+ * da forma carrega.
  *
- * O GLB não traz esqueleto, então vale o mesmo esquema da malha do fogo:
- * esqueleto gerado em código (`root → spine → head → fin0 → fin1`) com pesos
- * por FAIXA de Y (`ensureSkin`), coreografia de rajada é o `attackPose`
- * exportado do WindRig (inalar → soltar), follow-through amostrado no passado,
- * e a VIDA DO VENTO em camadas:
- *  1. o corpo texturizado com `onBeforeCompile`: grão das fitas de vento
- *     CORRENDO PARA CIMA (a pista de "vento" — análogo da fervura do fogo) e
- *     as barbatanas/acrescimo acima de y 0.3 batendo com fase própria; o
- *     rosto (y < 0.28) fica firme;
- *  2. ENVOLTÓRIO DE VENTO (o antigo abraçando o novo): a MESMA malha folgada
- *     para fora vestida com o WIND_FRAG LITERAL do WindRig — fitas subindo em
- *     espiral, torção + rotação DIFERENCIAL (a base gira mais que o topo) e a
- *     nuvem de tempestade translúcida. O deslocamento é pelo EIXO do corpo,
- *     nunca pela normal (lição das "rachaduras" do invólucro do fogo: na
- *     normal, pontas finas dobram na quina). Translúcido com mesclagem NORMAL
- *     como o figurino do vento (nada estoura em branco), e o rosto lê através
- *     do véu.
- *  3. os MESMOS motes subindo em espiral pelo funil (poeira, folhas e luz de
- *     relâmpago) e a poeira sugada do pool compartilhado.
+ * Os GLBs não trazem esqueleto, então o ESQUELETO NASCE EM CÓDIGO
+ * (`root → spine → head → fin0 → fin1`), com pesos de pele por FAIXA de Y
+ * (`ensureSkin`, uma vez por geometria, compartilhados entre instâncias) e a
+ * coreografia de rajada do WindRig (`attackPose`: inalar → soltar). As caixas
+ * dos cinco modelos DIFEREM (a coruja Nv.4 é larga e baixinha; o sopro Nv.1 é
+ * a bolota alta), então TODOS os marcos — juntas, faixas de pele, zona das
+ * barbatanas e o gradiente do invólucro — nascem da bbox de cada malha na
+ * mesma régua porcentual do sopro (`BODY_FRAC`). A "vida" vem em camadas, no
+ * mesmo idioma dos rigs da casa:
+ *  1. RESPIRAÇÃO + cambalear idle nos ossos (o funil infla/murcha com a SUCÇÃO
+ *     da inalação, a cabeça atrasa o lean, as barbatanas são amostradas NO
+ *     PASSADO — follow-through);
+ *  2. COREOGRAFIA DE RAJADA idêntica — janela do motor (`lastAttackAt`) e
+ *     `demoAttackSeq` do bestiário;
+ *  3. VIDA DO VENTO no material: grão das fitas CORRENDO PARA CIMA + as
+ *     barbatanas acima da raiz batendo com fase própria (o rosto lê firme);
+ *  4. os MESMOS motes subindo em espiral e a poeira FRIA sugada do pool
+ *     (mais de cada, quanto mais alto o nível — como no WindRig);
+ *  5. INVOLTÓRIO DE VENTO (o antigo abraçando o novo, em TODOS os níveis):
+ *     uma casca da mesma malha vestida com o WIND_FRAG literal — fitas em
+ *     espiral, torção + balanço, nuvem de tempestade translúcida. O
+ *     deslocamento é pelo EIXO do corpo, nunca pela normal (lição das
+ *     "rachaduras"). O rosto lê ATRAVÉS do véu.
  *
- * ENCAIXE: modelo escalado para o topo autoral da forma (`formTop` Nv.1 =
- * 1,75) e FLUTUANDO à altura do sopro antigo (`FLOAT_Y` Nv.1 = 0,34) — a
- * meia-envergadura da malha escalada (~0,73 × 0,62) é MENOR que o `MEDIDO` do
- * sopro (0,9 × 0,88), então `slotFit`/buracos/HUD seguem sem tocar em
- * `data/footprints.ts`. O giro do invólucro é deliberadamente LENTO (uSpin
- * modesto): redemoinhar rápido alargaria a varredura do invólucro para fora do
- * anel da pegada.
+ * GIRO DO INVOLTÓRIO POR NÍVEL: o Nv.1 (bolota ~quadrada na vista de cima)
+ * conserva a revolução contínua lenta aprovada; as formas 2..5 têm ASAS/BRAÇOS
+ * longes do eixo (envergadura crua ~1,0 num box 1,98) — girar isso 360°
+ * varreria para fora do buraco (regra da casa: o giro é LENTO de propósito
+ * para não alargar a varredura). Nelas o giro vira VARREDURA OSCILANTE (o
+ * rafale balança o véu, nunca o repisa em torno do corpo) com teto de ângulo
+ * (`uAngMax`) medido para a sobra do próprio footprint — ver a tabela
+ * `SHELL_SPIN`.
+ *
+ * ENCAIXE: cada modelo é escalado para o topo autoral da forma (`formTops`
+ * 1,75 → 4,5) e FLUTUA à altura do figurino do seu nível (`FLOAT_Y` — o vento
+ * nunca pisou o chão senão no Nv.5 tornado; aqui é a base da malha). TETO DE
+ * LARGURA: o invólucro autoral (`footprintOf`, tabela `data/footprints.ts`) é
+ * o contrato — encaixo (mesh + abraço) ≤ entrada nos dois eixos. A coruja Nv.4
+ * e o dragão Nv.5 abrem as asas: são elas que puxam o `familyRadius` da
+ * família (e o `slotFit` encolhe a família inteira para o buraco, como no
+ * dragão de fogo).
  */
 
-/** dados da espécie (a altura autoral do Nv.1 vem do catálogo, não do modelo) */
+/** dados da espécie (a altura autoral de cada forma vem do catálogo, não do modelo) */
 const ZEPHYR_DEF = getSpecies('zephyr');
-const TOP_LVL1 = formTop(ZEPHYR_DEF, 1);
-/** o sopro antigo flutuava (FLOAT_Y do WindRig, Nv.1) — a malha também flutua */
-const FLOAT_LVL1 = 0.34;
+const LEVEL_1 = 1;
+
+/** topo autoral por forma (Nv.1..5) — a mesma escada que o motor usa p/ o canhão */
+const TOP_BY_LEVEL = [1, 2, 3, 4, 5].map((l) => formTop(ZEPHYR_DEF, l));
+
+/** o vendaval criatura abaixo flutua mais (o Nv.5 da malha pisa o chão) — o mesmo FLOAT_Y do WindRig */
+const FLOAT_Y = [0.34, 0.24, 0.13, 0.05, 0];
+
+/** URL da malha da forma (índice = nível-1). O encaixe por bbox torna o resto automático */
+const WIND_URLS = [windLvl1Url, windLvl2Url, windLvl3Url, windLvl4Url, windLvl5Url];
+const windUrlFor = (level: number): string => WIND_URLS[level - 1];
 
 /**
- * Rumo da malha: o rig encara o INIMIGO no +Z local (o mesmo +Z do avanço da
- * rajada). Se o print mostrar o bicho DE COSTAS, vire aqui (Math.PI = meia
- * volta; π/2 e -π/2 para os lados).
+ * Rumo da malha POR NÍVEL (índice = nível-1): o rig encara o INIMIGO no +Z
+ * local (o mesmo +Z do avanço da rajada). O print das quatro vistas
+ * (mesh-viewer) mostrou os cinco nascendo virados para +Z. Se algum print
+ * mostrar o bicho DE COSTAS ou de lado, vire aqui (Math.PI para meia-volta;
+ * π/2 e -π/2 para os lados).
  */
-export const ZEPHYR_MODEL_YAW = 0;
+export const MODEL_YAWS = [0, 0, 0, 0, 0];
+const yawFor = (level: number): number => MODEL_YAWS[level - 1];
 
 /** brasa fria do emissivo (tempestade, não fogo) e o flash de dano */
 const EMISSIVE_BASE = new THREE.Color('#4f9fd0');
 const EMISSIVE_FLASH = new THREE.Color('#eaf6ff');
 
 /**
+ * Abraço estático do invólucro (em metros do MODELO Nv.1): a folga da casca
+ * para fora. Como os 5 modelos têm caixas DIFERENTES, a folga é PROPORCIONAL
+ * ao tamanho (regra do fogo, que vale em dobro no vento: o véu nunca pode
+ * vazar do buraco).
+ */
+const SHELL_HUG = 0.12;
+
+/** altura de caixa do sopro Nv.1 — a régua que calibra o abraço e a fervura */
+const SPAN_NV1 = 1.977;
+
+/**
+ * GIRO DO INVOLTÓRIO por nível (índice = nível-1). Nv.1: revolução contínua
+ * lenta (uSpin rad/s) + torção alta — a bolota girando é o redemoinho aprovado
+ * na primeira rodada. Nv.2..5: asas e braços de vento longe do eixo girando
+ * 360° varreriam o buraco (a sobra do footprint autoral não paga o círculo);
+ * lá o véu BALANÇA (uSway em rad, oscilante) com teto de ângulo (uAngMax)
+ * medido para a sobra do footprint no eixo profundo — as garras do rafale
+ * (`uFlare`) ainda aceleram tudo, só que batem no teto em vez de repisar o
+ * corpo inteiro.
+ */
+const SHELL_SPIN = [
+  { twist: 0.8, spin: 0.9, sway: 0.0, angMax: 0.0, noise: 1.2 }, // Nv.1 = como foi aprovado
+  { twist: 0.16, spin: 0.0, sway: 0.3, angMax: 0.75, noise: 0.9 },
+  { twist: 0.1, spin: 0.0, sway: 0.22, angMax: 0.55, noise: 0.8 }, // asas largas: varredura curta
+  { twist: 0.16, spin: 0.0, sway: 0.3, angMax: 0.8, noise: 0.9 },
+  { twist: 0.16, spin: 0.0, sway: 0.32, angMax: 0.8, noise: 0.9 },
+];
+
+/**
  * ENVOLTÓRIO DE VENTO: casca da mesma malha folgada ao longo do EIXO do corpo
  * (a lição do fogo vale em dobro aqui — o wind tem barbatanas finas) vestida
  * com o WIND_FRAG LITERAL do figurino. O vertex reescreve a fervura do
- * WIND_VERT trocando o deslocamento pela NORMAL pelo eixo suavizado, e
- * mantém torção + rotação diferencial + balanço da coluna idênticos.
- * Os varying batem com o WIND_FRAG (vU/vAng/vN1/vG/vNrm/vView), então o
- * fragment — fitas, nuvem de tempestade, mesclagem e anti-NaN — é o mesmo.
+ * WIND_VERT trocando o deslocamento pela NORMAL pelo eixo suavizado, e mantém
+ * torção + rotação diferencial + balanço da coluna. Os varying batem com o
+ * WIND_FRAG (vU/vAng/vN1/vG/vNrm/vView), então o fragment — fitas, nuvem de
+ * tempestade, mesclagem e anti-NaN — é o mesmo. Os marcos (base do eixo,
+ * altura do corpo, folga) vêm da bbox de CADA malha via uniforms — a mesma
+ * fervura vale para a bolota Nv.1 e para o dragão Nv.5.
  */
 const SHELL_VERT = /* glsl */ `
 uniform float uTime;
@@ -90,9 +151,15 @@ uniform float uHurt;
 uniform float uFlare;
 uniform float uTwist;
 uniform float uSpin;
+uniform float uSway;
+uniform float uAngMax;
+uniform float uNoiseTw;
 uniform float uBend;
 uniform float uPhase;
+uniform float uYMin;
 uniform float uModelH;
+uniform float uBelly;
+uniform float uHug;
 attribute float aSeed;
 varying float vU;
 varying float vAng;
@@ -106,9 +173,10 @@ void main() {
   vU = uv.y;
   vAng = atan(pos.z, pos.x);
 
-  // altura no modelo (bbox local −1,00..+0,98): tudo cresce com a altura,
-  // a base fica mais firme — o mesmo gradiente do WIND_VERT (gfrac)
-  float gh = pos.y + 1.0;
+  // altura NO MODELO (caixa de cada malha): tudo cresce com a altura, a base
+  // fica mais firme — o mesmo gradiente do WIND_VERT (gfrac), agora na régua
+  // da bbox desta malha (uYMin..uYMin+uModelH)
+  float gh = pos.y - uYMin;
   float gfrac = clamp(gh / max(0.001, uModelH), 0.0, 1.0);
   vG = gfrac;
 
@@ -122,15 +190,19 @@ void main() {
   // folga + turbulência no EIXO do corpo (não na normal): nas barbatanas
   // finas as duas faces empurriam para lados opostos e dobravam na quina
   // (as "rachaduras" do invólucro do fogo) — no eixo as faces andam juntas
-  vec3 away = pos - vec3(0.0, -0.1, 0.0); // centro do sopro (umbigo da nuvem)
+  vec3 away = pos - vec3(0.0, uBelly, 0.0); // umbigo do corpo (centro da nuvem)
   vec3 axis = normalize(vec3(away.x, away.y * 0.3, away.z) + 1e-5);
-  pos += axis * (0.12 + ((n1 - 0.5) * 1.7 + (n2 - 0.5) * 0.9) * amp);
+  pos += axis * (uHug + ((n1 - 0.5) * 1.7 + (n2 - 0.5) * 0.9) * amp);
 
-  // torção + rotação DIFERENCIAL com ruído dentro do ângulo (espiral bamba)
+  // torção + rotação com ruído dentro do ângulo (espiral bamba). Nv.1 gira de
+  // verdade (uSpin·uTime); nos níveis de asas o giro vira varredura OSCILANTE
+  // (uSway·sin) e o ângulo total bate no teto uAngMax (0 = sem teto) — a sobra
+  // do footprint autoral é o orçamento do varrimento
   float ang =
     uTwist * gh * (1.0 + uFlare * 0.6) +
-    uTime * uSpin * (1.0 - 0.4 * gfrac) * (1.0 + uFlare * 0.9) +
-    (fbm(q * 0.8 + 5.0) - 0.5) * 1.2;
+    (uSpin * uTime + uSway * sin(uTime * 0.9 + uPhase)) * (1.0 - 0.4 * gfrac) * (1.0 + uFlare * 0.9) +
+    (fbm(q * 0.8 + 5.0) - 0.5) * uNoiseTw;
+  if (uAngMax > 0.0) ang = clamp(ang, -uAngMax, uAngMax);
   float c = cos(ang);
   float s = sin(ang);
   pos.xz = mat2(c, -s, s, c) * pos.xz;
@@ -153,20 +225,54 @@ const clampLevel = (l: number | undefined): number =>
   Math.max(1, Math.min(5, Math.round(l ?? 1)));
 
 /**
- * Esqueleto em código (o GLB não traz nenhum): `root → spine → head → fin0 →
- * fin1`. Juntas calcadas nos marcos da malha (bbox y −1,00..+0,98): cauda do
- * sopro, coração da nuvem, topo da cara e raiz/ponta das barbatanas.
+ * Marcos do corpo em PORCENTAGEM da altura da malha — a régua que o sopro Nv.1
+ * consagrou (bbox y −1,00..+0,98). Cada modelo tem a própria caixa (a coruja
+ * Nv.4 é larga e baixa; o dragão Nv.5 cresce de novo), então esqueleto, pesos
+ * de pele e shaders NASCEM DA BBOX de cada malha nesta mesma régua: cauda do
+ * sopro, coração da nuvem, topo da cara e raiz/ponta das barbatanas — e o
+ * invólucro/motes entendem "embaixo/topo" por essa régua.
  */
-const JOINT_Y = [-1.0, -0.15, 0.3, 0.42, 0.72];
+const BODY_FRAC = {
+  /** juntas: cauda do funil, coração da nuvem, topo da cara, raiz/ponta das barbatanas */
+  joints: [0.001, 0.431, 0.6586, 0.7193, 0.871],
+  /** faixas dos pesos de pele (rampas de `ensureSkin`) */
+  tRootSpine: [0.1528, 0.4057],
+  tSpineHead: [0.4057, 0.6485],
+  tHeadFin: [0.6485, 0.7294],
+  tFinRamp: [0.7598, 0.9115],
+  /** umbigo do corpo (centro do eixo do invólucro) */
+  belly: 0.4545,
+  /** barbatanas/ asas de vento: onde começam as partes livres (rosto abaixo, sempre firme)
+   *  e qual a rampa até as pontas — para o shader de vida do corpo */
+  finStart: 0.6586,
+  finSpan: 0.3288,
+};
 
 /**
- * Pesos de pele POR FAIXA DE Y (2 influências por vértice, rampas suaves).
- * Uma vez por geometria; as instâncias compartilham os atributos, cada uma
- * anima o PRÓPRIO esqueleto. Abaixo de 0.28 o rosto nunca herda osso das
- * barbatanas (os olhos ficam firmes). Carimba também o `aSeed` que o
- * WIND_FRAG/SHELL exigem (lição WebKit: bound curto = o WebKit não desenha).
+ * Esqueleto em código (o GLB não traz nenhum): `root → spine → head → fin0 →
+ * fin1`. Juntas calcadas nos marcos do MODELO (frações da bbox,
+ * `BODY_FRAC.joints`).
  */
-function ensureSkin(geo: THREE.BufferGeometry, seed: number): void {
+
+/**
+ * Pesos de pele POR FAIXA DE Y (2 influências por vértice, rampas suaves —
+ * sem costuras duras). Uma vez por geometria (`userData` guarda o pino); as
+ * instâncias compartilham os atributos, cada uma anima o PRÓPRIO esqueleto.
+ * Abaixo da rampa Spine→Head o rosto nunca herda das barbatanas (os olhos
+ * ficam firmes). As faixas vêm da bbox da malha (`BODY_FRAC.t*`). Carimba
+ * também o `aSeed` que o WIND_FRAG/SHELL exigem (lição WebKit: bound curto =
+ * o WebKit não desenha).
+ */
+function ensureSkin(
+  geo: THREE.BufferGeometry,
+  seed: number,
+  t: {
+    rootSpine: readonly [number, number];
+    spineHead: readonly [number, number];
+    headFin: readonly [number, number];
+    finRamp: readonly [number, number];
+  },
+): void {
   if (!geo.userData.windSeed) {
     setSeedAttribute(geo, seed);
     geo.userData.windSeed = true;
@@ -180,14 +286,14 @@ function ensureSkin(geo: THREE.BufferGeometry, seed: number): void {
   for (let i = 0; i < n; i++) {
     const y = pos.getY(i);
     let a: number, b: number, w: number;
-    if (y < -0.2) {
-      a = 0; b = 1; w = band(y, -0.7, -0.2); // Root → Spine
-    } else if (y < 0.28) {
-      a = 1; b = 2; w = band(y, -0.2, 0.28); // Spine → Head
-    } else if (y < 0.44) {
-      a = 2; b = 3; w = band(y, 0.28, 0.44); // Head → Fin0
+    if (y < t.spineHead[0]) {
+      a = 0; b = 1; w = band(y, t.rootSpine[0], t.rootSpine[1]); // Root → Spine
+    } else if (y < t.headFin[0]) {
+      a = 1; b = 2; w = band(y, t.spineHead[0], t.spineHead[1]); // Spine → Head
+    } else if (y < t.headFin[1]) {
+      a = 2; b = 3; w = band(y, t.headFin[0], t.headFin[1]); // Head → Fin0
     } else {
-      a = 3; b = 4; w = band(y, 0.5, 0.8); // Fin0 → Fin1 (ponta = 1.0)
+      a = 3; b = 4; w = band(y, t.finRamp[0], t.finRamp[1]); // Fin0 → Fin1 (ponta = 1.0)
     }
     idx[i * 4] = a;
     idx[i * 4 + 1] = b;
@@ -200,20 +306,18 @@ function ensureSkin(geo: THREE.BufferGeometry, seed: number): void {
 }
 
 /**
- * Dispatcher do Zéfiro: Nv.1 = malha importada; Nv.2..5 = WindRig (a
- * progressão redemoinho → funil → ciclone → TORNADO continua procedural).
+ * Dispatcher do Zéfiro: Nv.1..5 = a malha importada da forma (sopro → dragão
+ * dos ventos, uma por nível); enquanto a malha carrega, o figurino procedural
+ * de vendaval do MESMO nível segura o palco.
  */
 export function ZephyrRig(props: WindRigProps) {
   const level = clampLevel(props.level);
-  if (level === 1) {
-    // enquanto o GLB (4,4 MB) carrega, o sopro antigo segura o palco
-    return (
-      <Suspense fallback={<WindRig {...props} level={1} />}>
-        <WindLvl1MeshRig {...props} level={1} />
-      </Suspense>
-    );
-  }
-  return <WindRig {...props} level={level} />;
+  // enquanto o GLB (3,7-4,6 MB) carrega, o figurino do nível segura o palco
+  return (
+    <Suspense fallback={<WindRig {...props} level={level} />}>
+      <WindMeshRig {...props} level={level} />
+    </Suspense>
+  );
 }
 
 /** motes do funil: poeira, folhas e luz subindo em espiral (o MATE do WindRig) */
@@ -274,42 +378,78 @@ void main() {
 }
 `;
 
-/** malha Nv.1 pura — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
-function WindLvl1MeshRig({
+/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+function WindMeshRig({
   seed,
   unitId,
   emberScale = 1,
   demoAttackSeq,
   smoke,
+  level = LEVEL_1,
 }: WindRigProps) {
-  useGLTF.preload(windLvl1Url);
-  const { scene } = useGLTF(windLvl1Url);
+  const url = windUrlFor(level);
+  useGLTF.preload(url);
+  const { scene } = useGLTF(url);
 
-  // a malha + a textura da fonte (geometry COMPARTILHADO entre instâncias;
-  // material e esqueleto são por unidade)
+  // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
+  // só o material é por unidade, para dano/flicker não vazarem entre os bichos)
   const src = useMemo(() => {
     const meshes: THREE.Mesh[] = [];
     scene.traverse((o) => {
       if (o instanceof THREE.Mesh) meshes.push(o);
     });
-    if (meshes.length === 0) throw new Error('wind_model_lvl1.glb não tem mesh');
+    if (meshes.length === 0) throw new Error(`${url} não tem mesh`);
     const geo = meshes[0].geometry;
     geo.computeBoundingBox();
-    const tex = (meshes[0].material as THREE.MeshStandardMaterial).map;
-    return { geo, tex };
+    const bb = geo.boundingBox!;
+    const spanY = bb.max.y - bb.min.y;
+    const at = (f: number) => bb.min.y + f * spanY; // fração da caixa → metro do modelo
+    return {
+      geo,
+      tex: (meshes[0].material as THREE.MeshStandardMaterial).map,
+      jointY: BODY_FRAC.joints.map(at),
+      yMin: bb.min.y,
+      spanY,
+      bellyY: at(BODY_FRAC.belly),
+      finY0: at(BODY_FRAC.finStart),
+      finSpan: BODY_FRAC.finSpan * spanY,
+      skin: {
+        rootSpine: BODY_FRAC.tRootSpine.map(at) as [number, number],
+        spineHead: BODY_FRAC.tSpineHead.map(at) as [number, number],
+        headFin: BODY_FRAC.tHeadFin.map(at) as [number, number],
+        finRamp: BODY_FRAC.tFinRamp.map(at) as [number, number],
+      },
+    };
   }, [scene]);
 
-  // encaixe autoral: altura = formTop Nv.1, corpo centralizado; a base fica a
-  // FLOAT_LVL1 do tabuleiro (o sopro antigo FLUTUAVA — não se planta no chão)
+  // encaixe autoral: altura = formTop da forma, o corpo centralizado no eixo,
+  // a BASE flutuando à altura do figurino do nível (o sopro antigo FLUTUAVA —
+  // só o Nv.5 tornado pisava o chão); o offset compensa a rotação de rumo
+  // (matriz T·R·S). TETO DE LARGURA: a malha também respeita o buraco — o
+  // invólucro autoral da FORMA (`footprintOf`, assinado na tabela de
+  // `data/footprints.ts`) é o contrato: encaixo (mesh + abraço de vento) ≤
+  // entrada, nos dois eixos (a coruja Nv.4 abre as asas — é ela que manda no
+  // enquadramento da família, não o contrário)
   const fit = useMemo(() => {
     const bb = src.geo.boundingBox!;
-    const s = TOP_LVL1 / (bb.max.y - bb.min.y);
+    const foot = footprintOf('zephyr', level as MonsterLevel);
+    const hug = SHELL_HUG * (SPAN_NV1 / src.spanY); // abraço proporcional ao tamanho
+    // meias-extensões NA ORDEM DO RUMO: o bicho de frente para +Z (yaw 0) tem
+    // a envergadura no X do modelo = X do mundo (esq/dir do buraco) e a
+    // profundidade no Z; virado para os lados, as duas trocam de eixo — o teto
+    // de largura tem que medir o que o buraco VÊ, não a caixa crua
+    const yaw = yawFor(level);
+    const sideways = Math.abs(Math.sin(yaw)) > 0.5;
+    const halfAlong = sideways ? Math.max(-bb.min.x, bb.max.x) : Math.max(-bb.min.z, bb.max.z);
+    const halfWide = sideways ? Math.max(-bb.min.z, bb.max.z) : Math.max(-bb.min.x, bb.max.x);
+    const sW = Math.min(foot.x / (halfWide + hug), foot.z / (halfAlong + hug));
+    const s = Math.min(TOP_BY_LEVEL[level - 1] / src.spanY, sW);
     const cx = ((bb.min.x + bb.max.x) / 2) * s;
     const cz = ((bb.min.z + bb.max.z) / 2) * s;
-    const px = -(cx * Math.cos(ZEPHYR_MODEL_YAW) + cz * Math.sin(ZEPHYR_MODEL_YAW));
-    const pz = cx * Math.sin(ZEPHYR_MODEL_YAW) - cz * Math.cos(ZEPHYR_MODEL_YAW);
-    return { s, pos: [px, FLOAT_LVL1 - bb.min.y * s, pz] as [number, number, number] };
-  }, [src]);
+    const px = -(cx * Math.cos(yaw) + cz * Math.sin(yaw));
+    const pz = cx * Math.sin(yaw) - cz * Math.cos(yaw);
+    return { s, pos: [px, FLOAT_Y[level - 1] - bb.min.y * s, pz] as [number, number, number] };
+  }, [src, level]);
 
   // material por instância: textura do GLB + brasa FRIA emissiva + fitas de
   // vento correndo para cima no vértice (o MESMO ruído dos shaders da casa)
@@ -326,18 +466,23 @@ function WindLvl1MeshRig({
       sh.uniforms.uFT = { value: 0 };
       sh.uniforms.uFA = { value: 0.045 };
       sh.uniforms.uFSeed = { value: seed };
+      sh.uniforms.uYMin = { value: src.yMin };
+      sh.uniforms.uSpanY = { value: src.spanY };
+      sh.uniforms.uFinY0 = { value: src.finY0 };
+      sh.uniforms.uFinSpan = { value: src.finSpan };
       sh.vertexShader =
-        `uniform float uFT;\nuniform float uFA;\nuniform float uFSeed;\nvarying float vRibbon;\n${NOISE_GLSL}\n` +
+        `uniform float uFT;\nuniform float uFA;\nuniform float uFSeed;\nuniform float uYMin;\nuniform float uSpanY;\nuniform float uFinY0;\nuniform float uFinSpan;\nvarying float vRibbon;\n${NOISE_GLSL}\n` +
         sh.vertexShader.replace(
           '#include <begin_vertex>',
           /* glsl */ `#include <begin_vertex>
           // VENTO NA MALHA (o gesto do figurino, não "gelatina"): grão das
           // fitas CORRENDO PARA CIMA (análogo da fervura que sobe no fogo) e
-          // as barbatanas/acréscimos acima de y 0.3 batendo com FASE PRÓPRIA
-          // (o mesmo critério de fase azimutal da crina do fogo). y < 0.28 é
-          // sólido: rosto/olhos nunca tremem.
-          float h = clamp((transformed.y + 1.0) / 1.98, 0.0, 1.0);
-          float fin = clamp((transformed.y - 0.3) / 0.65, 0.0, 1.0);
+          // as barbatanas/ acréscimos acima da raiz (uFinY0, marco da bbox
+          // desta malha) batendo com FASE PRÓPRIA (o mesmo critério de fase
+          // azimutal da crina do fogo). Abaixo da raiz é sólido: rosto/olhos
+          // nunca tremem.
+          float h = clamp((transformed.y - uYMin) / max(uSpanY, 1e-4), 0.0, 1.0);
+          float fin = clamp((transformed.y - uFinY0) / max(uFinSpan, 1e-4), 0.0, 1.0);
           float w = fin * fin; // raiz plantada na cabeça, barbatana livre
           float ph = atan(transformed.z, transformed.x) * 1.3 + uFSeed;
           // batida das barbatanas (mollejo lateral — dois harmônicos)
@@ -365,21 +510,24 @@ function WindLvl1MeshRig({
     return m;
   }, [src, seed]);
 
-  // ESQUELETO POR INSTÂNCIA: geometria (com pesos) compartilhada, ossos e
-  // animação privados de cada unidade — dois Zéfiros Nv.1 nunca dançam juntos.
+  // ESQUELETO POR INSTÂNCIA: a geometria (com os pesos de `ensureSkin`) é
+  // compartilhada, mas os ossos e a animação são privados de cada unidade —
+  // dois Zéfiros em cena nunca dançam sincronizados.
   const rig = useMemo(() => {
-    ensureSkin(src.geo, seed);
+    ensureSkin(src.geo, seed, src.skin);
     const mk = (name: string, y: number) => {
       const b = new THREE.Bone();
       b.name = name;
       b.position.set(0, y, 0);
       return b;
     };
-    const root = mk('root', JOINT_Y[0]);
-    const spine = mk('spine', JOINT_Y[1] - JOINT_Y[0]);
-    const head = mk('head', JOINT_Y[2] - JOINT_Y[1]);
-    const fin0 = mk('fin0', JOINT_Y[3] - JOINT_Y[2]);
-    const fin1 = mk('fin1', JOINT_Y[4] - JOINT_Y[3]);
+    // juntas absolutas (marcos da bbox) viram offsets locais na cadeia
+    const jy = src.jointY;
+    const root = mk('root', jy[0]);
+    const spine = mk('spine', jy[1] - jy[0]);
+    const head = mk('head', jy[2] - jy[1]);
+    const fin0 = mk('fin0', jy[3] - jy[2]);
+    const fin1 = mk('fin1', jy[4] - jy[3]);
     root.add(spine);
     spine.add(head);
     head.add(fin0);
@@ -388,15 +536,15 @@ function WindLvl1MeshRig({
     skinned.add(root);
     skinned.bind(new THREE.Skeleton([root, spine, head, fin0, fin1]));
     skinned.castShadow = true;
-    skinned.frustumCulled = false; // barbatanas + shader viajam além da esfera
+    skinned.frustumCulled = false; // barbatanas + shader viajam além da esfera da malha
     return { skinned, bones: { root, spine, head, fin0, fin1 } };
   }, [src, body, seed]);
 
-  // motes subindo em espiral pelo funil + clarão frio + poeira sugada: o
-  // mesmo idioma visual do WindRig (Nv.1: sopro)
+  // motes subindo em espiral pelo funil + poeira fria: o mesmo idioma visual
+  // do WindRig (quanto maior o vendaval, mais motes e mais largo o funil)
   const motes = useMemo(
     () => ({
-      geo: makeMoteGeo(19), // 10 + level·9 do WindRig, Nv.1
+      geo: makeMoteGeo(10 + level * 9),
       mat: new THREE.ShaderMaterial({
         vertexShader: MOTE_VERT,
         fragmentShader: MOTE_FRAG,
@@ -407,51 +555,60 @@ function WindLvl1MeshRig({
           uTime: { value: 0 },
           uAlpha: { value: 1 },
           uSizeMul: { value: emberScale },
-          uHeight: { value: TOP_LVL1 },
-          uR1: { value: 0.2 }, // 0.15 + 0.05·level, Nv.1
-          uR2: { value: 0.71 }, // 0.55 + 0.16·level, Nv.1
-          uSpin: { value: 1.5 }, // 1.1 + 0.4·level, Nv.1
+          uHeight: { value: TOP_BY_LEVEL[level - 1] },
+          uR1: { value: 0.15 + 0.05 * level },
+          uR2: { value: 0.55 + 0.16 * level },
+          uSpin: { value: 1.1 + 0.4 * level },
         },
       }),
     }),
-    [emberScale],
+    [emberScale, level],
   );
 
   // INVOLTÓRIO: a casca de vento do antigo (WIND_FRAG literal; eixo em vez de
-  // normal no vertex) por cima da textura — mesclagem NORMAL como o figurino
-  const shellMat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        vertexShader: SHELL_VERT,
-        fragmentShader: WIND_FRAG,
-        transparent: true,
-        blending: THREE.NormalBlending, // nuvem translúcida: nada estoura
-        depthWrite: false,
-        side: THREE.DoubleSide, // a parede de dentro do vórtice é mais fraca
-        uniforms: {
-          uTime: { value: 0 },
-          uSeed: { value: seed },
-          uPhase: { value: seed },
-          uAmp: { value: 0.1 },
-          uTwist: { value: 0.8 },
-          uSpin: { value: 0.9 }, // LENTO de propósito: varredura dentro da pegada
-          uBend: { value: 0.032 }, // 0.02 + 0.012·level, Nv.1
-          uFlare: { value: 0 },
-          uHurt: { value: 0 },
-          uYOff: { value: 0 },
-          uModelH: { value: TOP_LVL1 },
-          uAlpha: { value: 1 },
-          // o véu é mais denso que o do fogo (mesclagem NORMAL + dupla face):
-          // 0,62 deixa a cara ler ATRAVÉS do vento; suba se quiser mais nuvem
-          uAlphaMul: { value: 0.62 },
-          uSoft: { value: 1 },
-          uCold: { value: new THREE.Color(WIND_ROLE_LOOK.body!.cold) },
-          uMid: { value: new THREE.Color(WIND_ROLE_LOOK.body!.mid) },
-          uHot: { value: new THREE.Color(WIND_ROLE_LOOK.body!.hot) },
-        },
-      }),
-    [seed],
-  );
+  // normal no vertex) por cima da textura — mesclagem NORMAL como o figurino.
+  // Os uniforms de caixa (base, altura, umbigo, folga) são PROPORCIONAIS à
+  // malha (SPAN_NV1 / spanY): a casca do dragão Nv.5 ferve nas MESMAS medidas
+  // de mundo do sopro — senão o ruído inflaria 20% da barriga dele e vazaria
+  // do buraco.
+  const shellMat = useMemo(() => {
+    const spin = SHELL_SPIN[level - 1];
+    return new THREE.ShaderMaterial({
+      vertexShader: SHELL_VERT,
+      fragmentShader: WIND_FRAG,
+      transparent: true,
+      blending: THREE.NormalBlending, // nuvem translúcida: nada estoura
+      depthWrite: false,
+      side: THREE.DoubleSide, // a parede de dentro do vórtice é mais fraca
+      uniforms: {
+        uTime: { value: 0 },
+        uSeed: { value: seed },
+        uPhase: { value: seed },
+        uAmp: { value: 0.1 * (SPAN_NV1 / src.spanY) },
+        uHug: { value: SHELL_HUG * (SPAN_NV1 / src.spanY) },
+        uTwist: { value: spin.twist },
+        uSpin: { value: spin.spin }, // LENTO de propósito (Nv.1): varredura dentro da pegada
+        uSway: { value: spin.sway }, // Nv.2..5: o véu BALANÇA, não repisa o corpo
+        uAngMax: { value: spin.angMax },
+        uNoiseTw: { value: spin.noise },
+        uBend: { value: 0.02 + 0.012 * level },
+        uFlare: { value: 0 },
+        uHurt: { value: 0 },
+        uYOff: { value: 0 },
+        uYMin: { value: src.yMin },
+        uModelH: { value: src.spanY },
+        uBelly: { value: src.bellyY },
+        uAlpha: { value: 1 },
+        // o véu é mais denso que o do fogo (mesclagem NORMAL + dupla face):
+        // 0,62 deixa a cara ler ATRAVÉS do vento; suba se quiser mais nuvem
+        uAlphaMul: { value: 0.62 },
+        uSoft: { value: 1 },
+        uCold: { value: new THREE.Color(WIND_ROLE_LOOK.body!.cold) },
+        uMid: { value: new THREE.Color(WIND_ROLE_LOOK.body!.mid) },
+        uHot: { value: new THREE.Color(WIND_ROLE_LOOK.body!.hot) },
+      },
+    });
+  }, [seed, src, level]);
 
   useEffect(
     () => () => {
@@ -482,6 +639,9 @@ function WindLvl1MeshRig({
     const dt = Math.min(dtRaw, 0.05);
     clock.current += dt;
     const t = clock.current;
+    const top = TOP_BY_LEVEL[level - 1];
+    const jy = src.jointY;
+    const spin = SHELL_SPIN[level - 1];
 
     // estado da unidade no motor — os mesmos canais do WindRig
     let hurt = 0;
@@ -530,8 +690,7 @@ function WindLvl1MeshRig({
     b.spine.rotation.x = Math.sin(t * 1.1 + seed * 0.8) * 0.03 + pose.lean * 0.9;
     // o sopro FLUTUA (FLOAT_Y + bob + surge do WindRig) — o repouso do osso
     // entra na conta (lição do root do ignis)
-    b.root.position.y =
-      JOINT_Y[0] + Math.sin(t * 1.6 + seed) * 0.11 + surge * 0.6;
+    b.root.position.y = jy[0] + Math.sin(t * 1.6 + seed) * 0.11 + surge * 0.6;
     b.head.rotation.x =
       Math.sin(t * 1.3 + seed * 0.6) * 0.05 + pose.lean * 0.45 - hurt * 0.15 + wilt * 0.5;
     b.head.rotation.z = Math.sin(t * 1.1 + seed * 0.5) * 0.04;
@@ -561,18 +720,20 @@ function WindLvl1MeshRig({
     shellMat.uniforms.uTime.value = t;
     shellMat.uniforms.uHurt.value = hurt;
     shellMat.uniforms.uFlare.value = pose.flare;
-    shellMat.uniforms.uAmp.value = 0.1 * ampMul;
-    shellMat.uniforms.uSpin.value = 0.9 * spinBoost;
-    shellMat.uniforms.uBend.value = 0.032 * (1 + dying * 2.2);
+    shellMat.uniforms.uAmp.value = 0.1 * (SPAN_NV1 / src.spanY) * ampMul;
+    shellMat.uniforms.uSpin.value = spin.spin * spinBoost;
+    shellMat.uniforms.uSway.value = spin.sway * (1 + pose.flare * 0.8) * (1 + dying * 1.2);
+    shellMat.uniforms.uBend.value = (0.02 + 0.012 * level) * (1 + dying * 2.2);
     shellMat.uniforms.uAlpha.value = Math.max(0, (0.75 + pulse * 0.08 + pose.flare * 0.2) * alpha);
 
-    // ---- vida no material do corpo: fitas + brasa fria ----
+    // ---- vida no material do corpo: fitas + brasa fria (fervor na MESMA
+    // medida de mundo em qualquer malha: SPAN_NV1 / spanY) ----
     const sh = body.userData.shader as
       | { uniforms: { uFT: { value: number }; uFA: { value: number } } }
       | undefined;
     if (sh) {
       sh.uniforms.uFT.value = t;
-      sh.uniforms.uFA.value = 0.045 * ampMul;
+      sh.uniforms.uFA.value = 0.045 * (SPAN_NV1 / src.spanY) * ampMul;
     }
     body.emissiveIntensity = Math.max(
       0,
@@ -585,9 +746,10 @@ function WindLvl1MeshRig({
     motes.mat.uniforms.uTime.value = t;
     motes.mat.uniforms.uAlpha.value = alpha;
 
-    // ---- POEIRA sugada pelo funil (o canal de poeira FRIA do WindRig, Nv.1) ----
+    // ---- POEIRA sugada pelo funil (o canal de poeira FRIA do WindRig;
+    // quanto mais alto o vendaval, mais poeira) ----
     if (smoke && alpha > 0.25) {
-      dustAcc.current += dt * (1.1 + 2.1);
+      dustAcc.current += dt * (1.1 + 2.1 * level);
       let guard = 0;
       while (dustAcc.current >= 1 && guard < 4) {
         dustAcc.current -= 1;
@@ -595,44 +757,48 @@ function WindLvl1MeshRig({
         g.updateWorldMatrix(true, false);
         tmpWorld
           .set(
-            (Math.random() - 0.5) * (0.5 + 0.16),
-            TOP_LVL1 * (0.2 + Math.random() * 0.6),
-            (Math.random() - 0.5) * (0.5 + 0.16),
+            (Math.random() - 0.5) * (0.5 + 0.16 * level),
+            top * (0.2 + Math.random() * 0.6),
+            (Math.random() - 0.5) * (0.5 + 0.16 * level),
           )
           .applyMatrix4(g.matrixWorld);
         smoke.spawn(tmpWorld.x, tmpWorld.y, tmpWorld.z, {
-          size: 0.07 + 0.016,
+          size: 0.07 + 0.016 * level,
           heat: 0.06 + Math.random() * 0.14, // poeira fria, não brasa
-          life: 0.85 + 0.09,
+          life: 0.85 + 0.09 * level,
           lifeVar: 0.45,
           jitter: 0.2,
-          rise: 0.3 + 0.05,
+          rise: 0.3 + 0.05 * level,
           drag: 2.9,
         });
       }
       if (dustAcc.current > 4) dustAcc.current = 4;
     }
 
-    // ---- clarão frio da tempestade (carrega no arremesso como o WindRig) ----
-    const s2 = Math.max(0.8, 1.72 + pulse * 0.25 + hurt * 0.4 + pose.flare * 0.7);
+    // ---- clarão frio da tempestade (carrega no arremesso como o WindRig;
+    // forma maior, clarão maior — a mesma escada do procedural) ----
+    const s2 = Math.max(
+      0.8,
+      1.5 + level * 0.28 + pulse * 0.25 + hurt * 0.4 + pose.flare * 0.7,
+    );
     glow.scale.setScalar(s2);
-    glow.position.y = TOP_LVL1 * 0.52;
+    glow.position.y = top * 0.52;
     (glow.material as THREE.SpriteMaterial).opacity = Math.max(
       0,
-      (0.18 + pulse * 0.05 + hurt * 0.16 + pose.flare * 0.24) * alpha,
+      (0.18 + level * 0.02 + pulse * 0.05 + hurt * 0.16 + pose.flare * 0.24) * alpha,
     );
   });
 
   return (
     <group ref={animRef}>
-      <group position={fit.pos} rotation-y={ZEPHYR_MODEL_YAW} scale={fit.s}>
+      <group position={fit.pos} rotation-y={yawFor(level)} scale={fit.s}>
         <primitive object={rig.skinned} />
         {/* pivô no joelho do spine: a casca respira/inclina junto do corpo */}
-        <group ref={shellRef} position={[0, JOINT_Y[1], 0]}>
+        <group ref={shellRef} position={[0, src.jointY[1], 0]}>
           <mesh
             geometry={src.geo}
             material={shellMat}
-            position={[0, -JOINT_Y[1], 0]}
+            position={[0, -src.jointY[1], 0]}
             frustumCulled={false}
           />
         </group>

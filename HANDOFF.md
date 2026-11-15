@@ -812,6 +812,74 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## 🌪️ A ÁRVORE INTEIRA DO VENTO EM MALHA 3D — Nv.1..5 (15/nov/2026 — 7ª da linha "modelos 3D"; Nv.2..5 à espera do aval visual do usuário)
+
+Zéfiro virou a SEGUNDA família com a árvore inteira na malha importada (o fogo
+veio antes — ver a entrada do Ignis logo abaixo). `ZephyrRig`
+(`src/scene/ZephyrMeshRig.tsx`, reescrito) despacha **Nv.1..5 = mesh**
+(`src/models/wind/wind_model_lvl1..5.glb`; o lvl1 já estava na casa, lvl2..5
+novos, 3,7-4,6 MB cada, um mesh/uma textura, SEM ossos) com
+`<Suspense fallback={<WindRig level={n}/>}>`; o `WindRig` procedural segue vivo
+só como fallback de carga.
+
+- **Esqueleto nasce em código** (`root→spine→head→fin0→fin1`), pesos de pele por
+  faixa de Y (`ensureSkin`, uma vez por geometria), TODOS os marcos (juntas,
+  rampas, umbigo, barbatanas) leem da bbox de CADA malha na régua porcentual do
+  sopro (`BODY_FRAC`) — a coruja Nv.4 é larga/baixa, o dragão Nv.5 cresce de novo.
+- **Glow de vento em TODO nível** (o pedido do usuário): casca da MESMA malha
+  vestida com o `WIND_FRAG` literal, deslocamento pelo EIXO (lição das
+  "rachaduras"), abraço proporcional (`SHELL_HUG 0.12`, régua `SPAN_NV1/spanY`).
+  Nv.1 conserva a revolução contínua aprovada (twist 0,8 / spin 0,9); nas formas
+  de asas (Nv.2..5) o giro 360° varreria o buraco, então virou **varredura
+  oscilante com teto de ângulo** (`SHELL_SPIN`: `uSway`+`uAngMax` no vertex).
+- **Regra MEDIDO nova (validada reproduzindo a tabela do fogo)**: linha da
+  tabela = `s_a·(half+hug)` com `s_a = formTop/spanY` — assim o encaixe fica
+  ALTURA-mandante e a largura morre exatamente na sobra do footprint. Zephyr:
+  `{0.84,0.73} {1.49,0.86} {1.97,0.83} {2.65,2.02} {2.96,2.34}` (puxam
+  `familyRadius` 1,45→3,04 e `slotFit` 1,15→0,82 — a família encolhe pro buraco,
+  como no dragão de fogo).
+- ⚠️ **ARMADILHA DE EIXO consertada no fit (não reverter)**: com o bicho virado
+  pra +Z (yaw 0 — os cinco modelos do vento e do fogo nascem assim), a
+  envergadura é o X do modelo = X do mundo; o código antigo do `fit` pareava
+  `foot.x` com o Z da caixa — e isso capava a ALTURA pela sobra errada: no print
+  da sonda o Nv.3 saía MENOR que o Nv.2 (escada invertida). `halfAlong` agora é
+  o Z do modelo em yaw 0 (e o X quando sideways). **O `IgnisMeshRig` commitado
+  tem o mesmo pareamento trocado** (o fogo desenha MENOR que a tabela promete; o
+  look foi APROVADO assim — trocar exige aval novo do usuário, ficou devendo).
+- Ataque escala com o nível: lâmina do `ProjectileField` em `0.9+0,45·(n−1)`
+  (0,90→2,70) e explosão zéfiro do `Effects` engrossada por nível (anel duplo de
+  ar, anel de chão maior, mais partículas/fumaça).
+- `MESH_FIGURINOS` (`speciesModels.ts`): o pino "a tabela de invólucros não
+  envelheceu" do board.test PULA figurinos de malha — a AABB analítica das peças
+  procedurais não é mais a referência da silhueta; a sonda viva é.
+- Pinos re-ancorados: o degrau do canhão Nv1→Nv5 do windProgression agora é a
+  PRÓPRIA escada `worldMuzzleY` (o `slotFit` encolheu com as asas; um metro
+  absoluto envelheceu). E o smoke do App (VERMELHO desde o HEAD, não é desta
+  rodada): `AdaptiveFog` é filho do `<Canvas>` no App e chamava `useThree` no
+  mock da fiber → `GLBoundary` engolia a cena; `vi.mock('../scene/AdaptiveFog')`
+  no app.test (mesmo critério do BattleScene/BloomGate).
+- Sonda: `qa/probe-footprint.mjs zephyr@1..5` — tudo SIM/SIM, SOBREPOSIÇÕES 0,
+  console limpo, escada MONÓTONA (topo mundo 1,74→2,23→2,66→3,24→3,85; X
+  0,62→1,15→1,46→1,92→2,41). Suite 507 verdes + build.
+- 💰 **Dívida de assets piorou**: 10 GLBs ≈ 41,4 MB no bundle (compressão
+  KTX2/Draco ou import por espécie continua em aberto).
+
+---
+
+## 🔥 A ÁRVORE INTEIRA DO FOGO EM MALHA 3D — Nv.1..5 (15/nov/2026 — 6ª da linha; commit `96035a5`, aprovada no navegador: "ficou muito bom pode versionar" — esta entrada do HANDOFF tinha ficado devendo)
+
+`IgnisRig` (`IgnisMeshRig.tsx`) despacha os CINCO níveis na malha importada
+(`src/models/fire/fire_model_lvl1..5.glb`), fallback procedural só na carga.
+Mesmo molde do Nv.1 piloto: esqueleto em código + pesos por faixa de Y, marcos
+por bbox porcentual, invólucro de chama abraçando (hug proporcional), coreografia
+`attackPose` idêntica. Os dragões Nv.4/5 abrem asas: `footprints.ignis`
+`{0.82,0.68}…{3.41,2.2}` puxam `familyRadius` 3,49 e `slotFit` 0,72 — o dragão é
+LARGO, não alto. Projétil e explosão escalam por nível. (Detalhe conhecido hoje:
+o pareamento de eixos do `fit` herdou a inversão descrita na entrada do vento
+acima — o fogo desenha menor que a tabela; look aprovado assim, mexer exige aval.)
+
+---
+
 ## 💧 NEREIA Nv.1 DE MALHA 3D IMPORTADA + onda descendo pelo corpo (15/nov/2026 — 5ª da linha "modelos 3D", aprovada no navegador do usuário: "o efeito ficou muito bom" / "ficou ótimo")
 
 Quarta malha da linha (mesmo molde de Ignis/Zéfiro/Golém): `NereiaRig`

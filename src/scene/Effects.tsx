@@ -1585,19 +1585,24 @@ export function Effects({ smoke }: { smoke?: SmokePool }) {
               speed: 1.5,
             });
           } else if (ev.species === 'zephyr') {
-            // rajada do zéfiro: faíscas que SOBEM (vento não tem peso), anel
-            // de choque flutuante na altura do impacto, marca no chão e
-            // névoa gelada
+            // A ÁRVORE EM MALHA corta com vento cada vez mais largo: cada nível
+            // do atirador engorda a lâmina (0,90→2,70 no projétil) E a
+            // explosão — faíscas que SOBEM (vento não tem peso) em maior
+            // enxame, ANEL DUPLA no ar (os dois vórtices gêmeos do vendaval
+            // grande, espelhando a segunda língua de fogo do ignis), anel de
+            // choque maior crescendo com o nível, marca mais larga no chão e
+            // mais névoa gelada
             const lv = Math.max(1, Math.min(5, ev.level ?? 1));
-            spawnParticles(x, y, z, '#cfeaff', 10 + lv * 2, 3.4, 0.45, -1.6, 0.5); // sobem
-            spawnParticles(x, y, z, '#8fb8d8', 8 + lv, 2.4, 0.4, -0.8);
+            spawnParticles(x, y, z, '#cfeaff', 10 + lv * 3, 3.4, 0.45, -1.6, 0.5); // sobem
+            spawnParticles(x, y, z, '#8fb8d8', 8 + lv * 2, 2.4, 0.4, -0.8);
             spawnParticles(x, y + 0.2, z, '#ffffff', 4 + lv, 1.6, 0.25, -0.4, 0.3);
-            spawnRing(x, y + 0.05, z, '#bfe9ff', 1.5 + 0.24 * lv); // anel no ar
-            spawnRing(x, 0.1, z, '#8fb8d8', 1.0 + 0.16 * lv); // e a marca no chão
-            spawnSmoke(x, y, z, 3 + lv, {
-              size: 0.06 + 0.012 * lv,
+            spawnRing(x, y + 0.05, z, '#bfe9ff', 1.5 + 0.34 * lv); // anel no ar (o principal)
+            spawnRing(x, y + 0.28, z, '#e9f6ff', 0.9 + 0.22 * lv); // o segundo vórtice, acima
+            spawnRing(x, 0.1, z, '#8fb8d8', 1.0 + 0.24 * lv); // e a marca no chão (o peso do vendaval)
+            spawnSmoke(x, y, z, 3 + lv * 2, {
+              size: 0.06 + 0.018 * lv,
               heat: 0.02, // névoa gelada
-              life: 0.7 + 0.08 * lv,
+              life: 0.7 + 0.12 * lv,
               speed: 1.8,
             });
           } else if (ev.species === 'nereia') {

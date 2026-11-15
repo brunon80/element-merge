@@ -1,5 +1,6 @@
 import { MODELS, hasLevelVariants, partsForLevel } from '../scene/speciesModels';
 import { ROW_DEPTH, TILE_SPACING_X } from '../game/board';
+import { worldMuzzleY } from '../data/footprints';
 import { formName, formTop, hasForms } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { SPECIES_RIGS } from '../scene/speciesRigs';
@@ -146,8 +147,11 @@ describe('Projétil acompanha o nível do vendaval', () => {
     }
     expect(small).not.toBeNull();
     expect(small!.level).toBe(1);
-    // o tornado cospe do alto da coluna (~1,2 acima do sopro)
-    expect(shot!.y - small!.y).toBeGreaterThan(1);
+    // o tornado cospe do alto da coluna: o degrau do canhão Nv1→Nv5 é a escada
+    // do catálogo × o encaixe da família (`slotFit` encolheu com as asas do
+    // dragão dos ventos — por isso a régua é a PRÓPRIA escada, não um metro fixo)
+    const ladder = worldMuzzleY('zephyr', 5) - worldMuzzleY('zephyr', 1);
+    expect(shot!.y - small!.y).toBeGreaterThan(0.9 * ladder);
   });
 });
 

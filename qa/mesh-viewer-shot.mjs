@@ -8,7 +8,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 960 } });
 page.on('pageerror', (e) => console.log('pageerror:', e.message));
-await page.goto(`http://localhost:5173/element-merge/water-viewer.html?src=${encodeURIComponent(src)}`, { waitUntil: 'networkidle' });
+await page.goto(`http://localhost:5173/element-merge/mesh-viewer.html?src=${encodeURIComponent(src)}`, { waitUntil: 'networkidle' });
 await page.waitForFunction(() => document.title === 'ok', null, { timeout: 60000 });
 await page.screenshot({ path: `${out}/views.png` });
 console.log('ok ->', `${out}/views.png`);

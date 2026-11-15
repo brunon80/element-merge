@@ -1749,7 +1749,11 @@ export function ProjectileField() {
             dummy.quaternion.copy(tmpQuat);
           }
           if (bladeN < MAX_PER_ELEMENT) {
-            const scale = 0.9 + 0.3 * (lvSign - 1);
+            // A ÁRVORE DO VENTO EM MALHA (Nv.1..5): cada fusão troca a malha do
+            // monstro e ENGORDA a lâmina — o vendaval que um Nv5 corta é MAIS
+            // que o triplo do sopro Nv1 (0,90 → 2,70 de escala, antes 0,90 →
+            // 2,10). O halo acompanha (é o clarão da lâmina inteira)
+            const scale = 0.9 + 0.45 * (lvSign - 1);
             dummy.scale.setScalar(scale);
             dummy.updateMatrix();
             bladeRef.current?.setMatrixAt(bladeN, dummy.matrix);

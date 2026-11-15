@@ -961,6 +961,21 @@ const STAR8: [number, number, number][] = [
 ];
 const STAR6: [number, number, number][] = STAR8.filter((_, i) => i % 3 !== 2).slice(0, 6);
 
+/**
+ * LINHA "MODELOS 3D": formas cujo figurino é a MALHA GLB importada (index =
+ * nível-1). O pin da tabela de invólucros compara `MEDIDO` com o envelope
+ * ANALÍTICO das parts procedurais — para essas formas o figurino não é mais
+ * os parts (as parts só seguram o palco enquanto o GLB carrega), então o
+ * tripé delas é a medição AO VIVO (`qa/probe-footprint.mjs`), não a AABB das
+ * parts. Registrado aqui para o pin pular só essas formas.
+ */
+export const MESH_FIGURINOS: Partial<Record<SpeciesId, boolean[]>> = {
+  ignis: [true, true, true, true, true], // árvore do fogo inteira (fire_model_lvl1..5)
+  zephyr: [true, true, true, true, true], // árvore do vento inteira (wind_model_lvl1..5)
+  golem: [true, false, false, false, false], // Nv.1 piloto (golem_model_lvl1)
+  nereia: [true, false, false, false, false], // Nv.1 piloto (water_model_lvl1)
+};
+
 export const MODELS: Record<SpeciesId, SpeciesModel> = {
   // Fogo — progressão viva da chama. Nv1 é o imps de fogo (a gota que já
   // existe); a cada fusão do mesmo elemento o fogo CRESCE e ganha chamas

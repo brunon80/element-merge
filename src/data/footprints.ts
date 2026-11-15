@@ -73,11 +73,23 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
     { x: 1.57, z: 1.69 },
   ],
   zephyr: [
-    { x: 0.9, z: 0.88 },
-    { x: 0.96, z: 0.88 },
-    { x: 1.24, z: 1.23 },
-    { x: 1.19, z: 1.22 },
-    { x: 1.37, z: 1.35 },
+    // A ÁRVORE INTEIRA na MALHA 3D importada (wind_model_lvl1..5.glb, Nv.1..5).
+    // Encaixe autoral da SILHUETA: caixa CPU da malha + o abraço estático do
+    // invólucro de vento (`SHELL_HUG`, proporcional ao tamanho — a sonda lê a
+    // caixa CPU e NÃO vê o deslocamento do vertex shader; o hug é a sobra que
+    // a casca ganha para fora, e o FOOT_MARGIN cobre a fervura). A rig amarra
+    // o encaixe da malha a estes números (`footprintOf` no ZephyrMeshRig): o
+    // formTop manda na altura e a largura fica dentro do contrato — as asas da
+    // coruja Nv.4/ do dragão Nv.5 (1,00 de meia-envergadura crua) puxam o
+    // `familyRadius` da família 1,45 → 3,04 e o `slotFit` 1,15 → 0,82 (a
+    // família inteira encolhe para o buraco — mesmo padrão do dragão de fogo).
+    // O giro do invólucro nas formas 2..5 é VARREDURA com teto de ângulo
+    // (`SHELL_SPIN`) medido para o varrimento morrer dentro do footprint.
+    { x: 0.84, z: 0.73 }, // sopro Nv.1: malha + abraço (a bolota procedural media 0,9 × 0,88)
+    { x: 1.49, z: 0.86 }, // redemoinho Nv.2: os braços de vento abrem para os lados
+    { x: 1.97, z: 0.83 }, // funil vivo Nv.3: asas de pena largas, corpo fundo-curto
+    { x: 2.65, z: 2.02 }, // ciclone Nv.4: a coruja abre as asas (caixa baixa e larga)
+    { x: 2.96, z: 2.34 }, // tornado Nv.5: dragão dos ventos — o pior caso da família
   ],
   // ------------------------ árvore (uma forma) ---------------------------
   raio: [{ x: 1.11, z: 1.14 }],

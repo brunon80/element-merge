@@ -13,7 +13,7 @@ import { footprintRadius, slotFit, worldFootprintRadius } from '../data/footprin
 import { MUZZLE_HEIGHT, scaledStats } from '../data/balance';
 import { formAimY, formMuzzleY, formTop, hasForms } from '../data/forms';
 import { ALL_SPECIES_IDS, TREE_SPECIES_IDS, getSpecies } from '../data/monsters';
-import { MODELS, partsForLevel } from '../scene/speciesModels';
+import { MODELS, MESH_FIGURINOS, partsForLevel } from '../scene/speciesModels';
 import { partsEnvelope } from './helpers';
 
 /**
@@ -154,6 +154,11 @@ describe('Tabuleiro dimensionado para as formas que crescem', () => {
       if (!parts) continue; // rig autoral: sem parts para comparar
       for (let l = 1; l <= 5; l++) {
         const level = l as MonsterLevel;
+        // figurino de MALHA GLB (linha "modelos 3D"): as parts só seguram o
+        // palco enquanto o arquivo carrega — o envelope analítico delas NÃO é
+        // mais a silhueta da forma; o tripé dessas formas é a sonda ao vivo
+        // (`qa/probe-footprint.mjs`), que mede a malha escalada na cena
+        if (MESH_FIGURINOS[id]?.[l - 1]) continue;
         const e = partsEnvelope(partsForLevel(parts, level));
         const analytic = Math.max(e.maxX, -e.minX, e.maxZ, -e.minZ);
         expect(Math.abs(footprintRadius(id, level) - analytic)).toBeLessThan(1.2);
