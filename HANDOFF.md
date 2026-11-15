@@ -11,9 +11,10 @@
 > 0 falhas) · git em `dev` (repo público `brunon80/element-merge`, CI → GitHub
 > Pages).
 >
-> **Atualizado em 14/nov (malhas do Ignis Nv.1 e do Zéfiro Nv.1):** `npx
+> **Atualizado em 14/nov (malhas do Ignis, Zéfiro e GOLÉM Nv.1 — o golem só
+> entrou depois da 4ª rodada de prints):** `npx
 > tsc --noEmit` OK · `npm run build` OK (os `.glb` saem como assets: 2,5 + 4,4
-> MB) · suíte 505 testes
+> + 5,7 MB) · suíte 505 testes
 > com as falhas CONHECIDAS do ambiente local Node 26 — `app.test.tsx` ×2
 > (jsdom sem WebGL) + contaminação de timers de música em
 > `audioUnlock.test.ts` ("expected 2 to be 1"); rodados isolados, os dois
@@ -258,6 +259,44 @@ piloto — seção `## 🔥 Ignis Nv.1 de MALHA 3D IMPORTADA` abaixo. O loop da
 > invólucro para fora do anel da pegada. O GLB (4,4 MB) entra no bundle como
 > asset — dois modelos = ~7 MB de assets; quando a linha passar de ~3
 > modelos, comprimir (KTX2/Draco) ou `import()` por espécie.
+
+> **14/nov (3): o GOLÉM Nv.1 entrou no molde — mas só na 4ª RODADA de prints, e
+> a lição é cara.** `GolemRig` despacha Nv.1 =
+> `src/models/golem/golem_model_lvl1.glb` (5,7 MB, 24.992 verts, idem: trimesh
+> a partir de .ply, SEM ossos e SEM animação) / Nv.2+ = StoneRig (a progressão
+> rocha viva → golem → colosso → montanha continua procedural). O print 1 barrou
+> o INVOLÚCRO de pedra por cima do modelo + as ESCALAS de osso (incham e derretem
+> o chibi); o print 2 barrou as DEFORMAÇÕES — e a correção da rodada 3 (placas +
+> máscara dura + um osso por braço) foi APROVADA na forma e REPROVADA no
+> arremesso: "agora nem aparecem mais braços" + um "leque escuro" no quadril.
+> Diagnóstico que fechou a questão: um **simulador offline de skinning**
+> (`/tmp/opencode/golem-sim4.mjs`, replica o skinning EXATO do three —
+> `boneMatrix×boneInverse×v`, Euler XYZ — nos 24.992 vértices da malha real,
+> frame a frame da coreografia) provou que (a) em repouso o skinning é
+> identidade e (b) TODOS os defeitos eram frames de ATAQUE: a malha gerada é
+> FUNDIDA (traseira do punho COLADA na nádega — zero vão), então girar osso de
+> braço 0,55–0,85 rad ABRE a superfície 0,39–0,57 (30–45 cm) e na carga o braço
+> ia PARA TRÁS do corpo (medido: 6% dos vértices do braço visíveis da câmera
+> contra 49% no repouso). De regra: **numa malha fundida, quem faz a volumetria
+> do ataque é a ROTAÇÃO RÍGIDA do GRUPO (zero deformação); osso filho só dá
+> pontinho — o teto do pêndulo do braço medido é ±0,14 rad.** CAPs nos Euler de
+> cada junta do corpo (coluna 0,10 / peito 0,08 / cabeça 0,14 / coroa 0,12),
+> porque sem cap o ATRASO de torção chegava a 0,68 rad na GARGANTA e a cabeça
+> (que não tem pescoço) amassava na própria base. O braço na carga ABRE para
+> FORA (`shZ` +0,14), senão afunda atrás do quadril e SOMES da câmera. Osso do
+> braço filho da COLUNA (`ARM_PARENT 2`), não do peito: divide a tração da
+> junção fundida (o rasgo da carga caía pela metade). Resultados medidos: rasgo
+> ≤0,13 (antes 0,39–0,57), dobra global ≤0,13, braço 32%→96% visível no ciclo
+> inteiro. Armadilhas do próprio simulador: `rot[i]` com 2 componentes faz
+> `eul(...)` receber `undefined` e o log inteiro sai NaN (métrica limpa =
+> medida com ruído); `pkill -f <nome>` casa com a linha de comando do PRÓPRIO
+> shell que o invoca e derruba sua chamada. Se os próximos modelos gerados
+> tiverem os BRAÇOS SEPARADOS do corpo (vão/vinco de verdade), o arremesso volta
+> a ter braço independente grande — hoje o teto é da malha, não da coreografia.
+> Testes de progressão para as três malhas continuam FORA até aprovação visual
+> de cada uma (o que há é o `debug-spawn-` + olho do usuário). Bundle: 3 GLB =
+> ~12,6 MB — passamos do limiar de 3 modelos: comprimir (KTX2/Draco) ou
+> `import()` por espécie quando o 4º modelo entrar.
 
 **PARADA ATUAL: o loop da ÁRVORE ESTÁ COMPLETO.** Todas as 22 espécies da árvore
 têm figurino próprio, rig, projétil-assinatura, FX de impacto e testes de
@@ -736,6 +775,66 @@ headless não tem o teto de 60 Hz do vsync: vale a RAZÃO cheio→eco e os flags
 exatos.
 
 ---
+
+## 🪨 GOLÉM Nv.1 de MALHA 3D IMPORTADA + arremesso-assinatura (14/nov/2026 — 4ª rodada, aprovada no navegador do usuário)
+
+Terceira malha da linha "modelos 3D" (mesmo molde do Ignis/Zéfiro): `GolemRig`
+(`src/scene/GolemMeshRig.tsx`) despacha **Nv.1 = mesh**
+(`src/models/golem/golem_model_lvl1.glb`, 5,7 MB, 24.992 vértices / ~40 mil
+triângulos, UMA textura 2048², export trimesh de .ply, **SEM ossos e SEM
+animação no arquivo**) com `<Suspense fallback={<StoneRig level={1}/>}>` (o
+figurino procedural segura o palco enquanto o GLB carrega); **Nv.2+ = StoneRig**
+inteiro (a progressão rocha viva → golem → colosso → MONTANHA MUSCULAR segue
+procedural, intocada). `speciesRigs.ts` troca `golem: StoneRig` por `GolemRig`.
+
+- **Encaixe**: `fit` escala para `formTop` Nv.1 = 1,5 e PLANTA no chão (o penedo
+  não flutua, diferente do zéfiro); meia-envergadura escalada ~0,63 × 0,37 <
+  `MEDIDO.golem` (0,75 × 0,63) → `footprints.ts` intocado. Frente da malha =
+  +Z (confirmado amostrando a textura: todo pixel verde-olho em z > 0) →
+  `GOLEM_MODEL_YAW = 0`. Braço que arremessa = `-X` local (`THROW_SIDE -1`; se
+  o print apontar o braço errado, vira a constante).
+- **Material**: `MeshStandardMaterial` + `map` do GLB e `onBeforeCompile`
+  vestindo a casa dentro do modelo novo: relevo de erosão do STONE_VERT ao
+  longo da normal (seguro aqui: malha OPACA de face única — a lição das
+  "rachaduras" valia para a CASCA dupla), respiração do monólito (×1,014),
+  veios de magma na escala LARGA com `uFGlow = base × (VEIN_REST 0,22 +
+  charge × VEIN_CHARGE 2,4)` (apagado parado, ACENDE carregando — o "embrulho"
+  de renda de lava do print 2 saiu), bioluminescência do musgo/olhos
+  (verde-dominante da textura) e flash branco de dano.
+- **Esqueleto de código** (`ensureSkin`, o GLB não traz nenhum): 6 PLACAS
+  raiz→quadril→coluna→peito→cabeça→coroa com juntas LIDAS DA TEXTURA
+  (`JOINT_Y [-1, -0,62, -0,2, +0,12, +0,34, +0,76]` — a garganta em +0,34: o
+  penedo NÃO tem pescoço, cabeça em +0,62 amassava a pedra da cabeça) e bandas
+  ESTREITAS `BAND_W [0,14, 0,14, 0,14, 0,2, 0,1]` (rampa larga = osso manda em
+  meio corpo e a pedra amassa — causa nº 1 do print 2; dobra estreita cai em
+  cima da linha de rachadura que a própria textura desenha); BRAÇO = lobo
+  RÍGIDO com UM osso por lado (`ARM_NEG 6` / `ARM_POS 7`, filhos da COLUNA,
+  `ARM_PARENT 2`) e máscara dura `armBlend` (rampa |x| 0,46→0,51 + teto e chão
+  INCLINADOS lidos da silhueta + cápsula 0,28/0,34 da linha ombro→punho). A
+  máscara é o que a sonda (`/tmp/opencode/golem-skin.mjs`) atesta: pesos somam
+  1,0000; peso de braço zero em perna/solado/cabeça/coroa; 364/377 vértices do
+  punho com peso pleno do osso.
+- **ATAQUE = ARREMESSO DE ROCHA** na MESMA janela do figurino
+  (`STONE_ATTACK_WINDOW 0,52` / carga até `STONE_WINDUP 0,44`; `attackPose`,
+  `STONE_WINDUP`, `makeChipGeo`, `CHIP_VERT` e `CHIP_FRAG` exportados do
+  StoneRig para a malha dançar o MESMA partitura de relógio — mas com ângulos
+  próprios, ver cabeçalho RODADA 4): a torção de 1,39 rad mora no GRUPO
+  (rígida, zero rasgo) e o punho varre ~1 unidade; osso do braço em ±0,14;
+  `shZ` +0,14 ABRE na carga (visibilidade da câmera) → −0,10 FECHA na
+  liberação; CAP por junta (`cap()`); morte desaba o penedo RÍGIDO (grupo
+  afunda/inclina; sem wilt grande em osso). O TACO de rocha nasce no punho
+  LOCAL do osso (`ARM_FIST` ±0,29/−0,57/−0,02 — o repouso do mundo não mudou
+  com o reparent para a coluna, então a origem continua correta), material do
+  figurino com o aro da equipe (`TEAM_TINT`), poeira da mão + nuvem dos pés +
+  lascas (`makeChipGeo`) tudo no pool compartilhado.
+- **Aprovado visualmente em 14/nov** ("ficou ok, mas está bom por enquanto" — o
+  usuário aceita o teto atual e quer seguir para os próximos modelos). Nada de
+  testes de progressão para as malhas experimentais.
+- **Sondas**: visual via `debug-spawn-golem` (testid do card do bestiário; o
+  card E a arena renderizam a malha) + Ctrl+Shift+R antes de avaliar. Se mexer
+  em pose/máscara/osso de novo, **não voltar ao print-cego**: o simulador
+  offline mede rasgo/dobra/visibilidade antes (`golem-sim4.mjs` roda em ~3 min
+  com variantes `CUR/A/E/F/G` no rodapé).
 
 ## 🔥 Ignis Nv.1 de MALHA 3D IMPORTADA + invólucro de chama (14/nov/2026 — piloto da linha "modelos 3D")
 
@@ -1881,7 +1980,8 @@ alcançáveis pelo ponteiro: 24/24" (projeta o chão dos 24 slots,
 - **Puros com figurino completo e aprovado**: ignis (FlameRig; **Nv.1 piloto de
   malha 3D importada desde 14/nov — ver a seção do Ignis Nv.1**), zephyr
   (WindRig; **Nv.1 também de malha importada, mesmo molde**), golem (StoneRig —
-  o padrão físico modelo), nereia (WaterRig) —
+  o padrão físico modelo; **Nv.1 de malha importada desde 14/nov, seção do
+  Golém Nv.1 — arremesso-assinatura com o corpo, não o braço**), nereia (WaterRig) —
   5 formas visíveis cada, gateadas por `minLvl/maxLvl`.
 - **Arena**: ilha flutuante, plataformas derivadas de `game/board.ts`
   (`TILE_SPACING_X 5,2 · ROW_DEPTH 5,2 · FRONT_ROW_Z 3,1 · UNIT_BASE_Y 0,28 ·
@@ -1926,7 +2026,7 @@ node qa/probe-framing.mjs              # enquadramento (24/24 buracos) + arraste
 node qa/probe-merge-preview.mjs        # prévia de fusões do arraste (revelar/selar, persegue o ponteiro, SEM FALHAS)
 node qa/probe-sell-fab.mjs             # FAB de venda: só no arraste, pulso devagar→rápido, 24/24 buracos livres (1373×749, 1280×610, 390×844)
 node qa/probe-tutorial.mjs             # 🎓 luvinha: 5 passos, mímica que NÃO joga, 24/24 buracos (desktop+retrato), cofre intacto, time de volta (92 checagens, ~4 min)
-# visual das malhas Nv.1 (IGNIS e ZÉFIRO): dev server → Configurações ▸ Depuração → enciclopédia → "Criar no campo" (`debug-spawn-ignis` / `debug-spawn-zephyr`); o card do bestiário E a arena renderizam a malha; Ctrl+Shift+R (hard refresh) SEMPRE antes de avaliar feedback de material/shader
+# visual das malhas Nv.1 (IGNIS, ZÉFIRO e GOLÉM): dev server → Configurações ▸ Depuração → enciclopédia → "Criar no campo" (`debug-spawn-ignis` / `debug-spawn-zephyr` / `debug-spawn-golem`); o card do bestiário E a arena renderizam a malha; Ctrl+Shift+R (hard refresh) SEMPRE antes de avaliar feedback de material/shader
 ```
 
 > As sondas que NÃO testam o tutorial (`probe-framing`, `probe-sell-fab`,

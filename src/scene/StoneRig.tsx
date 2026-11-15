@@ -31,7 +31,7 @@ import { getSpecies } from '../data/monsters';
 
 export const STONE_ATTACK_WINDOW = 0.52;
 /** fração da janela em que o golem está carregando o soco */
-const STONE_WINDUP = 0.44;
+export const STONE_WINDUP = 0.44;
 
 const GOLEM_DEF = getSpecies('golem');
 
@@ -52,7 +52,8 @@ export const STONE_ROLE_LOOK: Partial<Record<MatRole, StoneLook>> = {
   trans: { rockA: '#8e98a4', rockB: '#3b434d', crack: '#ff9a4a', crackGlow: 0.8, amp: 0.06 },
 };
 
-interface AttackPose {
+/** exportado: a malha importada do Nv.1 (GolemMeshRig) dança a MESMA coreografia */
+export interface AttackPose {
   twist: number; // tronco torce (negativo = carregando)
   crouch: number; // 0..1 joelhos dobram / corpo desce
   swing: number; // punho (negativo = recuado, positivo = soco estendido)
@@ -62,7 +63,7 @@ interface AttackPose {
   flare: number; // picos de ombro/cumeeira estufam
 }
 
-function attackPose(since: number): AttackPose {
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = {
     twist: 0,
     crouch: 0,
@@ -98,7 +99,8 @@ function attackPose(since: number): AttackPose {
   return P;
 }
 
-function makeChipGeo(n: number): THREE.BufferGeometry {
+/** exportado: a malha do Nv.1 (GolemMeshRig) usa as MESMAS lascas caindo do corpo */
+export function makeChipGeo(n: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const rnd = new Float32Array(n * 3);
@@ -451,7 +453,7 @@ export function StoneRig({
  * Lascas que se desprendem da pedra: caem em arco, girando, e somem no chão.
  * Nível alto = mais lascas (o corpo está se desfazendo de tanto magma dentro).
  */
-const CHIP_VERT = /* glsl */ `
+export const CHIP_VERT = /* glsl */ `
 attribute vec3 aRand; // x: ângulo, y: fase, z: tamanho/velocidade
 uniform float uTime;
 uniform float uAlpha;
@@ -480,7 +482,7 @@ void main() {
 }
 `;
 
-const CHIP_FRAG = /* glsl */ `
+export const CHIP_FRAG = /* glsl */ `
 varying float vA;
 varying vec3 vC;
 void main() {

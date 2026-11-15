@@ -2,7 +2,7 @@ import type { ComponentType } from 'react';
 import type { SpeciesId } from '../game/types';
 import { IgnisRig } from './IgnisMeshRig';
 import { ZephyrRig } from './ZephyrMeshRig';
-import { StoneRig } from './StoneRig';
+import { GolemRig } from './GolemMeshRig';
 import { WaterRig } from './WaterRig';
 import { LightningRig } from './LightningRig';
 import { WoodRig } from './WoodRig';
@@ -94,7 +94,7 @@ export interface SpeciesRigProps {
 export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigProps>>> = {
   ignis: IgnisRig, // Nv.1 = malha 3D importada (experimental); Nv.2+ = FlameRig
   zephyr: ZephyrRig, // Nv.1 = malha 3D importada (experimental); Nv.2+ = WindRig
-  golem: StoneRig,
+  golem: GolemRig, // Nv.1 = malha 3D importada (experimental); Nv.2+ = StoneRig
   nereia: WaterRig,
   raio: LightningRig,
   madeira: WoodRig,
