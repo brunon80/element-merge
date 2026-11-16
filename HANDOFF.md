@@ -812,6 +812,64 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## 🪨 A ÁRVORE INTEIRA DA PEDRA EM MALHA 3D — Nv.3-5 viram FÉRES (16/nov/2026 — 10ª da linha "modelos 3D"; aprovada no navegador do usuário: "ficou muito bom, pode versionar")
+
+O usuário adicionou o resto da árvore: `golem_model_lvl3/4/5.glb` — Nv.3-5
+("golem de pedra" → "colosso de pedra" → MONTANHA MUSCULAR) agora são FÉRES
+QUADRÚPENDES importadas (bicho-gorila cabisbaixo, dragão de pedra alado e dragão
+de asas abertas com cristais e cauda-martelo; ~25-28 mil vértices, 40 mil
+triângulos, UMA malha com UMA textura cada; SEM osso nem animação no arquivo,
+caixas baixas e fundas: y 1,98→1,52, z ±0,77→±1,0). O dispatcher `GolemRig`
+inteiro vira malha (`MESH_MAX_LEVEL` morreu; o StoneRig só segura o palco no
+`Suspense`), `MESH_FIGURINOS.golem = [true × 5]`. A frente (focinho/olhos) está
+no +Z local — conferida no viewer offline (`qa/mesh-viewer-shot.mjs`, prints dos
+três GLBs em 16/nov) — e a escada veio na ordem CERTA (diferente da água, sem
+inversão): `GOLEM_MODEL_YAW = 0` da casa segue.
+
+- **SKIN em três modos** (`ensureSkin(geo, mode, jointY, bandW)`): `head` (Nv.1 —
+placa única na cara + capuz de musgo, sem máscara de braço), `body` (Nv.2 —
+juntas absolutas lidas na textura + máscara de braço fundido; TODAS as
+calibrações das rodadas 1-4 intactas porque o GLB é byte a byte o de antes) e
+`beast` (Nv.3-5 — a MESMA loop de placas, mas juntas e faixas em PORCENTAGEM da
+caixa de cada malha: `BEAST_JOINT_FRAC` [0→0,92] e `BEAST_BAND_FRAC` [0,16→0,08]
+— o molde do `BODY_FRAC` do fogo, pois as caixas mudam entre si e a régua
+absoluta do penedo não serve). Sem máscara de braço na fera: quadrúpede fundido
+nas patas; os ossos de braço continuam no esqueleto com ZERO vértices de peso de
+propósito.
+- **ARREMESSO das feras amortecido**: bicho de quatro patas plantado não torce
+1,4 rad nem rola como bípede — o grupo carrega só 30% do `twist` (0,72→0,3) e o
+rolamento cai a um terço (0,06→0,02). A pedra nasce por TELECINESE na FRENTE DO
+FOCINHO (ponto local `(0, min.y + 0,52·spanY, max.z + 0,06)` — como no Nv.1, só
+que em altura de fera) e o POUSO passou a ser medido do ponto de partida
+(`fly.z0`; a regra antiga, absoluta 2,4 no berço da arena, faria a pedra do Nv.5
+sumir no instante em que nasce — spawn z ~2,8 escalado). O taco de rocha engorda
+na régua do catálogo (`lvK = formTop ÷ 1,5`: 0,085 no Nv.1 → ~0,24 na montanha)
+— senão a pedra do figurino encolheria contra o corpo que cresceu.
+- **ENCAIXE — o pior caso da família mudou de dono**: o dragão Nv.5 espalha a
+caixa ~±1,0 nos três eixos. `MEDIDO.golem` Nv.3-5 reassinado pela regra da linha
+(`s_a·(half + abraço)`, abraço proporcional à caixa): fera 1,33 × 1,08, colosso
+2,00 × 2,19 (asas abertas + cauda comprida no eixo profundo), dragão 3,09 ×
+3,09. `familyRadius` 1,77 → 3,17 e **`slotFit` 1,15 → 0,79** — a família INTEIRA
+encolhe para o buraco, o precedente aceito do fogo (0,72) e do vento (0,82);
+world top do Nv.5 fica 4,15 × 0,79 ≈ 3,27. Sonda ao vivo `golem@1..5`: as cinco
+SIM no buraco / SIM no anel, maior invólucro em mundo real 2,21 ≤ anel 2,5,
+SOBREPOSIÇÕES 0, topo 3,30. O pin de monotonicidade do `board.test` continua
+verde (o degrau Nv.2 < Nv.1 é −0,055, tolerância −0,1).
+- **Pino de jogabilidade acompanhado**: `earthProgression.test.ts` media o canhão
+Nv.1→Nv.5 com metro fixo (> 1) — com o `slotFit` novo dava 0,92. A régua passou
+a ser a PRÓPRIA escada do catálogo × encaixe da família (`worldMuzzleY × 0,9`),
+o MESMO tratamento que o teste do vento levou quando as asas do dragão encolheram
+o `slotFit` dele (7ª entrada).
+- **Estado/verificação (16/nov):** `tsc` limpo · `npx vitest run` 504/504 (45
+arquivos) · `npm run build` limpo (os cinco `.glb` do golém saem como assets:
+5,3-6,0 MB) · sonda de invólucro ao vivo (acima) · spawn dos três níveis novos na
+arena via depuração sem erro/warning de console; prints de arena em
+`/tmp/opencode/shots-golem/nva{3,4}` mostram a fera plantada, sem rasgo de placa
+nem derretimento, e a pedra nascendo na frente do focinho. Teste visual feito no
+navegador do usuário e APROVADO ("ficou muito bom, pode versionar").
+
+---
+
 ## 🪨 GOLÉM DE MALHA AGORA TEM ESCADA — cabeça no Nv.1, corpo no Nv.2 (15/nov/2026 — 9ª da linha "modelos 3D")
 
 O usuário trocou os GLBs do golém: `golem_model_lvl1.glb` passou a ser **SÓ A

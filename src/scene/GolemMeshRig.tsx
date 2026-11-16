@@ -4,6 +4,9 @@ import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import golemLvl1Url from '../models/golem/golem_model_lvl1.glb?url';
 import golemLvl2Url from '../models/golem/golem_model_lvl2.glb?url';
+import golemLvl3Url from '../models/golem/golem_model_lvl3.glb?url';
+import golemLvl4Url from '../models/golem/golem_model_lvl4.glb?url';
+import golemLvl5Url from '../models/golem/golem_model_lvl5.glb?url';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -26,21 +29,33 @@ import { makeStoneMaterial, TEAM_TINT } from './stoneShaders';
 
 /**
  * GOLEM DE MALHA 3D IMPORTADA (linha "modelos 3d", molde do Ignis/Zéfiro/Nereia):
- * Nv.1 e Nv.2 ("penedo" → "rocha viva") trocaram o figurino procedural de rocha
- * por meshes texturizados criados fora do jogo. A ESCADA É A CABEÇA: o Nv.1 é
- * SÓ A CABEÇA (`src/models/golem/golem_model_lvl1.glb` — 24.633 vértices, ~40
- * mil triângulos, UMA malha com UMA textura; esfera com olhos verdes e musgo no
+ * A ÁRVORE INTEIRA (Nv.1..5) são meshes texturizados criados fora do jogo — o
+ * StoneRig só segura o palco enquanto a malha carrega (e no fallback de erro).
+ * A ESCADA COMEÇA NA CABEÇA: o Nv.1 é SÓ A CABEÇA
+ * (`src/models/golem/golem_model_lvl1.glb` — 24.633 vértices, ~40 mil
+ * triângulos, UMA malha com UMA textura; esfera com olhos verdes e musgo no
  * topo, SEM ossos e SEM animação no arquivo) e o Nv.2 é o corpo completo que
  * antes vestia o Nv.1 (`golem_model_lvl2.glb` — 24.992 vértices, idêntico byte
  * a byte ao arquivo antigo, e por isso TODAS as calibrações de rig abaixo, feitas
- * no corpo, valem para ele sem mexer em nada). Nv.3+ continua o StoneRig (golem
- * → colosso → MONTANHA MUSCULAR, com as placas e pedras orbitando que só o rig
- * da casa tem), e enquanto a malha carrega o fallback também é o StoneRig.
+ * no corpo, valem para ele sem mexer em nada). Nv.3-5 (golem → colosso →
+ * MONTANHA MUSCULAR) são FÉRES QUADRÚPENDES (`golem_model_lvl3/4/5.glb` —
+ * bicho-gorila cabisbaixo, dragão de pedra alado, e dragão de asas abertas com
+ * cristais e cauda-martelo; ~25-28 mil vértices, ~40 mil triângulos, UMA malha
+ * com UMA textura cada): baixos e fundos (caixa y 1,5-2,0, z ±1,0), SEM ossos
+ * nem animação no arquivo, e a FRENTE (focinho/olhos) no +Z local — conferida no
+ * viewer offline em 16/nov, mesmo rumo do fogo/vento/água, então vale o MESMO
+ * `GOLEM_MODEL_YAW = 0`.
  * Nv.1 CABEÇA: sem braços nem pernas — a malha é uma bola, então a máscara de
  * braço e as juntas de placa do corpo NÃO se aplicam (girar osso nas laterais
  * cisalharia a face); a cabeça inteira é UMA placa rígida no osso da cabeça com
  * o capuz de musgo atrasando na coroa, e o taco de rocha se solta da frente da
  * cara (telecinese da montanha), não do punho.
+ * Nv.3-5 FERA: quadrúpedes plantados nas patas, com caixas MUITO maiores e com
+ * proporções próprias — a skin de placas entra pela RÉGUA DE PORCENTAGEM da
+ * altura da própria caixa (molde do `BODY_FRAC` do fogo, que também tem caixas
+ * diferentes por nível) SEM máscara de braço; o arremesso é AMORTECIDO (fera de
+ * quatro patas não torce 1,4 rad como bípede: o grupo carrega só 30% do `twist`
+ * e quase não rola) e a pedra nasce NA FRENTE DO FOCINHO, não do punho.
  *
  * ⚠️ RODADA 2 (print 1): o INVOLÚCRO DE ROCHA saiu — o modelo segura o palco
  * sozinho e a casca por cima dava um "embrulho". Saíram as ESCALAS (de osso e do
@@ -112,28 +127,28 @@ import { makeStoneMaterial, TEAM_TINT } from './stoneShaders';
  * `crouch` no máximo abaixa o corpo 0,03.
  *
  * ENCAIXE (molde do zéfiro): cada malha é escalada para o topo autoral da forma
- * (`formTop` Nv.1 = 1,5 / Nv.2 = 2,1) COM TETO DE LARGURA: o invólucro autoral
+ * (`formTop` Nv.1 = 1,5 → Nv.5 = 4,15) COM TETO DE LARGURA: o invólucro autoral
  * da forma (`footprintOf`, tabela assinada em `data/footprints.ts`) é o contrato
- * — encaixo (mesh + abraço do relevo/respiração) ≤ entrada nos dois eixos. A
- * cabeça Nv.1 é uma esfera e hoje é ela que segura o encaixe pelo teto (a
- * régua antiga do penedo era estreito e raso); o corpo Nv.2 cabe justo no
- * próprio invólucro novo. O corpo é PLANTADO no chão (o penedo não flutua); a
- * cabeça sozinha BOIA um dedo do chão (é uma pedra levitando, não um calhau).
- * A frente das duas malhas (os olhos verdes) está no +Z local: confirmado no
- * viewer offline (`mesh-viewer.html`, prints em 15/nov), o mesmo rumo do
+ * — encaixo (mesh + abraço do relevo/respiração) ≤ entrada nos dois eixos. Com a
+ * árvore inteira em malha, o teto viram o colosso Nv.4 e o dragão Nv.5 (asas e
+ * cauda espalham a caixa para ~±1,0 nos três eixos): a família encolhe no buraco
+ * (`slotFit` 1,15 → ≈0,79), o MESMO precedente aceito de fogo/água/vento. O
+ * corpo Nv.2 é PLANTADO no chão (o penedo não flutua); a cabeça sozinha BOIA um
+ * dedo do chão (é uma pedra levitando, não um calhau); as feras são plantadas
+ * nas patas.
+ * A frente das malhas (os olhos/focinhos) está no +Z local: confirmado no
+ * viewer offline (`mesh-viewer.html`, prints em 15 e 16/nov), o mesmo rumo do
  * fogo/vento/água — por isso `GOLEM_MODEL_YAW = 0`.
  */
 
 /** dados da espécie (a altura autoral de cada forma vem do catálogo, não do modelo) */
 const GOLEM_DEF = getSpecies('golem');
-/** topo autoral das formas de malha (Nv.1 = 1,5 / Nv.2 = 2,1) */
-const TOP_BY_LEVEL = [1, 2].map((l) => formTop(GOLEM_DEF, l));
+/** topo autoral das formas de malha (Nv.1..5: 1,5 → 4,15) */
+const TOP_BY_LEVEL = [1, 2, 3, 4, 5].map((l) => formTop(GOLEM_DEF, l));
 const LEVEL_1 = 1;
-/** Nv.1-2 = malha importada; Nv.3+ = StoneRig (o dispatcher decide por aqui) */
-const MESH_MAX_LEVEL = 2;
 
 /** URL da malha da forma (índice = nível-1) */
-const GOLEM_MESH_URLS = [golemLvl1Url, golemLvl2Url];
+const GOLEM_MESH_URLS = [golemLvl1Url, golemLvl2Url, golemLvl3Url, golemLvl4Url, golemLvl5Url];
 const golemMeshUrlFor = (level: number): string => GOLEM_MESH_URLS[level - 1];
 
 /**
@@ -204,6 +219,35 @@ const HEAD_BAND_HI = 0.58;
  * FENDA em vez de virar.
  */
 const BAND_W = [0.14, 0.14, 0.14, 0.2, 0.1];
+
+/**
+ * Modo da skin, por forma: `head` = bola do Nv.1 (placa única + capuz de musgo),
+ * `body` = penedo bípede do Nv.2 (juntas absolutas lidas na textura + máscara de
+ * braço), `beast` = feras quadrúpedes Nv.3-5 (mesma loop de placas, junta em
+ * PORCENTAGEM da caixa de cada malha, SEM máscara de braço).
+ */
+type SkinMode = 'head' | 'body' | 'beast';
+/**
+ * RÉGUA DE PORCENTAGEM das feras (molde do `BODY_FRAC` do fogo): as caixas de
+ * Nv.3-5 mudam de tamanho e proporção entre si (y 1,98 → 1,52; z ±0,77 → ±1,0),
+ * então a régua do penedo em coordenadas absolutas não serve. Junta da raiz em y 0
+ * (patas plantadas) e as 5 juntas de placa em FRAÇÃO da altura da caixa, lidas nos
+ * prints do viewer: anca/joelho traseiro ≈ 16%, lombo/dorso ≈ 38%, peito/ombros ≈
+ * 58%, base do pescoço ≈ 74%, garganta/coroa ≈ 92% (feras de pescoço curto: a
+ * cabeça é quase uma placa do dorso). Faixas de virada também em fração da altura
+ * — um POUCO mais largas que as do penedo (a malha da fera é menos "placada" na
+ * textura e aguenta rampa mais suave sem cisalhar).
+ */
+const BEAST_JOINT_FRAC = [0, 0.16, 0.38, 0.58, 0.74, 0.92];
+const BEAST_BAND_FRAC = [0.16, 0.16, 0.16, 0.14, 0.08];
+/**
+ * Onde a pedra nasce na FERA (espaço local da malha): na FRENTE do focinho, entre
+ * as patas dianteiras, na meia-altura do peito — y é fração da altura da caixa, z
+ * é um dedo além da frente da caixa (a pedra já nasce fora da superfície). Sem
+ * braços de arremesso, é telecinese como no Nv.1, só que a uma altura de fera.
+ */
+const BEAST_SPAWN_Y = 0.52;
+const BEAST_SPAWN_Z = 0.06;
 
 /**
  * BRAÇO (medido no `golem-cut.mjs`/`glab3.mjs`, coordenadas da malha): a coluna
@@ -404,10 +448,19 @@ const ARM_POS = 7;
  * pouco de peso de corpo que sobra na borda do ombro mantém o lobo colado ao
  * torso. Nos 4 slots de influência: 2 do corpo, 2 do braço (do mesmo osso).
  * CABEÇA (Nv.1): placa única na cabeça + capuz de musgo na coroa (ver acima).
+ * FERA (Nv.3-5): a MESMA loop de placas, mas com as juntas/faixas vindas por
+ * parâmetro (régua de porcentagem da caixa, `BEAST_*`) e SEM máscara de braço —
+ * quadrúpedes fundidos nas patas, os ossos 6/7 ficam sem um vértice sequer de
+ * propósito (torção é o grupo amortecido quem faz a volumetria).
  * Uma vez por geometria; as instâncias compartilham os atributos, cada uma
  * anima o PRÓPRIO esqueleto.
  */
-function ensureSkin(geo: THREE.BufferGeometry, head: boolean): void {
+function ensureSkin(
+  geo: THREE.BufferGeometry,
+  mode: SkinMode,
+  jointY: number[],
+  bandW: number[],
+): void {
   if (geo.userData.golemSkin) return;
   const pos = geo.attributes.position;
   const n = pos.count;
@@ -416,7 +469,7 @@ function ensureSkin(geo: THREE.BufferGeometry, head: boolean): void {
   for (let i = 0; i < n; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
-    if (head) {
+    if (mode === 'head') {
       // CABEÇA SOZINHA (Nv.1): uma placa RÍGIDA na cara (osso 4) com o capuz de
       // musgo atrasando na coroa (osso 5) — os ossos do meio da cadeia não têm
       // um vértice sequer de propósito. A cabeça não tem pescoço nem braço: a
@@ -433,14 +486,16 @@ function ensureSkin(geo: THREE.BufferGeometry, head: boolean): void {
       wgt[i * 4 + 3] = 0;
       continue;
     }
-    // ---- corpo: placa pura + virada na junta (pés plantados = raiz)
+    // ---- corpo (Nv.2) e fera (Nv.3-5): placa pura + virada na junta (pés/patas
+    // plantados = raiz); as juntas e faixas vêm por parâmetro (régua da textura
+    // no penedo, porcentagem da caixa na fera)
     let a = 0;
     let b = 0;
     let w = 0;
     for (let j = 0; j < 5; j++) {
-      const half = BAND_W[j] / 2;
-      const lo = JOINT_Y[j + 1] - half;
-      const hi = JOINT_Y[j + 1] + half;
+      const half = bandW[j] / 2;
+      const lo = jointY[j + 1] - half;
+      const hi = jointY[j + 1] + half;
       if (y < lo) {
         a = j;
         b = j;
@@ -457,8 +512,9 @@ function ensureSkin(geo: THREE.BufferGeometry, head: boolean): void {
       b = j + 1;
       w = 0;
     }
-    // ---- braço: lobo rígido num osso só (par = o mesmo osso duas vezes)
-    const armW = armBlend(Math.abs(x), y);
+    // ---- braço: lobo rígido num osso só (par = o mesmo osso duas vezes) — SÓ no
+    // corpo Nv.2; na fera quadrúpede os ossos 6/7 ficam sem peso de propósito
+    const armW = mode === 'body' ? armBlend(Math.abs(x), y) : 0;
     const base = x < 0 ? ARM_NEG : ARM_POS;
     idx[i * 4] = a;
     idx[i * 4 + 1] = b;
@@ -475,26 +531,21 @@ function ensureSkin(geo: THREE.BufferGeometry, head: boolean): void {
 }
 
 /**
- * Dispatcher do Golem: Nv.1-2 = malha importada (a cabeça do penedo → o corpo
- * completo que antes vestia o Nv.1); Nv.3..5 = StoneRig (golem → colosso →
- * MONTANHA MUSCULAR continua procedural, com as placas, trapézios de ombro e
- * pedras orbitando que só o rig da casa tem). Enquanto a malha carrega, o
- * figurino procedural do MESMO nível segura o palco.
+ * Dispatcher do Golem: a ÁRVORE INTEIRA (Nv.1..5) é malha importada (a cabeça
+ * do penedo → o corpo que antes vestia o Nv.1 → as três feras de quatro patas).
+ * O StoneRig segura o palco só enquanto o GLB carrega (e no fallback).
  */
 export function GolemRig(props: StoneRigProps) {
   const level = clampLevel(props.level);
-  if (level <= MESH_MAX_LEVEL) {
-    // enquanto o GLB (5,5-5,7 MB) carrega, o penedo antigo segura o palco
-    return (
-      <Suspense fallback={<StoneRig {...props} level={level} />}>
-        <GolemMeshRig {...props} level={level} />
-      </Suspense>
-    );
-  }
-  return <StoneRig {...props} level={level} />;
+  // enquanto o GLB (5,3-6 MB) carrega, o penedo antigo segura o palco
+  return (
+    <Suspense fallback={<StoneRig {...props} level={level} />}>
+      <GolemMeshRig {...props} level={level} />
+    </Suspense>
+  );
 }
 
-/** malha pura da forma (Nv.1-2) — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma (Nv.1-5) — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
 function GolemMeshRig({
   seed,
   unitId,
@@ -505,7 +556,6 @@ function GolemMeshRig({
   smoke,
 }: StoneRigProps) {
   const level = clampLevel(levelProp);
-  const headOnly = level === 1; // Nv.1 = SÓ A CABEÇA; Nv.2 = o corpo completo
   const topY = TOP_BY_LEVEL[level - 1];
   const url = golemMeshUrlFor(level);
   useGLTF.preload(url);
@@ -525,13 +575,37 @@ function GolemMeshRig({
     return { geo, tex };
   }, [scene, url]);
 
+  // SKIN e juntas do esqueleto (o GLB não traz osso NENHUM): Nv.1 = placa única
+  // (o meio da cadeia sem um vértice), Nv.2 = juntas absolutas lidas na malha e na
+  // textura (calibradas no penedo de rocha viva, RODADAS 2-4), Nv.3-5 = RÉGUA DE
+  // PORCENTAGEM da caixa da própria malha (as feras mudam de tamanho e proporção
+  // entre si) e o ponto de nascimento da pedra da fera, em espaço local da malha.
+  const skin = useMemo<{
+    mode: SkinMode;
+    jointY: number[];
+    bandW: number[];
+    spawn: [number, number, number] | null;
+  }>(() => {
+    if (level === 1) return { mode: 'head', jointY: JOINT_Y, bandW: BAND_W, spawn: null };
+    if (level === 2) return { mode: 'body', jointY: JOINT_Y, bandW: BAND_W, spawn: null };
+    const bb = src.geo.boundingBox!;
+    const spanY = bb.max.y - bb.min.y;
+    return {
+      mode: 'beast',
+      jointY: BEAST_JOINT_FRAC.map((f) => bb.min.y + f * spanY),
+      bandW: BEAST_BAND_FRAC.map((f) => f * spanY),
+      spawn: [0, bb.min.y + BEAST_SPAWN_Y * spanY, bb.max.z + BEAST_SPAWN_Z],
+    };
+  }, [src, level]);
+
   // encaixe autoral: altura = formTop da forma, corpo centralizado e a BASE no
-  // chão (o penedo de corpo é PLANTADO; a cabeça sozinha boia um dedo). TETO DE
+  // chão (penedo e feras são PLANTADOS; a cabeça sozinha boia um dedo). TETO DE
   // LARGURA (molde do zéfiro): o invólucro autoral da forma (`footprintOf`,
   // tabela assinada em `data/footprints.ts`) é o contrato — encaixo (mesh +
-  // abraço do relevo/respiração) ≤ entrada nos dois eixos. A cabeça Nv.1 é uma
-  // esfera e é hoje quem segura o encaixe pelo teto; o corpo Nv.2 (meia-
-  // envergadura escalada ~0,87 × 0,51) cabe no invólucro novo da forma.
+  // abraço do relevo/respiração) ≤ entrada nos dois eixos. Com a árvore toda em
+  // malha, o teto da família é o colosso Nv.4 / o dragão Nv.5 (asas e cauda
+  // espalham a caixa ~±1,0); a tabela assinada encolhe o `slotFit` da família
+  // para o buraco, como fogo/água/vento já fizeram.
   const fit = useMemo(() => {
     const bb = src.geo.boundingBox!;
     const spanY = bb.max.y - bb.min.y;
@@ -547,9 +621,13 @@ function GolemMeshRig({
     const pz = cx * Math.sin(GOLEM_MODEL_YAW) - cz * Math.cos(GOLEM_MODEL_YAW);
     return {
       s,
-      pos: [px, (headOnly ? FLOAT_HEAD_Y : 0) - bb.min.y * s, pz] as [number, number, number],
+      pos: [px, (skin.mode === 'head' ? FLOAT_HEAD_Y : 0) - bb.min.y * s, pz] as [
+        number,
+        number,
+        number,
+      ],
     };
-  }, [src, level, headOnly, topY]);
+  }, [src, level, skin, topY]);
 
   // tint da equipe (o mesmo canal do StoneRig): pinta o aro do TACO DE ROCHA
   // que sai da mão na cor de quem é o dono
@@ -627,34 +705,37 @@ function GolemMeshRig({
 
   // ESQUELETO POR INSTÂNCIA: geometria (com pesos) compartilhada, ossos e
   // animação privados de cada unidade — dois penedos Nv.1 nunca atacam juntos.
-  // PLACAS do corpo (raiz→coroa) + UM osso de braço por lado nascido na COLUNA
-  // (`ARM_PARENT` — divide a tração da junção fundida, ver cabeçalho RODADA 4).
+  // PLACAS (raiz→coroa) nas juntas do `skin`: absolutas no penedo Nv.2, da caixa
+  // na fera Nv.3-5. + UM osso de braço por lado nascido na COLUNA (`ARM_PARENT` —
+  // divide a tração da junção fundida, ver cabeçalho RODADA 4); na fera os ossos
+  // de braço continuam no esqueleto mas sem um vértice de peso (skin `beast`).
   const rig = useMemo(() => {
-    ensureSkin(src.geo, headOnly);
+    ensureSkin(src.geo, skin.mode, skin.jointY, skin.bandW);
+    const jY = skin.jointY;
     const mk = (name: string, x: number, y: number, z = 0) => {
       const b = new THREE.Bone();
       b.name = name;
       b.position.set(x, y, z);
       return b;
     };
-    const root = mk('root', 0, JOINT_Y[0]);
-    const hips = mk('hips', 0, JOINT_Y[1] - JOINT_Y[0]);
-    const spine = mk('spine', 0, JOINT_Y[2] - JOINT_Y[1]);
-    const chest = mk('chest', 0, JOINT_Y[3] - JOINT_Y[2]);
-    const head = mk('head', 0, JOINT_Y[4] - JOINT_Y[3]);
-    const crown = mk('crown', 0, JOINT_Y[5] - JOINT_Y[4]);
+    const root = mk('root', 0, jY[0]);
+    const hips = mk('hips', 0, jY[1] - jY[0]);
+    const spine = mk('spine', 0, jY[2] - jY[1]);
+    const chest = mk('chest', 0, jY[3] - jY[2]);
+    const head = mk('head', 0, jY[4] - jY[3]);
+    const crown = mk('crown', 0, jY[5] - jY[4]);
     root.add(hips);
     hips.add(spine);
     spine.add(chest);
     chest.add(head);
     head.add(crown);
     // osso do braço na base do lobo (o pai é a COLUNA, `ARM_PARENT` — junta em
-    // JOINT_Y[2]; daí o Y negativo relativo: o ombro fica ACIMA da coluna)
+    // jY[2]; daí o Y negativo relativo: o ombro fica ACIMA da coluna)
     const armBone = (sign: 1 | -1, tag: string) => {
       const sh = mk(
         `arm${tag}`,
         sign * ARM_SHOULDER_X,
-        ARM_SHOULDER_Y - JOINT_Y[ARM_PARENT],
+        ARM_SHOULDER_Y - jY[ARM_PARENT],
         0.02,
       );
       [root, hips, spine, chest, head, crown][ARM_PARENT].add(sh);
@@ -670,16 +751,21 @@ function GolemMeshRig({
     skinned.castShadow = true;
     skinned.frustumCulled = false; // o relevo do shader viaja além da esfera
     return { skinned, bones: { root, hips, spine, chest, head, crown, thr, off } };
-  }, [src, body, headOnly]);
+  }, [src, body, skin]);
 
   // TACO DE ROCHA que o penedo arremessa: a PEDRA DO FIGURINO (mesmo material
   // de rocha com luz da arena, veios e aro da equipe) numa pedra bruta angular
   // — é o que "vende" o arremesso. Vive no espaço do grupo de animação
   // (unidades da arena), nunca na malha.
   const rock = useMemo(() => {
-    // o taco engorda com o nível (0,085 → 0,10 no Nv.2) — a mesma régua do
-    // figurino, onde o punho do arremesso é maior a cada fusão
-    const geo = new THREE.IcosahedronGeometry(0.085 * (1 + 0.18 * (level - 1)), 0);
+    // o taco engorda na RÉGUA da altura autoral da forma (`lvK` = formTop do nível
+    // ÷ formTop do Nv.1): com a árvore toda em malha e escala própria por forma, a
+    // pedra do figurino teria que encolher no mundo para uma montanha de 4,15 —
+    // aqui ela cresce junto do bicho (0,085 no Nv.1 → 0,24 na MONTANHA MUSCULAR)
+    const geo = new THREE.IcosahedronGeometry(
+      0.085 * (TOP_BY_LEVEL[level - 1] / TOP_BY_LEVEL[LEVEL_1 - 1]),
+      0,
+    );
     setSeedAttribute(geo, seed); // o STONE_VERT lê aSeed em todo vértice
     const mat = makeStoneMaterial({
       rockA: LOOK.rockA,
@@ -741,8 +827,9 @@ function GolemMeshRig({
   const demoT = useRef(-1);
   const dustAcc = useRef(0);
   const strikeDone = useRef(true);
-  /** voo do taco: -1 = dormindo; senão, segundos desde a liberação */
-  const fly = useRef({ t: -1, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, spin: 0 });
+  /** voo do taco: -1 = dormindo; senão, segundos desde a liberação (`z0` = de onde
+   *  a pedra saiu — o pouso em frente é medido a partir dali, não do berço da arena) */
+  const fly = useRef({ t: -1, x: 0, y: 0, z: 0, z0: 0, vx: 0, vy: 0, vz: 0, spin: 0 });
 
   useEffect(() => {
     if (demoAttackSeq !== undefined && demoAttackSeq > 0) demoT.current = 0;
@@ -790,9 +877,15 @@ function GolemMeshRig({
     // SÓ como TRANSLAÇÃO, 0,03 no máximo). SEM ESCALA em grupo ou osso: escalar
     // osso num chibi de cabeça enorme derrete o modelo (print 1). Morte: o
     // penedo desaba RÍGIDO (afunda e inclina), sem torcer placa nenhuma.
+    // Na FERA (Nv.3-5) o arremesso é AMORTECIDO: quadrúpede plantado nas patas
+    // com tronco fundo não torce 1,4 rad nem rola como bípede — o grupo gira só
+    // 30% do `twist` e o rolamento cai a um terço; a leitura do arremesso ali
+    // vem do nascimento da pedra na frente do focinho, não do corpo girando.
+    const beast = skin.mode === 'beast';
     const sway = Math.sin(t * 0.5 + seed) * 0.022 + Math.sin(t * 1.1 + 1.7) * 0.008;
-    g.rotation.y = sway + pose.twist * 0.72;
-    g.rotation.z = Math.sin(t * 0.42 + seed * 0.6) * 0.012 + THROW_SIDE * pose.twist * 0.06;
+    g.rotation.y = sway + pose.twist * (beast ? 0.3 : 0.72);
+    g.rotation.z =
+      Math.sin(t * 0.42 + seed * 0.6) * 0.012 + THROW_SIDE * pose.twist * (beast ? 0.02 : 0.06);
     g.rotation.x = cap(pose.lean, 0.15) + Math.sin(t * 0.55 + seed * 0.4) * 0.006 + wilt * 0.18;
     g.position.y = Math.sin(t * 0.9 + seed) * 0.014 - pose.crouch * 0.03 - wilt * 0.06;
     g.position.z = pose.stepZ;
@@ -881,26 +974,35 @@ function GolemMeshRig({
       // o punho é fixo no osso do ombro (o lobo é rígido): girar o osso leva o
       // punho junto, então a pedra nasce na mão em qualquer ângulo do arremesso.
       // Na CABEÇA sozinha não há braço: o taco se solta da frente da cara, à
-      // altura da "boca" — o cálculo cai direto no espaço do grupo (T·R·S do
-      // encaixe, yaw 0 hoje; a rotação genérica é só por robustez).
-      if (headOnly) {
-        const c = Math.cos(GOLEM_MODEL_YAW);
-        const sN = Math.sin(GOLEM_MODEL_YAW);
-        tmpWorld.set(
-          fit.pos[0] + (HEAD_FIST_X * c + HEAD_FIST_Z * sN) * fit.s,
-          fit.pos[1] + HEAD_FIST_Y * fit.s,
-          fit.pos[2] + (-HEAD_FIST_X * sN + HEAD_FIST_Z * c) * fit.s,
-        );
-      } else {
+      // altura da "boca"; na FERA a pedra nasce NA FRENTE DO FOCINHO, entre as
+      // patas dianteiras (ponto `skin.spawn`, local da malha) — nos dois casos o
+      // cálculo cai direto no espaço do grupo (T·R·S do encaixe, yaw 0 hoje; a
+      // rotação genérica é só por robustez).
+      if (skin.mode === 'body') {
         b.thr.updateWorldMatrix(true, false);
         tmpWorld.set(THROW_SIDE * ARM_FIST_X, ARM_FIST_Y, ARM_FIST_Z);
         b.thr.localToWorld(tmpWorld);
         g.worldToLocal(tmpWorld); // para o espaço do grupo (unidades da arena)
+      } else {
+        const [fx, fy, fz] =
+          skin.mode === 'head' ? [HEAD_FIST_X, HEAD_FIST_Y, HEAD_FIST_Z] : skin.spawn!;
+        const c = Math.cos(GOLEM_MODEL_YAW);
+        const sN = Math.sin(GOLEM_MODEL_YAW);
+        tmpWorld.set(
+          fit.pos[0] + (fx * c + fz * sN) * fit.s,
+          fit.pos[1] + fy * fit.s,
+          fit.pos[2] + (-fx * sN + fz * c) * fit.s,
+        );
       }
       f.t = 0;
       f.x = tmpWorld.x;
       f.y = Math.max(0.22, tmpWorld.y);
-      f.z = Math.min(headOnly ? 1.2 : 0.55, tmpWorld.z); // curto: a pedra cai no INIMIGO colado, não na câmera
+      // curto: a pedra cai no INIMIGO colado, não na câmera. A FERA não tem teto
+      // de clamp: o focinho dela JÁ nasce fora do corpo (caixa ±1,0 escalada) e o
+      // pouso à frente passa a ser medido de lá (`z0`, não do berço da arena).
+      f.z =
+        skin.mode === 'beast' ? tmpWorld.z : Math.min(skin.mode === 'head' ? 1.2 : 0.55, tmpWorld.z);
+      f.z0 = f.z;
       f.vx = (Math.random() - 0.5) * 0.4;
       f.vy = 2.6; // tapa para cima: arco curto e alto
       f.vz = 1.1; // +Z = em direção ao alvo (o mesmo rumo do rig)
@@ -956,7 +1058,10 @@ function GolemMeshRig({
       rock.mesh.rotation.x += f.spin * dt;
       rock.mesh.rotation.z += f.spin * 0.7 * dt;
       rock.mat.uniforms.uTime.value = t;
-      const landed = f.y <= 0.08 || f.z > 2.4 || f.t > 1.1;
+      // pedra no chão, pouso À FRENTE do ponto de onde ela saiu (`z0` — a pedra
+      // da fera já nasce na ponta do focinho: a regra antiga, absoluta no berço
+      // da arena, faria a pedra do Nv.5 sumir no instante em que nasce) ou timeout
+      const landed = f.y <= 0.08 || f.z > f.z0 + 2.4 || f.t > 1.1;
       if (landed) {
         f.t = -1;
         rock.mesh.visible = false;

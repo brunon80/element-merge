@@ -1,5 +1,6 @@
 import { MODELS, hasLevelVariants, partsForLevel } from '../scene/speciesModels';
 import { ROW_DEPTH, TILE_SPACING_X } from '../game/board';
+import { worldMuzzleY } from '../data/footprints';
 import { formName, formTop, hasForms } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { SPECIES_RIGS } from '../scene/speciesRigs';
@@ -158,7 +159,10 @@ describe('Projétil acompanha o nível da montanha', () => {
     }
     expect(small).not.toBeNull();
     expect(small!.level).toBe(1);
-    // a montanha cospe do peito (~1,2 acima do penedo)
-    expect(shot!.y - small!.y).toBeGreaterThan(1);
+    // a montanha cospe do peito (~1,2 acima do penedo): a régua é a PRÓPRIA
+    // escada do catálogo × o encaixe da família — com a árvore toda em malha o
+    // `slotFit` encolheu (1,15 → 0,79) pelo dragão Nv.5, igual vento/água/fogo
+    const ladder = worldMuzzleY('golem', 5) - worldMuzzleY('golem', 1);
+    expect(shot!.y - small!.y).toBeGreaterThan(0.9 * ladder);
   });
 });

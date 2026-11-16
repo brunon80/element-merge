@@ -80,21 +80,27 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
     { x: 2.39, z: 2.32 }, // dragão alado Nv.5: barbatanas-alas abertas — o pior caso da família
   ],
   golem: [
-    // Nv.1-2 agora são MALHA 3D (linha "modelos 3D"): `golem_model_lvl1.glb` é
-    // SÓ A CABEÇA do Nv.2 (esfera com olhos verdes e musgo) e o
+    // A ÁRVORE INTEIRA agora é MALHA 3D (linha "modelos 3D"): `golem_model_lvl1.glb`
+    // é SÓ A CABEÇA do Nv.2 (esfera com olhos verdes e musgo), o
     // `golem_model_lvl2.glb` é o corpo completo que antes vestia o Nv.1 (byte a
-    // byte o arquivo antigo — as calibrações de rig do corpo valem intactas).
-    // Encaixe no contrato `MEDIDO = s_a·(half + abraço)` (abraço 0,10 do relevo
-    // de erosão + respiração, na régua do zéfiro): a cabeça Nv.1 é uma esfera
-    // (s_a = 1,5/1,60 = 0,93 → 1,05 × 1,05) e o corpo Nv.2 é largo e raso
-    // (s_a = 2,1/1,99 = 1,06 → 0,98 × 0,62). O pior caso da família continua o
-    // Nv.5 procedural (1,57 × 1,69) — o buraco da família e o `slotFit` (1,15)
-    // não mudam; Nv.3+ seguem medidos do StoneRig.
+    // byte o arquivo antigo — as calibrações de rig do corpo valem intactas) e
+    // Nv.3-5 são FÉRES QUADRÚPENDES (`golem_model_lvl3/4/5.glb`: bicho-gorila
+    // cabisbaixo, dragão de pedra alado, dragão de asas abertas com cauda-martelo
+    // — baixos e fundos, caixa y ~1,5-2,0 e z ±1,0). Encaixe no contrato `MEDIDO
+    // = s_a·(half + abraço)` (abraço 0,10 do relevo de erosão + respiração, na
+    // régua do zéfiro, proporcional à caixa de cada malha): a cabeça Nv.1 é uma
+    // esfera (s_a = 1,5/1,60 = 0,93 → 1,05 × 1,05), o corpo Nv.2 é largo e raso
+    // (s_a = 2,1/1,99 = 1,06 → 0,98 × 0,62), a fera Nv.3 abre as quatro patas
+    // (s_a = 2,45/1,98 = 1,24), o colosso Nv.4 deita as asas e a cauda (s_a =
+    // 3,05/1,58 = 1,93) e o dragão Nv.5 é o pior caso da família (3,09 nos dois
+    // eixos) — puxa o `familyRadius` 1,77 → 3,17 e o `slotFit` 1,15 → 0,79: a
+    // família INTEIRA encolhe para o buraco, o mesmo padrão aceito do dragão de
+    // fogo (0,72) e do tornado (0,82). O Nv.5 world top fica 4,15 × 0,79 ≈ 3,27.
     { x: 1.05, z: 1.05 }, // cabeça Nv.1: esfera com olhos verdes (meia-envergadura = meia-profundidade)
     { x: 0.98, z: 0.62 }, // rocha viva Nv.2: corpo completo na malha (ombros largos, raso em Z)
-    { x: 1.01, z: 0.62 }, // Nv.3-5: ainda StoneRig (medido)
-    { x: 1.2, z: 0.78 },
-    { x: 1.57, z: 1.69 },
+    { x: 1.33, z: 1.08 }, // golem de pedra Nv.3: fera gorila — patas abrem para os lados, fundo encolhe
+    { x: 2.0, z: 2.19 }, // colosso de pedra Nv.4: asas abertas + cauda comprida no eixo profundo
+    { x: 3.09, z: 3.09 }, // montanha muscular Nv.5: dragão de asas espalhadas — o pior caso da família
   ],
   zephyr: [
     // A ÁRVORE INTEIRA na MALHA 3D importada (wind_model_lvl1..5.glb, Nv.1..5).

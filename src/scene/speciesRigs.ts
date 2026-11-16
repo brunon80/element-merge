@@ -94,7 +94,7 @@ export interface SpeciesRigProps {
 export const SPECIES_RIGS: Partial<Record<SpeciesId, ComponentType<SpeciesRigProps>>> = {
   ignis: IgnisRig, // Nv.1..5 = a malha 3D da árvore do fogo (FlameRig só segura o palco enquanto o GLB carrega)
   zephyr: ZephyrRig, // Nv.1..5 = a malha 3D da árvore do vento (WindRig só segura o palco enquanto o GLB carrega)
-  golem: GolemRig, // Nv.1-2 = malha 3D importada (a cabeça → o corpo); Nv.3+ = StoneRig
+  golem: GolemRig, // Nv.1..5 = a malha 3D da árvore da pedra (a cabeça → o corpo → as feras); StoneRig só segura o palco enquanto o GLB carrega
   nereia: NereiaRig, // Nv.1..5 = a malha 3D da árvore da água (WaterRig só segura o palco enquanto o GLB carrega)
   raio: LightningRig,
   madeira: WoodRig,
