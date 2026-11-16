@@ -972,7 +972,7 @@ const STAR6: [number, number, number][] = STAR8.filter((_, i) => i % 3 !== 2).sl
 export const MESH_FIGURINOS: Partial<Record<SpeciesId, boolean[]>> = {
   ignis: [true, true, true, true, true], // árvore do fogo inteira (fire_model_lvl1..5)
   zephyr: [true, true, true, true, true], // árvore do vento inteira (wind_model_lvl1..5)
-  golem: [true, false, false, false, false], // Nv.1 piloto (golem_model_lvl1)
+  golem: [true, true, false, false, false], // Nv.1 = a cabeça; Nv.2 = o corpo (golem_model_lvl1/2)
   nereia: [true, true, true, true, true], // árvore da água inteira (water_model_lvl1..5)
 };
 

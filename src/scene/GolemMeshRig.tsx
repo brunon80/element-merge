@@ -3,9 +3,12 @@ import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import golemLvl1Url from '../models/golem/golem_model_lvl1.glb?url';
+import golemLvl2Url from '../models/golem/golem_model_lvl2.glb?url';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
+import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
 import { getSpecies } from '../data/monsters';
+import type { MonsterLevel } from '../game/types';
 import { getEngine } from '../store/gameStore';
 import { circleTexture, setSeedAttribute } from './assets';
 import { NOISE_GLSL } from './flameShaders';
@@ -22,13 +25,22 @@ import {
 import { makeStoneMaterial, TEAM_TINT } from './stoneShaders';
 
 /**
- * GOLEM Nv.1 de MALHA 3D IMPORTADA (linha "modelos 3d", molde do Ignis/Zéfiro):
- * a unidade Nv.1 ("penedo") troca o figurino procedural de rocha pelo mesh
- * texturizado criado fora do jogo (`src/models/golem/golem_model_lvl1.glb` —
- * 24.992 vértices, 40 mil triângulos, UMA malha com UMA textura de 2048²,
- * export do trimesh a partir de .ply; SEM ossos e SEM animação no arquivo).
- * Nv.2+ continua o StoneRig (rocha viva → golem → colosso → MONTANHA MUSCULAR),
- * e enquanto a malha carrega o fallback também é o StoneRig.
+ * GOLEM DE MALHA 3D IMPORTADA (linha "modelos 3d", molde do Ignis/Zéfiro/Nereia):
+ * Nv.1 e Nv.2 ("penedo" → "rocha viva") trocaram o figurino procedural de rocha
+ * por meshes texturizados criados fora do jogo. A ESCADA É A CABEÇA: o Nv.1 é
+ * SÓ A CABEÇA (`src/models/golem/golem_model_lvl1.glb` — 24.633 vértices, ~40
+ * mil triângulos, UMA malha com UMA textura; esfera com olhos verdes e musgo no
+ * topo, SEM ossos e SEM animação no arquivo) e o Nv.2 é o corpo completo que
+ * antes vestia o Nv.1 (`golem_model_lvl2.glb` — 24.992 vértices, idêntico byte
+ * a byte ao arquivo antigo, e por isso TODAS as calibrações de rig abaixo, feitas
+ * no corpo, valem para ele sem mexer em nada). Nv.3+ continua o StoneRig (golem
+ * → colosso → MONTANHA MUSCULAR, com as placas e pedras orbitando que só o rig
+ * da casa tem), e enquanto a malha carrega o fallback também é o StoneRig.
+ * Nv.1 CABEÇA: sem braços nem pernas — a malha é uma bola, então a máscara de
+ * braço e as juntas de placa do corpo NÃO se aplicam (girar osso nas laterais
+ * cisalharia a face); a cabeça inteira é UMA placa rígida no osso da cabeça com
+ * o capuz de musgo atrasando na coroa, e o taco de rocha se solta da frente da
+ * cara (telecinese da montanha), não do punho.
  *
  * ⚠️ RODADA 2 (print 1): o INVOLÚCRO DE ROCHA saiu — o modelo segura o palco
  * sozinho e a casca por cima dava um "embrulho". Saíram as ESCALAS (de osso e do
@@ -99,19 +111,30 @@ import { makeStoneMaterial, TEAM_TINT } from './stoneShaders';
  * mão — tudo rotação/translação rígidas: nenhum ângulo serve de escala e o
  * `crouch` no máximo abaixa o corpo 0,03.
  *
- * ENCAIXE: escalado para o topo autoral da forma (`formTop` Nv.1 = 1,5) e
- * PLANTADO no chão (o penedo não flutua). Meia-envergadura escalada ~0,63 ×
- * 0,37 < `MEDIDO.golem` Nv.1 (0,75 × 0,63), então `slotFit`/buracos/HUD seguem
- * sem tocar em `data/footprints.ts`.
- * A frente da malha (os olhos verdes) está no +Z local: confirmado amostrando a
- * textura nos vértices (todo pixel verde-olho caiu em z > 0), o mesmo rumo do
- * fogo/vento — por isso `GOLEM_MODEL_YAW = 0`.
+ * ENCAIXE (molde do zéfiro): cada malha é escalada para o topo autoral da forma
+ * (`formTop` Nv.1 = 1,5 / Nv.2 = 2,1) COM TETO DE LARGURA: o invólucro autoral
+ * da forma (`footprintOf`, tabela assinada em `data/footprints.ts`) é o contrato
+ * — encaixo (mesh + abraço do relevo/respiração) ≤ entrada nos dois eixos. A
+ * cabeça Nv.1 é uma esfera e hoje é ela que segura o encaixe pelo teto (a
+ * régua antiga do penedo era estreito e raso); o corpo Nv.2 cabe justo no
+ * próprio invólucro novo. O corpo é PLANTADO no chão (o penedo não flutua); a
+ * cabeça sozinha BOIA um dedo do chão (é uma pedra levitando, não um calhau).
+ * A frente das duas malhas (os olhos verdes) está no +Z local: confirmado no
+ * viewer offline (`mesh-viewer.html`, prints em 15/nov), o mesmo rumo do
+ * fogo/vento/água — por isso `GOLEM_MODEL_YAW = 0`.
  */
 
-/** dados da espécie (a altura autoral do Nv.1 vem do catálogo, não do modelo) */
+/** dados da espécie (a altura autoral de cada forma vem do catálogo, não do modelo) */
 const GOLEM_DEF = getSpecies('golem');
-const TOP_LVL1 = formTop(GOLEM_DEF, 1);
+/** topo autoral das formas de malha (Nv.1 = 1,5 / Nv.2 = 2,1) */
+const TOP_BY_LEVEL = [1, 2].map((l) => formTop(GOLEM_DEF, l));
 const LEVEL_1 = 1;
+/** Nv.1-2 = malha importada; Nv.3+ = StoneRig (o dispatcher decide por aqui) */
+const MESH_MAX_LEVEL = 2;
+
+/** URL da malha da forma (índice = nível-1) */
+const GOLEM_MESH_URLS = [golemLvl1Url, golemLvl2Url];
+const golemMeshUrlFor = (level: number): string => GOLEM_MESH_URLS[level - 1];
 
 /**
  * Rumo da malha: o rig encara o INIMIGO no +Z local (o mesmo +Z do arremesso).
@@ -129,8 +152,8 @@ export const THROW_SIDE: 1 | -1 = -1;
 
 /** paleta do figurino (STONE_ROLE_LOOK.body): rocha cinza-azulada + veios de magma */
 const LOOK = STONE_ROLE_LOOK.body!;
-/** o glowMul do figurino por nível (0,55 + 0,24·nível) no Nv.1 */
-const CRACK_GLOW_LVL1 = (LOOK.crackGlow ?? 0.5) * (0.55 + LEVEL_1 * 0.24);
+/** o glowMul do figurino por nível (0,55 + 0,24·nível) — a fissura acende mais alto */
+const crackGlowFor = (level: number): number => (LOOK.crackGlow ?? 0.5) * (0.55 + level * 0.24);
 /**
  * VEIOS DE MAGMA: o print da rodada 2 reclamou do "embrulho" — os veios ficaram
  * MAIORES e MAIS RAROS (uma ou duas rachaduras de luz no corpo, não renda por
@@ -143,6 +166,18 @@ const VEIN_REST = 0.22;
 const VEIN_CHARGE = 2.4;
 
 /**
+ * ABRAÇO do invólucro (modelo): relevo de erosão do `uFA` (0,075 × ~1,2 do ruído
+ * ≈ 0,09 ao longo da normal) + a respiração do monólito (~1,4% da escala). A
+ * sonda de footprint lê a caixa CPU e NÃO vê o deslocamento do vertex shader —
+ * este abraço é a folga que a pedra ganha para fora (molde do `SHELL_HUG` do
+ * vento; o corpo Nv.2 é a malha de referência, caixa y 1,9861).
+ */
+const HUG = 0.1;
+const SPAN_REF = 1.9861;
+/** a cabeça sozinha (Nv.1) boia um dedo do chão; o corpo é plantado */
+const FLOAT_HEAD_Y = 0.05;
+
+/**
  * Juntas do esqueleto de código (o GLB não traz nenhuma), LIDAS NA MALHA (bbox
  * y −1,00..+0,98) e na TEXTURA: ela já quebra o corpo em PLACAS de pedra com
  * linhas de rachadura em y ≈ −0,62 (culote/saia→pernas), −0,2 (ventre→cintura),
@@ -152,6 +187,12 @@ const VEIN_CHARGE = 2.4;
  * ali amassava a pedra da cabeça — exatamente a reclamação do print.
  */
 const JOINT_Y = [-1.0, -0.62, -0.2, 0.12, 0.34, 0.76];
+/** junta da tampa de musgo da CABEÇA sozinha (Nv.1): a rampa de pele 4→5 (osso da
+ *  cabeça → coroa) atravessa estes y da malha (bbox y −0,82..+0,79); o musgo mora
+ * no topo e a cara inteira fica na placa da cabeça, RÍGIDA — sem máscara de braço
+ * (a bola não tem braço; girar osso na lateral cisalharia a face) */
+const HEAD_BAND_LO = 0.46;
+const HEAD_BAND_HI = 0.58;
 /**
  * LARGURA da faixa de virada de cada junta (unidade da malha), na ordem das
  * juntas acima da raiz: culote (y −0,62), cintura (−0,2), peito (+0,12),
@@ -202,6 +243,12 @@ const ARM_CAP_FAR = 0.34;
 const ARM_FIST_X = 0.29;
 const ARM_FIST_Y = -0.57;
 const ARM_FIST_Z = -0.02;
+/** o "punho" da CABEÇA sozinha (Nv.1) na malha local: na FRENTE da cara, abaixo
+ *  dos olhos — sem braços, o taco se solta por telecinese da própria rocha
+ *  (o z 1,12 já nasce fora da superfície, meia-envergadura z da esfera ≈ 1,0) */
+const HEAD_FIST_X = 0.0;
+const HEAD_FIST_Y = 0.02;
+const HEAD_FIST_Z = 1.12;
 /**
  * Pai do osso do braço no esqueleto: COLUNA (índice 2, junta em y −0,2) em vez
  * do peito. RODADA 4, medido no simulador: com o osso no peito, o tombo do braço
@@ -351,15 +398,16 @@ const ARM_NEG = 6;
 const ARM_POS = 7;
 
 /**
- * Pesos de pele. CORPO: cada PLACA é um osso, virando numa faixa ESTREITA
+ * Pesos de pele. CORPO (Nv.2): cada PLACA é um osso, virando numa faixa ESTREITA
  * (`BAND_W`) em volta da junta — a dobra cai na linha de rachadura que a textura
- * já desenha. BRAÇO: um osso só por lado com a máscara dura (`armBlend`), e o
+ * já desenha; BRAÇO: um osso só por lado com a máscara dura (`armBlend`), e o
  * pouco de peso de corpo que sobra na borda do ombro mantém o lobo colado ao
  * torso. Nos 4 slots de influência: 2 do corpo, 2 do braço (do mesmo osso).
+ * CABEÇA (Nv.1): placa única na cabeça + capuz de musgo na coroa (ver acima).
  * Uma vez por geometria; as instâncias compartilham os atributos, cada uma
  * anima o PRÓPRIO esqueleto.
  */
-function ensureSkin(geo: THREE.BufferGeometry): void {
+function ensureSkin(geo: THREE.BufferGeometry, head: boolean): void {
   if (geo.userData.golemSkin) return;
   const pos = geo.attributes.position;
   const n = pos.count;
@@ -368,6 +416,23 @@ function ensureSkin(geo: THREE.BufferGeometry): void {
   for (let i = 0; i < n; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
+    if (head) {
+      // CABEÇA SOZINHA (Nv.1): uma placa RÍGIDA na cara (osso 4) com o capuz de
+      // musgo atrasando na coroa (osso 5) — os ossos do meio da cadeia não têm
+      // um vértice sequer de propósito. A cabeça não tem pescoço nem braço: a
+      // volumetria do arremesso é o GRUPO girando a bola inteira, e a máscara
+      // de braço do corpo aqui só cisalharia a face.
+      const t = ramp(y, HEAD_BAND_LO, HEAD_BAND_HI);
+      idx[i * 4] = 4;
+      idx[i * 4 + 1] = 5;
+      idx[i * 4 + 2] = 4;
+      idx[i * 4 + 3] = 5;
+      wgt[i * 4] = 1 - t;
+      wgt[i * 4 + 1] = t;
+      wgt[i * 4 + 2] = 0;
+      wgt[i * 4 + 3] = 0;
+      continue;
+    }
     // ---- corpo: placa pura + virada na junta (pés plantados = raiz)
     let a = 0;
     let b = 0;
@@ -410,25 +475,27 @@ function ensureSkin(geo: THREE.BufferGeometry): void {
 }
 
 /**
- * Dispatcher do Golem: Nv.1 = malha importada; Nv.2..5 = StoneRig (a progressão
- * rocha viva → golem → colosso → MONTANHA MUSCULAR continua procedural, com as
- * placas, trapézios de ombro e pedras orbitando que só o rig da casa tem).
+ * Dispatcher do Golem: Nv.1-2 = malha importada (a cabeça do penedo → o corpo
+ * completo que antes vestia o Nv.1); Nv.3..5 = StoneRig (golem → colosso →
+ * MONTANHA MUSCULAR continua procedural, com as placas, trapézios de ombro e
+ * pedras orbitando que só o rig da casa tem). Enquanto a malha carrega, o
+ * figurino procedural do MESMO nível segura o palco.
  */
 export function GolemRig(props: StoneRigProps) {
   const level = clampLevel(props.level);
-  if (level === 1) {
-    // enquanto o GLB (5,7 MB) carrega, o penedo antigo segura o palco
+  if (level <= MESH_MAX_LEVEL) {
+    // enquanto o GLB (5,5-5,7 MB) carrega, o penedo antigo segura o palco
     return (
-      <Suspense fallback={<StoneRig {...props} level={1} />}>
-        <GolemLvl1MeshRig {...props} level={1} />
+      <Suspense fallback={<StoneRig {...props} level={level} />}>
+        <GolemMeshRig {...props} level={level} />
       </Suspense>
     );
   }
   return <StoneRig {...props} level={level} />;
 }
 
-/** malha Nv.1 pura — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
-function GolemLvl1MeshRig({
+/** malha pura da forma (Nv.1-2) — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+function GolemMeshRig({
   seed,
   unitId,
   level: levelProp = LEVEL_1,
@@ -438,8 +505,11 @@ function GolemLvl1MeshRig({
   smoke,
 }: StoneRigProps) {
   const level = clampLevel(levelProp);
-  useGLTF.preload(golemLvl1Url);
-  const { scene } = useGLTF(golemLvl1Url);
+  const headOnly = level === 1; // Nv.1 = SÓ A CABEÇA; Nv.2 = o corpo completo
+  const topY = TOP_BY_LEVEL[level - 1];
+  const url = golemMeshUrlFor(level);
+  useGLTF.preload(url);
+  const { scene } = useGLTF(url);
 
   // a malha + a textura da fonte (geometry COMPARTILHADO entre instâncias;
   // material e esqueleto são por unidade)
@@ -448,24 +518,38 @@ function GolemLvl1MeshRig({
     scene.traverse((o) => {
       if (o instanceof THREE.Mesh) meshes.push(o);
     });
-    if (meshes.length === 0) throw new Error('golem_model_lvl1.glb não tem mesh');
+    if (meshes.length === 0) throw new Error(`${url} não tem mesh`);
     const geo = meshes[0].geometry;
     geo.computeBoundingBox();
     const tex = (meshes[0].material as THREE.MeshStandardMaterial).map;
     return { geo, tex };
-  }, [scene]);
+  }, [scene, url]);
 
-  // encaixe autoral: altura = formTop Nv.1, corpo centralizado e base no chão
-  // (o penedo é PLANTADO — diferente do sopro do zéfiro, que flutua)
+  // encaixe autoral: altura = formTop da forma, corpo centralizado e a BASE no
+  // chão (o penedo de corpo é PLANTADO; a cabeça sozinha boia um dedo). TETO DE
+  // LARGURA (molde do zéfiro): o invólucro autoral da forma (`footprintOf`,
+  // tabela assinada em `data/footprints.ts`) é o contrato — encaixo (mesh +
+  // abraço do relevo/respiração) ≤ entrada nos dois eixos. A cabeça Nv.1 é uma
+  // esfera e é hoje quem segura o encaixe pelo teto; o corpo Nv.2 (meia-
+  // envergadura escalada ~0,87 × 0,51) cabe no invólucro novo da forma.
   const fit = useMemo(() => {
     const bb = src.geo.boundingBox!;
-    const s = TOP_LVL1 / (bb.max.y - bb.min.y);
+    const spanY = bb.max.y - bb.min.y;
+    const foot = footprintOf('golem', level as MonsterLevel);
+    const hug = HUG * (SPAN_REF / spanY); // abraço proporcional ao tamanho
+    const halfWide = Math.max(-bb.min.x, bb.max.x);
+    const halfAlong = Math.max(-bb.min.z, bb.max.z);
+    const sW = Math.min(foot.x / (halfWide + hug), foot.z / (halfAlong + hug));
+    const s = Math.min(topY / spanY, sW);
     const cx = ((bb.min.x + bb.max.x) / 2) * s;
     const cz = ((bb.min.z + bb.max.z) / 2) * s;
     const px = -(cx * Math.cos(GOLEM_MODEL_YAW) + cz * Math.sin(GOLEM_MODEL_YAW));
     const pz = cx * Math.sin(GOLEM_MODEL_YAW) - cz * Math.cos(GOLEM_MODEL_YAW);
-    return { s, pos: [px, -bb.min.y * s, pz] as [number, number, number] };
-  }, [src]);
+    return {
+      s,
+      pos: [px, (headOnly ? FLOAT_HEAD_Y : 0) - bb.min.y * s, pz] as [number, number, number],
+    };
+  }, [src, level, headOnly, topY]);
 
   // tint da equipe (o mesmo canal do StoneRig): pinta o aro do TACO DE ROCHA
   // que sai da mão na cor de quem é o dono
@@ -489,7 +573,7 @@ function GolemLvl1MeshRig({
       sh.uniforms.uFHurt = { value: 0 };
       sh.uniforms.uFSeed = { value: seed };
       sh.uniforms.uFCharge = { value: 0 };
-      sh.uniforms.uFGlow = { value: CRACK_GLOW_LVL1 * VEIN_REST };
+      sh.uniforms.uFGlow = { value: crackGlowFor(level) * VEIN_REST };
       sh.uniforms.uFCrackCol = { value: new THREE.Color(LOOK.crack) };
       sh.uniforms.uFWidth = { value: CRACK_WIDTH };
       sh.uniforms.uFGreen = { value: 0.24 };
@@ -539,14 +623,14 @@ function GolemLvl1MeshRig({
       m.userData.shader = sh;
     };
     return m;
-  }, [src, seed]);
+  }, [src, seed, level]);
 
   // ESQUELETO POR INSTÂNCIA: geometria (com pesos) compartilhada, ossos e
   // animação privados de cada unidade — dois penedos Nv.1 nunca atacam juntos.
   // PLACAS do corpo (raiz→coroa) + UM osso de braço por lado nascido na COLUNA
   // (`ARM_PARENT` — divide a tração da junção fundida, ver cabeçalho RODADA 4).
   const rig = useMemo(() => {
-    ensureSkin(src.geo);
+    ensureSkin(src.geo, headOnly);
     const mk = (name: string, x: number, y: number, z = 0) => {
       const b = new THREE.Bone();
       b.name = name;
@@ -586,14 +670,16 @@ function GolemLvl1MeshRig({
     skinned.castShadow = true;
     skinned.frustumCulled = false; // o relevo do shader viaja além da esfera
     return { skinned, bones: { root, hips, spine, chest, head, crown, thr, off } };
-  }, [src, body]);
+  }, [src, body, headOnly]);
 
   // TACO DE ROCHA que o penedo arremessa: a PEDRA DO FIGURINO (mesmo material
   // de rocha com luz da arena, veios e aro da equipe) numa pedra bruta angular
   // — é o que "vende" o arremesso. Vive no espaço do grupo de animação
   // (unidades da arena), nunca na malha.
   const rock = useMemo(() => {
-    const geo = new THREE.IcosahedronGeometry(0.085, 0);
+    // o taco engorda com o nível (0,085 → 0,10 no Nv.2) — a mesma régua do
+    // figurino, onde o punho do arremesso é maior a cada fusão
+    const geo = new THREE.IcosahedronGeometry(0.085 * (1 + 0.18 * (level - 1)), 0);
     setSeedAttribute(geo, seed); // o STONE_VERT lê aSeed em todo vértice
     const mat = makeStoneMaterial({
       rockA: LOOK.rockA,
@@ -613,7 +699,7 @@ function GolemLvl1MeshRig({
     mesh.visible = false;
     mesh.castShadow = true;
     return { mesh, geo, mat };
-  }, [seed, team]);
+  }, [seed, team, level]);
 
   // lascas caindo do corpo + poeira: o MESMO idioma do StoneRig (Nv.1 penedo)
   const chips = useMemo(
@@ -628,7 +714,7 @@ function GolemLvl1MeshRig({
           uTime: { value: 0 },
           uAlpha: { value: 1 },
           uSizeMul: { value: emberScale },
-          uHeight: { value: TOP_LVL1 },
+          uHeight: { value: topY },
           uSpread: { value: 0.55 + level * 0.2 },
           uCharge: { value: 0 },
         },
@@ -780,7 +866,7 @@ function GolemLvl1MeshRig({
       sh.uniforms.uFCharge.value = pose.charge;
       // quase nada em repouso, e a pedra ACENDE por dentro carregando o taco
       sh.uniforms.uFGlow.value =
-        CRACK_GLOW_LVL1 * (VEIN_REST + pose.charge * VEIN_CHARGE) * (0.7 + 0.3 * hpFrac) * alpha;
+        crackGlowFor(level) * (VEIN_REST + pose.charge * VEIN_CHARGE) * (0.7 + 0.3 * hpFrac) * alpha;
       sh.uniforms.uFGreen.value = 0.24 * alpha;
     }
 
@@ -793,15 +879,28 @@ function GolemLvl1MeshRig({
     if (loaded && !strikeDone.current) {
       strikeDone.current = true;
       // o punho é fixo no osso do ombro (o lobo é rígido): girar o osso leva o
-      // punho junto, então a pedra nasce na mão em qualquer ângulo do arremesso
-      b.thr.updateWorldMatrix(true, false);
-      tmpWorld.set(THROW_SIDE * ARM_FIST_X, ARM_FIST_Y, ARM_FIST_Z);
-      b.thr.localToWorld(tmpWorld);
-      g.worldToLocal(tmpWorld); // para o espaço do grupo (unidades da arena)
+      // punho junto, então a pedra nasce na mão em qualquer ângulo do arremesso.
+      // Na CABEÇA sozinha não há braço: o taco se solta da frente da cara, à
+      // altura da "boca" — o cálculo cai direto no espaço do grupo (T·R·S do
+      // encaixe, yaw 0 hoje; a rotação genérica é só por robustez).
+      if (headOnly) {
+        const c = Math.cos(GOLEM_MODEL_YAW);
+        const sN = Math.sin(GOLEM_MODEL_YAW);
+        tmpWorld.set(
+          fit.pos[0] + (HEAD_FIST_X * c + HEAD_FIST_Z * sN) * fit.s,
+          fit.pos[1] + HEAD_FIST_Y * fit.s,
+          fit.pos[2] + (-HEAD_FIST_X * sN + HEAD_FIST_Z * c) * fit.s,
+        );
+      } else {
+        b.thr.updateWorldMatrix(true, false);
+        tmpWorld.set(THROW_SIDE * ARM_FIST_X, ARM_FIST_Y, ARM_FIST_Z);
+        b.thr.localToWorld(tmpWorld);
+        g.worldToLocal(tmpWorld); // para o espaço do grupo (unidades da arena)
+      }
       f.t = 0;
       f.x = tmpWorld.x;
       f.y = Math.max(0.22, tmpWorld.y);
-      f.z = Math.min(0.55, tmpWorld.z); // curto: a pedra cai no INIMIGO colado, não na câmera
+      f.z = Math.min(headOnly ? 1.2 : 0.55, tmpWorld.z); // curto: a pedra cai no INIMIGO colado, não na câmera
       f.vx = (Math.random() - 0.5) * 0.4;
       f.vy = 2.6; // tapa para cima: arco curto e alto
       f.vz = 1.1; // +Z = em direção ao alvo (o mesmo rumo do rig)
@@ -899,7 +998,7 @@ function GolemLvl1MeshRig({
         tmpLocal
           .set(
             (Math.random() - 0.5) * (0.7 + level * 0.24),
-            TOP_LVL1 * (0.15 + Math.random() * 0.7),
+            topY * (0.15 + Math.random() * 0.7),
             (Math.random() - 0.5) * (0.7 + level * 0.24),
           )
           .applyMatrix4(g.matrixWorld);
@@ -919,7 +1018,7 @@ function GolemLvl1MeshRig({
     // ---- clarão quente das fissuras (apagado parado, aceso carregando) ----
     const s2 = Math.max(0.6, 0.9 + pose.charge * 0.7 + hurt * 0.3 + crumble * 0.6);
     glow.scale.setScalar(s2);
-    glow.position.y = TOP_LVL1 * 0.42;
+    glow.position.y = topY * 0.42;
     (glow.material as THREE.SpriteMaterial).opacity = Math.max(
       0,
       (0.03 + pose.charge * 0.2 + hurt * 0.1) * alpha,

@@ -80,9 +80,19 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
     { x: 2.39, z: 2.32 }, // dragão alado Nv.5: barbatanas-alas abertas — o pior caso da família
   ],
   golem: [
-    { x: 0.75, z: 0.63 },
-    { x: 0.84, z: 0.71 },
-    { x: 1.01, z: 0.62 },
+    // Nv.1-2 agora são MALHA 3D (linha "modelos 3D"): `golem_model_lvl1.glb` é
+    // SÓ A CABEÇA do Nv.2 (esfera com olhos verdes e musgo) e o
+    // `golem_model_lvl2.glb` é o corpo completo que antes vestia o Nv.1 (byte a
+    // byte o arquivo antigo — as calibrações de rig do corpo valem intactas).
+    // Encaixe no contrato `MEDIDO = s_a·(half + abraço)` (abraço 0,10 do relevo
+    // de erosão + respiração, na régua do zéfiro): a cabeça Nv.1 é uma esfera
+    // (s_a = 1,5/1,60 = 0,93 → 1,05 × 1,05) e o corpo Nv.2 é largo e raso
+    // (s_a = 2,1/1,99 = 1,06 → 0,98 × 0,62). O pior caso da família continua o
+    // Nv.5 procedural (1,57 × 1,69) — o buraco da família e o `slotFit` (1,15)
+    // não mudam; Nv.3+ seguem medidos do StoneRig.
+    { x: 1.05, z: 1.05 }, // cabeça Nv.1: esfera com olhos verdes (meia-envergadura = meia-profundidade)
+    { x: 0.98, z: 0.62 }, // rocha viva Nv.2: corpo completo na malha (ombros largos, raso em Z)
+    { x: 1.01, z: 0.62 }, // Nv.3-5: ainda StoneRig (medido)
     { x: 1.2, z: 0.78 },
     { x: 1.57, z: 1.69 },
   ],

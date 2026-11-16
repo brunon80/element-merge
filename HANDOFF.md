@@ -812,6 +812,51 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## 🪨 GOLÉM DE MALHA AGORA TEM ESCADA — cabeça no Nv.1, corpo no Nv.2 (15/nov/2026 — 9ª da linha "modelos 3D")
+
+O usuário trocou os GLBs do golém: `golem_model_lvl1.glb` passou a ser **SÓ A
+CABEÇA** do Nv.2 (esfera de olhos verdes e musgo no topo, 24.633 vértices) e o
+`golem_model_lvl2.glb` é o **corpo completo que antes vestia o Nv.1** — byte a
+byte o arquivo antigo (md5 bate com o do commit). Então o Nv.2 ("rocha viva")
+saiu do StoneRig e vestiu a malha: `GolemRig` (`src/scene/GolemMeshRig.tsx`)
+despacha **Nv.1-2 = mesh** com `<Suspense fallback={<StoneRig level={n}/>}>`;
+Nv.3..5 (golem → colosso → montanha) continuam StoneRig. Como o Nv.2 É o
+modelo antigo, TODAS as calibrações das rodadas 1-4 (juntas, máscaras de braço,
+caps, arremesso-assinatura) valem nele sem tocar em nada.
+
+- **A malha nova (cabeça) tem FIGURINO PRÓPRIO no mesmo arquivo**: a bola não
+  tem braços nem pernas — `ensureSkin(geo, headOnly)` pinta tudo no osso da
+  CABEÇA (placa RÍGIDA) com o capuz de musgo atrasando na coroa (faixa 0,46→0,58
+  da malha); a máscara de braço do corpo NUNCA entra na cabeça (cisalharia a
+  face — a mesma lição da cabeça que não tem pescoço). Arremesso: sem punho, o
+  taco se solta por TELECINESE da frente da cara (`HEAD_FIST_*`, z 1,12 = fora
+  da superfície) e a volumetria é o grupo girando a bola inteira. A cabeça
+  BOIA um dedo do chão (`FLOAT_HEAD_Y` 0,05); o corpo continua PLANTADO. O taco
+  engorda 18% por nível (0,085 → 0,10 no Nv.2).
+- **ENCAIXE mudou de molde — agora é o do zéfiro** (teto de largura pela tabela):
+  `fit = min(formTop/spanY, footprintOf/(meia-extensão + abraço))`, abraço 0,10
+  do relevo de erosão + respiração (a sonda lê a caixa CPU e não vê o vertex
+  shader). `MESH_FIGURINOS.golem = [true, true, false, false, false]` e as duas
+  primeiras linhas de `MEDIDO.golem` foram REASSINADAS para as malhas: cabeça
+  1,05 × 1,05 (esfera — hoje é ela que aperta o encaixe da forma) e corpo
+  0,98 × 0,62 (largo e raso). O pior caso da família continua o Nv.5 (1,69) →
+  `familyRadius`/`slotFit` (1,15) e o resto da tabela intocados. ⚠️ A linha do
+  Nv.1 antiga (0,75 × 0,63) vinha do penedo de corpo; em perfil de Nv.1 só com
+  ESCALA de altura a cabeça derramaria ~0,92 × 0,93 do buraco — por isso a
+  tabela é o teto, não a régua antiga.
+- **Rumo conferido no viewer** (`mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`):
+  os olhos verdes das DUAS malhas estão no +Z local → `GOLEM_MODEL_YAW = 0`
+  segue.
+- **Estado/verificação (15/nov):** `tsc` limpo · `npx vitest run` limpo (504/504)
+  · `npm run build` limpo (os dois `.glb` do golém saem como assets: 5,5 + 5,7
+  MB) · `qa/probe-footprint.mjs golem@1..5`: todas SIM no buraco / SIM no anel,
+  SOBREPOSIÇÕES: 0, autoral medido 0,94×0,94 (cabeça) e 0,87×0,52 (corpo) —
+  dentro das linhas novas com o abraço de folga · spawn dos dois níveis na arena
+  via depuração sem erro/warning de console. Ajuste fino de cara (órbita/zoom do
+  usuário) por conta do teste visual dele.
+
+---
+
 ## 💧 A ÁRVORE INTEIRA DA ÁGUA EM MALHA 3D — Nv.1..5 (15/nov/2026 — 8ª da linha "modelos 3D"; aprovada no navegador do usuário: "já testei e visualmente já está bom, pode encerrar os testes e versionar")
 
 Nereia virou a TERCEIRA família com a árvore inteira na malha importada (fogo e
@@ -2360,7 +2405,7 @@ node qa/probe-framing.mjs              # enquadramento (24/24 buracos) + arraste
 node qa/probe-merge-preview.mjs        # prévia de fusões do arraste (revelar/selar, persegue o ponteiro, SEM FALHAS)
 node qa/probe-sell-fab.mjs             # FAB de venda: só no arraste, pulso devagar→rápido, 24/24 buracos livres (1373×749, 1280×610, 390×844)
 node qa/probe-tutorial.mjs             # 🎓 luvinha: 5 passos, mímica que NÃO joga, 24/24 buracos (desktop+retrato), cofre intacto, time de volta (92 checagens, ~4 min)
-# visual das malhas Nv.1 (IGNIS, ZÉFIRO e GOLÉM): dev server → Configurações ▸ Depuração → enciclopédia → "Criar no campo" (`debug-spawn-ignis` / `debug-spawn-zephyr` / `debug-spawn-golem`); o card do bestiário E a arena renderizam a malha; Ctrl+Shift+R (hard refresh) SEMPRE antes de avaliar feedback de material/shader
+# visual das malhas (IGNIS, ZÉFIRO e GOLÉM — no golém, Nv.1 = a cabeça e Nv.2 = o corpo, dá para escolher o nível com `debug-level-golem-<n>` no bestiário): dev server → Configurações ▸ Depuração → enciclopédia → "Criar no campo" (`debug-spawn-ignis` / `debug-spawn-zephyr` / `debug-spawn-golem`); o card do bestiário E a arena renderizam a malha; Ctrl+Shift+R (hard refresh) SEMPRE antes de avaliar feedback de material/shader
 ```
 
 > As sondas que NÃO testam o tutorial (`probe-framing`, `probe-sell-fab`,
