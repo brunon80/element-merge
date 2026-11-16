@@ -72,12 +72,14 @@ import {
  * FIRMES e nenhum ângulo grande em osso nenhum.
  *
  * ENCAIXE: cada modelo é escalado para o topo autoral da forma (`formTops` da
- * Nereia: 1,4 → 4,3) e FLUTUA baixinho como a gotinha sempre flutuou. TETO DE
- * LARGURA: o invólucro autoral da FORMA (`footprintOf`, tabela assinada em
- * `data/footprints.ts` pela regra `MEDIDO = s_a·(half + abraço)`) é o contrato:
- * encaixo (mesh + sobra das ondas) ≤ entrada, nos dois eixos — o axolotl Nv.2
- * abre as brânquias, o draco Nv.4 deita a cauda no fundo do buraco e o dragão
- * Nv.5 abre as barbatanas-alas: são eles que puxam o `familyRadius` da família.
+ * Nereia: 1,54 → 4,58, a escada mundo comum dos puros) e FLUTUA baixinho como a
+ * gotinha sempre flutuou. TETO DE LARGURA: o invólucro autoral da FORMA
+ * (`footprintOf`, tabela assinada em `data/footprints.ts` pela regra `MEDIDO =
+ * s·(half + abraço)`) é o contrato: encaixo (mesh + sobra das ondas) ≤ entrada,
+ * nos dois eixos — o axolotl Nv.2 abre as brânquias, o draco Nv.4 deita a cauda
+ * no fundo do buraco e o dragão Nv.5 abre as barbatanas-alas: é ELE que assina o
+ * `familyRadius` da família (2,54 → `slotFit` ≈0,95, o maior encaixe entre os
+ * puros, porque o abraço da água é o mais apertado dos quatro).
  */
 
 /** dados da espécie (a altura autoral de cada forma vem do catálogo, não do modelo) */
@@ -104,8 +106,13 @@ const waterUrlFor = (level: number): string => WATER_URLS[level - 1];
  * + `qa/mesh-viewer-shot.mjs`): os DOIS OLHOS e a boca de todas as cinco estão
  * na fatia +Z. Se algum print mostrar a criatura DE COSTAS, vire aqui (Math.PI
  * para meia-volta; π/2 e −π/2 para os lados).
+ *
+ * ROUND 7 (normalização dos puros): o draco Nv.4 — corpo fino com a cauda
+ * comprida no eixo do rumo — ganhou rumo 3/4 (−35°): a frente continua para o
+ * +Z (o jato não muda), mas a cauda entra na DIAGONAL e a largura dele na
+ * fileira casa com a dos vizinhos do mesmo nível sem estourar o anel.
  */
-export const NEREIA_MODEL_YAWS = [0, 0, 0, 0, 0];
+export const NEREIA_MODEL_YAWS = [0, 0, 0, -0.611, 0];
 const yawFor = (level: number): number => NEREIA_MODEL_YAWS[level - 1];
 
 /** altura de caixa da gotinha Nv.1 — a régua que calibra a fervura das ondas */
@@ -316,13 +323,17 @@ function WaterMeshRig({
     const bb = src.bb;
     const foot = footprintOf('nereia', level as MonsterLevel);
     const hug = WAVE_HUG * (SPAN_NV1 / src.spanY); // abraço proporcional ao tamanho
-    // meias-extensões NA ORDEM DO RUMO (a correção do zéfiro): o bicho de
-    // frente para +Z (yaw 0) tem a envergadura no X do modelo = X do mundo
-    // (esq/dir do buraco) e a profundidade no Z; o teto mede o que o buraco VÊ
+    // meias-extensões NA ORDEM DO RUMO — AABB EXATA da caixa girada (round 7):
+    // half = hx·|cos| + hz·|sin| nos eixos do mundo. Com o rumo 3/4 do draco
+    // Nv.4 (−35°) a heurística "lado a lado" caía no meio do caminho e
+    // assinava a largura que a diagonal pega na fileira no eixo errado
     const yaw = yawFor(level);
-    const sideways = Math.abs(Math.sin(yaw)) > 0.5;
-    const halfAlong = sideways ? Math.max(-bb.min.x, bb.max.x) : Math.max(-bb.min.z, bb.max.z);
-    const halfWide = sideways ? Math.max(-bb.min.z, bb.max.z) : Math.max(-bb.min.x, bb.max.x);
+    const hx = Math.max(-bb.min.x, bb.max.x);
+    const hz = Math.max(-bb.min.z, bb.max.z);
+    const ca = Math.abs(Math.cos(yaw));
+    const sa = Math.abs(Math.sin(yaw));
+    const halfWide = hx * ca + hz * sa; // o que o buraco VÊ de esq/dir
+    const halfAlong = hx * sa + hz * ca; // e de trás/frente
     const sW = Math.min(foot.x / (halfWide + hug), foot.z / (halfAlong + hug));
     const s = Math.min(TOP_BY_LEVEL[level - 1] / src.spanY, sW);
     const cx = ((bb.min.x + bb.max.x) / 2) * s;

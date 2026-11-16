@@ -30,8 +30,15 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     levelMin: 1,
     levelMax: 5,
     blurb: 'Salamandra de magma vivo. Cuspe bolas de fogo que queimam por tempo limitado.',
-    // fusões do mesmo elemento crescem a criatura: faísca → dragão de fogo
-    formTops: [1.95, 2.5, 3.2, 3.9, 4.45],
+    // fusões do mesmo elemento crescem a criatura: faísca → dragão de fogo.
+    // ESCADA NORMALIZADA (round 7, régua em `data/footprints.ts`): a área de
+    // silhueta (largura da fileira × altura, o que o olho compara) sobe junto
+    // com as outras três famílias — 4,4 / 6,2 / 8,5 nos Nv.2-4; o Nv.5 sobe ao
+    // teto do anel (a forma do dragão é baixa e o abraço de chama come o anel,
+    // então a área residual dele fica abaixo da nereia — documentado). O fogo
+    // tem só PISO de janela nos testes (topo ≥ parts − 0,35), mas o gap tops
+    // Nv.1→Nv.5 > 2,22 é pinado pelo canhão (board:171)
+    formTops: [1.89, 3.17, 3.19, 3.55, 4.18],
     formNames: ['faísca', 'tocha viva', 'salamandra de fogo', 'serpente alada', 'dragão de fogo'],
     base: {
       hp: 130,
@@ -72,8 +79,13 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
         { kind: 'slow', chance: 0.35, duration: 3, slowFactor: 0.6 },
       ],
     },
-    // fusões do mesmo elemento levantam a maré: gotinha → tsunami
-    formTops: [1.4, 2.15, 2.8, 3.45, 4.3],
+    // fusões do mesmo elemento levantam a maré: gotinha → tsunami. Escada
+    // normalizada do round 7 (a régua em `data/footprints.ts`): a área de
+    // silhueta casa com as outras três famílias nos Nv.2-4 (4,4 / 6,2 / 8,5) e
+    // o Nv.5 enche o buraco (é o maior dos puros). A gotinha Nv.1 fica um dedo
+    // abaixo da largura-padrão: o topo que a levaria ao alvo passa do TETO da
+    // janela de topo que os testes pinam para as peças procedurais (1,56)
+    formTops: [1.53, 2.06, 2.56, 3.01, 4.57],
     formNames: ['gotinha', 'gota viva', 'ondina', 'cavalo de onda', 'tsunami'],
   },
   golem: {
@@ -97,8 +109,13 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
       resist: { earth: 0.25, fire: -0.15 },
       abilities: [{ kind: 'heavy' }],
     },
-    // fusões do mesmo elemento levantam a montanha: penedo → montanha muscular
-    formTops: [1.5, 2.1, 2.45, 3.05, 4.15],
+    // fusões do mesmo elemento levantam a montanha: penedo → montanha muscular.
+    // Escada normalizada do round 7 (régua em `data/footprints.ts`): a cabeça
+    // Nv.1 boia na largura-padrão do sopro do vento e o dragão Nv.5 encosta no
+    // anel. Nv.2 e Nv.3 ficam um fio abaixo da área-alvo: o TETO da janela que
+    // os testes pinam para as peças procedurais amarra o topo declarado deles
+    // (maxY 2,03 + 0,35 = 2,38 · maxY 2,34 + 0,35 = 2,69)
+    formTops: [1.17, 2.35, 2.66, 3.15, 4.04],
     formNames: ['penedo', 'rocha viva', 'golem de pedra', 'colosso de pedra', 'montanha muscular'],
   },
   zephyr: {
@@ -109,8 +126,12 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     levelMin: 1,
     levelMax: 5,
     blurb: 'Wisp dos vendavais. Lâminas de vento ultrarrápidas e cadência altíssima.',
-    // fusões do mesmo elemento crescem o vendaval: sopro → tornado
-    formTops: [1.75, 2.45, 3.2, 3.85, 4.5],
+    // fusões do mesmo elemento crescem o vendaval: sopro → tornado. Esta é a
+    // ESCADA PADRÃO do round 7: a largura do sopro Nv.1 (1,24 de mundo) é o
+    // padrão que as outras três famílias casam no Nv.1, e a escada de área de
+    // silhueta (4,4 / 6,2 / 8,5 nos Nv.2-4) foi calibrada pela fileira do vento
+    // — que fica exatamente como estava aprovada (régua em `data/footprints.ts`)
+    formTops: [1.7, 2.13, 2.8, 3.48, 4.29],
     formNames: ['sopro', 'redemoinho', 'funil vivo', 'ciclone', 'tornado'],
     base: {
       hp: 110,

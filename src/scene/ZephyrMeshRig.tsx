@@ -66,11 +66,13 @@ import { WIND_FRAG } from './windShaders';
  * `SHELL_SPIN`.
  *
  * ENCAIXE: cada modelo é escalado para o topo autoral da forma (`formTops`
- * 1,75 → 4,5) e FLUTUA à altura do figurino do seu nível (`FLOAT_Y` — o vento
- * nunca pisou o chão senão no Nv.5 tornado; aqui é a base da malha). TETO DE
- * LARGURA: o invólucro autoral (`footprintOf`, tabela `data/footprints.ts`) é
- * o contrato — encaixo (mesh + abraço) ≤ entrada nos dois eixos. A coruja Nv.4
- * e o dragão Nv.5 abrem as asas: são elas que puxam o `familyRadius` da
+ * 1,68 → 4,27 — o invólucro desta espécie é o PADRÃO da escada mundo dos puros:
+ * 0,691 no Nv.1, ~×1,37 por fusão até 2,43 no Nv.5) e FLUTUA à altura do
+ * figurino do seu nível (`FLOAT_Y` — o vento nunca pisou o chão senão no Nv.5
+ * tornado; aqui é a base da malha). TETO DE LARGURA: o invólucro autoral
+ * (`footprintOf`, tabela `data/footprints.ts`) é o contrato — encaixo (mesh +
+ * abraço) ≤ entrada nos dois eixos. A coruja Nv.4 e o dragão Nv.5 abrem as
+ * asas: são elas que puxam o `familyRadius` da
  * família (e o `slotFit` encolhe a família inteira para o buraco, como no
  * dragão de fogo).
  */
@@ -434,14 +436,17 @@ function WindMeshRig({
     const bb = src.geo.boundingBox!;
     const foot = footprintOf('zephyr', level as MonsterLevel);
     const hug = SHELL_HUG * (SPAN_NV1 / src.spanY); // abraço proporcional ao tamanho
-    // meias-extensões NA ORDEM DO RUMO: o bicho de frente para +Z (yaw 0) tem
-    // a envergadura no X do modelo = X do mundo (esq/dir do buraco) e a
-    // profundidade no Z; virado para os lados, as duas trocam de eixo — o teto
-    // de largura tem que medir o que o buraco VÊ, não a caixa crua
+    // meias-extensões NA ORDEM DO RUMO — AABB EXATA da caixa girada (round 7,
+    // a mesma fórmula do fogo/água): half = hx·|cos| + hz·|sin| nos eixos do
+    // mundo. O vento encara o +Z em todas as formas (yaw 0), então o resultado
+    // é o mesmo de antes — mas a fórmula é o contrato das quatro famílias
     const yaw = yawFor(level);
-    const sideways = Math.abs(Math.sin(yaw)) > 0.5;
-    const halfAlong = sideways ? Math.max(-bb.min.x, bb.max.x) : Math.max(-bb.min.z, bb.max.z);
-    const halfWide = sideways ? Math.max(-bb.min.z, bb.max.z) : Math.max(-bb.min.x, bb.max.x);
+    const hx = Math.max(-bb.min.x, bb.max.x);
+    const hz = Math.max(-bb.min.z, bb.max.z);
+    const ca = Math.abs(Math.cos(yaw));
+    const sa = Math.abs(Math.sin(yaw));
+    const halfWide = hx * ca + hz * sa; // o que o buraco VÊ de esq/dir
+    const halfAlong = hx * sa + hz * ca; // e de trás/frente
     const sW = Math.min(foot.x / (halfWide + hug), foot.z / (halfAlong + hug));
     const s = Math.min(TOP_BY_LEVEL[level - 1] / src.spanY, sW);
     const cx = ((bb.min.x + bb.max.x) / 2) * s;

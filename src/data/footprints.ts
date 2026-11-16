@@ -22,6 +22,39 @@ import { getSpecies } from './monsters';
  * cobria três slots e derramava por cima da plataforma inimiga. Com esta tabela
  * o motor dimensiona CADA figurino para caber no próprio buraco (ver `slotFit`),
  * então nenhum invólucro encosta no vizinho.
+ *
+ * NORMALIZAÇÃO DOS PUROS (round 7). A régua é a SILHUETA QUE O OLHO VÊ na
+ * fileira — largura (eixo X do mundo) × altura — e não o maior eixo do anel
+ * (round 6): nas formas de corpo comprido no eixo do rumo, o max-axis cai na
+ * PROFUNDIDADE, que a tela quase não mostra, e a disparidade continuava viva
+ * (o fogo Nv.3 enchia 45% do anel e tinha METADE da área dos vizinhos). A
+ * escada de área de silhueta, nível por nível:
+ *
+ *   Nv.1 = a LARGURA do sopro do vento (1,24 de mundo — o padrão aprovado);
+ *   Nv.2 ≈ 4,4 · Nv.3 ≈ 6,2 · Nv.4 ≈ 8,5 (largura × altura, em mundo);
+ *   Nv.5 = cada família sobe ao TETO do buraco (o anel r=2,5 com o abraço),
+ *   sem cortar quem já o enche. Por isso a ÁREA residual do Nv.5 difere
+ *   (fogo 10,4 × nereia 21,7): o dragão de fogo é um quadrúpede baixo e o
+ *   abraço de chama come ~15% do anel — é estrutural da forma, não escala.
+ *
+ * Para as formas cujo corpo comprido aponta para o inimigo (fogo Nv.3/Nv.5,
+ * água Nv.4) o rumo agora é 3/4 (`MODEL_YAWS`/`NEREIA_MODEL_YAWS` nos rigs):
+ * o comprimento passa a aparecer na fileira sem estourar o anel nem esticar
+ * a altura. A frente continua no +Z do slot — só o corpo fica de viés.
+ *
+ * É o `formTops` de cada espécie (em `data/monsters.ts`) que faz o trabalho:
+ * o topo autoral de cada forma é o valor que leva a malha até o degrau da
+ * escada, no encaixe da própria família. Cada entrada daqui é assinada no
+ * PONTO FIXO da rig — `MEDIDO = s·(meia-caixa ROTACIONADA da malha + abraço)`
+ * (AABB exata da caixa girada pelo rumo, não mais a heurística "lado a lado"),
+ * com `s = min(formTop/spanY, degrau/(fit·(meia-caixa+abraço)))` — e `fit` é
+ * o `slotFit` da família, que sai do pior caso (o Nv.5 encostado no anel):
+ * `fit = MONSTER_FOOT_R/(MEDIDO_máx + FOOT_MARGIN)`. Nenhum invólucro passa
+ * de 2,5 de mundo. Três degraus ficam um dedo abaixo da área-alvo por causa
+ * do TETO da janela de topo que os testes pinam para as peças procedurais
+ * (`formTop ≤ maxY_parts + 0,35`): nereia Nv.1, golem Nv.2 e golem Nv.3. A
+ * altura do fogo recua em degraus (Nv.2 tocha alta → Nv.3; Nv.5 quadrúpede
+ * baixo) — largura e área sobem sempre; a forma das malhas manda.
  */
 
 /** meia-envergadura / meia-profundidade autorais, por forma */
@@ -41,85 +74,98 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   // --------------------------- puros (5 formas) ---------------------------
   ignis: [
     // A ÁRVORE INTEIRA na MALHA 3D importada (fire_model_lvl1..5.glb, Nv.1..5).
-    // Encaixe autoral da SILHUETA: caixa CPU da malha + o abraço estático do
-    // invólucro de chama (`SHELL_HUG`, proporcional ao tamanho — a sonda lê a
-    // caixa CPU e NÃO vê o deslocamento do vertex shader; o hug é a sobra que
-    // a casca ganha para fora, e o FOOT_MARGIN cobre a fervura). A rig amarra
-    // o encaixe da malha a estes números (`footprintOf` no IgnisMeshRig): o
-    // formTop manda na altura ATÉ a largura deixar — o Nv.5 abre as asas
-    // (3,41 de meia-envergadura: ele puxa o `familyRadius` 2,88 → 3,49 e o
-    // `slotFit` da família 0,87 → 0,72; o dragão é LARGO, não alto — mesmo
-    // padrão do primordial escalado para o buraco de 2,5)
-    { x: 0.82, z: 0.68 }, // faísca Nv.1: malha mais compacta que a bolota procedural antiga
-    { x: 0.87, z: 0.68 },
-    { x: 1.86, z: 1.12 },
-    { x: 2.17, z: 1.96 },
-    { x: 3.41, z: 2.2 }, // envergadura das asas — o pior caso da família
+    // Encaixe autoral da SILHUETA: caixa CPU da malha ROTACIONADA pelo rumo +
+    // o abraço estático do invólucro de chama (`SHELL_HUG` 0,13 na régua da
+    // caixa do Nv.1, proporcional ao tamanho — a sonda lê a caixa CPU e NÃO vê
+    // o deslocamento do vertex shader; o hug é a sobra que a casca ganha para
+    // fora, e o FOOT_MARGIN cobre a fervura). A rig amarra o encaixe da malha a
+    // estes números (`footprintOf` no IgnisMeshRig), assinados nos eixos do
+    // MUNDO que o buraco vê (AABB exata da caixa girada). Round 7: o corpo
+    // comprido da salamandra Nv.3 (35°) e do dragão Nv.5 (45°) agora fica em
+    // 3/4 com a frente no +Z — o comprimento aparece na fileira e a área de
+    // silhueta casa com a dos vizinhos (2,48l × 2,49a no Nv.3). Encaixe da
+    // família: o corpo do dragão Nv.5 (2,81 nos dois eixos) é o pior caso →
+    // `slotFit` 0,87.
+    { x: 0.78, z: 0.64 }, // faísca Nv.1: 1,21 de largura — o degrau do padrão do vento
+    { x: 1.09, z: 0.84 }, // tocha viva Nv.2: malha estreita e em pé (1,59l × 2,75a, área 4,4)
+    { x: 1.62, z: 1.78 }, // salamandra Nv.3 (3/4): corpo na diagonal — enche a fileira sem estourar o fundo
+    { x: 1.83, z: 1.65 }, // serpente alada Nv.4: asas e crina abrem a caixa (de frente)
+    { x: 2.81, z: 2.81 }, // dragão Nv.5 (3/4, 45°): pior caso da família nos dois eixos (2,43 de mundo)
   ],
   nereia: [
     // A ÁRVORE INTEIRA na MALHA 3D importada (water_model_lvl1..5.glb, Nv.1..5).
-    // Encaixe autoral da SILHUETA: caixa CPU da malha + a sobra da vida da água
-    // (`WAVE_HUG`, proporcional ao tamanho — a sonda lê a caixa CPU e NÃO vê o
-    // deslocamento do vertex shader; o hug é a folga que a ondulação da casca e
-    // o achatado da carga ganham para fora, e o FOOT_MARGIN cobre o resto). A
-    // rig amarra o encaixe da malha a estes números (`footprintOf` no
-    // NereiaMeshRig): `MEDIDO = s_a·(half + abraço)` com `s_a = formTop/spanY`
-    // (a mesma regra da tabela do vento). ⚠️ Os GLBs chegaram da esteira em
-    // ordem INVERTIDA às artes 2D (o "lvl2" era o dragão da arte `water_lvl5_1`
-    // e o "lvl5" o axolotl da `water_lvl2_1`); os arquivos foram RENOMEADOS
-    // para a escada da referência: gotinha → axolotl → hippocampão → draco →
-    // dragão alado. O axolotl abre as brânquias (1,00 de meia-envergadura crua),
-    // o draco Nv.4 deita a cauda no FUNDO do buraco (1,00 de profundidade) e o
-    // dragão Nv.5 é o pior caso da família (2,39) — puxa o `familyRadius`
-    // 2,21 → 2,47 e o `slotFit` 1,13 → 1,01 (a família quase não encolhe: a
-    // escada autoral sobrevive quase inteira).
-    { x: 0.58, z: 0.58 }, // gotinha Nv.1: malha + sobra (a gota procedural media 0,51 × 0,50)
-    { x: 1.2, z: 1.2 }, // axolotl Nv.2: brânquias em leque para os dois lados
-    { x: 1.48, z: 1.39 }, // hippocampão Nv.3: cauda enrolando para o lado
-    { x: 1.05, z: 2.12 }, // draco Nv.4: corpo estreito, cauda longa no eixo profundo
-    { x: 2.39, z: 2.32 }, // dragão alado Nv.5: barbatanas-alas abertas — o pior caso da família
+    // Encaixe autoral da SILHUETA: caixa CPU da malha ROTACIONADA pelo rumo + a
+    // sobra da vida da água (`WAVE_HUG` 0,02 na régua da caixa do Nv.1,
+    // proporcional ao tamanho — a sonda lê a caixa CPU e NÃO vê o deslocamento
+    // do vertex shader; o hug é a folga que a ondulação da casca e o achatado
+    // da carga ganham para fora, e o FOOT_MARGIN cobre o resto). A rig amarra o
+    // encaixe da malha a estes números (`footprintOf` no NereiaMeshRig):
+    // `MEDIDO = s·(half + abraço)` com `s = min(formTop/spanY,
+    // degrau/(fit·(half+abraço)))` — a escada de área dos puros (ver o topo
+    // deste arquivo) e `fit` = `slotFit` da família (0,96). ⚠️ Os GLBs chegaram
+    // da esteira em ordem INVERTIDA às artes 2D (o "lvl2" era o dragão da arte
+    // `water_lvl5_1` e o "lvl5" o axolotl da `water_lvl2_1`); os arquivos foram
+    // RENOMEADOS para a escada da referência: gotinha → axolotl → hippocampão →
+    // draco → dragão alado. Encaixe da família: o dragão alado Nv.5 (2,52) é o
+    // pior caso → `slotFit` 0,96 (a água é a única quase 1:1 — a malha da
+    // gotinha já nasce grande e o abraço dela é mínimo). Round 7: o draco Nv.4
+    // (corpo fino e cauda comprida no rumo) foi para 3/4 (−35°) — a largura
+    // dele na fileira era o buraco visível na escada (1,72 contra ~3,2 dos
+    // vizinhos). A gotinha Nv.1 continua o degrau que não fecha o alvo: o topo
+    // que a levaria à largura-padrão passa do TETO da janela de topo das peças
+    // procedurais (maxY 1,21 + 0,35 = 1,56).
+    { x: 0.63, z: 0.62 }, // gotinha Nv.1: malha + sobra (1,19l × 1,51a — teto da janela das parts)
+    { x: 1.13, z: 1.13 }, // axolotl Nv.2: brânquias em leque para os dois lados (2,13l × 2,06a)
+    { x: 1.34, z: 1.26 }, // hippocampão Nv.3: cauda enrolando para o lado (2,54l × 2,46a)
+    { x: 1.66, z: 1.87 }, // draco Nv.4 (3/4): cauda na diagonal — 3,15l × 2,70a, casando com os vizinhos
+    { x: 2.52, z: 2.45 }, // dragão alado Nv.5: barbatanas-alas abertas — o pior caso da família (2,42 de mundo)
   ],
   golem: [
-    // A ÁRVORE INTEIRA agora é MALHA 3D (linha "modelos 3D"): `golem_model_lvl1.glb`
+    // A ÁRVORE INTEIRA é MALHA 3D (linha "modelos 3D"): `golem_model_lvl1.glb`
     // é SÓ A CABEÇA do Nv.2 (esfera com olhos verdes e musgo), o
     // `golem_model_lvl2.glb` é o corpo completo que antes vestia o Nv.1 (byte a
     // byte o arquivo antigo — as calibrações de rig do corpo valem intactas) e
     // Nv.3-5 são FÉRES QUADRÚPENDES (`golem_model_lvl3/4/5.glb`: bicho-gorila
     // cabisbaixo, dragão de pedra alado, dragão de asas abertas com cauda-martelo
     // — baixos e fundos, caixa y ~1,5-2,0 e z ±1,0). Encaixe no contrato `MEDIDO
-    // = s_a·(half + abraço)` (abraço 0,10 do relevo de erosão + respiração, na
-    // régua do zéfiro, proporcional à caixa de cada malha): a cabeça Nv.1 é uma
-    // esfera (s_a = 1,5/1,60 = 0,93 → 1,05 × 1,05), o corpo Nv.2 é largo e raso
-    // (s_a = 2,1/1,99 = 1,06 → 0,98 × 0,62), a fera Nv.3 abre as quatro patas
-    // (s_a = 2,45/1,98 = 1,24), o colosso Nv.4 deita as asas e a cauda (s_a =
-    // 3,05/1,58 = 1,93) e o dragão Nv.5 é o pior caso da família (3,09 nos dois
-    // eixos) — puxa o `familyRadius` 1,77 → 3,17 e o `slotFit` 1,15 → 0,79: a
-    // família INTEIRA encolhe para o buraco, o mesmo padrão aceito do dragão de
-    // fogo (0,72) e do tornado (0,82). O Nv.5 world top fica 4,15 × 0,79 ≈ 3,27.
-    { x: 1.05, z: 1.05 }, // cabeça Nv.1: esfera com olhos verdes (meia-envergadura = meia-profundidade)
-    { x: 0.98, z: 0.62 }, // rocha viva Nv.2: corpo completo na malha (ombros largos, raso em Z)
-    { x: 1.33, z: 1.08 }, // golem de pedra Nv.3: fera gorila — patas abrem para os lados, fundo encolhe
-    { x: 2.0, z: 2.19 }, // colosso de pedra Nv.4: asas abertas + cauda comprida no eixo profundo
-    { x: 3.09, z: 3.09 }, // montanha muscular Nv.5: dragão de asas espalhadas — o pior caso da família
+    // = s·(half + abraço)` (abraço 0,10 do relevo de erosão + respiração, na
+    // régua da caixa do corpo Nv.2, proporcional à caixa de cada malha — o molde
+    // é o do zéfiro): a cabeça Nv.1 é uma esfera (caixa 1,97×1,60×1,97), o
+    // corpo Nv.2 é largo e raso, as feras abrem patas/asas/cauda e o dragão
+    // Nv.5 é o pior caso nos dois eixos (2,81) → `slotFit` da família 0,87, a
+    // régua que põe as quatro espécies no mesmo degrau da escada de área. Round
+    // 7: Nv.2 (1,09) e Nv.3 (1,42) ficam um dedo abaixo da área-alvo porque o
+    // TETO da janela das peças procedurais amarra o formTop deles (maxY 2,03 +
+    // 0,35 = 2,38 · maxY 2,34 + 0,35 = 2,69) — acima disso o teste da terra
+    // reclama que o topo declarado passa do palco de carga.
+    { x: 0.8, z: 0.8 }, // cabeça Nv.1: esfera com olhos verdes — 1,24 de largura, o padrão do vento
+    { x: 1.09, z: 0.68 }, // rocha viva Nv.2: corpo completo na malha (ombros largos, raso em Z)
+    { x: 1.42, z: 1.16 }, // golem de pedra Nv.3: fera gorila — patas abrem para os lados
+    { x: 2.04, z: 2.23 }, // colosso de pedra Nv.4: asas abertas + cauda comprida no eixo profundo
+    { x: 2.81, z: 2.8 }, // montanha muscular Nv.5: dragão de asas espalhadas — o pior caso da família (2,43 de mundo)
   ],
   zephyr: [
     // A ÁRVORE INTEIRA na MALHA 3D importada (wind_model_lvl1..5.glb, Nv.1..5).
     // Encaixe autoral da SILHUETA: caixa CPU da malha + o abraço estático do
-    // invólucro de vento (`SHELL_HUG`, proporcional ao tamanho — a sonda lê a
-    // caixa CPU e NÃO vê o deslocamento do vertex shader; o hug é a sobra que
-    // a casca ganha para fora, e o FOOT_MARGIN cobre a fervura). A rig amarra
-    // o encaixe da malha a estes números (`footprintOf` no ZephyrMeshRig): o
-    // formTop manda na altura e a largura fica dentro do contrato — as asas da
-    // coruja Nv.4/ do dragão Nv.5 (1,00 de meia-envergadura crua) puxam o
-    // `familyRadius` da família 1,45 → 3,04 e o `slotFit` 1,15 → 0,82 (a
-    // família inteira encolhe para o buraco — mesmo padrão do dragão de fogo).
-    // O giro do invólucro nas formas 2..5 é VARREDURA com teto de ângulo
-    // (`SHELL_SPIN`) medido para o varrimento morrer dentro do footprint.
-    { x: 0.84, z: 0.73 }, // sopro Nv.1: malha + abraço (a bolota procedural media 0,9 × 0,88)
-    { x: 1.49, z: 0.86 }, // redemoinho Nv.2: os braços de vento abrem para os lados
-    { x: 1.97, z: 0.83 }, // funil vivo Nv.3: asas de pena largas, corpo fundo-curto
-    { x: 2.65, z: 2.02 }, // ciclone Nv.4: a coruja abre as asas (caixa baixa e larga)
-    { x: 2.96, z: 2.34 }, // tornado Nv.5: dragão dos ventos — o pior caso da família
+    // invólucro de vento (`SHELL_HUG` 0,12 na régua da caixa do Nv.1, proporcional
+    // ao tamanho — a sonda lê a caixa CPU e NÃO vê o deslocamento do vertex
+    // shader; o hug é a sobra que a casca ganha para fora, e o FOOT_MARGIN cobre
+    // a fervura). A rig amarra o encaixe da malha a estes números (`footprintOf`
+    // no ZephyrMeshRig): o formTop manda na altura e a largura fica dentro do
+    // contrato. ESTA É A RÉGUA DA ESCADA DOS PUROS: a largura do sopro Nv.1
+    // (1,24 de mundo) é o padrão que as outras três famílias casam no Nv.1, e a
+    // escada de área (4,4 / 6,2 / 8,5) foi calibrada pela fileira do vento —
+    // que fica exatamente como estava. As asas da coruja Nv.4 e as do dragão
+    // Nv.5 (1,00 de meia-envergadura crua) são o pior caso da família (2,81) e
+    // puxam o `slotFit` para 0,87. O giro do invólucro nas formas 2..5 é
+    // VARREDURA com teto de ângulo (`SHELL_SPIN`) medido para o varrimento
+    // morrer dentro do footprint — em unidades do MODELO a folga do varrimento
+    // é `meia-caixa + abraço`, que não muda com o degrau da escada.
+    { x: 0.8, z: 0.7 }, // sopro Nv.1: malha + abraço — o PADRÃO (1,24 de largura)
+    { x: 1.27, z: 0.73 }, // redemoinho Nv.2: os braços de vento abrem para os lados (2,09l × 2,09a)
+    { x: 1.66, z: 0.7 }, // funil vivo Nv.3: asas de pena largas, corpo fundo-curto (2,58l × 2,39a)
+    { x: 2.03, z: 1.55 }, // ciclone Nv.4: a coruja abre as asas (caixa baixa e larga)
+    { x: 2.81, z: 2.21 }, // tornado Nv.5: dragão dos ventos — o pior caso da família (2,43 de mundo)
   ],
   // ------------------------ árvore (uma forma) ---------------------------
   raio: [{ x: 1.11, z: 1.14 }],

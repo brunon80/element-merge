@@ -127,12 +127,13 @@ import { makeStoneMaterial, TEAM_TINT } from './stoneShaders';
  * `crouch` no máximo abaixa o corpo 0,03.
  *
  * ENCAIXE (molde do zéfiro): cada malha é escalada para o topo autoral da forma
- * (`formTop` Nv.1 = 1,5 → Nv.5 = 4,15) COM TETO DE LARGURA: o invólucro autoral
- * da forma (`footprintOf`, tabela assinada em `data/footprints.ts`) é o contrato
- * — encaixo (mesh + abraço do relevo/respiração) ≤ entrada nos dois eixos. Com a
- * árvore inteira em malha, o teto viram o colosso Nv.4 e o dragão Nv.5 (asas e
- * cauda espalham a caixa para ~±1,0 nos três eixos): a família encolhe no buraco
- * (`slotFit` 1,15 → ≈0,79), o MESMO precedente aceito de fogo/água/vento. O
+ * (`formTops` 1,15 → 4,06, a escada mundo comum dos puros) COM TETO DE LARGURA:
+ * o invólucro autoral da forma (`footprintOf`, tabela assinada em
+ * `data/footprints.ts`) é o contrato — encaixo (mesh + abraço do relevo/
+ * respiração) ≤ entrada nos dois eixos. Com a árvore inteira em malha, o teto da
+ * família é o dragão Nv.5 (asas e cauda espalham a caixa para ~±1,0 nos três
+ * eixos): é ele que assina o degrau Nv.5 da escada e o `slotFit` da família
+ * (≈0,87), o MESMO precedente aceito de fogo/água/vento. O
  * corpo Nv.2 é PLANTADO no chão (o penedo não flutua); a cabeça sozinha BOIA um
  * dedo do chão (é uma pedra levitando, não um calhau); as feras são plantadas
  * nas patas.
