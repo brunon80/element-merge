@@ -13,7 +13,7 @@ import { formTop } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import type { MonsterLevel } from '../game/types';
 import { getEngine } from '../store/gameStore';
-import { circleTexture, setSeedAttribute } from './assets';
+import { circleTexture, setSeedAttribute, weldDispNormals } from './assets';
 import { NOISE_GLSL } from './flameShaders';
 import {
   CHIP_FRAG,
@@ -572,6 +572,7 @@ function GolemMeshRig({
     if (meshes.length === 0) throw new Error(`${url} não tem mesh`);
     const geo = meshes[0].geometry;
     geo.computeBoundingBox();
+    weldDispNormals(geo); // solda para o deslocamento do relevo não rasgar nas arestas duras
     const tex = (meshes[0].material as THREE.MeshStandardMaterial).map;
     return { geo, tex };
   }, [scene, url]);
@@ -657,19 +658,25 @@ function GolemMeshRig({
       sh.uniforms.uFWidth = { value: CRACK_WIDTH };
       sh.uniforms.uFGreen = { value: 0.24 };
       sh.vertexShader =
-        `uniform float uFA;\nuniform float uFBreath;\nuniform float uFSeed;\nuniform float uFHurt;\nvarying vec3 vLPos;\n${NOISE_GLSL}\n` +
+        `uniform float uFA;\nuniform float uFBreath;\nuniform float uFSeed;\nuniform float uFHurt;\nvarying vec3 vLPos;\nattribute vec3 aDispNrm;\n${NOISE_GLSL}\n` +
         sh.vertexShader.replace(
           '#include <begin_vertex>',
           /* glsl */ `#include <begin_vertex>
           // VIDA DA ROCHA na malha — o RELEVO de erosão do STONE_VERT (mesmo
           // ruído, mesmas escalas, deslocando ao longo da normal): a malha
-          // exportada é lisa demais e sem isso a pedra parece usinada. Aqui a
-          // normal é segura: a malha é OPACA de face única (doubleSided=false),
-          // a lição das "rachaduras" valia para uma CASCA com as duas faces.
+          // exportada é lisa demais e sem isso a pedra parece usinada. Duas
+          // lições das "rachaduras": (1) a malha é OPACA de face única
+          // (doubleSided=false) — a normal virada da CASCA de duas faces
+          // rasgava a saia; (2) o deslocamento sai pela NORMAL SOLDADEIRA
+          // (aDispNrm, soldada por POSIÇÃO em weldDispNormals), NUNCA pela
+          // objectNormal: nas ARESTAS DURAS da fera (chanfros das placas,
+          // ~5 mil soldas por malha — qa/probe-cracks.mjs) o GLB duplica o
+          // MESMO ponto com normais diferentes e cada cópia era puxada para
+          // um lado, rasgando fendas que deixavam ver o que estava atrás.
           vLPos = position + uFSeed;
           float rn1 = fbm(vLPos * 1.7);
           float rn2 = fnoise(vLPos * 4.4 + 7.0);
-          transformed += objectNormal * ((rn1 - 0.5) * 1.6 + (rn2 - 0.5) * 0.8) * uFA * (1.0 + uFHurt * 0.3);
+          transformed += aDispNrm * ((rn1 - 0.5) * 1.6 + (rn2 - 0.5) * 0.8) * uFA * (1.0 + uFHurt * 0.3);
           // respiração lenta do monólito (o fator literal do figurino: a
           // montanha respira, nunca vira bolha)
           transformed *= 1.0 + uFBreath * 0.014 * (0.55 + 0.45 * rn1);`,

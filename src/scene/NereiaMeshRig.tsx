@@ -13,7 +13,7 @@ import { formTop } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { getEngine } from '../store/gameStore';
 import type { MonsterLevel } from '../game/types';
-import { circleTexture, setSeedAttribute } from './assets';
+import { circleTexture, setSeedAttribute, weldDispNormals } from './assets';
 import { NOISE_GLSL } from './flameShaders';
 import { TEAM_TINT } from './stoneShaders';
 import {
@@ -292,6 +292,7 @@ function WaterMeshRig({
     if (meshes.length === 0) throw new Error(`${url} não tem mesh`);
     const geo = meshes[0].geometry;
     geo.computeBoundingBox();
+    weldDispNormals(geo); // solda para as correntes não rasgarem nas arestas duras
     const bb = geo.boundingBox!;
     const spanY = bb.max.y - bb.min.y;
     const at = (f: number) => bb.min.y + f * spanY; // fração da caixa → metro do modelo
@@ -386,14 +387,17 @@ function WaterMeshRig({
       sh.uniforms.uFModelH = { value: src.spanY };
       sh.uniforms.uFBase = { value: -src.yMin }; // chão da caixa → origem do gfrac
       sh.vertexShader =
-        `uniform float uFT;\nuniform float uFA;\nuniform float uFSwell;\nuniform float uFBend;\nuniform float uFSurge;\nuniform float uFSeed;\nuniform float uFPhase;\nuniform float uFHurt;\nuniform float uFCharge;\nuniform float uFModelH;\nuniform float uFBase;\nvarying float vGNer;\nvarying float vNNer;\nvarying float vANer;\nvarying float vFaceMask;\nattribute float aSeed;\n${NOISE_GLSL}\n` +
+        `uniform float uFT;\nuniform float uFA;\nuniform float uFSwell;\nuniform float uFBend;\nuniform float uFSurge;\nuniform float uFSeed;\nuniform float uFPhase;\nuniform float uFHurt;\nuniform float uFCharge;\nuniform float uFModelH;\nuniform float uFBase;\nvarying float vGNer;\nvarying float vNNer;\nvarying float vANer;\nvarying float vFaceMask;\nattribute float aSeed;\nattribute vec3 aDispNrm;\n${NOISE_GLSL}\n` +
         sh.vertexShader.replace(
           '#include <begin_vertex>',
           /* glsl */ `#include <begin_vertex>
           // VIDA DA ÁGUA na malha — o WATER_VERT do figurino (mesmos ruídos,
           // mesmas escalas, correntes SUBINDO pela casca: água tem peso, é mais
-          // lento que o vento). O deslocamento é pela NORMAL: as malhas são
-          // OPACAS de face única, então a lição do golém vale.
+          // lento que o vento). O deslocamento sai pela NORMAL SOLDADEIRA
+          // (aDispNrm, solda por POSIÇÃO em weldDispNormals): as malhas são
+          // OPACAS de face única (a lição do golém vale) e nas ARESTAS DURAS o
+          // GLB duplica o mesmo ponto com normais diferentes — pela objectNormal
+          // cada cópia era puxada para um lado e a casca rasgava (qa/probe-cracks.mjs).
           vFaceMask = step(${faceY0.toFixed(3)}, transformed.y) *
                       step(transformed.y, ${faceY1.toFixed(3)}) *
                       step(${faceZ.toFixed(3)}, transformed.z);
@@ -407,7 +411,7 @@ function WaterMeshRig({
           float n2 = fnoise(q * 2.4 + vec3(2.2, -uFT * 2.7, 1.1) + 7.0);
           vNNer = mix(n1, n2, 0.35);
           float amp = uFA * (1.0 + uFHurt * 0.4) * (1.0 + uFCharge * 0.5);
-          transformed += objectNormal * ((n1 - 0.5) * 1.8 + (n2 - 0.5) * 1.0) * amp * life;
+          transformed += aDispNrm * ((n1 - 0.5) * 1.8 + (n2 - 0.5) * 1.0) * amp * life;
           // o corpo ROLA com a maré e embica no arremesso (as duas fórmulas
           // literais do WATER_VERT: uSwell/uSurge/uBend crescem com a altura)
           float roll = uFSwell * gfrac * (1.0 + uFCharge * 0.9);

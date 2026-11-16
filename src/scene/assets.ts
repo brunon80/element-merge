@@ -105,6 +105,70 @@ export function setSeedAttribute(geo: THREE.BufferGeometry, seed: number): void 
 }
 
 /**
+ * NORMAL SOLDADEIRA para os rigs de malha importada que deslocam vértice ao
+ * longo da normal no vertex shader (o `uFA`/relevo de Golem/Ignis/Zéfiro/Nereia
+ * via onBeforeCompile): o GLB vem com ARESTAS DURAS — os chanfros/chapados das
+ * placas de pedra e dos lomos duplicam o MESMO ponto com normais diferentes
+ * (a aresta é lida como vinco, não como dobra suavizada). Deslocando cada cópia
+ * pela sua `objectNormal`, as duas cópias do mesmo ponto andam em DIREÇÕES
+ * DIFERENTES e a superfície RASGA na aresta: a "rachadura" que deixa ver o
+ * monstro atrás (medido em `qa/probe-cracks.mjs`: ~5 mil soldas duras por
+ * malha, rasgo mediano 0,005 e máximo ~0,08 da malha — invisível no Nv.1 bola,
+ * aberto na cara no bicho grande do Nv.3+). A solda por POSIÇÃO grava no
+ * atributo `aDispNrm` a normal MÉDIA do grupo soldado: cópias do mesmo ponto
+ * recebem o MESMO vetor → o MESMO deslocamento → a costura não abre. A
+ * ILUMINAÇÃO continua com a normal original (o vinco da placa aparece no
+ * shading como o modelo foi esculpido); só a DIREÇÃO do deslocamento muda.
+ * Uma vez por geometria (como a skin dos rigs); as instâncias compartilham.
+ */
+export function weldDispNormals(geo: THREE.BufferGeometry): void {
+  if (geo.userData.dispNrmWeld) return;
+  const pos = geo.getAttribute('position');
+  const nrm = geo.getAttribute('normal');
+  if (!pos || !nrm) return;
+  const n = pos.count;
+  const acc: Array<[number, number, number]> = [];
+  const keyToGroup = new Map<string, number>();
+  const gid = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    // chave quantizada: o GLB duplica o vértice EXATO na aresta (float32 → 1e-4)
+    const key =
+      Math.round(pos.getX(i) * 1e4) +
+      ',' +
+      Math.round(pos.getY(i) * 1e4) +
+      ',' +
+      Math.round(pos.getZ(i) * 1e4);
+    let g = keyToGroup.get(key);
+    if (g === undefined) {
+      g = acc.length;
+      keyToGroup.set(key, g);
+      acc.push([0, 0, 0]);
+    }
+    const a = acc[g];
+    a[0] += nrm.getX(i);
+    a[1] += nrm.getY(i);
+    a[2] += nrm.getZ(i);
+    gid[i] = g;
+  }
+  const avg = new Float32Array(acc.length * 3);
+  for (let g = 0; g < acc.length; g++) {
+    const a = acc[g];
+    const len = Math.hypot(a[0], a[1], a[2]) || 1;
+    avg[g * 3] = a[0] / len;
+    avg[g * 3 + 1] = a[1] / len;
+    avg[g * 3 + 2] = a[2] / len;
+  }
+  const out = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    out[i * 3] = avg[gid[i] * 3];
+    out[i * 3 + 1] = avg[gid[i] * 3 + 1];
+    out[i * 3 + 2] = avg[gid[i] * 3 + 2];
+  }
+  geo.setAttribute('aDispNrm', new THREE.Float32BufferAttribute(out, 3));
+  geo.userData.dispNrmWeld = true;
+}
+
+/**
  * Gota de chama (lathe): base larga, bojo abaixo do meio, afunilando até a
  * ponta; ondulação de borda tipo língua de fogo. Sem cache quando chamada
  * direto (útil para geometrias que precisam de atributos próprios,

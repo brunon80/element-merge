@@ -13,7 +13,7 @@ import { formTop } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { getEngine } from '../store/gameStore';
 import type { MonsterLevel } from '../game/types';
-import { circleTexture, setSeedAttribute } from './assets';
+import { circleTexture, setSeedAttribute, weldDispNormals } from './assets';
 import { NOISE_GLSL } from './flameShaders';
 import {
   attackPose,
@@ -403,6 +403,7 @@ function WindMeshRig({
     if (meshes.length === 0) throw new Error(`${url} não tem mesh`);
     const geo = meshes[0].geometry;
     geo.computeBoundingBox();
+    weldDispNormals(geo); // solda para as fitas de vento não rasgarem nas arestas duras
     const bb = geo.boundingBox!;
     const spanY = bb.max.y - bb.min.y;
     const at = (f: number) => bb.min.y + f * spanY; // fração da caixa → metro do modelo
@@ -476,7 +477,7 @@ function WindMeshRig({
       sh.uniforms.uFinY0 = { value: src.finY0 };
       sh.uniforms.uFinSpan = { value: src.finSpan };
       sh.vertexShader =
-        `uniform float uFT;\nuniform float uFA;\nuniform float uFSeed;\nuniform float uYMin;\nuniform float uSpanY;\nuniform float uFinY0;\nuniform float uFinSpan;\nvarying float vRibbon;\n${NOISE_GLSL}\n` +
+        `uniform float uFT;\nuniform float uFA;\nuniform float uFSeed;\nuniform float uYMin;\nuniform float uSpanY;\nuniform float uFinY0;\nuniform float uFinSpan;\nvarying float vRibbon;\nattribute vec3 aDispNrm;\n${NOISE_GLSL}\n` +
         sh.vertexShader.replace(
           '#include <begin_vertex>',
           /* glsl */ `#include <begin_vertex>
@@ -496,7 +497,10 @@ function WindMeshRig({
           // fitas de vento subindo pela superfície (grão fino, fluxo vertical;
           // o corpo do vento ferve MENOS que o do fogo — é seda, não plasma)
           float fn = fbm(transformed * 2.6 + vec3(0.0, -uFT * 2.1, 0.0) + uFSeed);
-          transformed += objectNormal * (fn - 0.5) * uFA * (0.8 + 1.4 * h);
+          // as fitas saem pela NORMAL SOLDADEIRA (aDispNrm, solda por POSIÇÃO em
+          // weldDispNormals): duplicatas do mesmo ponto nas arestas duras têm
+          // normais diferentes e pela objectNormal a malha rasgava (qa/probe-cracks.mjs)
+          transformed += aDispNrm * (fn - 0.5) * uFA * (0.8 + 1.4 * h);
           // o emissivo acende nas FITAS que passam (mesmo traço do WIND_FRAG:
           // faixa senoidal viajante em azimute × altura), contido — nuvem de
           // tempestade, não bola de luz

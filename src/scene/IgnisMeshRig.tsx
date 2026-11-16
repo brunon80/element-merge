@@ -13,7 +13,7 @@ import { formTop } from '../data/forms';
 import { getSpecies } from '../data/monsters';
 import { getEngine } from '../store/gameStore';
 import type { MonsterLevel } from '../game/types';
-import { circleTexture } from './assets';
+import { circleTexture, weldDispNormals } from './assets';
 import { attackPose, FlameRig, ROLE_LOOK, type FlameRigProps } from './FlameRig';
 import { makeEmberParticles, NOISE_GLSL } from './flameShaders';
 
@@ -303,6 +303,7 @@ function FireMeshRig({
     if (meshes.length === 0) throw new Error(`${url} não tem mesh`);
     const geo = meshes[0].geometry;
     geo.computeBoundingBox();
+    weldDispNormals(geo); // solda para o grão de brasa não rasgar nas arestas duras
     const bb = geo.boundingBox!;
     const spanY = bb.max.y - bb.min.y;
     const at = (f: number) => bb.min.y + f * spanY; // fração da caixa → metro do modelo
@@ -374,7 +375,7 @@ function FireMeshRig({
       sh.uniforms.uHairY0 = { value: src.hairY0 };
       sh.uniforms.uHairSpan = { value: src.hairSpan };
       sh.vertexShader =
-        `uniform float uFT;\nuniform float uFA;\nuniform float uFSeed;\nuniform float uHairY0;\nuniform float uHairSpan;\nvarying float vHair;\n${NOISE_GLSL}\n` +
+        `uniform float uFT;\nuniform float uFA;\nuniform float uFSeed;\nuniform float uHairY0;\nuniform float uHairSpan;\nvarying float vHair;\nattribute vec3 aDispNrm;\n${NOISE_GLSL}\n` +
         sh.vertexShader.replace(
           '#include <begin_vertex>',
           /* glsl */ `#include <begin_vertex>
@@ -400,7 +401,12 @@ function FireMeshRig({
           // faz o corpo parecer plasma, não uma bola pintada (o antigo fervia
           // o corpo todo no shader; aqui o corpo ferve menos que a crina)
           float fn = fbm(transformed * 3.6 + vec3(0.0, -uFT * 2.6, 0.0) + uFSeed);
-          transformed += objectNormal * (fn - 0.5) * uFA * (0.9 + 1.9 * h);
+          // o grão sai pela NORMAL SOLDADEIRA (aDispNrm, solda por POSIÇÃO em
+          // weldDispNormals): nas arestas duras da malha o GLB duplica o mesmo
+          // ponto com normais diferentes e pela objectNormal cada cópia era
+          // puxada para um lado — as "rachaduras" que deixavam ver o que estava
+          // atrás (qa/probe-cracks.mjs)
+          transformed += aDispNrm * (fn - 0.5) * uFA * (0.9 + 1.9 * h);
           vHair = h * max(0.0, 0.5 + 0.7 * tongue); // brasa que pisca na ponta`,
         );
       sh.fragmentShader =
