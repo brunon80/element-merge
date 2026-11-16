@@ -21,6 +21,7 @@ import { ShopPanel } from '../components/ShopPanel';
 import { ToastLayer } from '../components/ToastLayer';
 import { tileGroundPosition } from '../game/board';
 import { TREE_SPECIES_IDS, getSpecies } from '../data/monsters';
+import { loadSave } from '../persistence/saveGame';
 import type { MonsterLevel, Side, SpeciesId } from '../game/types';
 import { getEngine, useGameStore } from '../store/gameStore';
 import type { SummonResult } from '../game/engine/engine';
@@ -180,22 +181,14 @@ describe('Cenário da arena', () => {
 });
 
 describe('Bloom da arena', () => {
-  test('controla e desliga o bloom pelo menu de gráficos', () => {
+  test('só o slider do cenário resta no menu de gráficos (o bloom GLOBAL saiu)', () => {
     renderAll();
     act(() => useGameStore.getState().setSettings(true));
     fireEvent.click(screen.getByTestId('settings-tab-graphics'));
 
-    const slider = screen.getByRole('slider', { name: 'Intensidade do bloom' });
-    expect(slider).toHaveValue('20');
-    expect(screen.getByTestId('bloom-value')).toHaveTextContent('20%');
-
-    fireEvent.change(slider, { target: { value: '0' } });
-    expect(useGameStore.getState().bloomIntensity).toBe(0);
-    expect(screen.getByTestId('bloom-value')).toHaveTextContent('Desligado');
-
-    fireEvent.change(slider, { target: { value: '80' } });
-    expect(useGameStore.getState().bloomIntensity).toBe(80);
-    expect(screen.getByTestId('bloom-value')).toHaveTextContent('80%');
+    // o slider global (antigo "Intensidade do bloom") não existe mais
+    expect(screen.queryByTestId('bloom-intensity')).toBeNull();
+    expect(screen.queryByRole('slider', { name: 'Intensidade do bloom' })).toBeNull();
 
     const scenerySlider = screen.getByRole('slider', { name: 'Bloom do cenário' });
     expect(scenerySlider).toHaveValue('30');
@@ -887,6 +880,40 @@ describe('Modo debug (bestiário → criatura no campo)', () => {
     expect(useGameStore.getState().debugMode).toBe(true);
     act(() => useGameStore.getState().initFromSave());
     expect(useGameStore.getState().debugMode).toBe(true); // salvo no localStorage
+  });
+
+  test('slider de bloom por espécie/nível: começa em 30%, salva e resgata ao "recarregar"', () => {
+    renderAll();
+    enableDebugUi();
+    act(() => useGameStore.getState().setBestiary(true));
+    const slider = screen.getByTestId('monster-bloom-ignis-1');
+    expect(slider).toHaveValue('30');
+    expect(screen.getByTestId('monster-bloom-value-ignis-1').textContent).toBe('30%');
+
+    fireEvent.change(slider, { target: { value: '70' } });
+    expect(screen.getByTestId('monster-bloom-value-ignis-1').textContent).toBe('70%');
+    expect(loadSave().settings.monsterBloom).toEqual({ ignis: { 1: 70 } });
+
+    // cada forma do puro tem dose própria: a aba Nv.4 abre um slider novo em 30
+    fireEvent.click(screen.getByTestId('debug-level-ignis-4'));
+    const slider4 = screen.getByTestId('monster-bloom-ignis-4');
+    expect(slider4).toHaveValue('30');
+    fireEvent.change(slider4, { target: { value: '90' } });
+    expect(loadSave().settings.monsterBloom).toEqual({ ignis: { 1: 70, 4: 90 } });
+
+    // simula F5: os valores salvos voltam para os sliders e para a loja do BloomGate
+    act(() => useGameStore.getState().initFromSave());
+    expect(useGameStore.getState().monsterBloom).toEqual({ ignis: { 1: 70, 4: 90 } });
+    act(() => useGameStore.getState().setBestiary(true));
+    expect(screen.getByTestId('monster-bloom-ignis-4')).toHaveValue('90');
+    fireEvent.click(screen.getByTestId('debug-level-ignis-1'));
+    expect(screen.getByTestId('monster-bloom-ignis-1')).toHaveValue('70');
+
+    // com o debug desligado, o bestiário perde o slider (nada de depuração na UI)
+    act(() => useGameStore.getState().setBestiary(false));
+    act(() => useGameStore.getState().setDebugMode(false));
+    act(() => useGameStore.getState().setBestiary(true));
+    expect(screen.queryByTestId('monster-bloom-ignis-1')).toBeNull();
   });
 
   test('cria TODAS as espécies da árvore (inclusive seladas) sem fusão e sem custo', () => {

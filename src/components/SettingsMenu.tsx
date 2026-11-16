@@ -49,8 +49,6 @@ export function SettingsMenu() {
   const setDifficulty = useGameStore((s) => s.setDifficulty);
   const scenario = useGameStore((s) => s.scenario);
   const setScenario = useGameStore((s) => s.setScenario);
-  const bloomIntensity = useGameStore((s) => s.bloomIntensity);
-  const setBloomIntensity = useGameStore((s) => s.setBloomIntensity);
   const sceneryBloomIntensity = useGameStore((s) => s.sceneryBloomIntensity);
   const setSceneryBloomIntensity = useGameStore((s) => s.setSceneryBloomIntensity);
   const perfMode = useGameStore((s) => s.perfMode);
@@ -230,34 +228,12 @@ export function SettingsMenu() {
                   </p>
                 )}
                 <p className="hint">
-                  Ajuste o bloom geral e o bloom adicional da paisagem. Reduzir
-                  ou desligar os efeitos pode aliviar a GPU em dispositivos mais
-                  lentos.
+                  Ajuste o bloom adicional da paisagem. Reduzir ou desligar o
+                  efeito pode aliviar a GPU em dispositivos mais lentos. As
+                  criaturas não têm bloom global: com o modo debug ligado, cada
+                  espécie/nível tem seu slider no card do bestiário.
                   {ecoActive && ' No modo econômico o bloom fica desligado de qualquer jeito.'}
                 </p>
-                <label className="bloom-control" htmlFor="bloom-intensity">
-                  <span className="bloom-control-heading">
-                    Intensidade do bloom
-                    <output data-testid="bloom-value">
-                      {bloomIntensity === 0 ? 'Desligado' : `${bloomIntensity}%`}
-                    </output>
-                  </span>
-                  <input
-                    id="bloom-intensity"
-                    data-testid="bloom-intensity"
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    value={bloomIntensity}
-                    aria-label="Intensidade do bloom"
-                    aria-valuetext={bloomIntensity === 0 ? 'Desligado' : `${bloomIntensity}%`}
-                    onChange={(event) => setBloomIntensity(Number(event.currentTarget.value))}
-                  />
-                  <span className="hint">
-                    0% desliga o bloom geral. O bloom do cenário é controlado separadamente.
-                  </span>
-                </label>
                 <label className="bloom-control" htmlFor="scenery-bloom-intensity">
                   <span className="bloom-control-heading">
                     Bloom do cenário

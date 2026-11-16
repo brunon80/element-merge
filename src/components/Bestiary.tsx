@@ -10,6 +10,7 @@ import {
 } from '../data/monsters';
 import { hasForms } from '../data/forms';
 import { useGameStore } from '../store/gameStore';
+import { DEFAULT_MONSTER_BLOOM_INTENSITY } from '../persistence/saveGame';
 import type { MonsterLevel, SpeciesId } from '../game/types';
 import { MonsterViewer } from '../scene/MonsterViewer';
 import { ElementIcon } from './icons';
@@ -71,7 +72,10 @@ function DebugSpawn({
 }) {
   const spawn = useGameStore((s) => s.spawnDebugUnit);
   const setBestiary = useGameStore((s) => s.setBestiary);
+  const savedBloom = useGameStore((s) => s.monsterBloom[species]?.[level]);
+  const setMonsterBloom = useGameStore((s) => s.setMonsterBloom);
   const name = getSpecies(species).name;
+  const bloomValue = savedBloom ?? DEFAULT_MONSTER_BLOOM_INTENSITY;
   return (
     <span
       className="debug-spawn"
@@ -93,6 +97,33 @@ function DebugSpawn({
           ))}
         </span>
       )}
+      {/* 🐞 bloom INDIVIDUAL deste NÍVEL desta espécie (só existe com o debug
+          ligado): mexer no slider crava a dose desta criatura em campo — salvo
+          no navegador e resgatado quando a figurinha é criada de novo (ver
+          scene/BloomGate.tsx; o bloom GLOBAL das criaturas saiu do jogo) */}
+      <span className="debug-bloom">
+        <label className="debug-bloom-heading" htmlFor={`monster-bloom-${species}-${level}`}>
+          Bloom
+          <output data-testid={`monster-bloom-value-${species}-${level}`}>
+            {bloomValue === 0 ? 'Desligado' : `${bloomValue}%`}
+          </output>
+        </label>
+        <input
+          id={`monster-bloom-${species}-${level}`}
+          data-testid={`monster-bloom-${species}-${level}`}
+          type="range"
+          min="0"
+          max="100"
+          step="5"
+          value={bloomValue}
+          aria-label={`Bloom de ${name} Nv.${level}`}
+          aria-valuetext={bloomValue === 0 ? 'Desligado' : `${bloomValue}%`}
+          title={`Depuração: bloom só de ${name} Nv.${level} em campo`}
+          onChange={(event) =>
+            setMonsterBloom(species, level, Number(event.currentTarget.value))
+          }
+        />
+      </span>
       <button
         type="button"
         className="debug-spawn-btn"

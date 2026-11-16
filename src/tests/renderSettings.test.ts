@@ -1,26 +1,12 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import BloomGateSource from '../scene/BloomGate.tsx?raw';
-import { loadSave } from '../persistence/saveGame';
+import { loadSave, SAVE_KEY } from '../persistence/saveGame';
 import { useGameStore } from '../store/gameStore';
 
 describe('Preferência de bloom', () => {
   beforeEach(() => {
     localStorage.clear();
     useGameStore.getState().initFromSave();
-  });
-
-  test('persiste a intensidade e aceita desligar ou limitar o valor', () => {
-    const store = useGameStore.getState();
-    expect(store.bloomIntensity).toBe(20);
-
-    store.setBloomIntensity(75);
-    expect(loadSave().settings.bloomIntensity).toBe(75);
-
-    useGameStore.getState().setBloomIntensity(0);
-    expect(loadSave().settings.bloomIntensity).toBe(0);
-
-    useGameStore.getState().setBloomIntensity(150);
-    expect(loadSave().settings.bloomIntensity).toBe(100);
   });
 
   test('persiste separadamente o bloom do cenário', () => {
@@ -31,6 +17,45 @@ describe('Preferência de bloom', () => {
 
     useGameStore.getState().setSceneryBloomIntensity(125);
     expect(loadSave().settings.sceneryBloomIntensity).toBe(100);
+  });
+
+  test('persiste o bloom individual por espécie/nível (modo debug) com teto e piso', () => {
+    // mapa vazio = nenhum slider mexido; em campo o BloomGate usa o padrão 30
+    // (com o debug ligado) e o teto visual das doses é da época do bloom global
+    expect(useGameStore.getState().monsterBloom).toEqual({});
+    expect(loadSave().settings.monsterBloom).toEqual({});
+
+    useGameStore.getState().setMonsterBloom('ignis', 1, 55);
+    expect(loadSave().settings.monsterBloom).toEqual({ ignis: { 1: 55 } });
+
+    useGameStore.getState().setMonsterBloom('ignis', 4, 150);
+    expect(loadSave().settings.monsterBloom).toEqual({ ignis: { 1: 55, 4: 100 } });
+
+    useGameStore.getState().setMonsterBloom('golem', 1, -5);
+    expect(loadSave().settings.monsterBloom).toEqual({ ignis: { 1: 55, 4: 100 }, golem: { 1: 0 } });
+
+    // nível fora da janela da espécie é recusado na ação (golem é puro Nv.1–5;
+    // uma espécie da árvore aceitaria só o nível único dela)
+    useGameStore.getState().setMonsterBloom('golem', 6, 80);
+    expect(loadSave().settings.monsterBloom).toEqual({ ignis: { 1: 55, 4: 100 }, golem: { 1: 0 } });
+
+    // relê o cofre: só voltam espécies conhecidas, níveis válidos e números 0–100
+    useGameStore.getState().initFromSave();
+    expect(useGameStore.getState().monsterBloom).toEqual({
+      ignis: { 1: 55, 4: 100 },
+      golem: { 1: 0 },
+    });
+
+    // espécie, nível e valor estranhos no JSON caem fora (e o valor válido
+    // passa pelo teto)
+    const sujo = JSON.parse(JSON.stringify(loadSave()));
+    sujo.settings.monsterBloom = {
+      ignis: { 1: '40', 6: 30 },
+      bicho: { 1: 20 },
+      golem: { 1: 250 },
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(sujo));
+    expect(loadSave().settings.monsterBloom).toEqual({ golem: { 1: 100 } });
   });
 
   test('persiste o volume do som e aceita desligar ou limitar o valor', () => {

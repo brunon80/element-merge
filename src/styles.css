@@ -1655,6 +1655,36 @@ button {
 .beast-card.locked .debug-spawn-btn {
   border-style: dashed;
 }
+/* 🐞 slider de bloom individual por espécie (modo debug, no card do bestiário) */
+.debug-bloom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px dashed rgba(151, 119, 255, 0.45);
+  background: rgba(9, 13, 25, 0.5);
+}
+.debug-bloom-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--violet);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.debug-bloom-heading output {
+  min-width: 34px;
+  text-align: right;
+  color: #fff;
+  font-weight: 400;
+}
+.debug-bloom input[type='range'] {
+  width: 90px;
+  accent-color: var(--violet);
+  cursor: pointer;
+}
 .beast-level-chips.debug .beast-level-chip {
   border-color: rgba(151, 119, 255, 0.5);
 }

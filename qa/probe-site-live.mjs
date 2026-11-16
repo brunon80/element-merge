@@ -65,7 +65,6 @@ for (const world of WORLDS) {
       modes,
       radios: radios.length,
       checked,
-      bloom: !!document.querySelector('[data-testid="bloom-intensity"]'),
       scenery: !!document.querySelector('[data-testid="scenery-bloom-intensity"]'),
       heading: document.querySelector('.settings-overlay h3')?.textContent?.trim(),
     };
@@ -78,7 +77,6 @@ for (const world of WORLDS) {
   const bad =
     found.modes.length !== 3 ||
     found.radios !== 3 ||
-    !found.bloom ||
     !found.scenery ||
     perfMarker === 0 ||
     cacheName === '?';

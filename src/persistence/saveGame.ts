@@ -18,11 +18,12 @@ import type {
 } from '../game/types';
 
 export const SAVE_KEY = 'elemental-merge-save-v1';
-/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som; v9: volume da música; v10: posição do time guardado no tabuleiro; v11: recompensa de fim de partida configurável; v12: tutorial da luvinha já assistido. */
-export const SAVE_VERSION = 12;
-export const DEFAULT_BLOOM_INTENSITY = 20;
+/** v2: time persistido; v3: árvore elemental; v4: cenário; v5: bloom; v6: bloom do cenário; v7: fim do universo; v8: volume do som; v9: volume da música; v10: posição do time guardado no tabuleiro; v11: recompensa de fim de partida configurável; v12: tutorial da luvinha já assistido; v13: bloom individual por espécie/nível (modo debug) — o bloom GLOBAL (antigo `bloomIntensity`, v5–v12) sai do save: monstros só florescem pela dose individual, e o cenário mantém o slider próprio. */
+export const SAVE_VERSION = 13;
 export const MAX_BLOOM_INTENSITY = 100;
 export const DEFAULT_SCENERY_BLOOM_INTENSITY = 30;
+/** Ponto de partida do slider por espécie/nível no bestiário (modo debug). */
+export const DEFAULT_MONSTER_BLOOM_INTENSITY = 30;
 export const DEFAULT_SFX_VOLUME = 80;
 export const DEFAULT_MUSIC_VOLUME = 60;
 export const MAX_SFX_VOLUME = 100;
@@ -55,7 +56,6 @@ export interface RetainedUnit {
 export interface SettingsData {
   difficulty: Difficulty;
   scenario: ScenarioChoice;
-  bloomIntensity: number;
   sceneryBloomIntensity: number;
   /** 🔋 Modo de desempenho (bateria): 'auto' detecta o aparelho de bolso,
    *  'full' força qualidade máxima, 'eco' força economia (src/game/perf.ts). */
@@ -76,6 +76,16 @@ export interface SettingsData {
   matchReward: number;
   /** Depuração: permite criar qualquer criatura do bestiário direto na arena. */
   debugMode: boolean;
+  /**
+   * Depuração: bloom INDIVIDUAL por espécie E NÍVEL (0–100). Elementos base
+   * (puros) têm uma dose por forma (Nv.1–5); espécies da árvore têm nível
+   * único. Só existe entrada para espécie/nível cujo slider do bestiário foi
+   * mexido; sem entrada, com o modo debug ligado vale
+   * `DEFAULT_MONSTER_BLOOM_INTENSITY` (30) e com ele desligado a criatura não
+   * floresce (o bloom GLOBAL das criaturas saiu do jogo em 2026/11 — ver
+   * scene/BloomGate.tsx; o bloom do cenário é slider separado).
+   */
+  monsterBloom: Partial<Record<SpeciesId, Partial<Record<MonsterLevel, number>>>>;
 }
 
 export interface StatsData {
@@ -116,7 +126,6 @@ export function defaultSave(): SaveData {
     settings: {
       difficulty: 'normal',
       scenario: 'random',
-      bloomIntensity: DEFAULT_BLOOM_INTENSITY,
       sceneryBloomIntensity: DEFAULT_SCENERY_BLOOM_INTENSITY,
       perfMode: 'auto',
       sfxVolume: DEFAULT_SFX_VOLUME,
@@ -125,6 +134,7 @@ export function defaultSave(): SaveData {
       rewardMode: 'fixed',
       matchReward: DEFAULT_MATCH_REWARD,
       debugMode: false,
+      monsterBloom: {},
     },
     stats: { wins: 0, losses: 0, draws: 0, matchesPlayed: 0 },
     processedMatchIds: [],
@@ -233,11 +243,6 @@ export function loadSave(): SaveData {
       parsed.settings?.scenario === 'random'
         ? parsed.settings.scenario
         : base.settings.scenario;
-    const bloomIntensity =
-      typeof parsed.settings?.bloomIntensity === 'number' &&
-      Number.isFinite(parsed.settings.bloomIntensity)
-        ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(parsed.settings.bloomIntensity)))
-        : base.settings.bloomIntensity;
     const sceneryBloomIntensity =
       typeof parsed.settings?.sceneryBloomIntensity === 'number' &&
       Number.isFinite(parsed.settings.sceneryBloomIntensity)
@@ -284,6 +289,34 @@ export function loadSave(): SaveData {
             Math.max(MIN_MATCH_REWARD, Math.round(parsed.settings.matchReward)),
           )
         : base.settings.matchReward;
+    // v13: bloom individual por espécie/nível (modo debug). Só entram entradas
+    // válidas: espécie conhecida, nível na janela dela e número 0–100 (o resto
+    // é descartado — entrada ausente = slider nunca mexido).
+    const rawMonsterBloom =
+      parsed.settings?.monsterBloom &&
+      typeof parsed.settings.monsterBloom === 'object' &&
+      !Array.isArray(parsed.settings.monsterBloom)
+        ? (parsed.settings.monsterBloom as Record<string, unknown>)
+        : {};
+    const monsterBloom: Partial<Record<SpeciesId, Partial<Record<MonsterLevel, number>>>> = {};
+    for (const [id, rawLevels] of Object.entries(rawMonsterBloom)) {
+      if (!known.has(id)) continue;
+      if (!rawLevels || typeof rawLevels !== 'object' || Array.isArray(rawLevels)) continue;
+      const species = id as SpeciesId;
+      const levels: Partial<Record<MonsterLevel, number>> = {};
+      for (const [lv, value] of Object.entries(rawLevels as Record<string, unknown>)) {
+        const level = Number(lv);
+        if (!Number.isInteger(level) || !speciesAllowsLevel(species, level as MonsterLevel))
+          continue;
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          levels[level as MonsterLevel] = Math.min(
+            MAX_BLOOM_INTENSITY,
+            Math.max(0, Math.round(value)),
+          );
+        }
+      }
+      if (Object.keys(levels).length > 0) monsterBloom[species] = levels;
+    }
     const stats: StatsData = {
       wins: num(parsed.stats?.wins),
       losses: num(parsed.stats?.losses),
@@ -301,7 +334,6 @@ export function loadSave(): SaveData {
       settings: {
         difficulty,
         scenario,
-        bloomIntensity,
         sceneryBloomIntensity,
         perfMode,
         sfxVolume,
@@ -310,6 +342,7 @@ export function loadSave(): SaveData {
         rewardMode,
         matchReward,
         debugMode: !!parsed.settings?.debugMode,
+        monsterBloom,
       },
       stats,
       processedMatchIds,

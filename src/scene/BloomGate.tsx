@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -7,20 +7,80 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import { useGameStore } from '../store/gameStore';
-import { MAX_BLOOM_INTENSITY } from '../persistence/saveGame';
+import {
+  DEFAULT_MONSTER_BLOOM_INTENSITY,
+  MAX_BLOOM_INTENSITY,
+} from '../persistence/saveGame';
 
 export const SCENERY_BLOOM_LAYER = 1;
 
 /**
- * Pós-processamento bloom da arena. A intensidade é controlada pelo jogador;
- * quando está em zero, o compositor é contornado para dispensar o custo extra.
- * O disco do Primordial continua usando HDR e recebe o mesmo efeito global.
+ * 🐞 Camada de bloom individual por UNIDADE em campo (modo debug). Bit 0 é a
+ * cena toda, bit 1 é o cenário (`SCENERY_BLOOM_LAYER`); os bits 2–31 são um
+ * banco dinâmico de slots emprestado por figurinha de campo. A reserva é por
+ * UNIDADE (não por espécie) porque a dose agora é por espécie E NÍVEL — são
+ * ~39 combinações vivas (4 puros × 5 formas + 19 da árvore), o que não cabe
+ * nos 32 bits se cada combinação tivesse camada fixa; em campo cabem no máximo
+ * ~24 unidades ao mesmo tempo. O `UnitView` habilita o bit no figurino (só o
+ * `modelRef`) enquanto vive; o gate captura pares espécie/nível com a máscara
+ * OR das camadas das unidades daquele par.
+ */
+const UNIT_LAYER_FIRST = 2;
+const UNIT_LAYER_LAST = 31;
+const unitLayers = new Map<number, number>();
+const freeUnitLayers: number[] = [];
+for (let i = UNIT_LAYER_LAST; i >= UNIT_LAYER_FIRST; i--) freeUnitLayers.push(i);
+
+/** Pega um bit livre para a unidade (idempotente: a mesma unidade reusa o bit). */
+export function acquireUnitBloomLayer(unitId: number): number | undefined {
+  const existing = unitLayers.get(unitId);
+  if (existing !== undefined) return existing;
+  const bit = freeUnitLayers.pop();
+  if (bit === undefined) return undefined; // banco vazio: a criatura só não floresce
+  unitLayers.set(unitId, bit);
+  return bit;
+}
+
+/** Devolve o bit da unidade que saiu de campo. */
+export function releaseUnitBloomLayer(unitId: number): void {
+  const bit = unitLayers.get(unitId);
+  if (bit === undefined) return;
+  unitLayers.delete(unitId);
+  freeUnitLayers.push(bit);
+}
+
+/** Bit emprestado a uma unidade em campo (indefinido = sem bloom individual). */
+export function getUnitBloomLayer(unitId: number): number | undefined {
+  return unitLayers.get(unitId);
+}
+
+/**
+ * Dose (0–100) de bloom individual de uma unidade em campo: o valor salvo do
+ * slider do bestiário para aquele espécie/nível quando existir; senão, com o
+ * modo debug LIGADO vale o padrão do slider (30); com ele desligado a criatura
+ * não floresce (o bloom GLOBAL das criaturas saiu do jogo em 2026/11 — ver o
+ * doc do componente; o bloom do cenário é slider separado).
+ */
+export function monsterBloomDose(
+  saved: number | undefined,
+  debugMode: boolean,
+): number | undefined {
+  if (saved !== undefined) return saved;
+  return debugMode ? DEFAULT_MONSTER_BLOOM_INTENSITY : undefined;
+}
+
+/**
+ * Pós-processamento bloom da arena. Não existe mais bloom GLOBAL das criaturas:
+ * o compositor só entra em jogo quando há algo para florescer — o bloom do
+ * CENÁRIO (slider próprio) ou a dose individual de alguma criatura em campo
+ * (modo debug). Quando não há nenhum, o render direto preserva o caminho de cor
+ * da arena sem pós-processamento. O disco do Primordial continua usando HDR e
+ * só floresce pelo cenário.
  *
- * ## O compositor é criado uma vez e usado enquanto o bloom está ativo
+ * ## O compositor é criado uma vez e usado enquanto algum bloom está ativo
  *
- * Com o pipeline ativo, o `UnrealBloomPass` sobe e desce suavemente conforme a
- * configuração muda. Ao desligá-lo, o render direto preserva o caminho de cor
- * da arena sem pós-processamento.
+ * Com o pipeline ativo, o bloom do cenário e as doses individuais seguem a
+ * configuração do jogador. Ao desligar tudo, o render direto volta no lugar.
  *
  * ## A armadilha de cor (three r169) — e por que o pass final NÃO codifica
  *
@@ -53,7 +113,7 @@ export const SCENERY_BLOOM_LAYER = 1;
  *    display-referred, exatamente como o framebuffer recebe hoje.
  *
  * Com os três pedaços compensados, o buffer do composer vale "o que o
- * framebuffer mostra" e o pass final é uma CÓPIA PURA (ShaderPass do
+ * framebuffer mostra" e o pass final é uma CÓPIA PURE (ShaderPass do
  * CopyShader, sem `OutputPass` — OutputPass codificaria de novo e estouraria os
  * ~90% da cena que já chega display-referred). O bloom ainda extrai pelo limiar
  * de luminância: pixels acima do limiar acendem, incluindo valores HDR do disco
@@ -62,12 +122,38 @@ export const SCENERY_BLOOM_LAYER = 1;
  *
  * ## O gate
  *
- * A intensidade positiva ativa o composer e o bloom. O RT HalfFloat + MSAA
- * `samples: 4` (o canvas nu tinha MSAA nativo; sem samples o composer trocaria
- * serrilhado bom por serrilhado pior) são usados enquanto o efeito estiver
- * ativo. Em intensidade zero, a cena volta ao render direto.
+ * Qualquer bloom positivo (cenário ou dose individual de campo) ativa o
+ * compositor. O RT HalfFloat + MSAA `samples: 4` (o canvas nu tinha MSAA
+ * nativo; sem samples o composer trocaria serrilhado bom por serrilhado pior)
+ * é usado enquanto o efeito estiver ativo — e por isso o resolve do multisample
+ * (pass `resolve`, com o cinto anti-Não-Finito) é sempre ligado: sem pass de
+ * bloom global, ele é o único caminho multisample → simples do pipeline. Em
+ * bloom nenhum, a cena volta ao render direto.
  * O palco da enciclopédia (outro contexto, outro Canvas) fica intocado: o
  * print do card do primordial não floresce, igual ao resto da árvore.
+ *
+ * ## 🐞 O bloom por espécie e nível (modo debug)
+ *
+ * Com o modo debug LIGADO, cada criatura em campo floresce pela intensidade do
+ * slider no card do bestiário DAQUELE espécie/nível (começa em 30%, salvo no
+ * navegador — ver `monsterBloom` no save). Com o modo debug DESLIGADO, só
+ * criatura com slider mexido floresce (a dose salva); ninguém mais brilha, e a
+ * remoção do bloom global é exatamente o que o slider controla sem interferência.
+ * Por par espécie/nível em campo nós:
+ *  1. capturamos as unidades DAQUELE par sozinhas (cada unidade em campo tem um
+ *     bit próprio no banco 2–31 — UnitView carimba só o `modelRef`, HUD/anel/
+ *     hitbox ficam de fora; as luzes da cena entram na máscara para o corpo
+ *     padrão não chegar escuro);
+ *  2. rodamos a MESMA escada do bloom do cenário (limiar/raio idênticos, força
+ *     1) sobre a captura e medimos a diferença bruta `add`;
+ *  3. compomos `cena + add × dose_da_figurinha` — sem bloom global para
+ *     descontar, a composta é puramente aditiva (dose maior floresce mais;
+ *     dose 0, nada).
+ * A aproximação mora na captura isolada (o highpass não vê os vizinhos por
+ * trás do monstro e a captura não conhece a oclusão do cenário) — aceitável
+ * para uma ferramenta de depuração. O caminho é caro por par (render + escada
+ * de mips + composta), por isso NUNCA roda fora do debug, no eco, ou com os
+ * desvios de QA `qtNoBloom/qtNoComposer`.
  */
 
 /** fundo oficial da arena (era o `args={['#0b1020']}` do `<color attach>` no
@@ -75,23 +161,23 @@ export const SCENERY_BLOOM_LAYER = 1;
  *  para o `<fog>`, mantendo os dois no mesmo tom) */
 export const ARENA_BG = '#0b1020';
 
-/** Teto visual: o bloom não deve exceder o nível que era usado em 50%. */
+/** Teto visual: a dose individual não deve exceder o nível que o bloom global
+ *  tinha em 50% (era o teto do slider geral). */
 const BLOOM_MAX_STRENGTH = 0.62;
 const BLOOM_RADIUS = 0.5;
 const BLOOM_THRESHOLD = 0.8;
 
 /**
  * DESVIOS DE QA (só dev, por URL): bisectar pipeline sem picotar o fonte.
- * `?qtNoBloom=1` liga o pass de bloom pra nunca (o resto do composer fica);
- * `?qtNoComposer=1` tira o composer do caminho e devolve o `gl.render` nu de
- * sempre (fundo pelo `WebGLBackground`, sem patch de cor) — é o A/B de pixel da
- * arena e a sonda de bug de pós (`qa/probe-blackfix.mjs` usa os dois).
+ * `?qtNoBloom=1` desliga o bloom individual das criaturas (o bloom do cenário
+ * e o resto do composer ficam); `?qtNoComposer=1` tira o composer do caminho e
+ * devolve o `gl.render` nu de sempre (fundo pelo `WebGLBackground`, sem patch
+ * de cor) — é o A/B de pixel da arena e a sonda de bug de pós
+ * (`qa/probe-blackfix.mjs` usa os dois).
  */
 const QA_FLAGS = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
 const QA_NO_BLOOM = !!import.meta.env.DEV && QA_FLAGS?.get('qtNoBloom') === '1';
 const QA_NO_COMPOSER = !!import.meta.env.DEV && QA_FLAGS?.get('qtNoComposer') === '1';
-/** Suaviza mudanças rápidas no controle para evitar pop visual. */
-const BLOOM_RAMP = 2.5;
 
 /**
  * O CINTO ANTI-NÃO-FINITO (2026/11, lesson do "quadrado preto" no iOS/WebKit).
@@ -159,6 +245,46 @@ void main() {
     vec3 source = texture2D( uScenerySource, vUv ).rgb;
     vec3 bloomed = texture2D( uSceneryBloom, vUv ).rgb;
     base.rgb += max( bloomed - source, vec3( 0.0 ) ) * uSceneryIntensity;
+  }
+  gl_FragColor = base;
+}
+`,
+};
+
+/**
+ * 🐞 Composta do bloom individual (modo debug): SOMA a diferença bruta da
+ * captura isolada do par espécie/nível sobre a cena já compostada, na dose do
+ * slider. Sem bloom global para descontar (ele saiu do jogo em 2026/11), a
+ * composta é puramente aditiva — diferente da do cenário, ela não amarra com
+ * max(0) porque o highpass da diferença já é o brilho extras que se quer somar
+ * na escala pedida pelo slider.
+ */
+const MONSTER_COMPOSITE_SHADER = {
+  uniforms: {
+    tDiffuse: { value: null as THREE.Texture | null },
+    uMonsterSource: { value: null as THREE.Texture | null },
+    uMonsterBloom: { value: null as THREE.Texture | null },
+    uMonsterScale: { value: 0 },
+  },
+  vertexShader: /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+`,
+  fragmentShader: /* glsl */ `
+uniform sampler2D tDiffuse;
+uniform sampler2D uMonsterSource;
+uniform sampler2D uMonsterBloom;
+uniform float uMonsterScale;
+varying vec2 vUv;
+void main() {
+  vec4 base = texture2D( tDiffuse, vUv );
+  if ( uMonsterScale != 0.0 ) {
+    vec3 source = texture2D( uMonsterSource, vUv ).rgb;
+    vec3 bloomed = texture2D( uMonsterBloom, vUv ).rgb;
+    base.rgb += ( bloomed - source ) * uMonsterScale;
   }
   gl_FragColor = base;
 }
@@ -309,13 +435,26 @@ function unpatchBuiltins(scene: THREE.Scene) {
 
 export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: string }) {
   const { gl, scene, camera, size } = useThree();
-  const bloomIntensity = useGameStore((s) => s.bloomIntensity);
   const sceneryBloomIntensity = useGameStore((s) => s.sceneryBloomIntensity);
   // 🔋 modo econômico: a bateria vence — mesmo com bloom configurado o
   // compositor (RT HalfFloat MSAA + escada de mips do UnrealBloom + cópia,
   // ~6 passes fullscreen) fica desligado; a cena volta ao render direto.
   const ecoActive = useGameStore((s) => s.ecoActive);
-  const useComposer = !QA_NO_COMPOSER && !ecoActive && (bloomIntensity > 0 || sceneryBloomIntensity > 0);
+  // 🐞 bloom individual por espécie/nível: uma figurinha em campo com slider
+  // mexido (ou o padrão de 30 com o debug ligado) puxa o compositor pro jogo.
+  // A string-chave nasce de novo a cada syncUi; só muda quando doses/camadas
+  // mudam de fato, então o gate não re-renderiza a toa.
+  const monsterBloomKey = useGameStore((s) => {
+    if (QA_NO_BLOOM) return '';
+    let key = '';
+    for (const u of s.units) {
+      const dose = monsterBloomDose(s.monsterBloom[u.species]?.[u.level], s.debugMode);
+      if (dose !== undefined && dose > 0) key += `${u.id}:${u.species}:${u.level}:${dose},`;
+    }
+    return key;
+  });
+  const monsterBloomActive = monsterBloomKey !== '';
+  const useComposer = !QA_NO_COMPOSER && !ecoActive && (sceneryBloomIntensity > 0 || monsterBloomActive);
 
   const stack = useMemo(() => {
     // RT do composer: HalfFloat segura o HDR do anel de fótons (o highpass lê
@@ -343,22 +482,15 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
     // topo)
     const renderPass = new RenderPass(scene, camera, null, new THREE.Color(backgroundColor));
     // resolve do multisample + cinto anti-Não-Finito: cópia do buffer
-    // multisample pro simples com a sanificação do SANITIZE_SHADER no mesmo draw.
+    // multisample pro simples com a sanificação do SANITIZE_SHADER no mesmo
+    // draw. SEM o bloom global, este é o ÚNICO pass multisample → simples do
+    // pipeline, então ele vai sempre ligado com o compositor ativo.
     const resolve = new ShaderPass(SANITIZE_SHADER);
-    resolve.enabled = false;
-    const bloom = new UnrealBloomPass(
-      new THREE.Vector2(rt.width, rt.height),
-      0, // strength: a rampa decide (começa apagado)
-      BLOOM_RADIUS,
-      BLOOM_THRESHOLD,
-    );
-    bloom.enabled = false;
     const composite = new ShaderPass(SCENERY_COMPOSITE_SHADER);
     const screenCopy = new ShaderPass(CopyShader);
     screenCopy.renderToScreen = true;
     composer.addPass(renderPass);
     composer.addPass(resolve);
-    composer.addPass(bloom);
     composer.addPass(composite);
     composer.setSize(size.width, size.height); // crava CSS px + _pixelRatio certo
     const sceneryCapture = new THREE.WebGLRenderTarget(rt.width, rt.height, {
@@ -374,11 +506,36 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
       BLOOM_RADIUS,
       0.42,
     );
+    // 🐞 bloom individual por espécie/nível (modo debug): a MESMA escada do
+    // cenário (sanifica → cópia no alvo → UnrealBloom → composta da diferença),
+    // mas a captura é a máscara OR das camadas do PAR espécie/nível e a composta
+    // é puramente aditiva na dose do slider (o bloom global saiu do jogo).
+    const mbCapture = new THREE.WebGLRenderTarget(rt.width, rt.height, {
+      type: THREE.HalfFloatType,
+    });
+    const mbSource = mbCapture.clone();
+    const mbBloomTarget = mbCapture.clone();
+    const mbSanitize = new ShaderPass(SANITIZE_SHADER);
+    const mbCopy = new ShaderPass(CopyShader);
+    const mbBloom = new UnrealBloomPass(
+      new THREE.Vector2(rt.width, rt.height),
+      1, // força 1: a diferença bruta; a dose vem no uMonsterScale
+      BLOOM_RADIUS,
+      BLOOM_THRESHOLD, // o MESMO limiar histórico do bloom: a diferença medida é a que ele somaria
+    );
+    const mbComposite = new ShaderPass(MONSTER_COMPOSITE_SHADER);
     const target = gl.getRenderTarget();
     const clearColor = gl.getClearColor(new THREE.Color()).clone();
     const clearAlpha = gl.getClearAlpha();
     gl.setClearColor(0x000000, 0);
-    for (const sceneryTarget of [sceneryCapture, scenerySource, sceneryBloomTarget]) {
+    for (const sceneryTarget of [
+      sceneryCapture,
+      scenerySource,
+      sceneryBloomTarget,
+      mbCapture,
+      mbSource,
+      mbBloomTarget,
+    ]) {
       gl.setRenderTarget(sceneryTarget);
       gl.clear(true, true, true);
     }
@@ -386,7 +543,6 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
     gl.setClearColor(clearColor, clearAlpha);
     return {
       composer,
-      bloom,
       composite,
       screenCopy,
       renderPass,
@@ -397,12 +553,18 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
       scenerySanitize,
       sceneryCopy,
       sceneryBloom,
+      mbCapture,
+      mbSource,
+      mbBloomTarget,
+      mbSanitize,
+      mbCopy,
+      mbBloom,
+      mbComposite,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, scene, camera]);
 
   // Mantém a configuração da cena sincronizada com o modo de renderização.
-  const strength = useRef(0);
   useEffect(() => {
     // o fundo do scene sai de cena (literalmente): quem pinta é o clearColor do
     // RenderPass, do contrário o WebGLBackground limparia o RT em linear. Com o
@@ -418,7 +580,6 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
   useEffect(() => {
     return () => {
       stack.composer.dispose();
-      stack.bloom.dispose();
       stack.composite.dispose();
       stack.screenCopy.dispose();
       stack.resolve.dispose();
@@ -429,6 +590,13 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
       stack.scenerySanitize.dispose();
       stack.sceneryCopy.dispose();
       stack.sceneryBloom.dispose();
+      stack.mbCapture.dispose();
+      stack.mbSource.dispose();
+      stack.mbBloomTarget.dispose();
+      stack.mbSanitize.dispose();
+      stack.mbCopy.dispose();
+      stack.mbBloom.dispose();
+      stack.mbComposite.dispose();
       unpatchBuiltins(scene);
     };
   }, [stack, scene]);
@@ -441,6 +609,10 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
     stack.scenerySource.setSize(width, height);
     stack.sceneryBloomTarget.setSize(width, height);
     stack.sceneryBloom.setSize(width, height);
+    stack.mbCapture.setSize(width, height);
+    stack.mbSource.setSize(width, height);
+    stack.mbBloomTarget.setSize(width, height);
+    stack.mbBloom.setSize(width, height);
   }, [gl, stack, size.width, size.height]);
 
   useFrame((_, dt) => {
@@ -448,29 +620,23 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
     // lê de volta os RTs HalfFloat — qa/probe-nansource.mjs, qa/probe-frozen.mjs,
     // qa/probe-blackfix.mjs (o `composer` no cabo é o que congela o pipeline)
     if (import.meta.env.DEV) {
-      (window as unknown as { __QT?: unknown }).__QT = { scene, camera, gl, THREE, composer: stack.composer };
+      (window as unknown as { __QT?: unknown }).__QT = {
+        scene,
+        camera,
+        gl,
+        THREE,
+        composer: stack.composer,
+        stack,
+      };
     }
     if (!useComposer) {
       // Sem bloom, usa o render direto para evitar render targets e passes extras.
-      strength.current = 0;
       gl.setRenderTarget(null);
       gl.render(scene, camera);
       return;
     }
     stack.renderPass.clearColor?.set(backgroundColor);
     patchBuiltins(scene); // material novo que spawnou no meio da partida
-    const target = QA_NO_BLOOM
-      ? 0
-      : (bloomIntensity / MAX_BLOOM_INTENSITY) * BLOOM_MAX_STRENGTH;
-    const cur = strength.current;
-    if (cur !== target) {
-      const step = BLOOM_RAMP * dt;
-      strength.current = target > cur ? Math.min(target, cur + step) : Math.max(target, cur - step);
-    }
-    const v = strength.current;
-    stack.bloom.enabled = v > 0.004;
-    stack.resolve.enabled = v > 0.004 || sceneryBloomIntensity > 0;
-    stack.bloom.strength = v;
 
     if (sceneryBloomIntensity > 0) {
       const previousLayerMask = camera.layers.mask;
@@ -514,6 +680,82 @@ export function BloomGate({ backgroundColor = ARENA_BG }: { backgroundColor?: st
     stack.composer.readBuffer = stack.composer.renderTarget1;
     stack.composer.writeBuffer = stack.composer.renderTarget2;
     stack.composer.render(Math.min(dt, 0.05));
+
+    // 🐞 bloom individual por espécie/nível (modo debug): sem bloom global no
+    // buffer da cena, basta somar. Para cada par espécie/nível em campo:
+    // captura isolada na máscara OR das camadas das unidades do par → diferença
+    // bruta da MESMA escada de bloom (força 1) → composta aditiva
+    // `cena + add × dose do slider` (sem slider mexido, 30 com o debug ligado).
+    if (monsterBloomActive) {
+      const st = useGameStore.getState();
+      const bloomMap = st.monsterBloom;
+      // agrupa as figurinhas em campo por PAR espécie/nível com dose>0 e camada
+      const pairs = new Map<string, { mask: number; dose: number }>();
+      for (const u of st.units) {
+        const dose = monsterBloomDose(bloomMap[u.species]?.[u.level], st.debugMode);
+        if (dose === undefined || dose <= 0) continue;
+        const layer = getUnitBloomLayer(u.id);
+        if (layer === undefined) continue; // banco de camadas esgotado: não floresce
+        const key = `${u.species}:${u.level}`;
+        const prev = pairs.get(key);
+        if (prev) prev.mask |= 1 << layer;
+        else pairs.set(key, { mask: 1 << layer, dose });
+      }
+      // as LUZES também entram nas camadas da captura: sem elas o corpo
+      // MeshStandardMaterial chega escuro e o bloom individual sai subestimado.
+      // Uma passada só acumula a máscara de TODOS os pares.
+      if (pairs.size > 0) {
+        let allMask = 0;
+        for (const p of pairs.values()) allMask |= p.mask;
+        scene.traverse((o) => {
+          if ((o as THREE.Light).isLight) o.layers.mask |= allMask;
+        });
+      }
+      const previousLayerMask = camera.layers.mask;
+      const previousTarget = gl.getRenderTarget();
+      const previousClearColor = gl.getClearColor(new THREE.Color()).clone();
+      const previousClearAlpha = gl.getClearAlpha();
+      // a shadow map já foi desenhada pelo RenderPass deste frame; as capturas
+      // não precisam redesenhar uma cópia por par (só floririam de novo)
+      const previousShadowAuto = gl.shadowMap.autoUpdate;
+      gl.shadowMap.autoUpdate = false;
+      try {
+        for (const { mask, dose } of pairs.values()) {
+          const strength = (dose / MAX_BLOOM_INTENSITY) * BLOOM_MAX_STRENGTH;
+          if (strength < 0.004) continue; // dose zero: nada a somar
+          // o clear preto é CRAVADO A CADA par: o UnrealBloomPass restaura
+          // o clear color que achou na construção, e isso trocava o fundo das
+          // capturas seguintes no meio do loop
+          gl.setClearColor(0x000000, 0);
+          camera.layers.mask = mask;
+          gl.setRenderTarget(stack.mbCapture);
+          gl.clear(true, true, true);
+          gl.render(scene, camera);
+          stack.mbSanitize.render(gl, stack.mbSource, stack.mbCapture, dt, false);
+          stack.mbCopy.render(gl, stack.mbBloomTarget, stack.mbSource, dt, false);
+          stack.mbBloom.render(gl, stack.mbBloomTarget, stack.mbBloomTarget, dt, false);
+          stack.mbComposite.uniforms.uMonsterSource.value = stack.mbSource.texture;
+          stack.mbComposite.uniforms.uMonsterBloom.value = stack.mbBloomTarget.texture;
+          stack.mbComposite.uniforms.uMonsterScale.value = strength;
+          // composta por cima da cena no papel fixo do EffectComposer: quem
+          // segura o resultado é sempre o readBuffer (por isso o swap manual)
+          stack.mbComposite.render(
+            gl,
+            stack.composer.writeBuffer,
+            stack.composer.readBuffer,
+            dt,
+            false,
+          );
+          stack.composer.swapBuffers();
+        }
+      } finally {
+        camera.layers.mask = previousLayerMask;
+        gl.setRenderTarget(previousTarget);
+        gl.setClearColor(previousClearColor, previousClearAlpha);
+        gl.shadowMap.autoUpdate = previousShadowAuto;
+      }
+    }
+
     stack.screenCopy.render(
       gl,
       stack.composer.writeBuffer,

@@ -14,6 +14,7 @@ import {
 } from './assets';
 import { MODELS, VISUALS, partsForLevel, type MatRole } from './speciesModels';
 import { SPECIES_RIGS } from './speciesRigs';
+import { acquireUnitBloomLayer, releaseUnitBloomLayer } from './BloomGate';
 import type { SmokePool } from './smokePool';
 import { formTop } from '../data/forms';
 import { footprintOf, slotFit } from '../data/footprints';
@@ -170,6 +171,30 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
 
   const phaseSeed = (unitId * 137.13) % 100;
 
+  // 🐞 bloom individual por espécie/nível (modo debug): só o FIGURINO (modelRef)
+  // ganha o bit emprestado do banco de camadas do BloomGate — HUD, anéis,
+  // ícones e hitbox ficam só na camada 0 para a captura isolada medir só o
+  // corpo. O bit soma ao 0 (habilitar nunca tira do render normal); ele só dá
+  // ao gate o poder de capturar esta figurinha sozinha. A reserva é por
+  // UNIDADE (a mesma figurinha evolve de forma e continua sendo a mesma
+  // unidade). ⚠️ O figurino monta NÓS TARDE (o rig acende peça a peça) e troca
+  // de peças ao EVOLUIR (partsForLevel por nível) — o efeito de montagem não
+  // alcança esses nós. O carimbo então é AUTO-COLANTE: a cada frame o `useFrame`
+  // reaplica o bit na árvore inteira (trivial e idempotente: dezenas de nós por
+  // figurinha); assim nós tardios, evoluções e swaps de forma entram na camada
+  // do bloom no frame seguinte. Ver o doc de BloomGate.tsx.
+  const bloomLayerRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const layer = acquireUnitBloomLayer(unitId);
+    bloomLayerRef.current = layer;
+    if (layer !== undefined) modelRef.current?.traverse((o) => o.layers.enable(layer));
+    return () => {
+      bloomLayerRef.current = undefined;
+      releaseUnitBloomLayer(unitId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitId, species]);
+
   useFrame((state, dt) => {
     const engine = getEngine();
     if (!engine) return;
@@ -196,6 +221,11 @@ export function UnitView({ unitId, smoke }: { unitId: number; smoke?: SmokePool 
       !selRingRef.current
     )
       return;
+    // 🐞 carimbo auto-colante do bloom individual (ver o efeito acima): reaplica
+    // o bit na árvore do figurino — pega nós que montam tarde e peças novas de
+    // evolução. Idempotente e barato (a árvore tem dezenas de nós).
+    const bloomBit = bloomLayerRef.current;
+    if (bloomBit !== undefined) modelRef.current.traverse((o) => o.layers.enable(bloomBit));
     const time = engine.world.time;
     const st = useGameStore.getState();
 

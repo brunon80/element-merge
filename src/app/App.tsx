@@ -86,8 +86,9 @@ export function App() {
             menuMode={!inGame}
             sceneVariant={activeArenaScene}
           />
-          {/* Bloom global, com intensidade controlada nas configurações. O fundo
-              da cena passa ao clearColor do RenderPass (ver BloomGate). */}
+          {/* Bloom da arena: cenário (slider próprio) + doses individuais por
+              espécie/nível (modo debug). Sem bloom GLOBAL das criaturas. O
+              fundo da cena passa ao clearColor do RenderPass (ver BloomGate). */}
           <BloomGate
             backgroundColor={sceneBackground}
           />

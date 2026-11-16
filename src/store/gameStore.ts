@@ -126,7 +126,7 @@ interface GameStoreState {
   stats: SaveData['stats'];
   difficulty: Difficulty;
   scenario: ScenarioChoice;
-  bloomIntensity: number;
+  /** Bloom do CENÁRIO (o bloom GLOBAL das criaturas saiu do jogo em 2026/11). */
   sceneryBloomIntensity: number;
   /** 🔋 Modo de desempenho pedido (persistido: auto/cheio/econômico). */
   perfMode: PerfModeChoice;
@@ -143,6 +143,13 @@ interface GameStoreState {
   matchRewardCfg: number;
   /** Depuração ativável nas configurações: criar qualquer espécie no campo. */
   debugMode: boolean;
+  /**
+   * Depuração: bloom individual por espécie E NÍVEL (0–100). Puros têm uma
+   * dose por forma (Nv.1–5); a árvore tem nível único. Sem entrada salva, com
+   * o debug ligado vale 30; com o debug desligado a criatura não floresce (o
+   * bloom GLOBAL saiu do jogo — ver scene/BloomGate.tsx).
+   */
+  monsterBloom: Partial<Record<SpeciesId, Partial<Record<MonsterLevel, number>>>>;
   /** ⏩ Aceleração da cadência de combate: 1 = normal, 3 e 5 = dreno de
    *  cooldown acelerado. Vale só na partida atual: cada nova partida volta a 1×. */
   turbo: TurboScale;
@@ -204,8 +211,9 @@ interface GameStoreActions {
   setSettings: (open: boolean) => void;
   setDifficulty: (d: Difficulty) => void;
   setScenario: (scenario: ScenarioChoice) => void;
-  setBloomIntensity: (intensity: number) => void;
   setSceneryBloomIntensity: (intensity: number) => void;
+  /** Depuração: define o bloom individual (0–100) de uma espécie num nível. */
+  setMonsterBloom: (species: SpeciesId, level: MonsterLevel, intensity: number) => void;
   setPerfMode: (mode: PerfModeChoice) => void;
   setSfxVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
@@ -550,7 +558,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     stats: { ...save.stats },
     difficulty: save.settings.difficulty,
     scenario: save.settings.scenario,
-    bloomIntensity: save.settings.bloomIntensity,
     sceneryBloomIntensity: save.settings.sceneryBloomIntensity,
     sfxVolume: save.settings.sfxVolume,
     musicVolume: save.settings.musicVolume,
@@ -560,6 +567,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     rewardModeCfg: save.settings.rewardMode,
     matchRewardCfg: save.settings.matchReward,
     debugMode: save.settings.debugMode,
+    monsterBloom: { ...save.settings.monsterBloom },
     perfMode: save.settings.perfMode,
     ecoActive: ecoFor(save.settings.perfMode, ECO_HANDHELD),
     turbo: 1,
@@ -585,7 +593,6 @@ export const useGameStore = create<GameStore>((set, get) => {
         stats: { ...save.stats },
         difficulty: save.settings.difficulty,
         scenario: save.settings.scenario,
-        bloomIntensity: save.settings.bloomIntensity,
         sceneryBloomIntensity: save.settings.sceneryBloomIntensity,
         perfMode: save.settings.perfMode,
         ecoActive: ecoFor(save.settings.perfMode, ECO_HANDHELD),
@@ -597,6 +604,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         rewardModeCfg: save.settings.rewardMode,
         matchRewardCfg: save.settings.matchReward,
         debugMode: save.settings.debugMode,
+        monsterBloom: { ...save.settings.monsterBloom },
         lastSummary: save.lastSummary,
         tutorialDone: save.tutorialDone,
       });
@@ -1073,15 +1081,6 @@ export const useGameStore = create<GameStore>((set, get) => {
       });
     },
 
-    setBloomIntensity(intensity: number): void {
-      const value = Number.isFinite(intensity)
-        ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(intensity)))
-        : 0;
-      save.settings.bloomIntensity = value;
-      persistSoon();
-      set({ bloomIntensity: value });
-    },
-
     setSceneryBloomIntensity(intensity: number): void {
       const value = Number.isFinite(intensity)
         ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(intensity)))
@@ -1152,9 +1151,21 @@ export const useGameStore = create<GameStore>((set, get) => {
       get().pushToast(
         'info',
         on
-          ? 'Modo debug ligado: no bestiário, use "Criar no campo" para ver qualquer criatura na arena.'
+          ? 'Modo debug ligado: no bestiário, use "Criar no campo" para ver qualquer criatura na arena — e ajuste o bloom individual de cada espécie.'
           : 'Modo debug desligado.',
       );
+    },
+
+    setMonsterBloom(species: SpeciesId, level: MonsterLevel, intensity: number): void {
+      if (!speciesAllowsLevel(species, level)) return;
+      const value = Number.isFinite(intensity)
+        ? Math.min(MAX_BLOOM_INTENSITY, Math.max(0, Math.round(intensity)))
+        : 0;
+      const byLevel = { ...(save.settings.monsterBloom[species] ?? {}) };
+      byLevel[level] = value;
+      save.settings.monsterBloom = { ...save.settings.monsterBloom, [species]: byLevel };
+      persistSoon();
+      set({ monsterBloom: { ...save.settings.monsterBloom } });
     },
 
     setTurbo(scale: TurboScale): void {

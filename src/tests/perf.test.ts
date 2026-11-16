@@ -93,7 +93,7 @@ describe('App: a economia entra pelo Canvas', () => {
 
   test('bloom: o compositor inteiro sai do caminho no eco', () => {
     expect(BloomGateSource).toContain(
-      'const useComposer = !QA_NO_COMPOSER && !ecoActive && (bloomIntensity > 0 || sceneryBloomIntensity > 0);',
+      'const useComposer = !QA_NO_COMPOSER && !ecoActive && (sceneryBloomIntensity > 0 || monsterBloomActive);',
     );
   });
 });

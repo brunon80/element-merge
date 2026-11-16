@@ -2283,6 +2283,75 @@ recria-se da seção da tarefa quando necessário.
 
 ---
 
+## 🌸 Bloom individual por espécie/nível; bloom GLOBAL das criaturas removido (16/nov/2026 — NÃO reverter)
+
+Pedido do usuário (2026/11): no bestiário, com o **modo debug ligado**, cada
+monstro tem um slider de bloom (começa em 30%) que afeta **só aquele personagem**
+em campo; o valor é salvo no navegador e resgatado quando a criatura entra em
+campo. Depois o usuário ampliou: **elementos base (puros) têm dose por NÍVEL**
+(Nv.1–5) e **o bloom global das criaturas saiu do jogo junto com sua
+configuração** — autorização explícita do usuário em 2026/11, NUNCA reimplantar
+o slider global. O bloom do **cenário** (slider à parte, v6) continua intacto.
+
+**Save (v13, sem bump):** `settings.monsterBloom: Partial<Record<SpeciesId,
+Partial<Record<MonsterLevel, number>>>>` — só espécie/nível com slider mexido
+tem entrada; a carga filtra espécie desconhecida, nível fora da janela da
+espécie (`speciesAllowsLevel`) e valor fora de 0–100. O antigo `bloomIntensity`
+(v5–v12) FOI APAGADO do save/store/settings — saves antigos simplesmente
+perdem o campo. Em campo: valor salvo manda; sem entrada, com debug LIGADO vale
+`DEFAULT_MONSTER_BLOOM_INTENSITY` (30); com debug desligado e sem slider mexido
+a criatura NÃO floresce (não há mais floor global).
+
+**UI (Bestiary.tsx `DebugSpawn`):** slider por espécie/nível com testid
+`monster-bloom-<species>-<level>` (output `monster-bloom-value-…`, aria-label
+`Bloom de <nome> Nv.<n>`); a aba de forma (Nv.1–5) troca a dose exibida/salva.
+O menu de gráficos perdeu o slider "Intensidade do bloom" — restou só o do
+cenário (pino em `ui.test` "só o slider do cenário resta").
+
+**Pipeline (scene/BloomGate.tsx):** sem bloom global, o compositor só entra em
+jogo com bloom DO CENÁRIO > 0 OU alguma dose individual ativa
+(`monsterBloomKey`/`monsterBloomActive` no store; pino de string exata em
+`perf.test`). O pass `UnrealBloomPass` global e a rampa `BLOOM_RAMP` foram
+APAGADOS; o `resolve` (sanitize multisample→simples) agora vai SEMPRE ligado
+com o compositor (é o único caminho multisample do pipeline). Por PAR
+espécie/nível em campo: captura isolada (camera mask = OR das camadas das
+unidades do par) → escada `mbSanitize→mbCopy→mbBloom(strength 1)` → composta
+puramente aditiva `cena + (bloomed − source) × dose/100 × BLOOM_MAX_STRENGTH`
+(teto 0,62 = o antigo "50 do global"). Sem global para descontar, a composta
+perdeu o `uMonsterScale` assinado da fase 1. Troca de QA: `?qtNoBloom=1` agora
+desliga SÓ a cadeia individual (o cenário fica).
+
+**Camadas (bits 2–31 do THREE.Layers):** a antiga camada FIXA por espécie não
+serve — 4 puros × 5 formas + 19 da árvore = 39 combos > 30 bits livres. O
+banco virou **registro dinâmico por UNIDADE** (`acquireUnitBloomLayer(unitId)`
+/ `releaseUnitBloomLayer(unitId)` / `getUnitBloomLayer`), UnitView pega o bit
+na montagem e devolve no desmonte (idempotente; banco esgotado = criatura só
+não floresce). ⚠️ ARMADILHA CARRASPA: o figurino monta NÓS TARDE (rig acende
+peça a peça) e troca de peças ao EVOLUIR — o efeito de montagem NÃO carimba
+esses nós (a sonda de RT `qa/probe-bloom-rt.mjs` flagou: só 4 nós na camada,
+captura quase preta). Por isso o carimbo do UnitView é **AUTO-COLANTE**: o
+`useFrame` reaplica o bit na árvore do figurino todo frame (trivial e
+idempotente). Sem isso o bloom individual fica invisível. As LUZES entram na
+máscara OR de todos os pares via traverse (`o.layers.mask |= allMask`), senão
+o corpo MeshStandardMaterial chega escuro na captura. `__QT` (dev) expõe agora
+o `stack` do gate para as sondas de RT.
+
+**Sondas (qa/):** `probe-monster-bloom.mjs` (v3): checa slider 30/salvo/F5 por
+nível, ausência do slider global, e A/B visual por LUMA MÉDIO near/far em torno
+do corpo (o mundo é congelado: setInterval do motor morto + R3F
+`frameloop:'demand'` + `invalidate` manual). ⚠️ A métrica visual tem FALSO
+NEGATIVO sob SwiftShader com a captura parcial de nós (pré-auto-colante) — as
+partes funcionais (save/F5/testids/global removido) são firmes; a aprovação
+visual veio do teste MANUAL do usuário (2026/11). O F5 da sonda exige o
+`addInitScript` limpar o localStorage só na primeira navegação (flag em
+`sessionStorage`), senão ele mesmo apaga o save que o teste do F5 lê.
+`probe-bloom-rt.mjs`: diagnóstico cru dos RTs HalfFloat da cadeia (leitura via
+`__QT.stack` + `readRenderTargetPixels` com decode half-float).
+
+505 testes + `tsc --noEmit` limpos. Tudo UNCOMMITTED nesta rodada.
+
+---
+
 ## 🏟️ Arena, encaixe e regras de partida (reescrito em 02/nov/2026 — NÃO reverter)
 
 Seis regras novas, todas com pino de teste (unitário ou sonda). Elas nasceram de
