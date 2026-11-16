@@ -37,10 +37,11 @@ import { getSpecies } from './monsters';
  *   (fogo 10,4 × nereia 21,7): o dragão de fogo é um quadrúpede baixo e o
  *   abraço de chama come ~15% do anel — é estrutural da forma, não escala.
  *
- * Para as formas cujo corpo comprido aponta para o inimigo (fogo Nv.3/Nv.5,
- * água Nv.4) o rumo agora é 3/4 (`MODEL_YAWS`/`NEREIA_MODEL_YAWS` nos rigs):
- * o comprimento passa a aparecer na fileira sem estourar o anel nem esticar
- * a altura. A frente continua no +Z do slot — só o corpo fica de viés.
+ * Para as formas cujo corpo comprido aponta para o inimigo (água Nv.4) o rumo
+ * agora é 3/4 (`NEREIA_MODEL_YAWS` no rig; o fogo abriu mão do 3/4 com as
+ * malhas novas de 16/nov — todas de frente, rumo 0): o comprimento passa a
+ * aparecer na fileira sem estourar o anel nem esticar a altura. A frente
+ * continua no +Z do slot — só o corpo fica de viés.
  *
  * É o `formTops` de cada espécie (em `data/monsters.ts`) que faz o trabalho:
  * o topo autoral de cada forma é o valor que leva a malha até o degrau da
@@ -52,9 +53,10 @@ import { getSpecies } from './monsters';
  * `fit = MONSTER_FOOT_R/(MEDIDO_máx + FOOT_MARGIN)`. Nenhum invólucro passa
  * de 2,5 de mundo. Três degraus ficam um dedo abaixo da área-alvo por causa
  * do TETO da janela de topo que os testes pinam para as peças procedurais
- * (`formTop ≤ maxY_parts + 0,35`): nereia Nv.1, golem Nv.2 e golem Nv.3. A
- * altura do fogo recua em degraus (Nv.2 tocha alta → Nv.3; Nv.5 quadrúpede
- * baixo) — largura e área sobem sempre; a forma das malhas manda.
+ * (`formTop ≤ maxY_parts + 0,35`): nereia Nv.1, golem Nv.2 e golem Nv.3. Na
+ * escada nova do fogo (malhas de 16/nov) largura, altura e área sobem em
+ * TODOS os degraus — a forma das malhas manda, e quando o formTop não chega
+ * (asas do Nv.4/Nv.5 limitam antes), o degrau fecha pela largura.
  */
 
 /** meia-envergadura / meia-profundidade autorais, por forma */
@@ -74,23 +76,34 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   // --------------------------- puros (5 formas) ---------------------------
   ignis: [
     // A ÁRVORE INTEIRA na MALHA 3D importada (fire_model_lvl1..5.glb, Nv.1..5).
+    // ⚠️ Nv.3/4/5 REGERADOS em 16/nov: as malhas novas encaram TODAS no +Z
+    // (rumo 0 em toda a escada — `MODEL_YAWS` no rig; os rumos 3/4 do round 7
+    // só existiam porque as malhas antigas vinham de lado no arquivo).
     // Encaixe autoral da SILHUETA: caixa CPU da malha ROTACIONADA pelo rumo +
     // o abraço estático do invólucro de chama (`SHELL_HUG` 0,13 na régua da
     // caixa do Nv.1, proporcional ao tamanho — a sonda lê a caixa CPU e NÃO vê
     // o deslocamento do vertex shader; o hug é a sobra que a casca ganha para
     // fora, e o FOOT_MARGIN cobre a fervura). A rig amarra o encaixe da malha a
     // estes números (`footprintOf` no IgnisMeshRig), assinados nos eixos do
-    // MUNDO que o buraco vê (AABB exata da caixa girada). Round 7: o corpo
-    // comprido da salamandra Nv.3 (35°) e do dragão Nv.5 (45°) agora fica em
-    // 3/4 com a frente no +Z — o comprimento aparece na fileira e a área de
-    // silhueta casa com a dos vizinhos (2,48l × 2,49a no Nv.3). Encaixe da
-    // família: o corpo do dragão Nv.5 (2,81 nos dois eixos) é o pior caso →
-    // `slotFit` 0,87.
-    { x: 0.78, z: 0.64 }, // faísca Nv.1: 1,21 de largura — o degrau do padrão do vento
-    { x: 1.09, z: 0.84 }, // tocha viva Nv.2: malha estreita e em pé (1,59l × 2,75a, área 4,4)
-    { x: 1.62, z: 1.78 }, // salamandra Nv.3 (3/4): corpo na diagonal — enche a fileira sem estourar o fundo
-    { x: 1.83, z: 1.65 }, // serpente alada Nv.4: asas e crina abrem a caixa (de frente)
-    { x: 2.81, z: 2.81 }, // dragão Nv.5 (3/4, 45°): pior caso da família nos dois eixos (2,43 de mundo)
+    // MUNDO que o buraco vê (AABB exata da caixa girada). Escada nova assinada
+    // 1,38·1,94·1,95; Nv.4 1,96·1,53·1,78; Nv.5 1,98·1,51·1,85): ESCALA ÚNICA
+    // por forma (nada estica — o formTop é o teto de altura dessa escala e os
+    // tetos x/z do buraco a seguram). Round 8d-fechado: Nv.5 é o TOPO (travado
+    // no anel) e TODOS os degraus de baixo recuaram — a escada abre para baixo
+    // para cada passo ficar evidente na fileira. Largura 1,04 → 1,09 → 1,78 →
+    // 3,51 → 4,16 de mundo, altura 1,46 → 1,95 → 2,43 → 2,70 → 3,14, área
+    // 1,5 → 2,1 → 4,3 → 9,5 → 13,1 (×1,41 / ×2,03 / ×2,19 / ×1,38). A largura
+    // 1→2 quase não anda porque a tocha é estreita crua (1,10) — é a altura
+    // que conta esse degrau. O fogo abriu mão do padrão do vento no Nv.1
+    // (1,24) por decisão do usuário em 16/nov. Passo 4→5 é pequeno por
+    // construção: as asas do Nv.4 (1,96 crú) e do Nv.5 (1,98 crú) têm a mesma
+    // envergadura. O Nv.5 é o pior caso da família nos dois eixos
+    // (2,81 → `slotFit` 0,87 inalterado).
+    { x: 0.71, z: 0.58 }, // faísca Nv.1: recuada no round 8d (1,04l × 1,46a) — degrau de baixo da escada fechada
+    { x: 0.78, z: 0.61 }, // tocha viva Nv.2: recuada no round 8d (1,09l × 1,95a) — antes engolia o Nv.3
+    { x: 1.22, z: 1.64 }, // salamandra alada Nv.3: degrau recuado (1,78l × 2,43a) para o passo 3→4 pesar
+    { x: 2.37, z: 2.27 }, // serpente alada Nv.4: degrau recuado (3,51l × 2,70a) para o passo 4→5 pesar
+    { x: 2.81, z: 2.72 }, // dragão de fogo Nv.5: TOPO da escada — asas em X travadas no anel, pior caso da família (2,43 de mundo)
   ],
   nereia: [
     // A ÁRVORE INTEIRA na MALHA 3D importada (water_model_lvl1..5.glb, Nv.1..5).
@@ -115,9 +128,22 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
     // que a levaria à largura-padrão passa do TETO da janela de topo das peças
     // procedurais (maxY 1,21 + 0,35 = 1,56).
     { x: 0.63, z: 0.62 }, // gotinha Nv.1: malha + sobra (1,19l × 1,51a — teto da janela das parts)
-    { x: 1.13, z: 1.13 }, // axolotl Nv.2: brânquias em leque para os dois lados (2,13l × 2,06a)
+    // Round 8-água: SÓ o axolotl Nv.2 recuou (1,13 → 0,96). A malha dele é
+    // larga crua (1,96 de envergadura, quase a do dragão Nv.5) e no encaixe
+    // antigo ele ficava a 18% do Nv.3 — o passo 2→3 sumia na fileira. Agora a
+    // largura anda 1,15 → 1,77 → 2,47 de mundo (×1,54 / ×1,40) e a área
+    // 1,66 → 2,93 → 6,02 (×1,76 / ×2,06). Os outros degraus ficaram como
+    // estavam (decisão do usuário em 16/nov: "o restante está bom"), então o
+    // pior caso da família continua o Nv.5 e o `slotFit` 0,96 não mexe.
+    { x: 0.96, z: 0.96 }, // axolotl Nv.2: brânquias em leque para os dois lados (1,77l × 1,65a)
     { x: 1.34, z: 1.26 }, // hippocampão Nv.3: cauda enrolando para o lado (2,54l × 2,46a)
-    { x: 1.66, z: 1.87 }, // draco Nv.4 (3/4): cauda na diagonal — 3,15l × 2,70a, casando com os vizinhos
+    // ⚠️ Medido de fato na rig (16/nov): o 3/4 dá 1,52l × 2,67a, NÃO os 3,15
+    // que este comentário dizia na rodada 7 — a malha do draco é FINA crua
+    // (0,94 em X, cauda 1,97 em Z), então a largura dele na fileira fica ABAIXO
+    // da do hippocampão Nv.3 (2,47) e o degrau 3→4 inverte em largura e área.
+    // Zerar o rumo subiria só para 1,63; fechar esse degrau pede malha mais
+    // larga, não encaixe. O usuário viu e aceitou assim em 16/nov.
+    { x: 1.66, z: 1.87 }, // draco Nv.4 (3/4, −35°): 1,52l × 2,67a medidos na rig
     { x: 2.52, z: 2.45 }, // dragão alado Nv.5: barbatanas-alas abertas — o pior caso da família (2,42 de mundo)
   ],
   golem: [

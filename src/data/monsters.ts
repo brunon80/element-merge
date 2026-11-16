@@ -31,13 +31,16 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     levelMax: 5,
     blurb: 'Salamandra de magma vivo. Cuspe bolas de fogo que queimam por tempo limitado.',
     // fusões do mesmo elemento crescem a criatura: faísca → dragão de fogo.
-    // ESCADA NORMALIZADA (round 7, régua em `data/footprints.ts`): a área de
-    // silhueta (largura da fileira × altura, o que o olho compara) sobe junto
-    // com as outras três famílias — 4,4 / 6,2 / 8,5 nos Nv.2-4; o Nv.5 sobe ao
-    // teto do anel (a forma do dragão é baixa e o abraço de chama come o anel,
-    // então a área residual dele fica abaixo da nereia — documentado). O fogo
-    // tem só PISO de janela nos testes (topo ≥ parts − 0,35), mas o gap tops
-    // Nv.1→Nv.5 > 2,22 é pinado pelo canhão (board:171)
+    // ESCADA NORMALIZADA (régua em `data/footprints.ts`). Round 8d: o Nv.5 é
+    // o TOPO fixo (escala travada no teto do anel) e a escada abre PARA BAIXO
+    // — os tetos x/z de TODOS os degraus (Nv.1 ao Nv.4) recuam para os passos
+    // ficarem evidentes na fileira. Tudo é ESCALA ÚNICA por forma (nada estica: o formTop é só o
+    // teto de altura dessa escala; quem manda agora são os tetos do buraco).
+    // Nv.4 e Nv.5 têm asas quase iguais no crú (1,96 × 1,98) — se o usuário
+    // quiser um passo 4→5 ainda maior, é o GLB do Nv.5 que precisa vir mais
+    // largo na geração. O fogo tem só PISO de janela nos testes (topo ≥ parts
+    // − 0,35), mas o gap tops Nv.1→Nv.5 > 2,22 é pinado pelo canhão
+    // (board:171) — 4,18 − 1,89 = 2,29.
     formTops: [1.89, 3.17, 3.19, 3.55, 4.18],
     formNames: ['faísca', 'tocha viva', 'salamandra de fogo', 'serpente alada', 'dragão de fogo'],
     base: {

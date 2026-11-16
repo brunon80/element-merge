@@ -51,9 +51,9 @@ import { makeEmberParticles, NOISE_GLSL } from './flameShaders';
  *     chama-veu, como os olhos do imps antigo na própria bola de fogo.
  *
  * ENCAIXE: cada modelo é escalado para o topo autoral da forma (`formTops`
- * 1,90 → 4,20) e plantado com a base no chão. O Nv.5 aponta o corpo comprido
- * para o inimigo: é o eixo profundo que manda no invólucro e no
- * `familyRadius`/`slotFit` do buraco — ver `data/footprints.ts`.
+ * 1,90 → 4,20) e plantado com a base no chão. Todos os GLB da esteira de
+ * 16/nov encaram o inimigo no +Z (rumo 0); o invólucro e o
+ * `familyRadius`/`slotFit` do buraco vêm de `data/footprints.ts`.
  */
 
 /** dados da espécie (a altura autoral de cada forma vem do catálogo, não do modelo) */
@@ -71,18 +71,18 @@ const fireUrlFor = (level: number): string => FIRE_URLS[level - 1];
  * Rumo da malha POR NÍVEL (índice = nível-1): o rig encara o INIMIGO no +Z
  * local (o mesmo +Z do avanço do arremesso). O Hunyuan3D costuma exportar a
  * frente no +Z da câmera que gerou a imagem, MAS cada prompt/geração pode
- * nascer virada para outro lado — o print de quatro vistas (mesh-viewer)
- * mostrou: Nv.1 +Z, Nv.2 +Z, Nv.3 −X, Nv.4 +Z, Nv.5 +X. Se algum print
- * mostrar o bicho DE COSTAS ou de lado, vire aqui (Math.PI para meia-volta;
- * π/2 e -π/2 para os lados).
+ * nascer virada para outro lado — o print de quatro vistas (mesh-viewer,
+ * `qa/mesh-viewer-shot.mjs`) manda confirmar NÍVEL A NÍVEL a cada GLB novo.
  *
- * ROUND 7 (normalização dos puros): Nv.3 e Nv.5 saíram do "lado a lado" puro
- * (±π/2) para um rumo 3/4 — o corpo comprido deles na diagonal mostra o
- * COMPRIMENTO na fileira (a largura que o olho compara com os vizinhos) sem
- * estourar o anel nem esticar a altura. A frente continua apontada para o +Z:
- * Nv.3 de viés à esquerda (π/2 − 35°) e Nv.5 de viés à direita (−π/2 + 45°).
+ * ROUND 8 (malhas novas de 16/nov — Nv.3/4/5 regerados): o print de quatro
+ * vistas das malhas novas mostrou TODAS com a frente no +Z (Nv.1..5), então o
+ * rumo é 0 em toda a escada — os três de frente, como o usuário pediu. Os
+ * rumos 3/4 do round 7 existiam só porque as malhas ANTIGAS do Nv.3 e do Nv.5
+ * nasciam de lado no arquivo (−X / +X); com a arte nova eles só giravam os
+ * bichos de costas para a fileira e morreram. Se um GLB substituto vier
+ * virado, vire aqui (Math.PI para meia-volta; π/2 e -π/2 para os lados).
  */
-export const MODEL_YAWS = [0, 0, Math.PI / 2 - 0.611, 0, -Math.PI / 2 + Math.PI / 4];
+export const MODEL_YAWS = [0, 0, 0, 0, 0];
 const yawFor = (level: number): number => MODEL_YAWS[level - 1];
 
 /** brasa base do emissivo (mesma família de cores do FlameRig) e o flash */
@@ -328,20 +328,18 @@ function FireMeshRig({
   // corpo no eixo do rig; o offset compensa a rotação de rumo (matriz T·R·S).
   // TETO DE LARGURA: a malha também respeita o buraco — o invólucro autoral da
   // FORMA (`footprintOf`, já assinado na tabela de `data/footprints.ts`) é o
-  // contrato: encaixo (mesh + abraço de chama) ≤ entrada, nos dois eixos. O
-  // Nv.5 (e o Nv.3) traz o corpo comprido num rumo 3/4: o eixo profundo ainda
-  // é o que mais enche o buraco; inflado só pela altura (formTop 4,18), a caixa
-  // dele estouraria o anel — então a altura autoral vale ATÉ onde a largura
-  // deixar (mesmo compromisso do primordial, que é escalado para caber no buraco)
+  // contrato: encaixo (mesh + abraço de chama) ≤ entrada, nos dois eixos. Na
+  // escada nova de 16/nov a altura autoral (formTop) vale no Nv.3; no Nv.4 as
+  // asas abertas e no Nv.5 as asas + corpo limitam antes da altura (mesmo
+  // compromisso do primordial, que é escalado para caber no buraco)
   const fit = useMemo(() => {
     const bb = src.geo.boundingBox!;
     const foot = footprintOf('ignis', level as MonsterLevel);
     const hug = SHELL_HUG * (SPAN_NV1 / src.spanY); // abraço proporcional ao tamanho
-    // meias-extensões NA ORDEM DO RUMO — AABB EXATA da caixa girada (round 7):
-    // half = hx·|cos| + hz·|sin| nos eixos do mundo. Com os rumos 3/4 (35°/45°)
-    // a heurística "lado a lado" da rodada anterior caía no meio do caminho:
-    // subestimava a largura que a diagonal pega na fileira, assinava o MEDIDO
-    // no eixo errado e deixava a malha vazar do anel
+    // meias-extensões NA ORDEM DO RUMO — AABB EXATA da caixa girada:
+    // half = hx·|cos| + hz·|sin| nos eixos do mundo. Vale para QUALQUER rumo
+    // (hoje todos 0), para o dia em que uma malha substituta vier de lado no
+    // arquivo e o `MODEL_YAWS` tiver que girá-la
     const yaw = yawFor(level);
     const hx = Math.max(-bb.min.x, bb.max.x);
     const hz = Math.max(-bb.min.z, bb.max.z);
@@ -587,7 +585,7 @@ function FireMeshRig({
     shellMat.uniforms.uTime.value = t;
     shellMat.uniforms.uHurt.value = hurt;
     // fervura PROPORCIONAL ao tamanho da malha (SPAN_NV1 / spanY): a casca do
-    // dragão Nv.5 (caixa miúda de 1,29) ferve nas MESMAS medidas de mundo da
+    // dragão Nv.5 (caixa baixa de 1,51) ferve nas MESMAS medidas de mundo da
     // faísca — senão o ruído inflaria 20% da barriga dele e vazaria do buraco
     shellMat.uniforms.uAmp.value =
       0.11 * (SPAN_NV1 / src.spanY) * (0.62 + 0.38 * hpFrac) * (1 + pose.flare * 0.6) * (1 + hurt * 0.4) * (1 - wilt * 0.6);
