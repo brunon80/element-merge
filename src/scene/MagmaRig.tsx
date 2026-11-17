@@ -33,15 +33,16 @@ import { getSpecies } from '../data/monsters';
  */
 
 export const MAGMA_ATTACK_WINDOW = 0.55;
-/** fração da janela em que o colosso está carregando o matacão */
-const MAGMA_WINDUP = 0.44;
+/** fração da janela em que o colosso está carregando o matacão (exportada: o
+ *  rig de MALHA religa a MESMA coreografia por cima do GLB — `MagmaMeshRig.tsx`) */
+export const MAGMA_WINDUP = 0.44;
 
 const MAGMA_DEF = getSpecies('magma');
 
 /** centro da cratera no modelo (torus em y=2.82; o núcleo ferve logo acima) */
 const CRATER_Y = 2.92;
 
-interface AttackPose {
+export interface AttackPose {
   twist: number; // tronco torce (negativo = carregando)
   crouch: number; // 0..1 joelhos de pedra dobram
   swing: number; // braço (negativo = recuado, positivo = arremesso)
@@ -50,7 +51,7 @@ interface AttackPose {
   flare: number; // cratera/ombros estufam
 }
 
-function attackPose(since: number): AttackPose {
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = { twist: 0, crouch: 0, swing: 0, charge: 0, stepZ: 0, flare: 0 };
   if (since < 0 || since > MAGMA_ATTACK_WINDOW) return P;
   const p = since / MAGMA_ATTACK_WINDOW;
@@ -126,7 +127,9 @@ const MAGMA_ROLE_LOOK: Partial<Record<MatRole, MagmaLook>> = {
   },
 };
 
-function makeEmberGeo(n: number): THREE.BufferGeometry {
+/** (Exportada: o rig de MALHA religa as brasas da cratera por cima do GLB —
+ *  `MagmaMeshRig.tsx`.) */
+export function makeEmberGeo(n: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const rnd = new Float32Array(n * 3);
@@ -484,9 +487,10 @@ export function MagmaRig({
 /**
  * Brasas que SOREM da cratera: sobem tortas, esfriam do branco-incandescente
  * para o brasa-fria e apagam no alto — o inverso das lascas que caem do golem
- * (vulcão expele, montanha de pedra desmorona).
+ * (vulcão expele, montanha de pedra desmorona). (Exportadas: o rig de MALHA
+ * religa as mesmas brasas por cima do GLB — `MagmaMeshRig.tsx`.)
  */
-const EMBER_VERT = /* glsl */ `
+export const EMBER_VERT = /* glsl */ `
 attribute vec3 aRand; // x: ângulo, y: fase, z: tamanho/velocidade
 uniform float uTime;
 uniform float uAlpha;
@@ -516,7 +520,7 @@ void main() {
 }
 `;
 
-const EMBER_FRAG = /* glsl */ `
+export const EMBER_FRAG = /* glsl */ `
 varying float vA;
 varying vec3 vC;
 void main() {

@@ -812,6 +812,66 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## 🌋 O COLOSSO DE LAVA EM MALHA 3D IMPORTADA — lava.glb veste o Nv.6; renome Magmar (17/nov/2026 — 14ª da linha "modelos 3D"; aprovada no navegador do usuário: "no mais está bom" / "ficou bom, pode commitar e mandar pra dev")
+
+O usuário adicionou `src/models/lava/lava.glb` (Nv.6, espécie autoral `magma`,
+forma única — 5,3 MB, 24.643 vértices NÃO-indexados, UMA malha com UMA textura
+2048²; PLY re-empacotado, sem osso nem animação; caixa crua x −1,0..0,969 ·
+y −1,002..0,974 (spanY 1,976) · z −0,894..0,395 (o pé do vulcão é FUNDO e largo
+no X, fino em Z); 12.744 soldas duras) e do lote ainda traz `sand.glb` e
+`steam.glb` — o pedido foi "faça todos, na ordem Magma (Magmar), Areia (Sand
+Golem), Vapor (Steam Machine), mantendo os efeitos atuais: areia brilhante na
+Areia, veios de lava viva no Magma e vapor saindo dos ombros no Vapor". O novo
+`src/scene/MagmaMeshRig.tsx` é o dispatcher da casa (o vulcão de três socalcos
+`MagmaRig` vira fallback no `Suspense` e ganha cara de palco:
+`attackPose`/`MAGMA_WINDUP`/shaders e geo das brasas exportados para o rig de
+malha religar por cima do GLB) e o `MagmaMeshRig` planta o corpo no MESMO
+contrato dos demais figurinos da linha: `onBeforeCompile` com a LAVA VIVA
+rastejando pelo relevo (pela normal SOLDADA `aDispNrm`) e crosta incandescente
+que engrossa na carga, rios de lava pulsando no emissivo (o `crackGlow` do
+basalto vestido na pintura do GLB), invólucro aditivo de trincas incandescentes
+com brasas duras piscando (`SHELL_HUG` 0,13; o aro é BRASA laranja — a lição da
+geada espelhada: geada é azul-branco, lava é laranja, nunca tint de equipe),
+as BRASAS QUE SOREM da cratera do rig antigo (mesmos shaders, nascendo da boca
+escalada em `CRATER_FRAC` 0,88), brasas-faísca orbitando (28,
+metade ao contrário, cadência 1,8), brasas-pop do peito esfriando em voo
+(`POP_VERT`, voo entre s×0,4 e s×0,9), pool de lufadas quentes do peito,
+auréola de estilhaços em brasa, o FIO CONTÍNUO DE FUMAÇA da cratera (heat 0,14)
+e a BAFOFADA DE CINZAS nos pés no arremesso (heat 0,3 — a MESMA assinatura do
+rig procedural). SEM anéis de chão: o vulcão nunca os teve e a placa inventada
+arriscaria a infla √2 da sonda se girasse. Renome é SÓ de vitrine: `name` em
+`monsters.ts` + quatro pins em `ui.test.tsx` (inclusive o texto da receita, que
+usa o nome de vitrine); id `magma`, blurbs e `formTops` [3,9] ficam como estão.
+
+- **SEM o núcleo de plasma da cratera (corte na aprovação):** o rig antigo tinha
+  uma bola de lava fervendo (`makeCoreMaterial`) FUNDIDA num copo de torus — a
+  borda de cratera em y 2,82. Religada na malha (onde a boca é rasa), virou um
+  GORRO VERMELHO flutuando na cabeça; o usuário vetou ("ele não precisa dessa
+  bola vermelha na cabeça") e a peça saiu do rig — a cratera segue acesa só com
+  o clarão aditivo, as brasas e o fio de fumaça. Lição para as próximas malhas:
+  religar uma peça SÓLIDA do rig antigo só faz sentido onde a malha oferece o
+  MESMO encaixe físico; senão, manter só os efeitos aditivos/partículas.
+
+- **Rumo sem desambiguação:** o PEITO DE FORNALHA ACESA e a boca de cratera
+  saíram no painel "frente (+Z)" do viewer de 4 vistas → `MAGMA_MODEL_YAW = 0`.
+- **MEDIDO.magma reassinado 1,44×1,43 → 1,9 quadrado** (MESMO degrau do
+  Raio/Ancient Tree/Ice Cube): com 1,9 o encaixe sai 1,9/1,13 = 1,678 — é a
+  LARGURA que aperta primeiro (a altura autoral 3,9/1,976 = 1,97 daria folga
+  mínima) — e o corpo chega a ~3,1 de envergadura e ~3,3 de altura de mundo.
+  Sonda ao vivo: mundo 1,92/1,91, topo 3,97, SOBREPOSIÇÕES 0.
+- **Estado/verificação (17/nov):** `tsc` limpo · `npx vitest run` **505
+  passed / 3 skipped (45 arquivos)** · `npm run build` limpo (GLB como asset
+  de 5,3 MB) · `qa/probe-cracks.mjs` ganhou `lava.glb` no alvo padrão: rasgo
+  DEPOIS da solda = 0 por construção · inspetor visual `magma golem` com a
+  captura CDP (a isca da rodada do Ice Cube): bestiário (idle + arremesso-
+  demo), arena com órbita/zoom e rajada de combate, prints em
+  `/tmp/opencode/shots-magma/` (antes do corte) e `/tmp/opencode/shots-magma2/`
+  (depois). Teste visual no navegador do usuário: APROVADO com UM CORTE — a
+  bolinha vermelha na cabeça vetada (bullet acima) — e o tripé refeito verde
+  depois do corte (tsc · 505 testes · build · sonda de footprint).
+
+---
+
 ## 🧊 O CUBO DE GELO EM MALHA 3D IMPORTADA — ice.glb veste o Nv.6; renome Ice Cube (17/nov/2026 — 13ª da linha "modelos 3D"; aprovada no navegador do usuário: "ficou muito bom pode commitar e mandar pra dev")
 
 O usuário adicionou `src/models/ice/ice.glb` (Nv.6, espécie autoral `gelo`,

@@ -1036,7 +1036,7 @@ describe('Enciclopédia (bestiário)', () => {
     expect(screen.getByTestId('bestiary-progress').textContent).toContain('0/19');
     expect(bestiary.textContent).toContain('Ignis');
     expect(bestiary.textContent).toContain('???');
-    expect(bestiary.textContent).not.toContain('Magma');
+    expect(bestiary.textContent).not.toContain('Magmar');
     act(() => useGameStore.getState().setBestiary(false));
 
     // descobre Magma: arrastar Gólem Nv.5 sobre Ignis Nv.5 (unidades do time
@@ -1058,7 +1058,7 @@ describe('Enciclopédia (bestiário)', () => {
     });
     expect(useGameStore.getState().dragHover?.fusion).toEqual({
       species: 'magma',
-      label: 'Magma',
+      label: 'Magmar',
       level: 6,
       known: false,
     });
@@ -1068,11 +1068,11 @@ describe('Enciclopédia (bestiário)', () => {
     expect(useGameStore.getState().discovered).toContain('magma');
     act(() => useGameStore.getState().setBestiary(true));
     const revealed = screen.getByTestId('bestiary');
-    expect(revealed.textContent).toContain('Magma');
+    expect(revealed.textContent).toContain('Magmar');
     expect(screen.getByTestId('bestiary-progress').textContent).toContain('1/19');
     // receita revelada só depois da descoberta
     expect(screen.getByTestId('recipe-magma').textContent).toContain(
-      'Gólem Nv.5 + Ignis Nv.5 → 1 unidade de Magma Nv.6',
+      'Gólem Nv.5 + Ignis Nv.5 → 1 unidade de Magmar Nv.6',
     );
   });
 
@@ -1246,7 +1246,7 @@ describe('Prévia de fusões do arraste (painel que persegue o ponteiro)', () =>
     expect(sealedRow.textContent).toContain('???');
     expect(sealedRow.textContent).not.toContain('Vapor');
     expect(boxesOf(sealedRow)[2].className).toContain('locked');
-    expect(screen.getByTestId('mp-current').textContent).toContain('Magma');
+    expect(screen.getByTestId('mp-current').textContent).toContain('Magmar');
   });
 
   test('alvo que não funde: linha 1 com ✕, motivo legível, resto continua listado', () => {

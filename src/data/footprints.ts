@@ -219,7 +219,20 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   // esporos-orbitais 0,9×s, anel de chão 1,05×s) param em ~2,3 de mundo,
   // dentro do anel 2,5 — conferir na sonda de footprint.
   madeira: [{ x: 1.9, z: 1.9 }],
-  magma: [{ x: 1.44, z: 1.43 }],
+  // COLOSSO DE LAVA DE MALHA 3D IMPORTADA (lava.glb, Nv.6): encaixe autoral no
+  // MESMO contrato da trovoada/ancião/cubo — `MEDIDO = s·(meia-caixa + abraço)`
+  // com abraço `SHELL_HUG` 0,13 e a caixa crua da malha (x ±1,0, z ±0,894;
+  // rumo 0 — o peito de fornalha acesa encara o +Z). Assinado em 1,9 quadrado
+  // no MESMO degrau do Raio/Ancient Tree/Ice Cube (o colosso nasce do
+  // golem+ignis Nv.5, invólucros 2,43/2,44 de mundo no anel): com 1,9,
+  // `slotFit` segue no teto 1,15, o encaixe sai 1,9/1,13 = 1,678 (a altura
+  // autoral 3,9/1,976 = 1,97 daria folga mínima no teto de altura e a largura
+  // aperta antes) e o corpo chega a ~3,3 de altura e ~3,1 de envergadura de
+  // mundo. Os piores efeitos (faíscas-orbitais 0,88×s, auréola 0,35+0,6s,
+  // brasas 0,3s+0,9prog·0,6s+deriva) param em ~2,3 de mundo, dentro do anel
+  // 2,5 — conferir na sonda de footprint. Sem anéis de chão no rig de malha:
+  // o vulcão nunca os teve (e torus girando infla a leitura da sonda até √2×).
+  magma: [{ x: 1.9, z: 1.9 }],
   // CUBO DE GELO DE MALHA 3D IMPORTADA (ice.glb, Nv.6): encaixe autoral no
   // MESMO contrato da trovoada/ancião — `MEDIDO = s·(meia-caixa + abraço)`
   // com abraço `SHELL_HUG` 0,13 e a caixa crua da malha (x ±0,881, z ±0,894;

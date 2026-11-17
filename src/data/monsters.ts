@@ -212,7 +212,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   },
   magma: {
     id: 'magma',
-    name: 'Magma',
+    name: 'Magmar',
     elements: ['fire', 'earth'],
     modelKey: 'magma',
     levelMin: 6,
