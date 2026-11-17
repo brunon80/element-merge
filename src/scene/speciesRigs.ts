@@ -7,7 +7,7 @@ import { NereiaRig } from './NereiaMeshRig';
 import { LightningRig } from './LightningMeshRig';
 import { WoodRig } from './WoodMeshRig';
 import { MagmaRig } from './MagmaRig';
-import { IceRig } from './IceRig';
+import { IceRig } from './IceMeshRig';
 import { VaporRig } from './VaporRig';
 import { SandRig } from './SandRig';
 import { TempestadeRig } from './TempestadeRig';
@@ -44,7 +44,8 @@ export interface SpeciesRigProps {
  * própria (fogo, ar, terra e água); da árvore elemental, Raio (malha 3D da
  * trovoada com os arcos e faíscas por cima), Madeira (malha 3D do ancião das
  * raízes com a chuva de esporos, a seiva e o invólucro por cima), Magma (vulcão de
- * basalto no mesmo padrão), Gelo (golem de cristal branco translúcido),
+ * basalto no mesmo padrão), Gelo (malha 3D do cubo de gelo de cara irada com
+ * os flocos de seis braços, as trincas de geada e o invólucro por cima),
  * Vapor (caldeira de ferro viva com cabeça de nuvem), Areia (gênio do
  * deserto com cauda-funil de areia em turbilhão), Tempestade (muralha de
  * supercélula com

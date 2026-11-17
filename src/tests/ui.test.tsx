@@ -1088,7 +1088,7 @@ describe('Enciclopédia (bestiário)', () => {
     expect(useGameStore.getState().discovered).toContain('gelo');
     expect(useGameStore.getState().discoveryReveal?.species).toBe('gelo');
     expect(screen.getByTestId('discovery-overlay')).toBeInTheDocument();
-    expect(screen.getByTestId('discovery-name').textContent).toContain('Gelo');
+    expect(screen.getByTestId('discovery-name').textContent).toContain('Ice Cube');
     expect(screen.getByTestId('discovery-card').textContent).toContain('Nv.6');
     expect(useGameStore.getState().toast).toBeTruthy(); // toast avisou também
 
@@ -1176,7 +1176,7 @@ describe('Prévia de fusões do arraste (painel que persegue o ponteiro)', () =>
 
     expect(useGameStore.getState().dragHover?.fusion).toEqual({
       species: 'gelo',
-      label: 'Gelo',
+      label: 'Ice Cube',
       level: 6,
       known: false,
     });
@@ -1185,7 +1185,7 @@ describe('Prévia de fusões do arraste (painel que persegue o ponteiro)', () =>
     expect(row.textContent).toContain('Nereia');
     expect(row.textContent).toContain('Zéfiro');
     // é a prévia do "se eu soltar agora": nome e miniatura do filho inédito
-    expect(row.textContent).toContain('Gelo');
+    expect(row.textContent).toContain('Ice Cube');
     expect(row.textContent).toContain('Nv.6');
     const boxes = boxesOf(row);
     expect(boxes).toHaveLength(3);

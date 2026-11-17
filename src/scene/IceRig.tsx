@@ -15,7 +15,11 @@ import { getSpecies } from '../data/monsters';
 /**
  * Rig de GELO para a espécie Gelo (Nv.6 — o golem de cristal), no PADRÃO DO
  * GOLÉM (objeto físico, sem energia aditiva) mas com o figurino pedido:
- * cristalino, BRANCO, translúcido e reflexivo (iceShaders.ts):
+ * cristalino, BRANCO, translúcido e reflexivo (iceShaders.ts). Desde a rodada
+ * do GLB (`src/models/ice/ice.glb`) este rig segura o PALCO como fallback do
+ * dispatcher em `IceMeshRig.tsx` enquanto a malha carrega — a identidade
+ * visual daqui (flocos de seis braços, trincas que acendem na carga, névoa
+ * fria nos pés) é o que o rig de malha religa por cima do GLB:
  *
  *  1. CRISTAL DE GLACIAR: corpo quase branco com veios de fratura internos
  *     que pulsam devagar e ACENDEM quando ele carrega a estaca — o análogo
@@ -35,12 +39,13 @@ import { getSpecies } from '../data/monsters';
  */
 
 export const ICE_ATTACK_WINDOW = 0.5;
-/** fração da janela em que o Gelo está carregando a estaca */
-const ICE_WINDUP = 0.42;
+/** fração da janela em que o Gelo está carregando a estaca (exportada: o rig
+ *  de MALHA religa a MESMA coreografia por cima do GLB — `IceMeshRig.tsx`) */
+export const ICE_WINDUP = 0.42;
 
 const GELO_DEF = getSpecies('gelo');
 
-interface AttackPose {
+export interface AttackPose {
   twist: number; // corpo torce (negativo = carregando)
   crouch: number; // 0..1 joelhos de gelo dobram / corpo desce
   swing: number; // braço (negativo = recuado, positivo = arremesso)
@@ -49,7 +54,7 @@ interface AttackPose {
   flare: number; // espinhos da coroa/ombros elevam
 }
 
-function attackPose(since: number): AttackPose {
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = { twist: 0, crouch: 0, swing: 0, charge: 0, stepZ: 0, flare: 0 };
   if (since < 0 || since > ICE_ATTACK_WINDOW) return P;
   const p = since / ICE_ATTACK_WINDOW;
@@ -165,7 +170,7 @@ const ICE_ROLE_LOOK: Partial<Record<MatRole, IceLook>> = {
   },
 };
 
-function makeFlakeGeo(n: number): THREE.BufferGeometry {
+export function makeFlakeGeo(n: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const rnd = new Float32Array(n * 4); // x: ângulo, y: fase, z: tamanho, w: giro
@@ -555,9 +560,10 @@ export function IceRig({
 /**
  * Flocos de neve que caem em volta: deriva lenta (neve tem arrasto, não
  * peso), balanço lateral de vaivém e GIRO próprio — cada floco roda no
- * próprio eixo (aRand.w alimenta a rotação desenhada no frag).
+ * próprio eixo (aRand.w alimenta a rotação desenhada no frag). (Exportados:
+ * o rig de MALHA religa os mesmos flocos por cima do GLB — `IceMeshRig.tsx`.)
  */
-const FLAKE_VERT = /* glsl */ `
+export const FLAKE_VERT = /* glsl */ `
 attribute vec4 aRand; // x: ângulo, y: fase, z: tamanho, w: giro
 uniform float uTime;
 uniform float uAlpha;
@@ -586,7 +592,7 @@ void main() {
 }
 `;
 
-const FLAKE_FRAG = /* glsl */ `
+export const FLAKE_FRAG = /* glsl */ `
 varying float vA;
 varying float vRot;
 void main() {

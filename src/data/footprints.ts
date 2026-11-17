@@ -220,7 +220,19 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   // dentro do anel 2,5 — conferir na sonda de footprint.
   madeira: [{ x: 1.9, z: 1.9 }],
   magma: [{ x: 1.44, z: 1.43 }],
-  gelo: [{ x: 1.72, z: 1.72 }],
+  // CUBO DE GELO DE MALHA 3D IMPORTADA (ice.glb, Nv.6): encaixe autoral no
+  // MESMO contrato da trovoada/ancião — `MEDIDO = s·(meia-caixa + abraço)`
+  // com abraço `SHELL_HUG` 0,13 e a caixa crua da malha (x ±0,881, z ±0,894;
+  // rumo 0 — a cara irada de olhos glaciares encara o +Z). Assinado em 1,9
+  // quadrado no MESMO degrau do Raio/Ancient Tree (o cubo nasce do
+  // nereia+zephyr Nv.5, invólucros 2,44/2,30 de mundo no anel): com 1,9,
+  // `slotFit` segue no teto 1,15, o encaixe sai 1,9/1,024 = 1,85 (folgado do
+  // teto de altura 3,9/1,938 = 2,01) e o corpo chega a ~3,6 de altura e ~3,3
+  // de envergadura de mundo — o cubo é compacto por natureza, a régua é a
+  // mesma aprovada na véspera. Os piores efeitos (anel de chão 1,05×s,
+  // faíscas-orbitais 0,88×s, flocos 1,35·0,6s+deriva 0,22) param em ~2,2 de
+  // mundo, dentro do anel 2,5 — conferir na sonda de footprint.
+  gelo: [{ x: 1.9, z: 1.9 }],
   vapor: [{ x: 2.06, z: 1.85 }],
   areia: [{ x: 1.9, z: 1.9 }],
   tempestade: [{ x: 2.47, z: 2.41 }],

@@ -242,7 +242,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   },
   gelo: {
     id: 'gelo',
-    name: 'Gelo',
+    name: 'Ice Cube',
     elements: ['water', 'air'],
     modelKey: 'gelo',
     levelMin: 6,

@@ -976,6 +976,7 @@ export const MESH_FIGURINOS: Partial<Record<SpeciesId, boolean[]>> = {
   nereia: [true, true, true, true, true], // árvore da água inteira (water_model_lvl1..5)
   raio: [true], // trovoada única Nv.6 (ray.glb) — as parts só seguram o palco enquanto o GLB carrega
   madeira: [true], // ancião das raízes único Nv.6 (tree.glb) — as parts só seguram o palco enquanto o GLB carrega
+  gelo: [true], // cubo de gelo único Nv.6 (ice.glb) — as parts só seguram o palco enquanto o GLB carrega
 };
 
 export const MODELS: Record<SpeciesId, SpeciesModel> = {

@@ -812,6 +812,85 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## 🧊 O CUBO DE GELO EM MALHA 3D IMPORTADA — ice.glb veste o Nv.6; renome Ice Cube (17/nov/2026 — 13ª da linha "modelos 3D"; aprovada no navegador do usuário: "ficou muito bom pode commitar e mandar pra dev")
+
+O usuário adicionou `src/models/ice/ice.glb` (Nv.6, espécie autoral `gelo`,
+forma única — 3,4 MB, 23.578 vértices NÃO-indexados, UMA malha com UMA textura
+2048²; PLY re-empacotado, sem osso nem animação; caixa crua x −0,881..0,854 ·
+y −1,002..0,936 (spanY 1,938) · z −0,894..0,878; 9.858 soldas duras >60°) e
+pediu "implementar o gelo e mudar o nome para Ice Cube". O cubo de dois andares
+tem carepa de neve, icicles glaciares na coroa e a CARA IRADA de olhos glaciares
+pintada na frente. O novo `src/scene/IceMeshRig.tsx` é o dispatcher da casa (o
+golem de cristal procedural `IceRig` vira fallback no `Suspense` e ganha cara de
+palco: `attackPose`/`ICE_WINDUP`/shaders e geo dos flocos exportados para o rig
+de malha religar por cima do GLB) e o `IceMeshRig` planta o corpo no MESMO
+contrato dos seis figurinos da linha: `onBeforeCompile` com a GEADA rastejando
+no relevo (pela normal SOLDADA `aDispNrm`) e crosta de gelo que engrossa na
+carga, veios de fratura acendendo no emissivo (o `coldPulse` do rig antigo
+vestido na pintura do GLB), invólucro aditivo de geada com trincas dobradas e
+brilhos de frost piscando (`SHELL_HUG` 0,13), chuva de FLOCOS DE SEIS BRAÇOS do
+rig antigo (mesmos shaders), faíscas-de-gelo orbitando (30, metade ao contrário,
+giro LENTO de glaciar — cadência 2,0 vs. 3,2 do ancião), lascas-POP de cristal
+(`FRACK_VERT`, voo entre s×0,4 e s×0,9), lufadas frias do core, aura de
+estilhaços glaciares, anéis de geada e a NÉVOA FRIA nos pés no arremesso
+(smoke heat 0 — névoa, não fuligem). Renome é SÓ de vitrine: `name` em
+`monsters.ts` + três pins em `ui.test.tsx`; id `gelo`, blurbs e `formTops` [3,9]
+ficam como estão.
+
+- **Rumo sem desambiguação (lição barata):** a ordem do painel do
+  `mesh-viewer.html` é DETERMINÍSTICA — o array `views` é frente (+Z), costas
+  (−Z), lado −X, lado +X; painel superior ESQUERDO = +Z. A cara irada saiu
+  nesse painel → `ICE_MODEL_YAW = 0`. LER a receita do viewer antes de montar
+  sonda de desempate (a rodada do ancião pagou esse mico).
+- **🎯 Anel de chão GIRANDO infla a leitura da sonda até √2× (achado da
+  rodada):** a sonda de footprint mede a AABB da geometria por 8 cantos — um
+  torus rodando no próprio plano tem a caixa do disco girando e é lido
+  inflado conforme a FASE (o anel externo 1,05×s do gelo media 2,56 de mundo
+  para um círculo real de 2,24 e "estourava" o anel 2,5 sem nada visível
+  estourar; o raio variou 2,25–2,48 entre corridas por isso). Os anéis do
+  gelo agora ficam PARADINHOS e sem z-tilt inicial (álibi temático: a placa
+  de frost do rig procedural nunca girou) e a leitura sai a circunferência
+  exata. Se outra espécie da linha quiser anel girando, arredondar MEDIDO
+  para a PIOR fase (×√2) ou parar o anel.
+- **Geada NUNCA na cor da equipe** (lição do print da câmera rasa do glaciar
+  na rodada da Nereia, paga de novo aqui de raspão): o fresnel do invólucro
+  puxava o tint da equipe e saía um anel verde-jade onde tinha que haver
+  geada — o `FROST_SHELL` do gelo é azul-branco fixo, sem aro tintado.
+- **MEDIDO.gelo reassinado 1,72 → 1,9 quadrado** (MESMO degrau do
+  Raio/Ancient Tree, régua aprovada na véspera): o cubo nasce do
+  nereia+zephyr Nv.5 (invólucros 2,44/2,30 de mundo); com 1,9 o `slotFit`
+  segue no teto 1,15 e o encaixe sai 1,9/1,024 = 1,855 — folgado do teto de
+  altura 3,9/1,938 = 2,01 — e o corpo chega a ~3,6 de altura e ~3,3 de
+  envergadura de mundo. Piores efeitos (anel de chão 1,05×s, faíscas 0,88×s)
+  param em ~2,29 de mundo dentro do anel r=2,5.
+- **Inspetor visual imune a canvas/cartas/página que não assentam (três
+  quedas para chegar aqui):** `locator.screenshot()` espera "element to be
+  stable" e TRAVA 30 s em dois casos reais — a carta recém-descoberta do
+  bestiário PULSA em CSS (caixa nunca assenta) e o `dpr` adaptativo do R3F
+  redimensiona o canvas da arena sem parar sob swiftshader. Mas o fundo do
+  poço é mais fundo: `page.screenshot({clip})` a seco TAMBÉM trava 30 s no
+  headless (o Playwright espera o raster do compositor, não só a estabilidade
+  da caixa). A bala de prata é capturar pelo CDP em session dedicado:
+  `Page.captureScreenshot` com `clip` em CSS-px `scale: 1` e
+  `captureBeyondViewport: false` — NENHUMA espera — com retry de 3× e um
+  `dialog` handler (alert/confirm nativo pendurado trava qualquer screenshot).
+  Os dois inspetores (`qa/inspect-species.mjs` canônico + a cópia Linux
+  temporária `qa/.inspect-linux.mjs`) ficaram assim; a rajada de combate virou
+  `QA_BATTLE_SHOTS` (40 no canônico, 12 na rodada rápida de aprovação).
+- **Estado/verificação (17/nov):** `tsc` limpo · `npx vitest run` **505
+  passed / 3 skipped (45 arquivos)** · `npm run build` limpo (o GLB sai como
+  asset de 3,4 MB) · sonda ao vivo `gelo@6`: mundo 2,29/2,29, topo 4,16, SIM
+  no buraco, SIM no anel, SOBREPOSIÇÕES 0, console limpo · `qa/probe-cracks.
+  mjs` ganhou `ice.glb` + `tree.glb` nos alvos: rasgo DEPOIS da solda = 0 por
+  construção nos dois · inspetor visual `gelo golem`: bestiário (idle +
+  arremesso-demo), arena com órbita/zoom e rajada de combate, prints em
+  `/tmp/opencode/shots-gelo/`. O clarão branco do windup em carga máxima
+  (invólucro + emissivo estourando o corpo por ~0,2 s) foi mostrado ao
+  usuário e ACEITO como telegraph. Teste visual no navegador do usuário e
+  APROVADO.
+
+---
+
 ## 🌳 O ANCIÃO DAS RAÍZES EM MALHA 3D IMPORTADA — tree.glb veste o Nv.6; renomes Core Ray e Ancient Tree (17/nov/2026 — 12ª da linha "modelos 3D"; aprovada no navegador do usuário: "A arvore ficou muito boa, testei aqui no navegador")
 
 O usuário adicionou `src/models/tree/tree.glb` (Nv.6, espécie autoral `madeira`,
