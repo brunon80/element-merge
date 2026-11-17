@@ -246,6 +246,21 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   // faíscas-orbitais 0,88×s, flocos 1,35·0,6s+deriva 0,22) param em ~2,2 de
   // mundo, dentro do anel 2,5 — conferir na sonda de footprint.
   gelo: [{ x: 1.9, z: 1.9 }],
+  // MÁQUINA A VAPOR DE MALHA 3D IMPORTADA (steam.glb, Nv.6): encaixe autoral no
+  // MESMO contrato da linha — `MEDIDO = s·(meia-caixa + abraço)` com abraço
+  // `SHELL_HUG` 0,13 e a caixa crua da malha (x ±0,84/0,81, y −1,002..0,974, z
+  // ±0,35/0,39 — o mais FUNDO fino do lote; rumo 0 — o PORTAL DE FOGO no peito
+  // e a plaqueta da cara encaram o +Z). O degrau NÃO-QUADRADO (2,06×1,85) é o
+  // único da linha e sobrevive da era procedural (o pote largo + nuventos de
+  // banda): o par nereia+ignis Nv.5 fecha o anel em 2,44/2,44 e a caldeira
+  // sempre coube no buraco. Aqui, diferente do golens de areia, o TETO DE
+  // ALTURA aperta primeiro: 3,6/1,976 = 1,822 < 2,06/0,97 = 2,14 da
+  // frente — o corpo chega a ~3,6 de altura e ~3,1 de envergadura de mundo. Os
+  // piores efeitos (halo de gotas 0,82×s·1,1, pops 0,85×s, lufadas 0,64×s+voo,
+  // auréola 0,56×s) param em ~1,9 de mundo, folgado dentro do anel 2,5 — as
+  // colunas de vapor sobem ACIMA do topo (nuvem não é malha; a sonda só lê
+  // `isMesh`) — conferir na sonda de footprint. Sem anéis de chão: a caldeira
+  // nunca os teve (a lição do Magmar).
   vapor: [{ x: 2.06, z: 1.85 }],
   // GOLEM DE AREIA DE MALHA 3D IMPORTADA (sand.glb, Nv.6): encaixe autoral no
   // MESMO contrato da linha — `MEDIDO = s·(meia-caixa + abraço)` com abraço

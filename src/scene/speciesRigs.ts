@@ -8,7 +8,7 @@ import { LightningRig } from './LightningMeshRig';
 import { WoodRig } from './WoodMeshRig';
 import { MagmaRig } from './MagmaMeshRig';
 import { IceRig } from './IceMeshRig';
-import { VaporRig } from './VaporRig';
+import { VaporRig } from './VaporMeshRig';
 import { SandRig } from './SandMeshRig';
 import { TempestadeRig } from './TempestadeRig';
 import { ObsidianaRig } from './ObsidianaRig';

@@ -1244,7 +1244,7 @@ describe('Prévia de fusões do arraste (painel que persegue o ponteiro)', () =>
     // opção inédita continua selada; e a linha 1 (Magma) segue revelada
     const sealedRow = screen.getByTestId('mp-option-nereia');
     expect(sealedRow.textContent).toContain('???');
-    expect(sealedRow.textContent).not.toContain('Vapor');
+    expect(sealedRow.textContent).not.toContain('Steam Machine');
     expect(boxesOf(sealedRow)[2].className).toContain('locked');
     expect(screen.getByTestId('mp-current').textContent).toContain('Magmar');
   });

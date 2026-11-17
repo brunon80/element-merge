@@ -182,5 +182,6 @@ const targets =
         [`src/models/ice/ice.glb`, 0.075], // cubo de gelo Nv.6 (malha única)
         [`src/models/lava/lava.glb`, 0.075], // colosso de lava Nv.6 (malha única)
         [`src/models/sand/sand.glb`, 0.075], // golem de areia Nv.6 (malha única)
+        [`src/models/steam/steam.glb`, 0.075], // máquina a vapor Nv.6 (malha única)
       ];
 for (const [f, ufa] of targets) probe(fileURLToPath(new URL(`../${f}`, import.meta.url)), ufa);

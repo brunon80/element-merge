@@ -271,7 +271,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   },
   vapor: {
     id: 'vapor',
-    name: 'Vapor',
+    name: 'Steam Machine',
     elements: ['fire', 'water'],
     modelKey: 'vapor',
     levelMin: 6,

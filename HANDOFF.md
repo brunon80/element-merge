@@ -812,6 +812,107 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## 🤖 A MÁQUINA A VAPOR EM MALHA 3D IMPORTADA — steam.glb veste o Nv.6; renome Steam Machine (17/nov/2026 — 16ª da linha "modelos 3D"; aprovada no navegador do usuário: "testei aqui está otimo, pode commitar e mandar pra dev" — com UM CORTE no meio do caminho: o balão de 1,9 m, bullet abaixo)
+
+O usuário trouxe `src/models/steam/steam.glb` (Nv.6, espécie autoral `vapor`,
+forma única — 27.950 vértices NÃO-indexados, UMA malha com UMA textura 2048²;
+PLY re-empacotado, sem osso nem animação; caixa crua x −0,840..0,813 ·
+y −1,002..0,974 (spanY 1,976) · z ±0,35..0,39 — o mais FUNDO-fino do lote;
+747 soldas duras brutas, a menos soldada) — o robô-caldeira de chapa
+enferrujada com o PORTAL DE FOGO redondo no peito, janelinhas de água azul
+viva nas costuras e CHAMINÉS nos ombros e na cabeça. O novo
+`src/scene/VaporMeshRig.tsx` é o dispatcher da casa (a caldeira do `VaporRig`
+vira fallback no `Suspense` e ganha cara de palco: `attackPose`/
+`VAPOR_WINDUP`/`STEAM_LOOK`/`makeSteamRiseGeo`/`RISE_FRAG` exportados p/ o rig
+de malha religar por cima do GLB). Os efeitos do vapor seguem vivos:
+
+- **VAPOR SAINDO DAS PERNAS E BRAÇOS-OMBROS (o pedido explícito do usuário):**
+  as colunas de vapor (`RISE_FRAG` do rig antigo, re-vestido em `VENT_RISE_VERT`
+  que sobe do y 0 LOCAL) parafusam nos CANOS QUE O GLB OFERECE: chaminés dos
+  ombros (a régua mais alta depois da cabeça), pilha da cabeça (o apito nunca
+  cala), cotovelos e juntas dos joelhos (vapor rasteiro). Cada junta é um
+  `points` plantado no encaixe escalado + as chaminés cospem no pool de fumaça
+  (heat 0,22 — vapor CLARO, nunca fuligem; a baforada do disparo é heat 0,35
+  EMPURRADA para frente, a MESMA do rig antigo, só que do peito/ombros pois a
+  malha não tem boca aberta no topo);
+- **CALDEIRA VIVA lendo a PINTURA:** o `onBeforeCompile` AMOSTRA a textura do
+  GLB (`texture2D(map, vMapUv)`) no emissivo — onde a tinta é AZUL (costuras
+  de água) a água FERVE com ondulação lenta + tremido; onde é LARANJA (portal
+  e porta do fogo) a brasa ESTALA em sorteio duro; e as chapas TREMEM com a
+  fervura (tremido CURTO por célula dura, na normal SOLDADA `aDispNrm` —
+  tch-tch-tch da panela, some na morte) + o treme-treme de fervura no GRUPO
+  raiz (`g.position.x`, 23 Hz, sumindo com a morte);
+- **VÉU DE VAPOR:** a MESMA malha inflada pelo `SHELL_HUG` 0,13 vestida com
+  fitas de nuvem subindo em espiral (cadência mais lenta que a do vento),
+  bolhas GROSSAS em patamar (o amp alto do vapor antigo — bolhas largas mas
+  NÃO montanhas, a lição do "pão sovado") e a nuvem INTEIRA INCHANDO E
+  CLAREANDO na carga do jato (o `uCharge` do vapor antigo); branco-pêssego em
+  todos os canais — SEM tint de equipe (a regra da nuvem); morte = ARREBENTAÇÃO
+  em vaporada (`uCrumble` + carga de morte subindo em tudo);
+- religados no coração (`CORE_FRAC` 0,58 = portal do peito): halo de GOTAS
+  ESCALDANTES orbitando o corpo (26, faixas do corpo — nunca acima da malha;
+  metade gira para o lado oposto; a gota BRILHA molhada em lampejo sorteado),
+  estalos-pop de gota do peito esfriando em voo (pêssego→branco-azulado),
+  pool de lufadas de vapor do peito (exalação contínua, dobrando na carga),
+  auréola de estilhaços pêssego+vapor e o clarão aditivo plantado RENTE AO
+  PORTAL (o vão do aro do rig antigo).
+
+- **SEM o núcleo de água fervendo SÓLIDO (corte antecipado, lição do Magmar
+  aplicada ANTES da aprovação):** o rig antigo tinha a bola achatada fervendo
+  na BOCA ABERTA do pote (y 2,18); o GLB não tem boca no topo — tem um portal
+  redondo VERTICAL no peito, e religar a peça horizontal ali seria outro gorro
+  vermelho. O portal fica aceso só com clarão aditivo + estalos + a leitura
+  viva da pintura.
+- **SEM anéis de chão:** a caldeira nunca os teve (a lição do Magmar).
+- **O BALÃO DE 1,9 m (bug caçado pelo OLHO DO USUÁRIO no navegador, print
+  17/nov):** o treme-treme das chapas saiu escrito `plate * 0.6` — cru, em
+  METROS. O ruído vale 0..1, então a chapa inteira saiu 0,6 m pela normal
+  (×1,8 de encaixe ≈ 1,1 m de mundo): o robô virou BLOCO redondo, braços e
+  pernas SOLDARAM no torso e a auréola virou estrela cravada no peito. A
+  sonda de footprint NÃO pegou (a AABB da CPU é lida SEM o deslocamento do
+  shader — o invólucro medido continua a caixa crua; só o print do navegador
+  cobra deslocação de vértice) e o console também não (shader compila
+  perfeitamente errado). Consertado: `plate * 0.006` (máx 6 mm de chapa) + a
+  auréola 0,56→0,5×s num robô FUNDO-fino. A lição: amplitude de deslocamento
+  em shader de corpo é SEMPRE milimétrica e comentada como tal (0,006–0,02 da
+  caixa, nunca a unidade de ruído direto), e DESLOCAÇÃO DE VÉRTICE é a única
+  classe de regressão visual que tripé nenhum pega — o laço de aprovação do
+  usuário é o detector. As armadilhas irmãs já registradas: crase de
+  comentário dentro do template-literal de GLSL fecha a string TS (TS1005 —
+  o autor deste doc caiu nela DUAS rodadas depois de registrar a regra) e o
+  vite-error-overlay faz os cliques do inspetor time-outarem quando a
+  gravação pega o arquivo no meio da edição (rodada do magma). O laço de
+  aprovação no navegador do usuário PEGOU as DUAS classes de problema que o
+  tripé não vê (a bolinha do Magmar e o balão daqui — e desta vez o print
+  dele foi a primeira denúncia, ANTES dos meus prints).
+- **Rumo sem desambiguação:** o PORTAL DE FOGO e a plaqueta da cara saíram no
+  painel "frente (+Z)" do viewer de 4 vistas → `VAPOR_MODEL_YAW = 0`.
+- **Renome é SÓ de vitrine:** `name: 'Steam Machine'` em `monsters.ts`; id
+  `vapor`, blurbs e `formTops` [3,6] ficam. Um único pin de `ui.test.tsx`
+  citava o nome antigo (o selo `not.toContain('Vapor')` da lista de fusão →
+  virou `not.toContain('Steam Machine')`); os demais testes falam da espécie
+  pelo id/flavor, não pelo nome de vitrine.
+- **`MEDIDO.vapor` (2,06×1,85) é o único NÃO-QUADRADO da linha e sobreviveu:**
+  herdado do pote largo da era procedural, fecha o anel do par nereia+ignis
+  Nv.5 (2,44/2,44). Na malha quem aperta PRIMEIRO é o TETO DE ALTURA
+  (3,6/1,976 = 1,822 < 2,06/0,97 = 2,14 da frente — o inverso do golens de
+  areia): corpo ~3,6 de altura e ~3,1 de envergadura. As colunas de vapor
+  sobem ACIMA do topo (nuvem não é malha; a sonda só lê `isMesh`).
+- **Estado/verificação (17/nov):** `tsc` limpo · `npx vitest run` **505
+  passed / 3 skipped** · `qa/probe-cracks.mjs` ganhou `steam.glb` no alvo
+  padrão (rasgo DEPOIS 0) · sonda de footprint `vapor@6`: MUNDO X 1,75 /
+  Z 0,79, SOBREPOSIÇÕES 0, console SEM ERROS/WARNINGS (a amostragem da
+  textura no emissivo compilou de primeira: `texture2D(map, vMapUv)` com
+  `#ifdef USE_MAP`) · armadilha pegadinha na cópia Linux do inspetor outra
+  vez: crase de comentário DENTRO do template-literal de GLSL fecha a string
+  (TS1005) — comentário de shader fala sem crase · inspetor visual
+  `vapor golem`: prints em `/tmp/opencode/shots-vapor/` (antes do corte do
+  balão) e `/tmp/opencode/shots-vapor2/` (depois, com captura CDP). Teste
+  visual no navegador do usuário: APROVADO (com o balão já cortado — quote no
+  topo da rodada).
+
+---
+
 ## 🏜️ O GOLEM DE AREIA EM MALHA 3D IMPORTADA — sand.glb veste o Nv.6; renome Sand Golem (17/nov/2026 — 15ª da linha "modelos 3D"; aprovada no navegador do usuário: "ficou bom, agora commite e vá para o próximo")
 
 O usuário trouxe `src/models/sand/sand.glb` (Nv.6, espécie autoral `areia`,
@@ -878,7 +979,8 @@ cima do GLB, no mesmo idioma da linha:
   canônico (só trocar a base URL não basta): o `` ${OUT}\\${...} `` das linhas
   de `shoot` solta prints com BARRA INVERTIDA LITERAL no nome em Linux (o
   canônico é escrito para o Windows) — rodar "com sucesso" e o `ls` da saída
-  sair VAZIO é o sintoma. Teste visual no navegador do usuário: <aguardando>.
+  sair VAZIO é o sintoma. Teste visual no navegador do usuário: APROVADO
+  ("ficou bom, agora commite e vá para o próximo").
 
 ---
 

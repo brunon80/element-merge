@@ -36,15 +36,17 @@ import { getSpecies } from '../data/monsters';
  */
 
 export const VAPOR_ATTACK_WINDOW = 0.62;
-/** fração da janela em que a caldeira está carregando o jato (fogo acende) */
-const VAPOR_WINDUP = 0.5;
+/** fração da janela em que a caldeira está carregando o jato (fogo acende);
+ *  exportada: o rig de MALHA religa a MESMA coreografia por cima do GLB,
+ *  `VaporMeshRig.tsx` */
+export const VAPOR_WINDUP = 0.5;
 
 const VAPOR_DEF = getSpecies('vapor');
 
 /** nível da água fervendo dentro da boca (torus da boca em y=2.28) */
 const MOUTH_Y = 2.18;
 
-interface AttackPose {
+export interface AttackPose {
   twist: number; // a caldeira toda torce carregando o jato
   crouch: number; // 0..1 ela agacha (as pernas de ferro dobram o peso)
   swing: number; // bicos de vapor (negativo = recuados, positivo = varrem)
@@ -53,7 +55,7 @@ interface AttackPose {
   flare: number; // válvulas e aro estufam
 }
 
-function attackPose(since: number): AttackPose {
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = { twist: 0, crouch: 0, swing: 0, charge: 0, stepZ: 0, flare: 0 };
   if (since < 0 || since > VAPOR_ATTACK_WINDOW) return P;
   const p = since / VAPOR_ATTACK_WINDOW;
@@ -137,14 +139,18 @@ const IRON_ROLE_LOOK: Partial<Record<MatRole, IronLook>> = {
   },
 };
 
-/** nuvens da cabeça (role steam): vapor branco-pêssego do braseiro */
-const STEAM_LOOK = {
+/** nuvens da cabeça (role steam): vapor branco-pêssego do braseiro. (Exportado:
+ *  o rig de MALHA veste a mesma paleta no véu por cima do GLB — `VaporMeshRig.tsx`.) */
+export const STEAM_LOOK = {
   body: { cool: '#eaf2f8', warm: '#ffd2a6', alpha: 0.85, swirl: 0.55 },
   steam: { cool: '#eaf2f8', warm: '#ffd2a6', alpha: 0.85, swirl: 0.55 },
   trans: { cool: '#e0e9f0', warm: '#ffddb8', alpha: 0.24, swirl: 1.1 }, // anel escaldante rente ao chão
 };
 
-function makeSteamRiseGeo(n: number): THREE.BufferGeometry {
+/** (Exportado: o rig de MALHA parafusa nuvens de vapor NOS OUTROS canos — as
+ *  chaminés dos ombros e as juntas das pernas pedidas pelo usuário; a malha não
+ *  tem boca aberta, o topo é o robô — `VaporMeshRig.tsx`.) */
+export function makeSteamRiseGeo(n: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const rnd = new Float32Array(n * 3);
@@ -613,7 +619,9 @@ void main() {
 }
 `;
 
-const RISE_FRAG = /* glsl */ `
+/** (Exportado: os fiapos das juntas e chaminés do rig de MALHA usam o MESMO
+ *  disco macio de nuvem — `VaporMeshRig.tsx`.) */
+export const RISE_FRAG = /* glsl */ `
 varying float vA;
 varying vec3 vC;
 void main() {
