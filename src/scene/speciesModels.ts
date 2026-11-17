@@ -978,6 +978,7 @@ export const MESH_FIGURINOS: Partial<Record<SpeciesId, boolean[]>> = {
   madeira: [true], // ancião das raízes único Nv.6 (tree.glb) — as parts só seguram o palco enquanto o GLB carrega
   gelo: [true], // cubo de gelo único Nv.6 (ice.glb) — as parts só seguram o palco enquanto o GLB carrega
   magma: [true], // colosso de lava único Nv.6 (lava.glb) — as parts só seguram o palco enquanto o GLB carrega
+  areia: [true], // golem de areia único Nv.6 (sand.glb) — as parts só seguram o palco enquanto o GLB carrega
 };
 
 export const MODELS: Record<SpeciesId, SpeciesModel> = {

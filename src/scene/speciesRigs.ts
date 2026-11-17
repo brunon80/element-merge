@@ -9,7 +9,7 @@ import { WoodRig } from './WoodMeshRig';
 import { MagmaRig } from './MagmaMeshRig';
 import { IceRig } from './IceMeshRig';
 import { VaporRig } from './VaporRig';
-import { SandRig } from './SandRig';
+import { SandRig } from './SandMeshRig';
 import { TempestadeRig } from './TempestadeRig';
 import { ObsidianaRig } from './ObsidianaRig';
 import { PantanoRig } from './PantanoRig';

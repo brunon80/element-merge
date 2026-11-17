@@ -301,7 +301,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   },
   areia: {
     id: 'areia',
-    name: 'Areia',
+    name: 'Sand Golem',
     elements: ['earth', 'air'],
     modelKey: 'areia',
     levelMin: 6,

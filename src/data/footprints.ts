@@ -247,6 +247,20 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   // mundo, dentro do anel 2,5 — conferir na sonda de footprint.
   gelo: [{ x: 1.9, z: 1.9 }],
   vapor: [{ x: 2.06, z: 1.85 }],
+  // GOLEM DE AREIA DE MALHA 3D IMPORTADA (sand.glb, Nv.6): encaixe autoral no
+  // MESMO contrato da linha — `MEDIDO = s·(meia-caixa + abraço)` com abraço
+  // `SHELL_HUG` 0,13 e a caixa crua da malha (x −0,931/0,904, z ±0,531; rumo
+  // 0 — o peitoral esculpido e a faixa de redemoinho encaram o +Z, os estilha-
+  // ços da cauda pendem para trás). Assinado em 1,9 quadrado no MESMO degrau
+  // do Raio/Ancient Tree/Ice Cube/Magmar (o golem nasce do golem+zephyr Nv.5,
+  // invólucros 2,43/2,30 de mundo no anel): com 1,9 a LADEIRA do X aperta antes
+  // do teto de altura — o encaixe sai 1,9/(0,931+0,13) = 1,79 (a altura
+  // autoral 3,7/1,973 = 1,875 daria folga só no teto) — e o corpo chega a
+  // ~3,5 de altura e ~3,3 de envergadura de mundo. Os piores efeitos (halo
+  // orbitando 0,86×s·1,12, grãos da cauda 0,95×s, pops 0,9×s, lufadas 0,66×s
+  // +voo) param em ~1,8 de mundo, folgado dentro do anel 2,5 — conferir na
+  // sonda de footprint. Sem anéis de chão: o gênio do rig antigo nunca os
+  // teve (a lição do Magmar — só se re-ancora o que o rig antigo tinha).
   areia: [{ x: 1.9, z: 1.9 }],
   tempestade: [{ x: 2.47, z: 2.41 }],
   obsidiana: [{ x: 1.71, z: 1.3 }],

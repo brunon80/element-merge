@@ -35,12 +35,14 @@ import { getSpecies } from '../data/monsters';
  */
 
 export const SAND_ATTACK_WINDOW = 0.6;
-/** fração da janela em que o gênio recolhe a rajada nas garras */
-const SAND_WINDUP = 0.48;
+/** fração da janela em que o gênio recolhe a rajada nas garras (exportada: o
+ *  rig de MALHA religa a MESMA coreografia — rajada dupla inclusive — por cima
+ *  do GLB, `SandMeshRig.tsx`) */
+export const SAND_WINDUP = 0.48;
 
 const AREIA_DEF = getSpecies('areia');
 
-interface AttackPose {
+export interface AttackPose {
   twist: number; // o gênio todo torce recolhendo o vendaval
   rise: number; // 0..1 flutua subindo na carga (a cauda encolhe do chão)
   swing: number; // garras (neg = recuadas, pos = varrem para a rajada)
@@ -50,7 +52,7 @@ interface AttackPose {
   doubleKick: number; // o SEGUNDO tiro (0,3s depois): re-cole curto
 }
 
-function attackPose(since: number): AttackPose {
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = {
     twist: 0,
     rise: 0,
@@ -174,7 +176,9 @@ const VEIL_LOOK: VeilLook[] = [
   { cold: '#573d18', mid: '#9c7130', hot: '#d8b26a', alphaMul: 0.95, spin: 3.2, ampScale: 1 },
 ];
 
-function makeGritGeo(n: number): THREE.BufferGeometry {
+/** (Exportada: o rig de MALHA religa a chuva de grãos por cima do GLB —
+ *  `SandMeshRig.tsx`.) */
+export function makeGritGeo(n: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const rnd = new Float32Array(n * 3);
@@ -594,7 +598,9 @@ void main() {
 }
 `;
 
-const GRIT_FRAG = /* glsl */ `
+/** (Exportado: o rig de MALHA religa a mesma casca dura de grão por cima do
+ *  GLB — `SandMeshRig.tsx`.) */
+export const GRIT_FRAG = /* glsl */ `
 varying float vA;
 varying vec3 vC;
 void main() {

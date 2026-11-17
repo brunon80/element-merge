@@ -812,6 +812,76 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## 🏜️ O GOLEM DE AREIA EM MALHA 3D IMPORTADA — sand.glb veste o Nv.6; renome Sand Golem (17/nov/2026 — 15ª da linha "modelos 3D"; aprovada no navegador do usuário: "ficou bom, agora commite e vá para o próximo")
+
+O usuário trouxe `src/models/sand/sand.glb` (Nv.6, espécie autoral `areia`,
+forma única — 30.560 vértices NÃO-indexados, UMA malha com UMA textura 2048²;
+PLY re-empacotado, sem osso nem animação; caixa crua x −0,931..0,904 ·
+y −0,999..0,974 (spanY 1,973) · z ±0,531 — o mais FUNDO-fino em Z da linha até
+agora; a malha MAIS soldada do lote: 4.114 soldas duras brutas) — o colosso de
+areia compactada com faixa-em-redemoinho cruzando o peito, ombros de duna e a
+cauda de estilhaços atrás. O novo `src/scene/SandMeshRig.tsx` é o dispatcher da
+casa (o gênio do deserto `SandRig` vira fallback no `Suspense` e ganha cara de
+palco: `attackPose`/`SAND_WINDUP`/`makeGritGeo`/`GRIT_FRAG` exportados para o
+rig de malha religar por cima do GLB). Os efeitos da areia seguem vivos por
+cima do GLB, no mesmo idioma da linha:
+
+- **AREIA BRILHANTE (o pedido explícito do usuário):** `onBeforeCompile` com o
+  GRÃO ESCORRENDO devagar pelas encostas (a avalanche do `sandShaders`
+  rastejando na casca inteira, pela normal SOLDADA `aDispNrm` — a lição das
+  soldas: 24.414 pares, MAX antes 0,104, rasgo DEPOIS 0 por construção) + a
+  MICA DO DESERTO: fagulhas DURAS de ouro que PISCAM por grão (grade 3D de
+  células sorteadas, janelas que acendem e apagam no relógio), acesas mais no
+  ÂNGULO RASANTE; ocre-creme, nunca `#ffe*` (o gatilho do blowout);
+- **VÉU DE GRÃO:** a MESMA malha inflada pelo `SHELL_HUG` 0,13 vestida com as
+  FITAS EM ESPIRAL subindo pelo corpo (o véu de turbilhão do gênio), crosta de
+  mica que engrossa na carga, fervura em PATAMAR (duna esboroada em lajes, não
+  onda lisa) e desmanche na morte (`uCrumble` — o gênio DESMONTA em areia);
+  aditivo, SEM aro na cor da equipe (a regra da nuvem);
+- religados nos dois corações da malha (`CORE_FRAC` 0,5 = peito colossal;
+  `TAIL_FRAC` 0,55 = topo das bandas da cauda-funil): chuva de GRÃOS da cauda
+  (`GRIT_FRAG` do rig antigo, régua escalada), halo de grão ORBITANDO o corpo
+  (30 partículas, faixas do corpo — nunca acima da malha; metade gira para o
+  lado oposto; cadência de vento 2,6; grão PISCA na luz), estalos-pop de grão
+  do peito esfriando em voo, pool de lufadas de poeira do peito (a exalação do
+  vendaval contido), auréola de estilhaços âmbar+ocre, POEIRA CONTÍNUA na base
+  do funil (heat 0,14, o grão fica SUSPENSO — rise 0,35) e a RAJADA DE POEIRA
+  nos pés no disparo (heat 0,16 ocre, EMPURRADA para frente) + a rajada dupla
+  do motor (o recole de re-carga 0,3 s depois, `doubleShot`).
+
+- **SEM anéis de chão:** o gênio do rig antigo nunca os teve (a lição do
+  Magmar — só se re-ancora o que o rig antigo de fato tinha; e torus girando
+  infla a leitura da sonda até √2×).
+- **Rumo sem desambiguação:** o PEITORAL esculpido e a faixa de redemoinho
+  cruzando o peito saíram no painel "frente (+Z)" do viewer de 4 vistas
+  (`qa/mesh-viewer-shot.mjs`) → `SAND_MODEL_YAW = 0`; os estilhaços da cauda
+  pendem para as costas.
+- **Renome é SÓ de vitrine:** `name: 'Sand Golem'` em `monsters.ts`; id
+  `areia`, blurbs e `formTops` [3,7] ficam como estão. Diferença das rodadas
+  anteriores: NENHUM pin de `ui.test.tsx` citava o nome de vitrine "Areia"
+  (os selos de descoberta cobrem magma/gelo/raio), então o rename não tocou
+  testes — 505 verdes sem mexer.
+- **`MEDIDO.areia` foi o único que NÃO mudou o degrau:** já era 1,9 quadrado
+  no rig procedural e a malha encosta exatamente nele — encaixe sai
+  1,9/(0,931+0,13) = 1,79 (a LADEIRA do X aperta antes do teto de altura
+  3,7/1,973 = 1,875) e o corpo chega a ~3,5 de altura e ~3,3 de envergadura
+  de mundo. Os piores efeitos param em ~1,8 de mundo, folgado dentro do anel.
+- **Estado/verificação (17/nov):** `tsc` limpo · `npx vitest run` **505
+  passed / 3 skipped** · `qa/probe-cracks.mjs` ganhou `sand.glb` no alvo
+  padrão (rasgo DEPOIS 0) · sonda de footprint `areia@6`: MUNDO X 1,92 /
+  Z 1,11, SOBREPOSIÇÕES 0, console SEM ERROS/WARNINGS (um shader inválido no
+  primeiro print — `uST` e `geometryNormal` não declarados no fragment do
+  `onBeforeCompile` — consertado na hora: uniform precisa ser declarado nos
+  DOIS estágios e o normal do padrão chama só `normal`) · inspetor visual
+  `areia golem` (captura CDP): prints em `/tmp/opencode/shots-areia/`. A cópia
+  Linux do inspetor (`qa/.inspect-linux.mjs`) precisa de DOIS patches sobre o
+  canônico (só trocar a base URL não basta): o `` ${OUT}\\${...} `` das linhas
+  de `shoot` solta prints com BARRA INVERTIDA LITERAL no nome em Linux (o
+  canônico é escrito para o Windows) — rodar "com sucesso" e o `ls` da saída
+  sair VAZIO é o sintoma. Teste visual no navegador do usuário: <aguardando>.
+
+---
+
 ## 🌋 O COLOSSO DE LAVA EM MALHA 3D IMPORTADA — lava.glb veste o Nv.6; renome Magmar (17/nov/2026 — 14ª da linha "modelos 3D"; aprovada no navegador do usuário: "no mais está bom" / "ficou bom, pode commitar e mandar pra dev")
 
 O usuário adicionou `src/models/lava/lava.glb` (Nv.6, espécie autoral `magma`,
