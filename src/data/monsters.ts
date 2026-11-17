@@ -157,7 +157,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   // -------------------------------------------------------------------------
   raio: {
     id: 'raio',
-    name: 'Raio',
+    name: 'Core Ray',
     elements: ['fire', 'air'],
     modelKey: 'raio',
     levelMin: 6,
@@ -183,7 +183,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   },
   madeira: {
     id: 'madeira',
-    name: 'Madeira',
+    name: 'Ancient Tree',
     elements: ['water', 'earth'],
     modelKey: 'madeira',
     levelMin: 6,

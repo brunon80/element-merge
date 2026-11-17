@@ -1210,7 +1210,7 @@ describe('Prévia de fusões do arraste (painel que persegue o ponteiro)', () =>
     expect(row.textContent).toContain('Gólem'); // pura: sempre visível
     expect(row.textContent).toContain('Nv.5');
     expect(row.textContent).toContain('???'); // resultado inédito: selado
-    expect(row.textContent).not.toContain('Madeira');
+    expect(row.textContent).not.toContain('Ancient Tree');
     const boxes = boxesOf(row);
     expect(boxes[1].className).not.toContain('locked');
     expect(boxes[2].className).toContain('locked'); // silhueta escura, como no bestiário
@@ -1237,7 +1237,7 @@ describe('Prévia de fusões do arraste (painel que persegue o ponteiro)', () =>
 
     // opção já descoberta: nome de verdade e miniatura colorida
     const knownRow = screen.getByTestId('mp-option-zephyr');
-    expect(knownRow.textContent).toContain('Raio');
+    expect(knownRow.textContent).toContain('Core Ray');
     expect(knownRow.textContent).not.toContain('???');
     expect(boxesOf(knownRow)[2].className).not.toContain('locked');
 

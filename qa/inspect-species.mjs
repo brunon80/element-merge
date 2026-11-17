@@ -44,6 +44,11 @@ await page.click('[data-testid="debug-toggle"]');
 await page.click('[data-testid="close-settings"]');
 await page.click('[data-testid="play"]');
 await page.waitForSelector('[data-testid="shop"]');
+// o tutorial BLOQUEIA o debug-spawn (gateTutorial: `debug` nunca passa com
+// passo ativo) — contexto limpo do Playwright SEMPRE inicia o tutorial, então
+// pule quando ele aparecer (lição do qa/probe-footprint.mjs)
+if (await page.locator('[data-testid="tutorial-skip"]').count())
+  await page.click('[data-testid="tutorial-skip"]');
 
 await spawn(sp);
 if (ally && ally !== sp) await spawn(ally);

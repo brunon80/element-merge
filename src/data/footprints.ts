@@ -207,7 +207,18 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   // estilhaços deslocada 0,7, arcos 0,94×s, anel de chão 1,15×s) param em
   // ~2,3 de mundo, dentro do anel 2,5 — conferido na sonda de footprint.
   raio: [{ x: 1.9, z: 1.9 }],
-  madeira: [{ x: 1.28, z: 1.0 }],
+  // ANCIÃO DAS RAÍZES DE MALHA 3D IMPORTADA (tree.glb, Nv.6): encaixe autoral
+  // no MESMO contrato da trovoada — `MEDIDO = s·(meia-caixa + abraço)` com
+  // abraço `SHELL_HUG` 0,13 e a caixa crua da malha (x ±0,987, z ±0,956; rumo
+  // 0 — a cara irada de olhos ciano encara o +Z). Assinado em 1,9 quadrado no
+  // MESMO degrau do Raio (o ancião nasce do nereia+golem Nv.5, invólucros
+  // 2,42/2,43 de mundo no anel): com 1,9, `slotFit` segue no teto 1,15, o
+  // encaixe sai 1,9/1,117 = 1,70 (folgado do teto de altura 4,0/1,711 = 2,34)
+  // e o corpo chega a ~3,85 de mundo de envergadura — a MESMA régua aprovada
+  // no Raio em 17/nov (os dragões Nv.5 medem ~4,4 de envergadura). Os piores efeitos (aura de estilhaços deslocada 0,35+escala 0,62s,
+  // esporos-orbitais 0,9×s, anel de chão 1,05×s) param em ~2,3 de mundo,
+  // dentro do anel 2,5 — conferir na sonda de footprint.
+  madeira: [{ x: 1.9, z: 1.9 }],
   magma: [{ x: 1.44, z: 1.43 }],
   gelo: [{ x: 1.72, z: 1.72 }],
   vapor: [{ x: 2.06, z: 1.85 }],

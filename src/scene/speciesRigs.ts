@@ -5,7 +5,7 @@ import { ZephyrRig } from './ZephyrMeshRig';
 import { GolemRig } from './GolemMeshRig';
 import { NereiaRig } from './NereiaMeshRig';
 import { LightningRig } from './LightningMeshRig';
-import { WoodRig } from './WoodRig';
+import { WoodRig } from './WoodMeshRig';
 import { MagmaRig } from './MagmaRig';
 import { IceRig } from './IceRig';
 import { VaporRig } from './VaporRig';
@@ -42,8 +42,8 @@ export interface SpeciesRigProps {
  * Rigs especiais por elemento/espécie — substituem o rig genérico de peças
  * procedurais quando existirem. Os quatro elementos puros têm rig e progressão
  * própria (fogo, ar, terra e água); da árvore elemental, Raio (malha 3D da
- * trovoada com os arcos e faíscas por cima), Madeira (rig de tronco/esmeralda
- * no padrão do golem), Magma (vulcão de
+ * trovoada com os arcos e faíscas por cima), Madeira (malha 3D do ancião das
+ * raízes com a chuva de esporos, a seiva e o invólucro por cima), Magma (vulcão de
  * basalto no mesmo padrão), Gelo (golem de cristal branco translúcido),
  * Vapor (caldeira de ferro viva com cabeça de nuvem), Areia (gênio do
  * deserto com cauda-funil de areia em turbilhão), Tempestade (muralha de

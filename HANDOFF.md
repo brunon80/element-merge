@@ -812,6 +812,60 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## 🌳 O ANCIÃO DAS RAÍZES EM MALHA 3D IMPORTADA — tree.glb veste o Nv.6; renomes Core Ray e Ancient Tree (17/nov/2026 — 12ª da linha "modelos 3D"; aprovada no navegador do usuário: "A arvore ficou muito boa, testei aqui no navegador")
+
+O usuário adicionou `src/models/tree/tree.glb` (Nv.6, espécie autoral `madeira`,
+forma única — 5,3 MB, 32.248 vértices, UMA malha com UMA textura 2048²; PLY
+re-empacotado, sem osso nem animação; caixa crua x −0,987..0,943 · y
+−0,876..0,835 (spanY 1,711) · z −0,956..0,938; 28.815 soldas duras) e pediu
+"substituir o monstro Madeira mantendo os efeitos, e renomear Madeira → Ancient
+Tree e Raio → Core Ray". O novo `src/scene/WoodMeshRig.tsx` é o dispatcher da
+casa (o rig procedural `WoodRig` vira fallback no `Suspense` e ganha a cara de
+palco da rodada: `attackPose`/`WOOD_WINDUP`/shaders e geo de esporos exportados
+para o rig de malha religar por cima do GLB) e o `TreeMeshRig` planta o corpo
+no MESMO contrato dos cinco figurinos da linha: `onBeforeCompile` com a SEIVA
+correndo no relevo (pela normal SOLDADA `aDispNrm`) e espinhos de casca que
+erizam na carga, invólucro aditivo de nervuras de seiva + clareios de musgo
+(`SHELL_HUG` 0,13), chuva de esporos/folhas, esporos-faísca ORBITANDO o corpo
+(34 pontos, metade girando para o lado oposto — caos da lição da trovoada, e as
+faixas vão do joelho à copa, nunca acima da malha: `coreY = src.coreY·fit.s`
+com `CORE_FRAC` 0,55 SEM somar `fit.pos[1]` de novo), faíscas-POP de seiva que
+estalam e somem (`CRACK_VERT` local, ciclo próprio, janela ~0,15 s, voo entre
+s×0,38 e s×0,92), pool de rajadas exalando do coração, aura de estilhaços
+esmeralda+âmbar, anéis de chão 0,78/1,05×s e a nuvem de esporos nos pés no
+instante do arremesso (assinatura do rig procedural preservada). Renomes são SÓ
+de vitrine: `name` em `monsters.ts` + dois pins em `ui.test.tsx`; ids de
+espécie, blurbs e `formTops` [4,0] ficam como estão.
+
+- **Rumo provado sem chute (lição cara):** a cara irada de OLHOS CIANO encara o
+  +Z (`TREE_MODEL_YAW = 0`), conferido nas 4 vistas do `qa/mesh-viewer-shot.mjs`
+  + mapeamento blob-ciano→3D; o par de GLBs girados ±90° (`qa/.tree_yaw90.glb`,
+  `qa/.tree_yawm90.glb`, temporários) desempatou a dúvida — e a confusão vinha
+  de um BUG MEU de eixo do quaterno na sonda, não da malha. Antes de culpar o
+  GLB, conferir a matemática da própria sonda.
+- **MEDIDO.madeira reassinado 1,28×1,0 → 1,9 quadrado** (MESMO degrau do Raio,
+  mesma régua aprovada na véspera): o ancião nasce do nereia+golem Nv.5
+  (invólucros 2,42/2,43 de mundo); com 1,9 o `slotFit` segue no teto 1,15 e o
+  encaixe sai 1,9/1,117 = 1,70 — folgado do teto de altura 4,0/1,711 = 2,34 —
+  e o corpo chega a ~3,85 de mundo de envergadura. Piores efeitos param em
+  ~2,3 (anel de chão 1,05×s), dentro do anel r=2,5.
+- **Sonda consertada no caminho:** `qa/inspect-species.mjs` travava em
+  `open-bestiary` porque o TUTORIAL intercepta cliques em contexto limpo do
+  Playwright (gateTutorial) — ganhou o pulo `tutorial-skip` pós-shop que o
+  `qa/probe-footprint.mjs` já fazia. Também: `Escape` NÃO fecha o bestiário
+  (clique em `close-bestiary`), e o print de spawn infla a escala por ~0,45 s
+  (a sonda de footprint espera a mediana assentar).
+- **Estado/verificação (17/nov):** `tsc` limpo · `npx vitest run` **505
+  passed / 3 skipped (45 arquivos)** · `npm run build` limpo (o GLB sai como
+  asset de 5,3 MB) · sonda ao vivo `madeira@6`: mundo 2,30/2,30, topo 3,38,
+  SIM no buraco, SIM no anel, SOBREPOSIÇÕES 0, console limpo · inspetor visual
+  `qa/inspect-species.mjs madeira golem` com o fix: bestiário (idle +
+  arremesso-demo), arena com órbita/zoom e rajada de combate sem erro de
+  console; prints em `/tmp/opencode/shots-madeira/`. Teste visual feito no
+  navegador do usuário e APROVADO.
+
+---
+
 ## ⚡ A TROVOADA EM MALHA 3D IMPORTADA — ray.glb veste o Nv.6 (17/nov/2026 — 11ª da linha "modelos 3D"; aprovada no navegador do usuário: "ficou muito bom" / "pode deixar assim, ficou bom")
 
 O usuário adicionou `src/models/ray/ray.glb` (Nv.6, espécie autoral `raio`,

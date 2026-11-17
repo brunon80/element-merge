@@ -13,7 +13,11 @@ import { getSpecies } from '../data/monsters';
 
 /**
  * Rig de MADEIRA para a espécie Madeira (Nv.6 — o ancião das raízes), no
- * MESMO padrão do golem (corpo opaco de shader + estilhaços físicos):
+ * MESMO padrão do golem (corpo opaco de shader + estilhaços físicos). Desde
+ * a rodada do GLB (`src/models/tree/tree.glb`) este rig segura o PALCO como
+ * fallback do dispatcher em `WoodMeshRig.tsx` enquanto a malha carrega — a
+ * identidade visual daqui (seiva esmeralda pulsante, esporos caindo,
+ * catapulta de seiva) é o que o rig de malha religa por cima do GLB:
  *
  *  1. CASCA DE TRONCO OPACA (woodShaders) com sulcos verticais de madeira,
  *     musgo nas encimadas e VEIOS DE SEIVA esmeralda que pulsam devagar com a
@@ -35,11 +39,11 @@ import { getSpecies } from '../data/monsters';
 
 export const WOOD_ATTACK_WINDOW = 0.5;
 /** fração da janela em que a Madeira está carregando a seiva */
-const WOOD_WINDUP = 0.42;
+export const WOOD_WINDUP = 0.42;
 
 const MADEIRA_DEF = getSpecies('madeira');
 
-interface AttackPose {
+export interface AttackPose {
   twist: number; // tronco torce (negativo = carregando)
   crouch: number; // 0..1 pernas de raiz dobram / corpo desce
   swing: number; // galhos (negativo = recuados, positivo = varridos à frente)
@@ -48,7 +52,7 @@ interface AttackPose {
   flare: number; // joias e asas estufam/levantam
 }
 
-function attackPose(since: number): AttackPose {
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = { twist: 0, crouch: 0, swing: 0, charge: 0, stepZ: 0, flare: 0 };
   if (since < 0 || since > WOOD_ATTACK_WINDOW) return P;
   const p = since / WOOD_ATTACK_WINDOW;
@@ -91,7 +95,7 @@ const WOOD_ROLE_LOOK: Partial<Record<MatRole, WoodLook>> = {
   accent: { barkA: '#77914f', barkB: '#33401f', moss: '#6f9a4a', sap: '#35d573', amp: 0.05, sapGlow: 0.8 },
 };
 
-function makeSporeGeo(n: number): THREE.BufferGeometry {
+export function makeSporeGeo(n: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const rnd = new Float32Array(n * 3);
@@ -452,8 +456,10 @@ export function WoodRig({
 /**
  * Esporos e folhas que caem da copa: descem em flutter (dançam no XZ, não
  * caem em linha), girando devagar — o oposto das lascas pesadas da pedra.
+ * (Exportados: o rig de MALHA da forma religa os mesmos esporos por cima
+ * do GLB — `WoodMeshRig.tsx`.)
  */
-const SPORE_VERT = /* glsl */ `
+export const SPORE_VERT = /* glsl */ `
 attribute vec3 aRand; // x: ângulo, y: fase, z: tamanho/velocidade
 uniform float uTime;
 uniform float uAlpha;
@@ -486,7 +492,7 @@ void main() {
 }
 `;
 
-const SPORE_FRAG = /* glsl */ `
+export const SPORE_FRAG = /* glsl */ `
 varying float vA;
 varying vec3 vC;
 void main() {
