@@ -106,20 +106,22 @@ await page.waitForTimeout(3000); // a escala de spawn entra em 0,45 s
 // escala e invólucro MAIORES que os reais (no Nv.5 da nereia isso deu o falso
 // "NÃO no anel": 2,78 em vez de 2,43). Então: espera até as escalas baterem na
 // MEDIANA (bicho morrendo encolhe e fica fora da conta), no máx. +8 s.
+let lastScale = -1;
 for (let i = 0; i < 8; i++) {
-  const unsettled = await page.evaluate(() => {
+  const maxScale = await page.evaluate(() => {
     const scene = (window.__threeRs || []).find((s) => s && s.isScene);
-    if (!scene) return true;
+    if (!scene) return -1;
     const sc = [];
     scene.traverse((o) => {
       if (o.userData && o.userData.unitId !== undefined) sc.push(o.scale.x);
     });
-    if (sc.length < 2) return false;
-    sc.sort((a, b) => a - b);
-    const med = sc[Math.floor(sc.length / 2)];
-    return sc.some((s) => s > med * 1.02);
+    return sc.length ? Math.max(...sc) : -1;
   });
-  if (!unsettled) break;
+  // o grow de spawn sobe até o `slotFit` em 0,45 s de relógio de jogo (que o
+  // bestiário/overlay pausam) — com UMA unidade no board a mediana de antes
+  // não segurava ninguém; aqui a régua só desce quando a escala para de subir
+  if (i > 0 && lastScale >= 0 && Math.abs(maxScale - lastScale) < 0.005) break;
+  lastScale = maxScale;
   await page.waitForTimeout(1000);
 }
 

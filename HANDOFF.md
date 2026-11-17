@@ -812,6 +812,60 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## ⚡ A TROVOADA EM MALHA 3D IMPORTADA — ray.glb veste o Nv.6 (17/nov/2026 — 11ª da linha "modelos 3D"; aprovada no navegador do usuário: "ficou muito bom" / "pode deixar assim, ficou bom")
+
+O usuário adicionou `src/models/ray/ray.glb` (Nv.6, espécie autoral `raio`,
+forma única — 4,5 MB, 29.619 vértices, UMA malha com UMA textura, sem osso
+nem animação; caixa crua x −0,999..0,972 · y −0,998..0,971 · z ±0,48) e pediu
+"subistitua o atual mantendo os efeitos assim como os demais monstros". O novo
+`src/scene/LightningMeshRig.tsx` é o dispatcher da casa (o rig procedural
+`LightningRig` continua no `Suspense` de fallback) e o `RayMeshRig` planta o
+corpo no MESMO contrato dos quatro puros: `onBeforeCompile` com grão de
+faísca, casca aditiva abraçando a malha (`SHELL_HUG` 0,13), anéis de chão,
+aura de estilhaços, rajadas, faíscas orbitantes, sprites e a coreografia de
+carga/disparo lida de `lastAttackAt`/`demoAttackSeq` como nas outras famílias.
+A cara dourada brava encara o +Z (`RAY_MODEL_YAW = 0`, conferido nas vistas do
+viewer offline); `MESH_FIGURINOS.raio = [true]`.
+
+- **O enxame de arcos (feedback: "mais deles, caóticos, velozes, pulsando, ao
+  redor do mesh e não acima")**: os 2 arcos tranquilos viraram **7 correntes**
+  (`ARC_RINGS` no topo do arquivo: plano, sentido, velocidade 2,4–4,2 rad/s,
+  frequência de pulso, dash e temperatura próprios, precessão nervosa ±0,4
+  rad, pulso de escala+brilho). LIÇÃO DE BUG: os uniforms `uTime/uCharge/
+  uAlpha` dos materiais de arco NUNCA eram alimentados no `useFrame` — dash,
+  flicker e zigue-zague estavam congelados, e era isso que "tranquilizava" o
+  efeito; agora correm todo frame. E o enxame flutuava sobre a cabeça porque
+  o `coreY = src.coreY·fit.s` somava `fit.pos[1]` DE NOVO (a base da malha já
+  vem plantada no chão do rig) — topológico da sonda caiu de 4,93 para ~4,4.
+- **Faíscas-POP do núcleo** (pedido: "estalam e somem rápido"): pool de 36
+  direções unitárias com shader `CRACK_VERT` (módulo do próprio arquivo) + o
+  `SPARK_FRAG` da faísca orbitante; cada partícula roda ciclo próprio, vive
+  ~35% do tempo (janela ~0,15 s), salta de s×0,34 para s×0,90 e morre
+  desbotando com flicker de hash; `uCharge` acelera e engorda. Turbinadas
+  também as órbitas (16→26 pontos, raios s×0,5–0,78).
+- **MEDIDO.raio reassinado 1,28 → 1,9 quadrado** (feedback: "comparado aos
+  monstros usados na fusão o raio ficou menor"): o Nv.6 nasce do ignis+zephyr
+  Nv.5 (invólucro 2,44 de mundo) e a régua antiga plantava a trovoada
+  magricela. Com 1,9 o `slotFit` segue no teto 1,15 e o encaixe sobe de 1,134
+  para ~1,68 (teto de altura 3,8/1,969 = 1,93 nunca vira gargalo; `formTop`
+  3,8 pinado porque ele mira o canhão, não a malha). Para o invólucro inteiro
+  morrer no anel r=2,5 os efeitos secundários foram encolhidos na régua:
+  arcos 0,84×s máx (pulso fecha em ~s×0,98), anéis de chão 0,78/1,05×s, aura
+  0,62×s deslocada 0,35, rajadas r0 = 0,45s+grow·0,18s.
+- **Sonda consertada no caminho**: `qa/probe-footprint.mjs` pulava a espera
+  com UMA unidade (`sc.length < 2` esvaziava o check de mediana) e lia a
+  unidade no MEIO do grow de spawn; agora o laço pulsa a maior escala e só
+  desce quando Δ < 0,005 entre amostras. `qa/probe-cracks.mjs` ganhou
+  `ray.glb` no alvo (rasgo depois: 0 por construção).
+- **Estado/verificação (17/nov):** `tsc` limpo · `npx vitest run` **505
+  passed / 3 skipped (45 arquivos)** · `npm run build` limpo (o GLB sai como
+  asset de 4,5 MB) · sonda ao vivo `raio@6` rodada 4×: mundo 2,25–2,48 / topo
+  ~4,4, SIM no buraco, SIM no anel, SOBREPOSIÇÕES 0, console limpo · spawns
+  de arena e bestiário sem erro de console; prints em `/tmp/opencode/shots-
+  ray/`. Teste visual feito no navegador do usuário e APROVADO.
+
+---
+
 ## 🔥 MALHAS NOVAS DO FOGO ENCARAM O +Z (rumos zerados) + ESCADA DE TAMANHO FECHADA PELO TOPO EM ESCALA ÚNICA, E ÁGUA Nv.2 RECUADA (16/nov/2026 — rodadas 8/8b/8c/8d do tabuleiro; aprovadas no navegador do usuário: fogo "ficou ótimo", água "ficou boa, pode versionar")
 
 A sessão abriu com o bug: "os monstros de fogo lvl3 e lvl5 estão olhando para lados opostos no campo quando deveriam estar olhando para frente como os demais". A causa era o **par malha×rumo**, não o rig: `fire_model_lvl3/4/5.glb` foram **REGERADOS em 16/nov encarando o +Z**, e os rumos 3/4 assinados na rodada 7 (π/2 − 35° no Nv.3, −π/2 + 45° no Nv.5) só existiam porque as malhas ANTIGAS vinham de lado dentro do arquivo — com as novas, eles viravam as feras de lado. `MODEL_YAWS = [0,0,0,0,0]` (`src/scene/IgnisMeshRig.tsx:85`). Como provar o rumo cru sem chutar radiano: `qa/mesh-viewer-shot.mjs` fotografa o GLB puro em 4 vistas (frente/costa/esq/dir) — foi assim que se confirmou que as 5 malhas do fogo e as 5 da água já nascem de frente no +Z.

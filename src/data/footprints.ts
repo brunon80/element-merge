@@ -194,7 +194,19 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
     { x: 2.81, z: 2.21 }, // tornado Nv.5: dragão dos ventos — o pior caso da família (2,43 de mundo)
   ],
   // ------------------------ árvore (uma forma) ---------------------------
-  raio: [{ x: 1.11, z: 1.14 }],
+  // RAIO DE MALHA 3D IMPORTADA (ray.glb, Nv.6): encaixe autoral no MESMO
+  // contrato dos puros — `MEDIDO = s·(meia-caixa + abraço)` com abraço
+  // `SHELL_HUG` 0,13 e a caixa crua da malha (x ±0,999, z ±0,481; rumo 0).
+  // Assinado em 1,9 quadrado DEPOIS do veredito visual (17/nov): a régua
+  // antiga (1,28) plantava a trovoada magricela ao lado das formas Nv.5 que
+  // entram na fusão (o raio nasce do ignis+zephyr Nv.5, invólucro 2,44 de
+  // mundo no anel). Com 1,9: `slotFit` segue no teto 1,15 (nada de mundo
+  // muda em canhão/mira), o encaixe sobe de 1,134 para 1,68 — ainda folgado
+  // do teto de altura 3,8/1,969 = 1,93 — e o corpo chega a ~3,9 de mundo
+  // (os dragões Nv.5 medem ~4,4 de envergadura). Os piores efeitos (aura de
+  // estilhaços deslocada 0,7, arcos 0,94×s, anel de chão 1,15×s) param em
+  // ~2,3 de mundo, dentro do anel 2,5 — conferido na sonda de footprint.
+  raio: [{ x: 1.9, z: 1.9 }],
   madeira: [{ x: 1.28, z: 1.0 }],
   magma: [{ x: 1.44, z: 1.43 }],
   gelo: [{ x: 1.72, z: 1.72 }],
@@ -248,8 +260,8 @@ export function familyRadius(species: SpeciesId): number {
  * para que o invólucro caiba no buraco (`MONSTER_FOOT_R`) e não toque no
  * vizinho. Como é a MESMA para todas as formas da família, a progressão visual
  * 2→1 nunca inverte. `SLOT_FIT_MAX` é o teto de ampliação: sem ele, o Raio
- * (autoral 1,11) cresceria 2,2× e viraria uma bola de relâmpago do tamanho do
- * buraco — e mais alto que o Colosso.
+ * (autoral 1,9, malha baixinha) cresceria ~1,3× e viraria uma bola de
+ * relâmpago do tamanho do buraco — e mais alto que o Colosso.
  */
 export function slotFit(species: SpeciesId): number {
   return Math.min(MONSTER_FOOT_R / familyRadius(species), SLOT_FIT_MAX);

@@ -974,6 +974,7 @@ export const MESH_FIGURINOS: Partial<Record<SpeciesId, boolean[]>> = {
   zephyr: [true, true, true, true, true], // árvore do vento inteira (wind_model_lvl1..5)
   golem: [true, true, true, true, true], // árvore da pedra inteira (golem_model_lvl1..5): Nv.1 = a cabeça; Nv.2 = o corpo; Nv.3-5 = as feras de quatro patas
   nereia: [true, true, true, true, true], // árvore da água inteira (water_model_lvl1..5)
+  raio: [true], // trovoada única Nv.6 (ray.glb) — as parts só seguram o palco enquanto o GLB carrega
 };
 
 export const MODELS: Record<SpeciesId, SpeciesModel> = {

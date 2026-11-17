@@ -38,18 +38,18 @@ import { getSpecies } from '../data/monsters';
 
 export const LIGHTNING_ATTACK_WINDOW = 0.42;
 /** fração da janela em que o raio está carregando a descarga */
-const LIGHTNING_WINDUP = 0.4;
+export const LIGHTNING_WINDUP = 0.4;
 
 const RAIO_DEF = getSpecies('raio');
 
-interface AttackPose {
+export interface AttackPose {
   charge: number; // energia acumulada (0..1) — nervuras e aletas acendem
   flash: number; // clarão do release (0..1, decai rápido)
   stepZ: number; // empurra o corpo para frente no disparo
   swell: number; // corpo estufa carregando / colapsa soltando
 }
 
-function attackPose(since: number): AttackPose {
+export function attackPose(since: number): AttackPose {
   const P: AttackPose = { charge: 0, flash: 0, stepZ: 0, swell: 0 };
   if (since < 0 || since > LIGHTNING_ATTACK_WINDOW) return P;
   const p = since / LIGHTNING_ATTACK_WINDOW;
@@ -70,7 +70,7 @@ function attackPose(since: number): AttackPose {
   return P;
 }
 
-function makeSparkGeo(n: number): THREE.BufferGeometry {
+export function makeSparkGeo(n: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 3);
   const rnd = new Float32Array(n * 3);
@@ -85,7 +85,7 @@ function makeSparkGeo(n: number): THREE.BufferGeometry {
   return g;
 }
 
-function makeStarburstGeo(seed: number, count: number, color: string): THREE.BufferGeometry {
+export function makeStarburstGeo(seed: number, count: number, color: string): THREE.BufferGeometry {
   const positions = new Float32Array(count * 9);
   const colors = new Float32Array(count * 9);
   const baseColor = new THREE.Color(color);
@@ -154,7 +154,7 @@ interface BurstBolt {
   volley: boolean;
 }
 
-const BURST_CAP = 6;
+export const BURST_CAP = 6;
 /** centro do núcleo no modelo (dodeca/ico/torus em y=1.15) */
 const CORE_Y = 1.15;
 
@@ -739,7 +739,7 @@ export function LightningRig({
  * (ligado/desligado nervoso, não fade suave) — a coroa de mini-descargas do
  * espírito da trovoada; acendem mais quando ele carrega o disparo.
  */
-const SPARK_VERT = /* glsl */ `
+export const SPARK_VERT = /* glsl */ `
 attribute vec3 aRand; // x: ângulo, y: fase, z: raio/velocidade
 uniform float uTime;
 uniform float uAlpha;
@@ -772,7 +772,7 @@ void main() {
 }
 `;
 
-const SPARK_FRAG = /* glsl */ `
+export const SPARK_FRAG = /* glsl */ `
 varying float vA;
 varying vec3 vC;
 void main() {

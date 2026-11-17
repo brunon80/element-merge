@@ -177,5 +177,6 @@ const targets =
     : [
         ...[1, 2, 3, 4, 5].map((l) => [`src/models/golem/golem_model_lvl${l}.glb`, 0.075]),
         ...[1, 2, 3, 4, 5].map((l) => [`src/models/fire/fire_model_lvl${l}.glb`, 0.06]),
+        [`src/models/ray/ray.glb`, 0.075], // trovoada Nv.6 (malha única)
       ];
 for (const [f, ufa] of targets) probe(fileURLToPath(new URL(`../${f}`, import.meta.url)), ufa);
