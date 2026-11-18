@@ -12,8 +12,9 @@ import type { Difficulty, MonsterLevel, SpeciesId, TileIndex } from '../types';
 
 /**
  * Composição do exército inimigo — módulo puro e determinístico (rng semeado).
- * O exército é calculado no momento do "Iniciar Combate": o orçamento do
- * inimigo é `coeff × valor do time do jogador`, e o valor de cada unidade é
+ * O exército é calculado no INÍCIO DA PREPARAÇÃO (e fica travado enquanto o
+ * jogador monta o próprio time): o orçamento do inimigo é `coeff × valor do
+ * time do jogador`, e o valor de cada unidade é
  * exatamente o custo de reposição pelas regras 2→1 em toda a árvore:
  *   Nv.1=100, Nv.2=200, ..., Nv.10=51200.
  * A IA NÃO ganha moedas nem unidades de graça: uma criatura da árvore custa,
@@ -45,6 +46,12 @@ export interface TeamPlanInput {
   /** Tiles livres do lado inimigo. */
   freeTiles: readonly TileIndex[];
   rand: () => number;
+  /**
+   * Valor de referência para dimensionar o exército quando o jogador ainda não
+   * tem ninguém em campo (ex.: sessão nova, tabuleiro vazio). Sem isso, um time
+   * vazio renderia um inimigo vazio. Tipicamente as moedas iniciais da partida.
+   */
+  fallbackValue?: number;
 }
 
 /** Espécies duras de roer: vão para a linha de frente. */
@@ -221,10 +228,16 @@ function pickTile(
 export function composeEnemyTeam(input: TeamPlanInput): TeamPlan {
   const rules = TEAM_RULES[input.difficulty];
   const rand = input.rand;
-  if (input.playerUnits.length === 0 || input.freeTiles.length === 0) {
+  if (input.freeTiles.length === 0) {
     return { units: [], budget: 0, spent: 0 };
   }
-  const value = teamValue(input.playerUnits);
+  // Time vazio (sessão nova): dimensionamos pelo valor-base de referência, para
+  // o jogador ver e se preparar contra um exército default da dificuldade.
+  const value =
+    input.playerUnits.length > 0 ? teamValue(input.playerUnits) : input.fallbackValue ?? 0;
+  if (value <= 0) {
+    return { units: [], budget: 0, spent: 0 };
+  }
   const budget = Math.max(
     SUMMON_COST,
     Math.round((rules.coeff * value) / SUMMON_COST) * SUMMON_COST,
@@ -241,7 +254,9 @@ export function composeEnemyTeam(input: TeamPlanInput): TeamPlan {
     (m, u) => Math.max(m, Math.min(u.level, getSpecies(u.species).levelMax)),
     0,
   );
-  const pureCap = Math.min(rules.maxLevel, playerMax);
+  // Com o tabuleiro do jogador vazio não há teto relativo a montar: o exército
+  // default usa o próprio teto de nível da dificuldade.
+  const pureCap = playerMax > 0 ? Math.min(rules.maxLevel, playerMax) : rules.maxLevel;
 
   const tiles: TileIndex[] = [...input.freeTiles];
   const units: PlannedUnit[] = [];

@@ -6,9 +6,11 @@ import { TEAM_RULES } from '../data/balance';
 import type { Difficulty, MonsterLevel, SpeciesId } from '../game/types';
 
 /**
- * Testes da composição do exército inimigo (novo fluxo): o time é calculado
- * no início do combate, escalado pelo valor do time do jogador × dificuldade,
- * usando apenas custos/legalidade derivados das regras de fusão.
+ * Testes da composição do exército inimigo: o time é calculado no início da
+ * preparação (e fica travado), escalado pelo valor do time do jogador ×
+ * dificuldade, usando apenas custos/legalidade derivados das regras de fusão.
+ * Com o tabuleiro do jogador vazio (sessão nova), um valor-base de referência
+ * (as moedas iniciais) dimensiona um exército default da dificuldade.
  */
 
 const PLAYERS: { species: SpeciesId; level: MonsterLevel }[] = [
@@ -77,7 +79,7 @@ describe('Orçamento e legalidade da composição', () => {
     }
   });
 
-  test('time do jogador vazio → nenhum inimigo, orçamento zero', () => {
+  test('tabuleiro vazio SEM valor-base → nenhum inimigo, orçamento zero', () => {
     const p = composeEnemyTeam({
       playerUnits: [],
       difficulty: 'hard',
@@ -86,6 +88,83 @@ describe('Orçamento e legalidade da composição', () => {
     });
     expect(p.units).toHaveLength(0);
     expect(p.budget).toBe(0);
+  });
+});
+
+describe('Time default da dificuldade (sessão nova: tabuleiro do jogador vazio)', () => {
+  const defaultPlan = (difficulty: Difficulty, seed: number, fallbackValue: number) =>
+    composeEnemyTeam({
+      playerUnits: [],
+      difficulty,
+      freeTiles: Array.from({ length: 12 }, (_, i) => i),
+      rand: mulberry32(seed),
+      fallbackValue,
+    });
+
+  test('tabuleiro vazio COM valor-base → exército default montado e legal', () => {
+    for (const d of ['easy', 'normal', 'hard'] as Difficulty[]) {
+      for (let seed = 1; seed <= 40; seed++) {
+        const p = defaultPlan(d, seed, 500); // moedas iniciais típicas
+        expect(p.budget).toBeGreaterThan(0);
+        expect(p.units.length).toBeGreaterThanOrEqual(1);
+        const cost = p.units.reduce((s, u) => s + unitCoinCost(u.species, u.level), 0);
+        expect(cost).toBeLessThanOrEqual(p.budget);
+        expect(cost).toBe(p.spent);
+        // legalidade: nível dentro do teto da própria dificuldade (sem time p/ limitar)
+        for (const u of p.units) {
+          const def = getSpecies(u.species);
+          if (def.levelMin === def.levelMax) expect(u.level).toBeLessThanOrEqual(TEAM_RULES[d].treeMaxLevel);
+          else expect(u.level).toBeLessThanOrEqual(TEAM_RULES[d].maxLevel);
+        }
+      }
+    }
+  });
+
+  test('default respeita o teto de nível da dificuldade: fácil para no Nv.2, difícil chega ao Nv.4', () => {
+    let easyMax = 0;
+    let hardPureMax = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const u of defaultPlan('easy', seed, 5000).units) {
+        if (getSpecies(u.species).levelMin !== getSpecies(u.species).levelMax)
+          easyMax = Math.max(easyMax, u.level);
+      }
+      for (const u of defaultPlan('hard', seed, 5000).units) {
+        if (getSpecies(u.species).levelMin !== getSpecies(u.species).levelMax)
+          hardPureMax = Math.max(hardPureMax, u.level);
+      }
+    }
+    expect(easyMax).toBeLessThanOrEqual(TEAM_RULES.easy.maxLevel);
+    expect(hardPureMax).toBe(TEAM_RULES.hard.maxLevel); // sem time do jogador, usa o próprio teto
+  });
+
+  test('default cresce com o valor-base: fallback maior → exército maior', () => {
+    let small = 0;
+    let big = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      small += defaultPlan('normal', seed, 500).spent;
+      big += defaultPlan('normal', seed, 5000).spent;
+    }
+    expect(big).toBeGreaterThan(small);
+  });
+});
+
+describe('Trava: o exército é montado uma única vez (não acompanha o time)', () => {
+  test('generateEnemyTeam é idempotente: chamar de novo não remonta nem duplica', () => {
+    const eng = makeEngine({ generateTeam: true, difficulty: 'normal', seed: 9 });
+    eng.generateEnemyTeam(); // simula a geração no início da preparação
+    const first = eng.aliveUnits('ai').length;
+    mustSummon(eng, 'golem'); // jogador muda o próprio time depois
+    eng.generateEnemyTeam(); // chamada repetida: backstop do startBattle
+    expect(eng.aliveUnits('ai').length).toBe(first);
+  });
+
+  test('startBattle depois de gerar na preparação não duplica o exército', () => {
+    const eng = makeEngine({ generateTeam: true, difficulty: 'normal', seed: 11 });
+    mustSummon(eng, 'golem');
+    eng.generateEnemyTeam(); // preparação montou o exército
+    const before = eng.aliveUnits('ai').length;
+    eng.startBattle(); // backstop não deve montar de novo
+    expect(eng.aliveUnits('ai').length).toBe(before);
   });
 });
 

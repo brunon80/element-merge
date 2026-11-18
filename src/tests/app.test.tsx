@@ -170,25 +170,31 @@ describe('App (smoke)', () => {
     useGameStore.getState().setMatchReward(100);
   });
 
-  test('sem cronômetro: botão exige criaturas, inimigo nasce no início do combate', () => {
+  test('inimigo aparece já na preparação e trava: montar o time não o remonta', () => {
     render(<App />);
     fireEvent.click(screen.getByTestId('play'));
 
+    // o exército inimigo já nasce montado na preparação (default da dificuldade,
+    // já que o tabuleiro do jogador está vazio nesta sessão nova)
+    expect(useGameStore.getState().units.some((u) => u.side === 'ai')).toBe(true);
+    const aiCount = useGameStore.getState().units.filter((u) => u.side === 'ai').length;
+
     const startBtn = screen.getByTestId('start-battle') as HTMLButtonElement;
-    expect(startBtn.disabled).toBe(true); // ainda sem criaturas na arena
+    expect(startBtn.disabled).toBe(true); // ainda sem criaturas DO JOGADOR na arena
     fireEvent.click(startBtn);
     expect(useGameStore.getState().phase).toBe('preparation');
 
     fireEvent.click(screen.getByTestId('shop-ignis'));
     expect((screen.getByTestId('start-battle') as HTMLButtonElement).disabled).toBe(false);
+    // travado: invocar o jogador NÃO remonta o exército inimigo
+    expect(useGameStore.getState().units.filter((u) => u.side === 'ai').length).toBe(aiCount);
+
     fireEvent.click(screen.getByTestId('start-battle'));
     // o driver sincroniza em rAF; no teste sincronizamos manualmente
     act(() => useGameStore.getState().syncUi());
 
     expect(screen.queryByTestId('start-battle')).toBeNull();
     expect(screen.getByTestId('timer-battle')).toBeInTheDocument();
-    // o exército inimigo nasce no início do combate (antes da barra mostrar
-    // qualquer coisa — a frase "Inimigo: N criaturas" saiu da tela)
     expect(useGameStore.getState().units.some((u) => u.side === 'ai')).toBe(true);
   });
 });

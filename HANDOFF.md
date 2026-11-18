@@ -812,6 +812,54 @@ nem bloom) é `mesh-viewer.html` + `qa/mesh-viewer-shot.mjs`.
 
 ---
 
+## ⚔️ O EXÉRCITO INIMIGO NASCE NA PREPARAÇÃO E FICA TRAVADO (regra de partida) — 18/nov/2026 (aprovada pelo usuário no navegador: "ficou bom, pode commitar e mandar pra dev")
+
+Antes: o exército inimigo era calculado e montado só em `engine.startBattle()`
+(`composeEnemyTeam` → `generateEnemyTeam`), e em sessão nova sem time o lado
+inimigo ficava vazio até o combate.
+
+- `gameStore.startNewMatch()` passa a chamar `engine.generateEnemyTeam()` logo
+  após restaurar o time retido → o inimigo já aparece montado do outro lado da
+  arena, ainda na fase de preparação.
+- `generateEnemyTeam()` (motor) virou **público** com trava `enemyGenerated`:
+  monta **uma única vez**. `startBattle()` é agora só *backstop* — gera se alguém
+  pulou a preparação (ex.: os sims de `difficultyCalibration.test.ts`, que
+  montam o player e chamam `startBattle`; por isso a calibração NÃO mudou).
+- Sessão nova (tabuleiro do jogador vazio): `composeEnemyTeam` ganhou
+  `fallbackValue` (as moedas iniciais; default no motor é `world.playerCoins`)
+  → monta um **exército default da dificuldade**, e sem time do jogador para
+  limitar usa o próprio teto da dificuldade (`pureCap` cai para `rules.maxLevel`).
+  Sem `fallbackValue` continua retornando vazio (comportamento antigo preservado;
+  pino em `ai.test.ts`).
+- **Travado**: mexer no próprio time (invocar / fundir / vender) NÃO remonta o
+  inimigo — é justamente para o jogador ver o exército e montar counters. Por
+  isso trocar a DIFICULDADE na preparação só vale para a PRÓXIMA partida
+  (comentário de `setDifficulty` ajustado).
+- UI: tooltip do "Iniciar Combate" (`BattleControls.tsx`) e a aba Regras +
+  Dificuldade do `SettingsMenu.tsx` reescritos ("já está em campo; encare a
+  arena para vê-lo"). OBS de UX: o tabuleiro inimigo fica fora do enquadre
+  padrão da câmera (nota antiga do HANDOFF) — as unidades são renderizadas já
+  na preparação, mas para VÊ-las o jogador orbita a câmera para o outro lado.
+
+Decisões desta rodada (confirmadas com o usuário): (a) o inimigo **trava** no
+início da preparação, em vez de ser espelho vivo que remonta a cada jogada;
+(b) em sessão nova o exército default **já aparece** com o tabuleiro vazio.
+
+IDEIA ADIADA (o usuário SÓ esclareceu, NÃO pediu para implementar): o orçamento
+do inimigo poderia escalar pela **carteira** (`teamValue + moedas disponíveis`,
+em vez de só `teamValue`), pois "a limitação agora vai ser a carteira — com
+dinheiro ele melhora o time, sem dinheiro vai com o que tem". Trocar isso é uma
+linha em `composeEnemyTeam` (a base do budget), e o motor já tem `playerCoins` à
+mão no `generateEnemyTeam`. Fica guardada como ideia, não como mudança.
+
+Verificação: `tsc --noEmit` OK · suíte **510 ✓ / 3 skip** (45 arquivos; a
+luvinha continua SEM inimigo — `startTutorial` não chama `generateEnemyTeam`) ·
+`npm run build` OK · aprovado no navegador. Testes: novos grupos em
+`ai.test.ts` ("Time default da dificuldade" e "Trava: montado uma única vez") +
+`app.test.tsx` reescrito ("inimigo aparece já na preparação e trava").
+
+---
+
 ## 🤖 A MÁQUINA A VAPOR EM MALHA 3D IMPORTADA — steam.glb veste o Nv.6; renome Steam Machine (17/nov/2026 — 16ª da linha "modelos 3D"; aprovada no navegador do usuário: "testei aqui está otimo, pode commitar e mandar pra dev" — com UM CORTE no meio do caminho: o balão de 1,9 m, bullet abaixo)
 
 O usuário trouxe `src/models/steam/steam.glb` (Nv.6, espécie autoral `vapor`,

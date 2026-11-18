@@ -158,6 +158,13 @@ export class GameEngine {
   private readonly rng: () => number;
   private readonly teamRules: TeamDifficultyParams;
   private readonly generateTeamOnStart: boolean;
+  /**
+   * O exército inimigo é montado UMA vez no início da preparação (e fica travado
+   * enquanto o jogador mexe no próprio time). `enemyGenerated` marca que já
+   * montamos; `startBattle` passa a ser só um backstop (monta se alguém pulou a
+   * preparação — ex.: partidas montadas direto nos testes de calibração).
+   */
+  private enemyGenerated = false;
   /** fila de tiros do doubleShot (adiados) — leitura pública p/ QA/testes:
    *  é como a camada visual lê o mundo; o motor continua o único dono */
   readonly pendingShots: PendingShot[] = [];
@@ -613,8 +620,9 @@ export class GameEngine {
     this.world.battleStarted = true;
     this.world.battleTime = 0;
     this.snapshotBattleTiles();
-    // O exército inimigo é calculado e montado AQUI: orçamento =
-    // dificuldade × valor do time do jogador, com níveis/híbridos da regra.
+    // Backstop: na partida real o exército já foi montado no início da
+    // preparação (ver store.startNewMatch). Aqui só montamos se ainda não
+    // montamos — ex.: testes que constroem o player e pulam a preparação.
     if (this.generateTeamOnStart) this.generateEnemyTeam();
     const pHave = this.aliveCount('player') > 0;
     const aHave = this.aliveCount('ai') > 0;
@@ -667,11 +675,15 @@ export class GameEngine {
   }
 
   /**
-   * Montagem do exército inimigo no início do combate: composição calculada
-   * pela dificuldade e pelo valor do time do jogador (orçamento = coeficiente
-   * × valor do time). Cada unidade nasce no seu nível e ganha spawn/animação.
+   * Montagem do exército inimigo no início da preparação: composição calculada
+   * pela dificuldade e pelo valor do time do jogador (orçamento = coeficiente ×
+   * valor do time). Sem time do jogador (sessão nova), usa `fallbackValue` — por
+   * padrão as moedas iniciais — para montar o exército default da dificuldade.
+   * Roda UMA vez: depois o inimigo fica travado, e o jogador monta counters.
    */
-  private generateEnemyTeam(): void {
+  generateEnemyTeam(fallbackValue?: number): void {
+    if (this.enemyGenerated) return;
+    this.enemyGenerated = true;
     const plan = composeEnemyTeam({
       playerUnits: this.aliveUnits('player').map((u) => ({
         species: u.species,
@@ -680,6 +692,7 @@ export class GameEngine {
       difficulty: this.world.difficulty,
       freeTiles: this.freeTiles('ai'),
       rand: this.rng,
+      fallbackValue: fallbackValue ?? this.world.playerCoins,
     });
     for (const pu of plan.units) {
       const unit = this.createUnit('ai', pu.species, pu.level, pu.tile);

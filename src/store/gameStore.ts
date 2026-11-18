@@ -708,6 +708,12 @@ export const useGameStore = create<GameStore>((set, get) => {
       for (const r of save.retainedRoster) {
         engine!.addRetainedUnit(r.species, r.level, r.tile);
       }
+      // O exército inimigo já aparece MONTADO no início da preparação, calculado
+      // a partir do time que o jogador trouxe (ou de um default da dificuldade,
+      // se a sessão é nova e o tabuleiro está vazio). Depois disso fica travado:
+      // o jogador vê o inimigo e monta counters, mas mudar o próprio time não o
+      // remonta. (O `startBattle` do motor é só backstop.)
+      engine!.generateEnemyTeam();
       set({
         screen: 'game',
         phase: 'preparation',
@@ -1051,8 +1057,10 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     setDifficulty(d: Difficulty): void {
       save.settings.difficulty = d;
-      // Afeta também a partida em andamento: o exército é calculado em
-      // startBattle usando world.difficulty.
+      // O exército desta partida já foi montado (e travado) no início da
+      // preparação, então trocar a dificuldade aqui vale para a PRÓXIMA partida.
+      // Guardamos no mundo mesmo assim para o backstop do startBattle (casos
+      // em que a preparação foi pulada).
       if (engine) engine.world.difficulty = d;
       persistSoon();
       set({ difficulty: d });

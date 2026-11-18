@@ -114,8 +114,9 @@ export function SettingsMenu() {
               <section>
                 <h3>Dificuldade</h3>
                 <p className="hint">
-                  Define como o exército inimigo é calculado no início do
-                  combate. Vale já para a preparação em andamento; o detalhe de
+                  Define como o exército inimigo é calculado no início da
+                  partida (preparação). Como o exército desta já foi montado e
+                  travado, trocar aqui vale para a próxima partida; o detalhe de
                   cada dificuldade está na aba <b>Regras</b>.
                 </p>
                 <div
@@ -374,9 +375,13 @@ export function SettingsMenu() {
                   <div>
                     <h4>Inimigo e dificuldade</h4>
                     <p>
-                      O exército inimigo é calculado e convocado{' '}
-                      <b>na hora em que o combate começa</b>, escalado pelo
-                      valor do seu time × a dificuldade escolhida:
+                      O exército inimigo já aparece <b>montado no início da
+                      preparação</b> (encare o outro lado da arena para vê-lo),
+                      calculado e travado a partir do <b>valor do seu time × a
+                      dificuldade escolhida</b> — mude seu time à vontade que ele
+                      não se remonta, então use a mostra para montar counters. Em
+                      uma sessão nova (sem time anterior), montamos um exército
+                      default da dificuldade para você já ter contra o que jogar:
                     </p>
                     <ul className="diff-list">
                       {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (

@@ -27,7 +27,7 @@ export function BattleControls() {
               ? 'Termine os 5 passos do tutorial primeiro (ou pule na faixa dele)'
               : myUnits === 0
                 ? 'Você precisa de ao menos uma criatura na arena'
-                : 'O exército inimigo será calculado pelo tamanho e nível do seu time × dificuldade. Regras completas em Configurações → Regras'
+                : 'O exército inimigo já está em campo (calculado pelo seu time × dificuldade) — encare a arena para vê-lo e montar seus counters. Regras em Configurações → Regras'
           }
         >
           ⚔ Iniciar Combate
