@@ -1,8 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import rayUrl from '../models/ray/ray.glb?url';
+import { RAY_URL } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -14,7 +13,6 @@ import { NOISE_GLSL } from './flameShaders';
 import {
   attackPose,
   BURST_CAP,
-  LightningRig as LightningStageRig,
   type LightningRigProps,
   LIGHTNING_ATTACK_WINDOW,
   LIGHTNING_WINDUP,
@@ -24,7 +22,9 @@ import {
   SPARK_VERT,
 } from './LightningRig';
 import { makeArcMaterial } from './lightningShaders';
+import { readModel } from './modelPreload';
 import { TEAM_TINT } from './stoneShaders';
+import { SummonReveal, SummonSigil } from './SummonFX';
 
 /**
  * RAIO DE MALHA 3D IMPORTADA — O ESPÍRITO DA TROVOADA (Nv.6): a forma da
@@ -32,10 +32,11 @@ import { TEAM_TINT } from './stoneShaders';
  * (`src/models/ray/ray.glb` — 29.619 vértices, UMA malha com UMA textura;
  * gerado no Hunyuan3D via trimesh, SEM ossos e SEM animação no arquivo): o
  * orbe dourado de cara irada enrolado nas fitas do vendaval, com os relâmpagos
- * já pintados/soldados na casca. O figurino elétrico procedural (o dodeca com
- * arcos orbitais do `LightningRig`) só aparece como fallback enquanto a malha
- * da forma carrega — e TODOS os efeitos da trovoada continuam vivos por cima
- * dela, no mesmo idioma dos quatro puros da linha "modelos 3D":
+ * já pintados/soldados na casca. Enquanto a malha desce (demanda), o SELO DE
+ * INVOCÇÃO (`SummonFX`) segura o buraco — o dodeca elétrico antigo do
+ * `LightningRig` nunca mais pipoca no campo; ele ficou só doador de efeitos e
+ * coreografia — e TODOS os efeitos da trovoada continuam vivos por cima da
+ * malha, no mesmo idioma dos quatro puros da linha "modelos 3D":
  *
  *  1. VIDA DA CASCA no material da malha: `onBeforeCompile` com o ruído de
  *     `flameShaders.ts` — relevo de faísca correndo pela superfície (na normal
@@ -75,8 +76,6 @@ const RAIO_DEF = getSpecies('raio');
 /** topo autoral da forma Nv.6 (o mesmo número que o motor usa p/ o canhão) */
 const TOP = formTop(RAIO_DEF, RAIO_DEF.levelMin);
 
-/** URL da malha da forma. O encaixe por bbox torna o resto automático */
-const RAY_URL = rayUrl;
 
 /**
  * Rumo da malha: o rig encara o INIMIGO no +Z local. O print de quatro vistas
@@ -255,21 +254,24 @@ interface BurstBolt {
 
 /**
  * Dispatcher do Raio: Nv.6 = a malha importada do espírito da trovoada;
- * enquanto ela carrega, o figurino elétrico procedural segura o palco (o mesmo
- * `Suspense` dos quatro puros).
+ * enquanto ela desce (demanda, uma vez por sessão), o SELO PROCEDURAL DE
+ * INVOCÇÃO segura o buraco — o figurino elétrico antigo nunca mais aparece
+ * no campo (a lição da troca: o monstro velho pipocando antes da malha
+ * desvaloriza o print; o `LightningRig` antigo ficou só doador de efeitos).
  */
 export function LightningRig(props: LightningRigProps) {
   return (
-    <Suspense fallback={<LightningStageRig {...props} />}>
-      <RayMeshRig {...props} />
+    <Suspense fallback={<SummonSigil species="raio" url={RAY_URL} seed={props.seed} />}>
+      <SummonReveal species="raio" seed={props.seed}>
+        <RayMeshRig {...props} />
+      </SummonReveal>
     </Suspense>
   );
 }
 
-/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma — suspensa pelo `readModel` (o dispatcher amarra o Suspense) */
 function RayMeshRig({ seed, unitId, emberScale = 1, demoAttackSeq }: LightningRigProps) {
-  useGLTF.preload(RAY_URL);
-  const { scene } = useGLTF(RAY_URL);
+  const { scene } = readModel(RAY_URL);
 
   // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
   // só o material é por unidade, para dano/charge não vazarem entre os bichos)

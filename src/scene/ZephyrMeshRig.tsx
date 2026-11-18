@@ -1,12 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import windLvl1Url from '../models/wind/wind_model_lvl1.glb?url';
-import windLvl2Url from '../models/wind/wind_model_lvl2.glb?url';
-import windLvl3Url from '../models/wind/wind_model_lvl3.glb?url';
-import windLvl4Url from '../models/wind/wind_model_lvl4.glb?url';
-import windLvl5Url from '../models/wind/wind_model_lvl5.glb?url';
+import { WIND_URLS } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -19,18 +14,20 @@ import {
   attackPose,
   WIND_ATTACK_WINDOW,
   WIND_ROLE_LOOK,
-  WindRig,
   type WindRigProps,
 } from './WindRig';
 import { WIND_FRAG } from './windShaders';
+import { readModel } from './modelPreload';
+import { SummonReveal, SummonSigil } from './SummonFX';
 
 /**
  * ZÉFIRO DE MALHA 3D IMPORTADA — A ÁRVORE INTEIRA (Nv.1..5): cada forma da
  * evolução do vento é um mesh texturizado criado fora do jogo
  * (`src/models/wind/wind_model_lvl1..5.glb` — ~25-31 mil vértices, UMA malha
- * com UMA textura cada; SEM ossos e SEM animação no arquivo). O figurino
- * procedural de vendaval (`WindRig`) só aparece como fallback enquanto a malha
- * da forma carrega.
+ * com UMA textura cada; SEM ossos e SEM animação no arquivo). Enquanto a
+ * malha desce (demanda), o SELO DE INVOCÇÃO (`SummonFX`) segura o buraco — o
+ * figurino procedural de vendaval (`WindRig`) nunca mais pipoca no campo;
+ * ficou só doador de efeitos e coreografia.
  *
  * Os GLBs não trazem esqueleto, então o ESQUELETO NASCE EM CÓDIGO
  * (`root → spine → head → fin0 → fin1`), com pesos de pele por FAIXA de Y
@@ -87,8 +84,7 @@ const TOP_BY_LEVEL = [1, 2, 3, 4, 5].map((l) => formTop(ZEPHYR_DEF, l));
 /** o vendaval criatura abaixo flutua mais (o Nv.5 da malha pisa o chão) — o mesmo FLOAT_Y do WindRig */
 const FLOAT_Y = [0.34, 0.24, 0.13, 0.05, 0];
 
-/** URL da malha da forma (índice = nível-1). O encaixe por bbox torna o resto automático */
-const WIND_URLS = [windLvl1Url, windLvl2Url, windLvl3Url, windLvl4Url, windLvl5Url];
+/** URL da malha da forma (índice = nível−1, mapa central em `modelUrls`). O encaixe por bbox torna o resto automático */
 const windUrlFor = (level: number): string => WIND_URLS[level - 1];
 
 /**
@@ -309,15 +305,20 @@ function ensureSkin(
 
 /**
  * Dispatcher do Zéfiro: Nv.1..5 = a malha importada da forma (sopro → dragão
- * dos ventos, uma por nível); enquanto a malha carrega, o figurino procedural
- * de vendaval do MESMO nível segura o palco.
+ * dos ventos, uma por nível); enquanto ela desce (demanda, uma vez por forma),
+ * o SELO PROCEDURAL DE INVOCÇÃO segura o buraco — o figurino de vendaval
+ * antigo nunca mais aparece no campo (a lição da troca: o monstro velho
+ * pipocando antes da malha desvaloriza o print; o `WindRig` antigo ficou só
+ * doador de efeitos).
  */
 export function ZephyrRig(props: WindRigProps) {
   const level = clampLevel(props.level);
-  // enquanto o GLB (3,7-4,6 MB) carrega, o figurino do nível segura o palco
+  const url = windUrlFor(level);
   return (
-    <Suspense fallback={<WindRig {...props} level={level} />}>
-      <WindMeshRig {...props} level={level} />
+    <Suspense fallback={<SummonSigil species="zephyr" level={level} url={url} seed={props.seed} />}>
+      <SummonReveal species="zephyr" level={level} seed={props.seed}>
+        <WindMeshRig {...props} level={level} />
+      </SummonReveal>
     </Suspense>
   );
 }
@@ -390,8 +391,7 @@ function WindMeshRig({
   level = LEVEL_1,
 }: WindRigProps) {
   const url = windUrlFor(level);
-  useGLTF.preload(url);
-  const { scene } = useGLTF(url);
+  const { scene } = readModel(url);
 
   // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
   // só o material é por unidade, para dano/flicker não vazarem entre os bichos)

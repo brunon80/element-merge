@@ -1,8 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import sandUrl from '../models/sand/sand.glb?url';
+import { SAND_URL } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -12,12 +11,13 @@ import type { MonsterLevel } from '../game/types';
 import { circleTexture, getGeometry, weldDispNormals } from './assets';
 import { NOISE_GLSL } from './flameShaders';
 import { BURST_CAP, makeSparkGeo, makeStarburstGeo, SPARK_FRAG } from './LightningRig';
+import { readModel } from './modelPreload';
+import { SummonReveal, SummonSigil } from './SummonFX';
 import {
   attackPose,
   GRIT_FRAG,
   makeGritGeo,
   SAND_ATTACK_WINDOW,
-  SandRig as SandStageRig,
   SAND_WINDUP,
   type SandRigProps,
 } from './SandRig';
@@ -28,10 +28,11 @@ import {
  * 30.560 vértices NÃO-indexados, UMA malha com UMA textura 2048²; PLY
  * re-empacotado, SEM ossos e SEM animação no arquivo): o colosso de areia
  * compactada com faixa-em-redemoinho cruzando o peito, ombros de duna e a
- * cauda de estilhaços atrás. O figurino procedural do deserto (o gênio do
- * `SandRig`) só aparece como fallback enquanto a malha da forma carrega — e
- * TODOS os efeitos da areia continuam vivos por cima dela, no mesmo idioma dos
- * oito figurinos da linha "modelos 3D":
+ * cauda de estilhaços atrás. Enquanto a malha desce (demanda), o SELO DE
+ * INVOCÇÃO (`SummonFX`) segura o buraco — o gênio do deserto do `SandRig`
+ * nunca mais pipoca no campo (ficou só doador de efeitos e coreografia) — e
+ * TODOS os efeitos da areia continuam vivos por cima da malha, no mesmo
+ * idioma dos oito figurinos da linha "modelos 3D":
  *
  *  1. AREIA BRILHANTE no material da malha (o pedido do usuário para esta
  *     espécie): `onBeforeCompile` com o ruído de `flameShaders.ts` — o GRÃO
@@ -83,8 +84,6 @@ const AREIA_DEF = getSpecies('areia');
 /** topo autoral da forma Nv.6 (o mesmo número que o motor usa p/ o canhão) */
 const TOP = formTop(AREIA_DEF, AREIA_DEF.levelMin);
 
-/** URL da malha da forma. O encaixe por bbox torna o resto automático */
-const SAND_URL = sandUrl;
 
 /**
  * Rumo da malha: o rig encara o INIMIGO no +Z local. O print de quatro vistas
@@ -334,21 +333,24 @@ interface BurstBolt {
 
 /**
  * Dispatcher da Areia: Nv.6 = a malha importada do golem de areia; enquanto
- * ela carrega, o figurino procedural do deserto segura o palco (o mesmo
- * `Suspense` dos demais figurinos da linha "modelos 3D").
+ * ela desce (demanda, uma vez por sessão), o SELO PROCEDURAL DE INVOCÇÃO
+ * segura o buraco — o figurino do deserto antigo nunca mais aparece no campo
+ * (a lição da troca: o monstro velho pipocando antes da malha desvaloriza o
+ * print; o `SandRig` antigo ficou só doador de efeitos).
  */
 export function SandRig(props: SandRigProps) {
   return (
-    <Suspense fallback={<SandStageRig {...props} />}>
-      <SandMeshRig {...props} />
+    <Suspense fallback={<SummonSigil species="areia" url={SAND_URL} seed={props.seed} />}>
+      <SummonReveal species="areia" seed={props.seed}>
+        <SandMeshRig {...props} />
+      </SummonReveal>
     </Suspense>
   );
 }
 
-/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma — suspensa pelo `readModel` (o dispatcher amarra o Suspense) */
 function SandMeshRig({ seed, unitId, embers, emberScale = 1, demoAttackSeq, smoke }: SandRigProps) {
-  useGLTF.preload(SAND_URL);
-  const { scene } = useGLTF(SAND_URL);
+  const { scene } = readModel(SAND_URL);
 
   // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
   // só o material é por unidade, para dano/charge não vazarem entre os bichos)

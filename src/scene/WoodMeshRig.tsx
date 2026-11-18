@@ -1,8 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import treeUrl from '../models/tree/tree.glb?url';
+import { TREE_URL } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -12,13 +11,14 @@ import type { MonsterLevel } from '../game/types';
 import { circleTexture, getGeometry, weldDispNormals } from './assets';
 import { NOISE_GLSL } from './flameShaders';
 import { BURST_CAP, makeSparkGeo, makeStarburstGeo, SPARK_FRAG } from './LightningRig';
+import { readModel } from './modelPreload';
 import { TEAM_TINT } from './stoneShaders';
+import { SummonReveal, SummonSigil } from './SummonFX';
 import {
   attackPose,
   makeSporeGeo,
   SPORE_FRAG,
   SPORE_VERT,
-  WoodRig as WoodStageRig,
   type WoodRigProps,
   WOOD_ATTACK_WINDOW,
   WOOD_WINDUP,
@@ -29,10 +29,11 @@ import {
  * espécie vira um mesh texturizado criado fora do jogo
  * (`src/models/tree/tree.glb` — 32.248 vértices, UMA malha com UMA textura;
  * PLY re-empacotado, SEM ossos e SEM animação no arquivo): o tronco-ancião de
- * cara irada, copa de raízes em coroa e os OLHOS CIANO pintados na casca. O
- * figurino procedural da floresta (o tronco com asas de cristal do `WoodRig`)
- * só aparece como fallback enquanto a malha da forma carrega — e TODOS os
- * efeitos da madeira continuam vivos por cima dela, no mesmo idioma dos cinco
+ * cara irada, copa de raízes em coroa e os OLHOS CIANO pintados na casca.
+ * Enquanto a malha desce (demanda), o SELO DE INVOCÇÃO (`SummonFX`) segura o
+ * buraco — o tronco com asas de cristal do `WoodRig` nunca mais pipoca no
+ * campo (ficou só doador de efeitos e coreografia) — e TODOS os efeitos da
+ * madeira continuam vivos por cima da malha, no mesmo idioma dos cinco
  * figurinos da linha "modelos 3D":
  *
  *  1. VIDA DA CASCA no material da malha: `onBeforeCompile` com o ruído de
@@ -75,8 +76,6 @@ const MADEIRA_DEF = getSpecies('madeira');
 /** topo autoral da forma Nv.6 (o mesmo número que o motor usa p/ o canhão) */
 const TOP = formTop(MADEIRA_DEF, MADEIRA_DEF.levelMin);
 
-/** URL da malha da forma. O encaixe por bbox torna o resto automático */
-const TREE_URL = treeUrl;
 
 /**
  * Rumo da malha: o rig encara o INIMIGO no +Z local. O print de quatro vistas
@@ -281,21 +280,24 @@ interface BurstBolt {
 
 /**
  * Dispatcher da Madeira: Nv.6 = a malha importada do ancião das raízes;
- * enquanto ela carrega, o figurino procedural da floresta segura o palco (o
- * mesmo `Suspense` dos cinco figurinos da linha "modelos 3D").
+ * enquanto ela desce (demanda, uma vez por sessão), o SELO PROCEDURAL DE
+ * INVOCÇÃO segura o buraco — o figurino da floresta antiga nunca mais
+ * aparece no campo (a lição da troca: o monstro velho pipocando antes da
+ * malha desvaloriza o print; o `WoodRig` antigo ficou só doador de efeitos).
  */
 export function WoodRig(props: WoodRigProps) {
   return (
-    <Suspense fallback={<WoodStageRig {...props} />}>
-      <TreeMeshRig {...props} />
+    <Suspense fallback={<SummonSigil species="madeira" url={TREE_URL} seed={props.seed} />}>
+      <SummonReveal species="madeira" seed={props.seed}>
+        <TreeMeshRig {...props} />
+      </SummonReveal>
     </Suspense>
   );
 }
 
-/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma — suspensa pelo `readModel` (o dispatcher amarra o Suspense) */
 function TreeMeshRig({ seed, unitId, embers, emberScale = 1, demoAttackSeq, smoke }: WoodRigProps) {
-  useGLTF.preload(TREE_URL);
-  const { scene } = useGLTF(TREE_URL);
+  const { scene } = readModel(TREE_URL);
 
   // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
   // só o material é por unidade, para dano/charge não vazarem entre os bichos)

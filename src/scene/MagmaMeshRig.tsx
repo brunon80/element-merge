@@ -1,8 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import lavaUrl from '../models/lava/lava.glb?url';
+import { LAVA_URL } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -17,11 +16,12 @@ import {
   EMBER_VERT,
   MAGMA_ATTACK_WINDOW,
   MAGMA_WINDUP,
-  MagmaRig as MagmaStageRig,
   makeEmberGeo,
   type MagmaRigProps,
 } from './MagmaRig';
 import { BURST_CAP, makeSparkGeo, makeStarburstGeo, SPARK_FRAG } from './LightningRig';
+import { readModel } from './modelPreload';
+import { SummonReveal, SummonSigil } from './SummonFX';
 
 /**
  * MAGMA DE MALHA 3D IMPORTADA — O COLOSSO DE LAVA (Nv.6): a forma da espécie
@@ -29,10 +29,11 @@ import { BURST_CAP, makeSparkGeo, makeStarburstGeo, SPARK_FRAG } from './Lightni
  * 24.643 vértices NÃO-indexados, UMA malha com UMA textura 2048²; PLY
  * re-empacotado, SEM ossos e SEM animação no arquivo): o colosso de blocos de
  * basalto quase preto com rios de lava laranja nas costuras, o peito com uma
- * FORNALHA acesa e a boca de cratera no topo da cabeça. O figurino procedural
- * do vulcão (os três socalcos do `MagmaRig`) só aparece como fallback enquanto
- * a malha da forma carrega — e TODOS os efeitos do magma continuam vivos por
- * cima dela, no mesmo idioma dos sete figurinos da linha "modelos 3D":
+ * FORNALHA acesa e a boca de cratera no topo da cabeça. Enquanto a malha
+ * desce (demanda), o SELO DE INVOCÇÃO (`SummonFX`) segura o buraco — os três
+ * socalcos do `MagmaRig` nunca mais pipocam no campo (ficaram só doadores de
+ * efeitos e coreografia) — e TODOS os efeitos do magma continuam vivos por
+ * cima da malha, no mesmo idioma dos sete figurinos da linha "modelos 3D":
  *
  *  1. LAVA VIVA no material da malha (o pedido do usuário para esta espécie):
  *     `onBeforeCompile` com o ruído de `flameShaders.ts` — os VEIOS DE LAVA
@@ -84,8 +85,6 @@ const MAGMA_DEF = getSpecies('magma');
 /** topo autoral da forma Nv.6 (o mesmo número que o motor usa p/ o canhão) */
 const TOP = formTop(MAGMA_DEF, MAGMA_DEF.levelMin);
 
-/** URL da malha da forma. O encaixe por bbox torna o resto automático */
-const LAVA_URL = lavaUrl;
 
 /**
  * Rumo da malha: o rig encara o INIMIGO no +Z local. O print de quatro vistas
@@ -299,21 +298,24 @@ interface BurstBolt {
 
 /**
  * Dispatcher do Magma: Nv.6 = a malha importada do colosso de lava; enquanto
- * ela carrega, o figurino procedural do vulcão segura o palco (o mesmo
- * `Suspense` dos demais figurinos da linha "modelos 3D").
+ * ela desce (demanda, uma vez por sessão), o SELO PROCEDURAL DE INVOCÇÃO
+ * segura o buraco — o figurino do vulcão antigo nunca mais aparece no campo
+ * (a lição da troca: o monstro velho pipocando antes da malha desvaloriza o
+ * print; o `MagmaRig` antigo ficou só doador de efeitos).
  */
 export function MagmaRig(props: MagmaRigProps) {
   return (
-    <Suspense fallback={<MagmaStageRig {...props} />}>
-      <MagmaMeshRig {...props} />
+    <Suspense fallback={<SummonSigil species="magma" url={LAVA_URL} seed={props.seed} />}>
+      <SummonReveal species="magma" seed={props.seed}>
+        <MagmaMeshRig {...props} />
+      </SummonReveal>
     </Suspense>
   );
 }
 
-/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma — suspensa pelo `readModel` (o dispatcher amarra o Suspense) */
 function MagmaMeshRig({ seed, unitId, embers, emberScale = 1, demoAttackSeq, smoke }: MagmaRigProps) {
-  useGLTF.preload(LAVA_URL);
-  const { scene } = useGLTF(LAVA_URL);
+  const { scene } = readModel(LAVA_URL);
 
   // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
   // só o material é por unidade, para dano/charge não vazarem entre os bichos)

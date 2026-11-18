@@ -1,8 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import iceUrl from '../models/ice/ice.glb?url';
+import { ICE_URL } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -15,13 +14,14 @@ import {
   attackPose,
   FLAKE_FRAG,
   FLAKE_VERT,
-  IceRig as IceStageRig,
   ICE_ATTACK_WINDOW,
   ICE_WINDUP,
   makeFlakeGeo,
   type IceRigProps,
 } from './IceRig';
 import { BURST_CAP, makeSparkGeo, makeStarburstGeo, SPARK_FRAG } from './LightningRig';
+import { readModel } from './modelPreload';
+import { SummonReveal, SummonSigil } from './SummonFX';
 
 /**
  * GELO DE MALHA 3D IMPORTADA — O CUBO DE GELO (Nv.6): a forma da espécie vira
@@ -29,10 +29,11 @@ import { BURST_CAP, makeSparkGeo, makeStarburstGeo, SPARK_FRAG } from './Lightni
  * vértices NÃO-indexados, UMA malha com UMA textura 2048²; PLY re-empacotado,
  * SEM ossos e SEM animação no arquivo): o cubo de gelo de dois andares com
  * carepa de neve por cima, icicles azuis na coroa e a CARA IRADA de olhos
- * glaciares pintada na frente. O figurino procedural do glaciar (o golem de
- * cristal do `IceRig`) só aparece como fallback enquanto a malha da forma
- * carrega — e TODOS os efeitos do gelo continuam vivos por cima dela, no
- * mesmo idioma dos seis figurinos da linha "modelos 3D":
+ * glaciares pintada na frente. Enquanto a malha desce (demanda), o SELO DE
+ * INVOCÇÃO (`SummonFX`) segura o buraco — o golem de cristal do `IceRig`
+ * nunca mais pipoca no campo (ficou só doador de efeitos e coreografia) — e
+ * TODOS os efeitos do gelo continuam vivos por cima da malha, no mesmo
+ * idioma dos seis figurinos da linha "modelos 3D":
  *
  *  1. VIDA DA CASCA no material da malha: `onBeforeCompile` com o ruído de
  *     `flameShaders.ts` — a GEADA rastejando devagar pelo relevo (na normal
@@ -79,8 +80,6 @@ const GELO_DEF = getSpecies('gelo');
 /** topo autoral da forma Nv.6 (o mesmo número que o motor usa p/ o canhão) */
 const TOP = formTop(GELO_DEF, GELO_DEF.levelMin);
 
-/** URL da malha da forma. O encaixe por bbox torna o resto automático */
-const ICE_URL = iceUrl;
 
 /**
  * Rumo da malha: o rig encara o INIMIGO no +Z local. O print de quatro vistas
@@ -294,21 +293,24 @@ interface BurstBolt {
 
 /**
  * Dispatcher do Gelo: Nv.6 = a malha importada do cubo de gelo; enquanto ela
- * carrega, o figurino procedural do glaciar segura o palco (o mesmo `Suspense`
- * dos demais figurinos da linha "modelos 3D").
+ * desce (demanda, uma vez por sessão), o SELO PROCEDURAL DE INVOCÇÃO segura o
+ * buraco — o figurino do glaciar antigo nunca mais aparece no campo (a lição
+ * da troca: o monstro velho pipocando antes da malha desvaloriza o print; o
+ * `IceRig` antigo ficou só doador de efeitos).
  */
 export function IceRig(props: IceRigProps) {
   return (
-    <Suspense fallback={<IceStageRig {...props} />}>
-      <IceMeshRig {...props} />
+    <Suspense fallback={<SummonSigil species="gelo" url={ICE_URL} seed={props.seed} />}>
+      <SummonReveal species="gelo" seed={props.seed}>
+        <IceMeshRig {...props} />
+      </SummonReveal>
     </Suspense>
   );
 }
 
-/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma — suspensa pelo `readModel` (o dispatcher amarra o Suspense) */
 function IceMeshRig({ seed, unitId, embers, emberScale = 1, demoAttackSeq, smoke }: IceRigProps) {
-  useGLTF.preload(ICE_URL);
-  const { scene } = useGLTF(ICE_URL);
+  const { scene } = readModel(ICE_URL);
 
   // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
   // só o material é por unidade, para dano/charge não vazarem entre os bichos)

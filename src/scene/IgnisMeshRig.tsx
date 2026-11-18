@@ -1,12 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import fireLvl1Url from '../models/fire/fire_model_lvl1.glb?url';
-import fireLvl2Url from '../models/fire/fire_model_lvl2.glb?url';
-import fireLvl3Url from '../models/fire/fire_model_lvl3.glb?url';
-import fireLvl4Url from '../models/fire/fire_model_lvl4.glb?url';
-import fireLvl5Url from '../models/fire/fire_model_lvl5.glb?url';
+import { FIRE_URLS } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -14,16 +9,19 @@ import { getSpecies } from '../data/monsters';
 import { getEngine } from '../store/gameStore';
 import type { MonsterLevel } from '../game/types';
 import { circleTexture, weldDispNormals } from './assets';
-import { attackPose, FlameRig, ROLE_LOOK, type FlameRigProps } from './FlameRig';
+import { attackPose, ROLE_LOOK, type FlameRigProps } from './FlameRig';
 import { makeEmberParticles, NOISE_GLSL } from './flameShaders';
+import { readModel } from './modelPreload';
+import { SummonReveal, SummonSigil } from './SummonFX';
 
 /**
  * IGNIS DE MALHA 3D IMPORTADA — A ÁRVORE INTEIRA (Nv.1..5): cada forma da
  * evolução do fogo é um mesh texturizado criado fora do jogo
  * (`src/models/fire/fire_model_lvl1..5.glb` — ~21-27 mil vértices, UMA malha
  * com UMA textura cada; gerados no Hunyuan3D, SEM ossos e SEM animação no
- * arquivo). O figurino procedural de chamas (`FlameRig`) só aparece como
- * fallback enquanto a malha da forma carrega.
+ * arquivo). Enquanto a malha desce (demanda), o SELO DE INVOCÇÃO (`SummonFX`)
+ * segura o buraco — o figurino procedural de chamas (`FlameRig`) nunca mais
+ * pipoca no campo; ficou só doador de efeitos e coreografia.
  *
  * Os GLBs não trazem esqueleto, então o ESQUELETO NASCE EM CÓDIGO:
  * `root → spine → head → hair0 → hair1`, com pesos de pele (2 ossos/vértice)
@@ -63,8 +61,7 @@ const LEVEL_1 = 1;
 /** topo autoral por forma (Nv.1..5) — a mesma escada que o motor usa p/ o canhão */
 const TOP_BY_LEVEL = [1, 2, 3, 4, 5].map((l) => formTop(IGNIS_DEF, l));
 
-/** URL da malha da forma (índice = nível-1). O encaixe por bbox torna o resto automático */
-const FIRE_URLS = [fireLvl1Url, fireLvl2Url, fireLvl3Url, fireLvl4Url, fireLvl5Url];
+/** URL da malha da forma (índice = nível−1, mapa central em `modelUrls`). O encaixe por bbox torna o resto automático */
 const fireUrlFor = (level: number): string => FIRE_URLS[level - 1];
 
 /**
@@ -267,20 +264,25 @@ function ensureSkin(
 
 /**
  * Dispatcher do Ignis: Nv.1..5 = a malha importada da forma (faísca → dragão
- * de fogo, uma por nível); enquanto a malha carrega, o figurino procedural de
- * chamas do MESMO nível segura o palco.
+ * de fogo, uma por nível); enquanto ela desce (demanda, uma vez por forma), o
+ * SELO PROCEDURAL DE INVOCÇÃO segura o buraco — o figurino de chamas antigo
+ * nunca mais aparece no campo (a lição da troca: o monstro velho pipocando
+ * antes da malha desvaloriza o print; o `FlameRig` antigo ficou só doador de
+ * efeitos).
  */
 export function IgnisRig(props: FlameRigProps) {
   const level = clampLevel(props.level);
-  // enquanto o GLB (2,5-5 MB) carrega, o figurino do nível segura o palco
+  const url = fireUrlFor(level);
   return (
-    <Suspense fallback={<FlameRig {...props} level={level} />}>
-      <FireMeshRig {...props} level={level} />
+    <Suspense fallback={<SummonSigil species="ignis" level={level} url={url} seed={props.seed} />}>
+      <SummonReveal species="ignis" level={level} seed={props.seed}>
+        <FireMeshRig {...props} level={level} />
+      </SummonReveal>
     </Suspense>
   );
 }
 
-/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma — suspensa pelo `readModel` (o dispatcher amarra o Suspense) */
 function FireMeshRig({
   seed,
   unitId,
@@ -290,8 +292,7 @@ function FireMeshRig({
   level = LEVEL_1,
 }: FlameRigProps) {
   const url = fireUrlFor(level);
-  useGLTF.preload(url);
-  const { scene } = useGLTF(url);
+  const { scene } = readModel(url);
 
   // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
   // só o material é por unidade, para dano/flicker não vazarem entre os bichos)

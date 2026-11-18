@@ -1,8 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import steamUrl from '../models/steam/steam.glb?url';
+import { STEAM_URL } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -12,12 +11,13 @@ import type { MonsterLevel } from '../game/types';
 import { circleTexture, getGeometry, weldDispNormals } from './assets';
 import { NOISE_GLSL } from './flameShaders';
 import { BURST_CAP, makeSparkGeo, makeStarburstGeo, SPARK_FRAG } from './LightningRig';
+import { readModel } from './modelPreload';
+import { SummonReveal, SummonSigil } from './SummonFX';
 import {
   attackPose,
   makeSteamRiseGeo,
   RISE_FRAG,
   STEAM_LOOK,
-  VaporRig as VaporStageRig,
   VAPOR_ATTACK_WINDOW,
   VAPOR_WINDUP,
   type VaporRigProps,
@@ -29,10 +29,11 @@ import {
  * 27.950 vértices NÃO-indexados, UMA malha com UMA textura 2048²; PLY
  * re-empacotado, SEM ossos e SEM animação no arquivo): o robô-caldeira de
  * chapa enferrujada com o portal de fogo aceso no peito, as janelinhas de
- * água azul viva nas costuras e as CHAMINÉS nos ombros e na cabeça. O
- * figurino procedural da caldeira (o `VaporRig`) só aparece como fallback
- * enquanto a malha da forma carrega — e TODOS os efeitos do vapor continuam
- * vivos por cima dela, no mesmo idioma dos demais figurinos da linha
+ * água azul viva nas costuras e as CHAMINÉS nos ombros e na cabeça. Enquanto
+ * a malha desce (demanda), o SELO DE INVOCÇÃO (`SummonFX`) segura o buraco —
+ * o figurino da caldeira (`VaporRig`) nunca mais pipoca no campo (ficou só
+ * doador de efeitos e coreografia) — e TODOS os efeitos do vapor continuam
+ * vivos por cima da malha, no mesmo idioma dos demais figurinos da linha
  * "modelos 3D":
  *
  *  1. VAPOR SAINDO DAS PERNAS E BRAÇOS-OMBROS (o pedido do usuário para esta
@@ -87,8 +88,6 @@ const VAPOR_DEF = getSpecies('vapor');
 /** topo autoral da forma Nv.6 (o mesmo número que o motor usa p/ o canhão) */
 const TOP = formTop(VAPOR_DEF, VAPOR_DEF.levelMin);
 
-/** URL da malha da forma. O encaixe por bbox torna o resto automático */
-const STEAM_URL = steamUrl;
 
 /**
  * Rumo da malha: o rig encara o INIMIGO no +Z local. O print de quatro vistas
@@ -345,21 +344,24 @@ interface BurstBolt {
 
 /**
  * Dispatcher do Vapor: Nv.6 = a malha importada da máquina a vapor; enquanto
- * ela carrega, o figurino procedural da caldeira segura o palco (o mesmo
- * `Suspense` dos demais figurinos da linha "modelos 3D").
+ * ela desce (demanda, uma vez por sessão), o SELO PROCEDURAL DE INVOCÇÃO
+ * segura o buraco — o figurino da caldeira antigo nunca mais aparece no
+ * campo (a lição da troca: o monstro velho pipocando antes da malha
+ * desvaloriza o print; o `VaporRig` antigo ficou só doador de efeitos).
  */
 export function VaporRig(props: VaporRigProps) {
   return (
-    <Suspense fallback={<VaporStageRig {...props} />}>
-      <VaporMeshRig {...props} />
+    <Suspense fallback={<SummonSigil species="vapor" url={STEAM_URL} seed={props.seed} />}>
+      <SummonReveal species="vapor" seed={props.seed}>
+        <VaporMeshRig {...props} />
+      </SummonReveal>
     </Suspense>
   );
 }
 
-/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma — suspensa pelo `readModel` (o dispatcher amarra o Suspense) */
 function VaporMeshRig({ seed, unitId, embers, emberScale = 1, demoAttackSeq, smoke }: VaporRigProps) {
-  useGLTF.preload(STEAM_URL);
-  const { scene } = useGLTF(STEAM_URL);
+  const { scene } = readModel(STEAM_URL);
 
   // a malha + a textura da fonte (o geometry é COMPARTILHADO entre instâncias;
   // só o material é por unidade, para dano/carga não vazarem entre os bichos)

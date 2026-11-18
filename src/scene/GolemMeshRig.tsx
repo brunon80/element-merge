@@ -1,12 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import golemLvl1Url from '../models/golem/golem_model_lvl1.glb?url';
-import golemLvl2Url from '../models/golem/golem_model_lvl2.glb?url';
-import golemLvl3Url from '../models/golem/golem_model_lvl3.glb?url';
-import golemLvl4Url from '../models/golem/golem_model_lvl4.glb?url';
-import golemLvl5Url from '../models/golem/golem_model_lvl5.glb?url';
+import { GOLEM_MESH_URLS } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -22,15 +17,17 @@ import {
   STONE_ATTACK_WINDOW,
   STONE_ROLE_LOOK,
   STONE_WINDUP,
-  StoneRig,
   type StoneRigProps,
 } from './StoneRig';
 import { makeStoneMaterial, TEAM_TINT } from './stoneShaders';
+import { readModel } from './modelPreload';
+import { SummonReveal, SummonSigil } from './SummonFX';
 
 /**
  * GOLEM DE MALHA 3D IMPORTADA (linha "modelos 3d", molde do Ignis/Zéfiro/Nereia):
- * A ÁRVORE INTEIRA (Nv.1..5) são meshes texturizados criados fora do jogo — o
- * StoneRig só segura o palco enquanto a malha carrega (e no fallback de erro).
+ * A ÁRVORE INTEIRA (Nv.1..5) são meshes texturizados criados fora do jogo —
+ * enquanto a malha desce (demanda), o SELO DE INVOCÇÃO (`SummonFX`) segura o
+ * buraco (o StoneRig antigo nunca pipoca no campo; ficou só doador de efeitos).
  * A ESCADA COMEÇA NA CABEÇA: o Nv.1 é SÓ A CABEÇA
  * (`src/models/golem/golem_model_lvl1.glb` — 24.633 vértices, ~40 mil
  * triângulos, UMA malha com UMA textura; esfera com olhos verdes e musgo no
@@ -148,8 +145,7 @@ const GOLEM_DEF = getSpecies('golem');
 const TOP_BY_LEVEL = [1, 2, 3, 4, 5].map((l) => formTop(GOLEM_DEF, l));
 const LEVEL_1 = 1;
 
-/** URL da malha da forma (índice = nível-1) */
-const GOLEM_MESH_URLS = [golemLvl1Url, golemLvl2Url, golemLvl3Url, golemLvl4Url, golemLvl5Url];
+/** URL da malha da forma (índice = nível−1, mapa central em `modelUrls`) */
 const golemMeshUrlFor = (level: number): string => GOLEM_MESH_URLS[level - 1];
 
 /**
@@ -534,19 +530,24 @@ function ensureSkin(
 /**
  * Dispatcher do Golem: a ÁRVORE INTEIRA (Nv.1..5) é malha importada (a cabeça
  * do penedo → o corpo que antes vestia o Nv.1 → as três feras de quatro patas).
- * O StoneRig segura o palco só enquanto o GLB carrega (e no fallback).
+ * Enquanto a malha desce (demanda, uma vez por forma), o SELO PROCEDURAL DE
+ * INVOCÇÃO segura o buraco — o penedo antigo nunca mais aparece no campo (a
+ * lição da troca: o monstro velho pipocando antes da malha desvaloriza o
+ * print; o `StoneRig` antigo ficou só doador de efeitos).
  */
 export function GolemRig(props: StoneRigProps) {
   const level = clampLevel(props.level);
-  // enquanto o GLB (5,3-6 MB) carrega, o penedo antigo segura o palco
+  const url = golemMeshUrlFor(level);
   return (
-    <Suspense fallback={<StoneRig {...props} level={level} />}>
-      <GolemMeshRig {...props} level={level} />
+    <Suspense fallback={<SummonSigil species="golem" level={level} url={url} seed={props.seed} />}>
+      <SummonReveal species="golem" level={level} seed={props.seed}>
+        <GolemMeshRig {...props} level={level} />
+      </SummonReveal>
     </Suspense>
   );
 }
 
-/** malha pura da forma (Nv.1-5) — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma (Nv.1-5) — suspensa pelo `readModel` (o dispatcher amarra o Suspense) */
 function GolemMeshRig({
   seed,
   unitId,
@@ -559,8 +560,7 @@ function GolemMeshRig({
   const level = clampLevel(levelProp);
   const topY = TOP_BY_LEVEL[level - 1];
   const url = golemMeshUrlFor(level);
-  useGLTF.preload(url);
-  const { scene } = useGLTF(url);
+  const { scene } = readModel(url);
 
   // a malha + a textura da fonte (geometry COMPARTILHADO entre instâncias;
   // material e esqueleto são por unidade)

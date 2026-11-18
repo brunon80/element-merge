@@ -1,12 +1,7 @@
-import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import waterLvl1Url from '../models/water/water_model_lvl1.glb?url';
-import waterLvl2Url from '../models/water/water_model_lvl2.glb?url';
-import waterLvl3Url from '../models/water/water_model_lvl3.glb?url';
-import waterLvl4Url from '../models/water/water_model_lvl4.glb?url';
-import waterLvl5Url from '../models/water/water_model_lvl5.glb?url';
+import { WATER_URLS } from './modelUrls';
 import { DEATH_ANIMATION_WINDOW } from '../data/balance';
 import { footprintOf } from '../data/footprints';
 import { formTop } from '../data/forms';
@@ -24,17 +19,19 @@ import {
   WATER_ATTACK_WINDOW,
   WATER_ROLE_LOOK,
   WATER_WINDUP,
-  WaterRig,
   type WaterRigProps,
 } from './WaterRig';
+import { readModel } from './modelPreload';
+import { SummonReveal, SummonSigil } from './SummonFX';
 
 /**
  * NEREIA DE MALHA 3D IMPORTADA — A ÁRVORE INTEIRA (Nv.1..5): cada forma da
  * evolução da água é um mesh texturizado criado fora do jogo
  * (`src/models/water/water_model_lvl1..5.glb` — 21-29 mil vértices, UMA malha
- * com UMA textura cada; SEM ossos e SEM animação no arquivo). O figurino
- * procedural de maré (`WaterRig`) só aparece como fallback enquanto a malha da
- * forma carrega.
+ * com UMA textura cada; SEM ossos e SEM animação no arquivo). Enquanto a
+ * malha desce (demanda), o SELO DE INVOCÇÃO (`SummonFX`) segura o buraco — o
+ * figurino procedural de maré (`WaterRig`) nunca mais pipoca no campo; ficou
+ * só doador de efeitos e coreografia.
  *
  * ⚠️ A ESCADA DOS ARQUIVOS: os GLBs chegaram da esteira de exportação em ordem
  * INVERTIDA em relação às artes 2D de referência (o arquivo "lvl2" trazia o
@@ -96,8 +93,7 @@ const TOP_BY_LEVEL = [1, 2, 3, 4, 5].map((l) => formTop(NEREIA_DEF, l));
  */
 const FLOAT_Y = [0.042, 0.05, 0.06, 0.04, 0.08];
 
-/** URL da malha da forma (índice = nível-1). O encaixe por bbox torna o resto automático */
-const WATER_URLS = [waterLvl1Url, waterLvl2Url, waterLvl3Url, waterLvl4Url, waterLvl5Url];
+/** URL da malha da forma (índice = nível−1, mapa central em `modelUrls`). O encaixe por bbox torna o resto automático */
 const waterUrlFor = (level: number): string => WATER_URLS[level - 1];
 
 /**
@@ -254,20 +250,25 @@ function ensureSkin(
 
 /**
  * Dispatcher da Nereia: Nv.1..5 = a malha importada da forma (gotinha →
- * axolotl → hippocampão → draco → dragão alado, uma por nível); enquanto a
- * malha carrega, o figurino procedural de maré do MESMO nível segura o palco.
+ * axolotl → hippocampão → draco → dragão alado, uma por nível); enquanto ela
+ * desce (demanda, uma vez por forma), o SELO PROCEDURAL DE INVOCÇÃO segura o
+ * buraco — o figurino de maré antigo nunca mais aparece no campo (a lição da
+ * troca: o monstro velho pipocando antes da malha desvaloriza o print; o
+ * `WaterRig` antigo ficou só doador de efeitos).
  */
 export function NereiaRig(props: WaterRigProps) {
   const level = clampLevel(props.level);
-  // enquanto o GLB (3,4-5,3 MB) carrega, o figurino do nível segura o palco
+  const url = waterUrlFor(level);
   return (
-    <Suspense fallback={<WaterRig {...props} level={level} />}>
-      <WaterMeshRig {...props} level={level} />
+    <Suspense fallback={<SummonSigil species="nereia" level={level} url={url} seed={props.seed} />}>
+      <SummonReveal species="nereia" level={level} seed={props.seed}>
+        <WaterMeshRig {...props} level={level} />
+      </SummonReveal>
     </Suspense>
   );
 }
 
-/** malha pura da forma — suspensa pelo useGLTF (o dispatcher amarra o Suspense) */
+/** malha pura da forma — suspensa pelo `readModel` (o dispatcher amarra o Suspense) */
 function WaterMeshRig({
   seed,
   unitId,
@@ -279,8 +280,7 @@ function WaterMeshRig({
 }: WaterRigProps) {
   const level = clampLevel(levelProp);
   const url = waterUrlFor(level);
-  useGLTF.preload(url);
-  const { scene } = useGLTF(url);
+  const { scene } = readModel(url);
 
   // a malha + a textura da fonte (geometry COMPARTILHADO entre instâncias;
   // material e esqueleto são por unidade)

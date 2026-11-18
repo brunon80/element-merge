@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
 import { ELEMENTS } from '../data/elements';
 import { getSpecies, PURE_SPECIES_IDS } from '../data/monsters';
+import { MODEL_URLS_BY_SPECIES } from '../scene/modelUrls';
+import { ensureModel } from '../scene/modelPreload';
 import { useGameStore } from '../store/gameStore';
 import type { SpeciesId } from '../game/types';
 import { SUMMON_COST, TILES_PER_SIDE } from '../game/types';
@@ -15,6 +18,20 @@ export function ShopPanel() {
   const units = useGameStore((s) => s.units);
   const summon = useGameStore((s) => s.summon);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
+
+  // 📥 PRÉ-BAXA AVISADA: a vitrine é o aviso de que os quatro puros Nv.1 VÃO
+  // pisar no campo (clicar no card invoca na hora). A loja monta só na
+  // preparação — o download dos GLBs largar aqui cobre a compra do jogador
+  // ANTES do clique: no spawn, o figurino acha o cache pronto e nasce sem
+  // espera. Regra da sob demanda: só desce o que a vitrine mostra (as demais
+  // malhas descem nos outros avisos: exército inimigo nascendo na preparação,
+  // thumbnail da prévia de fusão no arraste, card aberto no bestiário).
+  useEffect(() => {
+    PURE_SPECIES_IDS.forEach((id: SpeciesId) => {
+      const url = MODEL_URLS_BY_SPECIES[id]?.[0];
+      if (url) ensureModel(url);
+    });
+  }, []);
 
   const alivePlayer = units.filter((u) => u.side === 'player' && !u.dying).length;
   const boardFull = alivePlayer >= TILES_PER_SIDE;
