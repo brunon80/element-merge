@@ -277,12 +277,38 @@ const MEDIDO: Record<SpeciesId, Footprint[]> = {
   // sonda de footprint. Sem anéis de chão: o gênio do rig antigo nunca os
   // teve (a lição do Magmar — só se re-ancora o que o rig antigo tinha).
   areia: [{ x: 1.9, z: 1.9 }],
-  tempestade: [{ x: 2.47, z: 2.41 }],
-  obsidiana: [{ x: 1.71, z: 1.3 }],
-  pantano: [{ x: 1.97, z: 1.8 }],
-  plasma: [{ x: 1.73, z: 1.73 }],
-  nevoa: [{ x: 1.97, z: 1.94 }],
-  cristal: [{ x: 2.06, z: 1.72 }],
+  // Nv.7 EM MALHA GLB ÚNICA — todos os seis (tempestade/nevoa/pantano/plasma/
+  // obsidiana/cristal) têm caixa CÚBICA (spanY ≈ largura, ~0,85-0,94), diferente
+  // dos golens ALTOS dos Nv.6 (spanY ~2× a largura). Por isso, assinados no MESMO
+  // degrau 1,9 da linha Nv.6 (a régua deles, calibrada por ALTURA), eles ficavam
+  // BAIXOS/PEQUENOS ao lado dos Nv.6 (o veredito do usuário: "escale os lvl7 para
+  // ao menos a altura dos lvl6"). A altura de uma malha-cubo é travada pela
+  // LARGURA do buraco (`H = esc·formTop`... e o `slotFit` amarra o invólucro em
+  // mundo a `MONSTER_FOOT_R=2,5`), então o teto de altura de um cubo é
+  // `esc·fit.s·spanY` com `fit.s` apertado por `MEDIDO/(meia-caixa+abraço)`.
+  // Subindo o degrau de 1,9 para 2,5 (quadrado, encostado no anel: invólucro em
+  // mundo ≈ 2,43 < 2,5; e há folga horizontal contra o vizinho — 2,43+2,43 <
+  // espaçamento 5,2 da célula) cada cubo enche o buraco e sobe à MESMA faixa de
+  // altura dos Nv.6 (malha ~3,6-4,6 + auréola de estilhaços → topo ~4,0-4,8, contra
+  // o topo ~4,1-4,27 medido nos Nv.6). Conferir na sonda de footprint (topo ≥ Nv.6
+  // e SOBREPOSIÇÕES = 0). O abraço é `SHELL_HUG` 0,13 e as malhas encaram o +Z
+  // (rumo 0, painel "frente (+Z)" do `qa/mesh-viewer-shot.mjs`).
+  tempestade: [{ x: 2.5, z: 2.5 }], // muralha de raios Nv.7 (storm.glb, caixa y ±0,45 largura x ±0,499)
+  obsidiana: [{ x: 2.5, z: 2.5 }], // fortaleza de vidro negro Nv.7 (obsidian.glb, x ±0,362 spanY 0,916)
+  pantano: [{ x: 2.5, z: 2.5 }], // hidra do lodo Nv.7 (pantano.glb, x ±0,351 spanY 0,846)
+  plasma: [{ x: 2.5, z: 2.5 }], // estrela de bolso Nv.7 (plasma.glb, x ±0,457 spanY 0,856)
+  nevoa: [{ x: 2.5, z: 2.5 }], // espectro da bruma Nv.7 (haze.glb, x ±0,402 spanY 0,941)
+  // PRISMA VIVO DE MALHA 3D IMPORTADA (crystal.glb, Nv.7): encaixe autoral no
+  // MESMO contrato da linha — `MEDIDO = s·(meia-caixa + abraço)` com abraço
+  // `SHELL_HUG` 0,13 e a caixa crua da malha (x ±0,439, y −0,410..0,446,
+  // z ±0,270; rumo 0 — a GEMA do peito e os olhos ciano encaram o +Z). A malha é
+  // quase CÚBICA (spanY 0,856 ≈ largura), diferente dos golens altos da linha:
+  // por isso o encaixe vem da LARGURA (o teto de altura 4,4/0,856=5,14 não
+  // aperta). Degrau SUBIO para 2,5 quadrado (a régua nova dos Nv.7-cubo, igual à
+  // dos irmãos): em 1,9 o cubo ficava BAIXO ao lado dos Nv.6 (veredito do usuário
+  // "escale os lvl7 para ao menos a altura dos lvl6"); em 2,5 ele enche o buraco
+  // (invólucro em mundo ≈ 2,43 < anel 2,5) e sobe à mesma faixa de topo dos Nv.6.
+  cristal: [{ x: 2.5, z: 2.5 }],
   geodo: [{ x: 2.18, z: 2.08 }],
   abissal: [{ x: 1.58, z: 3.11 }], // tentáculos longos: um lado varre bem para frente
   cosmico: [{ x: 2.26, z: 2.26 }],

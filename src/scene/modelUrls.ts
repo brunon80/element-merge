@@ -36,6 +36,12 @@ import rayUrl from '../models/ray/ray.glb?url';
 import sandUrl from '../models/sand/sand.glb?url';
 import steamUrl from '../models/steam/steam.glb?url';
 import treeUrl from '../models/tree/tree.glb?url';
+import crystalUrl from '../models/crystal/crystal.glb?url';
+import hazeUrl from '../models/haze/haze.glb?url';
+import obsidianUrl from '../models/obsidian/obsidian.glb?url';
+import pantanoUrl from '../models/pantano/pantano.glb?url';
+import plasmaUrl from '../models/plasma/plasma.glb?url';
+import stormUrl from '../models/storm/storm.glb?url';
 
 /** árvore do fogo (índice = nível−1) */
 export const FIRE_URLS = [fireLvl1Url, fireLvl2Url, fireLvl3Url, fireLvl4Url, fireLvl5Url];
@@ -57,6 +63,18 @@ export const ICE_URL = iceUrl;
 export const STEAM_URL = steamUrl;
 /** golem de areia único (Nv.6) */
 export const SAND_URL = sandUrl;
+/** prisma vivo único (Nv.7) */
+export const CRYSTAL_URL = crystalUrl;
+/** espectro da bruma único (Nv.7) */
+export const HAZE_URL = hazeUrl;
+/** fortaleza de vidro negro única (Nv.7) */
+export const OBSIDIAN_URL = obsidianUrl;
+/** hidra do lodo única (Nv.7) */
+export const PANTANO_URL = pantanoUrl;
+/** estrela de bolso única (Nv.7) */
+export const PLASMA_URL = plasmaUrl;
+/** muralha de raios única (Nv.7) */
+export const STORM_URL = stormUrl;
 
 /**
  * Malhas por espécie (índice = nível−1; as únicas de Nv.6 têm um só item).
@@ -77,6 +95,12 @@ export const MODEL_URLS_BY_SPECIES: Partial<Record<SpeciesId, readonly string[]>
   gelo: [ICE_URL],
   vapor: [STEAM_URL],
   areia: [SAND_URL],
+  cristal: [CRYSTAL_URL],
+  nevoa: [HAZE_URL],
+  obsidiana: [OBSIDIAN_URL],
+  pantano: [PANTANO_URL],
+  plasma: [PLASMA_URL],
+  tempestade: [STORM_URL],
 };
 
 /** URL da malha da forma (espécie+nível); `undefined` = espécie puramente procedural */

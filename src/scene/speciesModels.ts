@@ -980,6 +980,13 @@ export const MESH_FIGURINOS: Partial<Record<SpeciesId, boolean[]>> = {
   magma: [true], // colosso de lava único Nv.6 (lava.glb) — as parts só seguram o palco enquanto o GLB carrega
   areia: [true], // golem de areia único Nv.6 (sand.glb) — as parts só seguram o palco enquanto o GLB carrega
   vapor: [true], // máquina a vapor única Nv.6 (steam.glb) — as parts só seguram o palco enquanto o GLB carrega
+  // Nv.7 — compostos (malha GLB única; as parts procedurais só seguram o palco enquanto o GLB carrega)
+  cristal: [true], // prisma vivo único Nv.7 (crystal.glb)
+  nevoa: [true], // espectro da bruma único Nv.7 (haze.glb)
+  obsidiana: [true], // fortaleza de vidro negro única Nv.7 (obsidian.glb)
+  pantano: [true], // hidra do lodo única Nv.7 (pantano.glb)
+  plasma: [true], // estrela de bolso única Nv.7 (plasma.glb)
+  tempestade: [true], // muralha de raios única Nv.7 (storm.glb)
 };
 
 export const MODELS: Record<SpeciesId, SpeciesModel> = {

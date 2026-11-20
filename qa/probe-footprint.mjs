@@ -295,12 +295,31 @@ for (const o of probe.overlaps) {
   console.log(`  #${o.ia} ${o.a} × #${o.ib} ${o.b}: penetração x=${o.px} z=${o.pz}`);
 }
 
+// ⚠️ O canvas WebGL anima todo quadro — o `locator.screenshot` do Playwright
+// espera o elemento "estabilizar" e estoura o timeout (a cena nunca para de
+// girar). Capturar pelo VIEWPORT com clip + `timeout: 0` (e animações
+// congeladas) é o que fecha a captura sem falso negativo.
 const canvas = page.locator('canvas').first();
-await canvas.screenshot({ path: `${OUT}/footprint-arena.png` });
-const box = await canvas.boundingBox();
+const box = (await canvas.boundingBox()) ?? {
+  x: 0,
+  y: 0,
+  width: await page.evaluate(() => window.innerWidth),
+  height: await page.evaluate(() => window.innerHeight),
+};
+await page.screenshot({
+  path: `${OUT}/footprint-arena.png`,
+  clip: { x: box.x, y: box.y, width: box.width, height: box.height },
+  timeout: 0,
+  animations: 'disabled',
+});
 await page.mouse.wheel(box.x + box.width / 2, box.y + box.height * 0.45, -1200);
 await page.waitForTimeout(900);
-await canvas.screenshot({ path: `${OUT}/footprint-arena-zoomout.png` });
+await page.screenshot({
+  path: `${OUT}/footprint-arena-zoomout.png`,
+  clip: { x: box.x, y: box.y, width: box.width, height: box.height },
+  timeout: 0,
+  animations: 'disabled',
+});
 
 console.log(`\nconsole: ${msgs.length ? msgs.join('\n') : 'SEM ERROS/WARNINGS'}`);
 console.log(`prints em ${OUT}`);

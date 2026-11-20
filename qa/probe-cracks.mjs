@@ -183,5 +183,11 @@ const targets =
         [`src/models/lava/lava.glb`, 0.075], // colosso de lava Nv.6 (malha única)
         [`src/models/sand/sand.glb`, 0.075], // golem de areia Nv.6 (malha única)
         [`src/models/steam/steam.glb`, 0.075], // máquina a vapor Nv.6 (malha única)
+        [`src/models/crystal/crystal.glb`, 0.075], // prisma vivo Nv.7 (malha única)
+        [`src/models/haze/haze.glb`, 0.075], // espectro da bruma Nv.7 (malha única)
+        [`src/models/obsidian/obsidian.glb`, 0.075], // fortaleza de vidro negro Nv.7 (malha única)
+        [`src/models/pantano/pantano.glb`, 0.075], // hidra do lodo Nv.7 (malha única)
+        [`src/models/plasma/plasma.glb`, 0.075], // estrela de bolso Nv.7 (malha única)
+        [`src/models/storm/storm.glb`, 0.075], // muralha de raios Nv.7 (malha única)
       ];
 for (const [f, ufa] of targets) probe(fileURLToPath(new URL(`../${f}`, import.meta.url)), ufa);
