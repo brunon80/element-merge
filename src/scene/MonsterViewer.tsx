@@ -26,7 +26,10 @@ const LEVEL_CHIPS: MonsterLevel[] = [1, 2, 3, 4, 5];
  * iPhone (parecia que "os shaders sumiam"). Por isso o card não monta um
  * `<Canvas>` próprio: ele é um `<View>` do drei, desenhado pelo palco único
  * `BestiaryStage` na posição exata da sua caixa. O card só entra no palco
- * quando está visível (IntersectionObserver) e quando há WebGL2.
+ * quando está perto de ficar visível (IntersectionObserver com folga de 160px
+ * — ver `useInView`) e quando há WebGL2; e o rodapé do card mantém a altura
+ * reservada sempre, porque o entra-e-sai do palco JAMAIS pode mexer na altura
+ * do card no meio da rolagem (a lição do iPhone travado — ver o rodapé).
  */
 
 function useInView(ref: React.RefObject<HTMLElement | null>): boolean {
@@ -38,9 +41,15 @@ function useInView(ref: React.RefObject<HTMLElement | null>): boolean {
       setInView(true); // ambientes sem IO (ex.: testes): considerar visível
       return;
     }
-    const io = new IntersectionObserver((entries) => {
-      setInView(entries.some((e) => e.isIntersecting));
-    });
+    // folga de 160px: o card entra no palco ANTES de aparecer e sai DEPOIS de
+    // sumir. Sem folga, o limite de montagem fica colado na borda da viewport e
+    // um card na fronteira oscila montar/desmontar a cada frame da rolagem
+    const io = new IntersectionObserver(
+      (entries) => {
+        setInView(entries.some((e) => e.isIntersecting));
+      },
+      { rootMargin: '160px 0px 160px 0px' }
+    );
     io.observe(el);
     return () => io.disconnect();
   }, [ref]);
@@ -361,28 +370,36 @@ export function MonsterViewer({
       </div>
       {/* chips de forma, rótulo e dica ficam FORA da caixa de propósito: o palco
           pinta o modelo por cima do canvas, e dentro da caixa o modelo cobriria
-          esses textos (o canvas fica acima do overlay da enciclopédia) */}
-      {mounted && (
-        <div className="beast-model-foot">
-          {variants && !locked && (
-            <div className={`beast-level-chips${controlled ? ' debug' : ''}`}>
-              {LEVEL_CHIPS.map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  className={`beast-level-chip${l === shownLevel ? ' on' : ''}`}
-                  aria-label={`forma nível ${l}`}
-                  onClick={() => chooseLevel(l)}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
-          )}
-          {variants && !locked && form && <span className="beast-model-form">{form}</span>}
+          esses textos (o canvas fica acima do overlay da enciclopédia).
+          A LINHA DO RODAPÉ É SEMPRE MONTADA (só o conteúdo dela depende do
+          palco): os 32px de altura ficam RESERVADOS mesmo quando o card não
+          está no palco. Montar/desmontar essa linha no scroll mudava a altura
+          dos cards na borda da viewport — no iPhone (iOS ≤ 26 não tem scroll
+          anchoring) cada desmonte acima do dedo empurrava a página 32px para
+          a frente, em cascata: a rolagem voava sozinha para o fim da
+          enciclopédia e travava lá (o WebKit engolia os gestos seguintes); no
+          desktop era só um solavanco porque o Chrome corrige (anchoring ≥ 56) */}
+      <div className="beast-model-foot">
+        {mounted && variants && !locked && (
+          <div className={`beast-level-chips${controlled ? ' debug' : ''}`}>
+            {LEVEL_CHIPS.map((l) => (
+              <button
+                key={l}
+                type="button"
+                className={`beast-level-chip${l === shownLevel ? ' on' : ''}`}
+                aria-label={`forma nível ${l}`}
+                onClick={() => chooseLevel(l)}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
+        {mounted && variants && !locked && form && <span className="beast-model-form">{form}</span>}
+        {mounted && (
           <span className="beast-model-click-hint">clique: demonstração de ataque</span>
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }

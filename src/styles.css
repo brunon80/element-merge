@@ -1471,6 +1471,10 @@ button {
 /* linha embaixo da caixa com os chips de forma, o nome da forma e a dica de
    clique: fora da caixa de propósito — dentro, o modelo 3D desenhado por cima
    do canvas cobriria esses textos */
+/* linha do rodapé do card: SEMPRE montada pelo MonsterViewer, com o conteúdo
+   dentro condicional — os 32px de altura ficam reservados de propósito para o
+   montar/desmontar do palco nunca mudar a altura do card no scroll (ver o
+   comentário do rodapé em src/scene/MonsterViewer.tsx: a lição do iPhone) */
 .beast-model-foot {
   display: flex;
   align-items: center;
